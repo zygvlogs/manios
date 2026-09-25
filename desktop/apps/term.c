@@ -3,7 +3,9 @@
  * 80x24 cells of the ManiOS font. The shell's standard input and output
  * are pipes; lines are edited here (Backspace, ^U) and sent whole, as
  * the console's line discipline does for programs on /dev/cons. ^D on
- * an empty line sends end of file. The window closes when the shell
+ * an empty line sends end of file. PgUp and PgDn look back over the
+ * last HISTORY lines that scrolled off the top; typing, or more output,
+ * comes back to the live screen. The window closes when the shell
  * exits, or from its close box. */
 #include <errno.h>
 #include <manios.h>
@@ -16,6 +18,7 @@
 #define ROWS 24
 #define MARGIN 4
 #define LINE_MAX 255
+#define HISTORY 256
 
 #define BG     GFX_RGB(0x10, 0x15, 0x1C)
 #define FG     GFX_RGB(0xD8, 0xDE, 0xE9)
@@ -23,6 +26,9 @@
 
 static struct win *w;
 static char cells[ROWS][COLS];
+static char history[HISTORY][COLS]; /* lines scrolled off the top: a ring */
+static int history_count, history_next;
+static int back;                    /* how far the view is scrolled back */
 static int row, col;
 static int dirty_first = ROWS, dirty_last = -1;
 static int to_sh = -1, from_sh = -1, sh_pid;
@@ -36,13 +42,24 @@ static void dirty(int r)
 	dirty_last = r > dirty_last ? r : dirty_last;
 }
 
+/* What row r of the window shows: a line from the history while the
+ * view is scrolled back that far, otherwise one of the screen's. */
+static const char *view_row(int r)
+{
+	if (r < back) {
+		int oldest = (history_next - history_count + HISTORY) % HISTORY;
+		return history[(oldest + history_count - back + r) % HISTORY];
+	}
+	return cells[r - back];
+}
+
 static void draw_row(int r)
 {
 	struct gfx_canvas *c = w->canvas;
 	int y = MARGIN + r * GFX_CELL_H;
 	gfx_fill(c, (struct gfx_rect){ 0, y, c->width, GFX_CELL_H }, BG);
 	char text[COLS + 1];
-	memcpy(text, cells[r], COLS);
+	memcpy(text, view_row(r), COLS);
 	text[COLS] = '\0';
 	for (int i = 0; i < COLS; i++) {
 		if (!text[i]) {
@@ -50,7 +67,14 @@ static void draw_row(int r)
 		}
 	}
 	gfx_text(c, MARGIN, y, text, FG, 1);
-	if (r == row && col < COLS) {
+	if (back && r == 0) {
+		char mark[48];
+		snprintf(mark, sizeof(mark), " %d lines back (PgDn) ", back);
+		int width = gfx_text_width(mark, 1), x = c->width - MARGIN - width;
+		gfx_fill(c, (struct gfx_rect){ x, y, width, GFX_CELL_H }, CURSOR);
+		gfx_text(c, x, y, mark, BG, 1);
+	}
+	if (!back && r == row && col < COLS) {
 		struct gfx_rect cur = { MARGIN + col * GFX_CELL_W, y + GFX_CELL_H - 2, GFX_CELL_W, 2 };
 		if (!focused) {
 			gfx_outline(c, (struct gfx_rect){ cur.x, y, GFX_CELL_W, GFX_CELL_H }, CURSOR);
@@ -80,15 +104,32 @@ static void newline(void)
 		row++;
 		return;
 	}
+	memcpy(history[history_next], cells[0], COLS);
+	history_next = (history_next + 1) % HISTORY;
+	if (history_count < HISTORY) {
+		history_count++;
+	}
 	memmove(cells[0], cells[1], sizeof(cells[0]) * (ROWS - 1));
 	memset(cells[ROWS - 1], 0, sizeof(cells[0]));
 	dirty(0);
 	dirty(ROWS - 1);
 }
 
+/* Scrolls the view to `lines` back (0: the live screen). */
+static void scroll_to(int lines)
+{
+	lines = lines < 0 ? 0 : lines > history_count ? history_count : lines;
+	if (lines != back) {
+		back = lines;
+		dirty(0);
+		dirty(ROWS - 1);
+	}
+}
+
 /* Shows one byte of output. */
 static void put(unsigned char ch)
 {
+	scroll_to(0);
 	dirty(row);
 	if (ch == '\n') {
 		newline();
@@ -121,6 +162,11 @@ static void put_string(const char *s)
 
 static void key(int k)
 {
+	if (k == ZKT_KEY_PGUP || k == ZKT_KEY_PGDN) {
+		scroll_to(back + (k == ZKT_KEY_PGUP ? ROWS / 2 : -ROWS / 2));
+		return;
+	}
+	scroll_to(0);
 	if (k == '\b' || k == 0x7F) {
 		if (line_len) {
 			line_len--;

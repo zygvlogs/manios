@@ -124,7 +124,7 @@ int main(int argc, char **argv)
 	id[strcspn(id, "\n")] = '\0';
 
 	/* Until it ends: the read waits on HOST (Rpending keeps it alive). */
-	char wait_path[48], verdict[32];
+	char wait_path[48], verdict[192];
 	snprintf(wait_path, sizeof(wait_path), "/n/%s/wait", id);
 	int fd = open(wait_path, OREAD);
 	got = fd < 0 ? -1 : read(fd, verdict, sizeof(verdict) - 1);
@@ -136,6 +136,11 @@ int main(int argc, char **argv)
 	close(ctl);
 	if (!strncmp(verdict, "exit ", 5)) {
 		return atoi(verdict + 5);
+	}
+	if (!strncmp(verdict, "error ", 6)) {
+		verdict[strcspn(verdict, "\n")] = '\0';
+		fprintf(stderr, "cpu: %s: %s\n", host, verdict + 6);
+		return 125;
 	}
 	if (!strncmp(verdict, "killed ", 7)) {
 		fprintf(stderr, "cpu: %s: killed on %s (vector %d)\n", command[0], host, atoi(verdict + 7));

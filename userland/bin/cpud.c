@@ -12,8 +12,9 @@
  *                 CWD         its current directory
  *                 COMMAND     the program, then its arguments
  *               -- then read the job's number
- *   N/wait      read: blocks until the job ends: "exit CODE" or
- *               "killed VECTOR"
+ *   N/wait      read: blocks until the job ends: "exit CODE",
+ *               "killed VECTOR", or "error WHY" if the job never
+ *               started (the terminal couldn't be reached, say)
  *
  * A job runs in a namespace of its own with the terminal's namespace
  * mounted at /mnt/term, the terminal's /dev/cons over /dev/cons, and the
@@ -30,11 +31,14 @@
 #include <zrpsrv.h>
 
 #define FIELDS_MAX (4 + ZKT_ARGS_MAX)
+#define VERDICT_MAX 192 /* "error " WHY "\n" */
 
 struct job {
 	int id, pid;
 	bool done;
 	int status;
+	int errors;      /* the runner's standard error until it starts the program */
+	char why[160];   /* what it said, if it gave up */
 	struct zsrv_node *dir, *wait;
 	struct zsrv_fid *owner;
 	struct job *next;
@@ -50,20 +54,24 @@ static int job_main(int argc, char **argv)
 {
 	const char *dial = argv[2], *aname = argv[3], *cwd = argv[4];
 	char **command = &argv[5];
+	/* Until the program starts, standard error is a pipe to cpud, which
+	 * passes what goes wrong here to the terminal (N/wait: "error ..."). */
 	if (argc < 6 || nsfork() < 0) {
+		fprintf(stderr, "cannot make a namespace for the job\n");
 		return 125;
 	}
 	if (mount(dial, "/mnt/term", BIND_FLAG_REPLACE, aname) < 0) {
-		fprintf(stderr, "cpud: cannot import %s (%s): %s\n", dial, aname, strerror(errno));
+		fprintf(stderr, "cannot reach the terminal's namespace (%s): %s\n", dial, strerror(errno));
 		return 125;
 	}
 	if (bind("/mnt/term/dev/cons", "/dev/cons", BIND_FLAG_REPLACE) < 0
 	    || bind("/mnt/term/dev", "/dev", BIND_FLAG_AFTER) < 0) {
-		fprintf(stderr, "cpud: cannot bind the terminal's devices: %s\n", strerror(errno));
+		fprintf(stderr, "cannot bind the terminal's devices: %s\n", strerror(errno));
 		return 125;
 	}
 	int cons = open("/dev/cons", ORDWR);
 	if (cons < 0) {
+		fprintf(stderr, "cannot open the terminal's console: %s\n", strerror(errno));
 		return 125;
 	}
 	for (int fd = 0; fd < 3; fd++) {
@@ -118,7 +126,9 @@ static long text(const struct zsrv_req *req, void *buf, const char *s)
 
 static void verdict(const struct job *j, char *out, size_t size)
 {
-	if (j->status & ZKT_WAIT_KILLED) {
+	if (j->why[0]) {
+		snprintf(out, size, "error %s\n", j->why);
+	} else if (j->status & ZKT_WAIT_KILLED) {
 		snprintf(out, size, "killed %d\n", ZKT_WAIT_VECTOR(j->status));
 	} else {
 		snprintf(out, size, "exit %d\n", ZKT_WAIT_CODE(j->status));
@@ -128,7 +138,7 @@ static void verdict(const struct job *j, char *out, size_t size)
 static long serve_read(struct zsrv *s, struct zsrv_req *req, void *buf)
 {
 	(void)s;
-	char line[32];
+	char line[VERDICT_MAX];
 	struct zsrv_node *n = req->fid->node;
 	if (!strcmp(n->name, "new")) {
 		struct job *j = req->fid->aux;
@@ -160,16 +170,29 @@ static struct job *start(char **fields, int count)
 		argv[2 + i] = fields[i];
 	}
 	argv[2 + count] = NULL;
-	int pid = spawn("/bin/cpud", argv);
-	if (pid < 0) {
-		return 0;
-	}
 	struct job *j = calloc(1, sizeof(*j));
-	char name[16];
-	if (!j) {
+	int errors[2];
+	if (!j || pipe(errors) < 0) {
+		free(j);
 		errno = ENOMEM;
 		return 0;
 	}
+	/* The runner's standard error is one end of the pipe. */
+	int saved = dup(2);
+	dup2(errors[1], 2);
+	int pid = spawn("/bin/cpud", argv);
+	int err = errno;
+	dup2(saved, 2);
+	close(saved);
+	close(errors[1]);
+	if (pid < 0) {
+		close(errors[0]);
+		free(j);
+		errno = err;
+		return 0;
+	}
+	j->errors = errors[0];
+	char name[16];
 	j->id = next_id++;
 	j->pid = pid;
 	snprintf(name, sizeof(name), "%d", j->id);
@@ -258,7 +281,18 @@ static void reap_jobs(void)
 			}
 			j->done = true;
 			j->status = status;
-			char line[32];
+			/* The runner has exited: its pipe has what it said, then ends. */
+			long n, got = 0;
+			while ((n = read(j->errors, j->why + got, sizeof(j->why) - 1 - (size_t)got)) > 0) {
+				got += n;
+			}
+			j->why[got] = '\0';
+			j->why[strcspn(j->why, "\n")] = '\0';
+			close(j->errors);
+			if (ZKT_WAIT_CODE(status) != 125 || (status & ZKT_WAIT_KILLED)) {
+				j->why[0] = '\0'; /* the program's own status, not a failure to start */
+			}
+			char line[VERDICT_MAX];
 			verdict(j, line, sizeof(line));
 			line[strlen(line) - 1] = '\0';
 			printf("cpud: job %d: %s\n", j->id, line);
@@ -266,7 +300,7 @@ static void reap_jobs(void)
 			for (struct zsrv_req *r = srv->deferred, *next; r; r = next) {
 				next = r->next;
 				if (r->fid->node == j->wait) {
-					char out[32];
+					char out[VERDICT_MAX];
 					verdict(j, out, sizeof(out));
 					zsrv_respond(srv, r, out, (uint32_t)strlen(out));
 				}

@@ -32,6 +32,7 @@ INACTIVE = (0x5A, 0x62, 0x70)
 LIGHT = (0xE8, 0xE8, 0xE8)
 DARK = (0x1A, 0x1A, 0x1A)
 TERM_FG = (0xD8, 0xDE, 0xE9)
+TERM_BG = (0x10, 0x15, 0x1C)
 CLOCK_DATE = (0xC8, 0xCE, 0xD8)
 
 TERM_MARGIN = 4
@@ -272,6 +273,35 @@ class Scenario:
         self.d.wait(lambda s: any(r.startswith("desktop: already running") for r in term_rows(s, tx, ty)),
                     "a second desktop refusing to start")
 
+    def scrollback(self):
+        tx, ty = self.term
+        self.d.type("ls /bin; ls /bin; echo last line\n")
+        live = self.d.wait(lambda s: term_rows(s, tx, ty)[-2:] == ["last line", "manios%"],
+                           "two listings of /bin", timeout=20)
+        live = term_rows(live, tx, ty)
+        # PgUp: half a screen back, and a note saying so on the top row.
+        self.d.key("pgup")
+        note = " 12 lines back (PgDn) "
+        nx = tx + 488 - TERM_MARGIN - len(note) * CELL_W
+        # (A screendump can catch the window half redrawn: wait for all of it.)
+        s = self.d.wait(lambda s: read_text(s, nx, ty + TERM_MARGIN, len(note), TERM_BG)
+                        == note.rstrip() and term_rows(s, tx, ty)[12:] == live[:12],
+                        "12 lines back, and a note saying so")
+        rows = term_rows(s, tx, ty)
+        check(rows[11] and rows[11] != live[0], "a line from before the screen shows")
+        self.d.key("pgup")
+        # 24 back: the bottom row is the line just above the screen, the
+        # one that was row 11 at 12 back.
+        self.d.wait(lambda s: term_rows(s, tx, ty)[23] == rows[11], "PgUp again: 24 lines back")
+        self.d.key("pgdn")
+        self.d.key("pgdn")
+        self.d.wait(lambda s: term_rows(s, tx, ty) == live, "PgDn back to the live screen")
+        # Typing comes back to it too.
+        self.d.key("pgup")
+        self.d.wait(lambda s: term_rows(s, tx, ty)[12:] == live[:12], "PgUp")
+        self.d.type("echo back\n")
+        self.d.wait(lambda s: term_rows(s, tx, ty)[-2:] == ["back", "manios%"], "typing returning to the screen")
+
     def terminal_close_box(self):
         tx, ty = self.term
         self.click(tx + 488 - 15 + 6, ty - 18 + 3 + 6)
@@ -324,6 +354,7 @@ def main():
             ("F2 moves the focus; keys go to the focused window only", sc.focus),
             ("About ManiOS, closed with its close box", sc.about_close_box),
             ("a desktop inside the desktop is refused", sc.nested),
+            ("the terminal scrolls back with PgUp and PgDn", sc.scrollback),
             ("the terminal's close box ends it and its shell", sc.terminal_close_box),
             ("Exit desktop restores the text console", sc.exit),
         ]:

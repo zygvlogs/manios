@@ -39,10 +39,10 @@ import time
 import console_test
 from console_test import PROMPT, SHELL_PROMPT, Machine, TestFailure, fnv1a, run_command
 from desktop_test import ACCENT, DARK, Desktop, read_text, title
-from net_test import (EBADF, ENOENT, ENOSYS, EPROTO, RATTACH, RAUTH, RCLUNK, RERROR, RREAD,
-                      RVERSION, RWALK, TATTACH, TAUTH, TCLUNK, TREAD, TVERSION, TWALK, VERSION,
-                      ZKT_DIR, ZKT_FILE, Reader, checksum, eth, ip_bytes, ipv4, parse_ipv4, udp,
-                      zmsg, zstat, zstr)
+from net_test import (EBADF, ENOENT, ENOSYS, EPROTO, RATTACH, RAUTH, RCLUNK, RERROR, RPENDING,
+                      RREAD, RVERSION, RWALK, RWRITE, TATTACH, TAUTH, TCLUNK, TREAD, TVERSION,
+                      TWALK, TWRITE, VERSION, ZKT_DIR, ZKT_FILE, Reader, checksum, eth, ip_bytes,
+                      ipv4, parse_ipv4, udp, zmsg, zstat, zstr)
 
 EACCES = 13
 ZRP_PORT = 5640
@@ -182,6 +182,18 @@ class Client:
                 raise TestFailure(f"bad reply header: {reply!r}")
             return rtype, r
         raise TestFailure(f"no reply to ZRP type {mtype} from {self.ip}")
+
+    def rpc_waiting(self, mtype, body, timeout):
+        """A request the server may take a while over: asks again (the same
+        tag) until the answer is something other than Rpending."""
+        self.tag = self.tag % 0xFFFE + 1
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            rtype, r = self.rpc(mtype, body, tag=self.tag)
+            if rtype != RPENDING:
+                return rtype, r
+            time.sleep(1)
+        raise TestFailure(f"ZRP type {mtype} to {self.ip}: still pending after {timeout} s")
 
     def version(self):
         rtype, r = self.rpc(TVERSION, struct.pack("<I", 1472) + zstr(VERSION), tag=0xFFFF)
@@ -377,7 +389,7 @@ class Cluster:
 
     def guest_client_authentication(self):
         t = self.term
-        right = KeyedServer(self.hub, 5640, "right")
+        right = self.keyed = KeyedServer(self.hub, 5640, "right")
         KeyedServer(self.hub, 5650, "wrong")
         KeyedServer(self.hub, 5651, "none")
         run_command(t, "serial", "mount udp!10.0.0.9 /mnt/term; cat /mnt/term/hello.txt",
@@ -446,6 +458,54 @@ class Cluster:
         t.type_serial("run /bin/sh\r")
         t.expect(SHELL_PROMPT)
 
+    def jobs_that_cannot_start(self):
+        # The host plays a terminal whose namespace isn't there (an
+        # export name nobody made): N/wait says why, not "exit 125".
+        key = derive(PASSPHRASE)
+        c = Client(self.hub, "10.0.0.2", 7200)
+        c.version()
+        cnonce, snonce, server_ok = c.auth(key)
+        check(server_ok, "the CPU server's proof of the key is wrong")
+        check(c.attach(1, proof(key, "client", cnonce, snonce), "cpu")[0] == RATTACH,
+              "attaching to cpud")
+        check(c.rpc(TWALK, struct.pack("<II", 1, 2) + zstr("new"))[0] == RWALK, "walking to new")
+        job = b"udp!10.0.0.3\nno-such-export\n/\n/bin/cat"
+        rtype, r = c.rpc(TWRITE, struct.pack("<III", 2, 0, len(job)) + job)
+        check(rtype == RWRITE and r.u32() == len(job), "writing a job to new")
+        rtype, r = c.rpc(TREAD, struct.pack("<III", 2, 0, 16))
+        check(rtype == RREAD, "reading the job's number")
+        number = r.take(r.u32()).decode().strip()
+        check(c.rpc(TWALK, struct.pack("<II", 1, 3) + zstr(number))[0] == RWALK, "walking to the job")
+        check(c.rpc(TWALK, struct.pack("<II", 3, 4) + zstr("wait"))[0] == RWALK, "walking to wait")
+        rtype, r = c.rpc_waiting(TREAD, struct.pack("<III", 4, 0, 256), timeout=60)
+        check(rtype == RREAD, f"reading wait got type {rtype}")
+        said = r.take(r.u32()).decode()
+        expected = "error cannot reach the terminal's namespace (udp!10.0.0.3): "
+        check(said.startswith(expected) and said.endswith("\n"), f"wait said {said!r}")
+        self.cpu.expect(f"cpud: job {number}: {said.strip()}", timeout=10)
+        for fid in (4, 3, 2):
+            c.rpc(TCLUNK, struct.pack("<I", fid))
+
+        # A real terminal that gives the CPU server an address where
+        # nothing answers (its /dev/net, in a namespace of its own, is a
+        # file of the host's saying 10.0.0.99): cpu prints why and exits
+        # with 125 -- which this shell (run from the monitor, see
+        # statuses) passes on when it exits.
+        t = self.term
+        self.keyed.tree["net"] = b"ne0 10.0.0.99/24 gateway 0.0.0.0\n"
+        why = "cannot reach the terminal's namespace (udp!10.0.0.99): "
+        out = run_command(t, "serial", "sh -c 'newns; mount udp!10.0.0.9 /n; bind /n/net /dev/net; "
+                          "cpu udp!10.0.0.2 cat /dev/sysname'",
+                          [f"cpu: udp!10.0.0.2: {why}", "!cpu1"], SHELL_PROMPT)
+        said = out[out.index(why):].split("\r\n")[0]
+        before = self.cpu.expect(": /bin/cat for udp!10.0.0.99", timeout=10)
+        number = re.search(r"cpud: job (\d+)$", before).group(1)
+        self.cpu.expect(f"cpud: job {number}: error {said}", timeout=10)
+        run_command(t, "serial", "exit", ["run: /bin/sh exited with status 125"])
+        t.type_serial("run /bin/sh\r")
+        t.expect(SHELL_PROMPT)
+        run_command(t, "serial", "cat /dev/sysname", ["\r\nterm1\r\n"], SHELL_PROMPT)
+
     def remote_window(self, tmpdir):
         t = self.term
         d = Desktop(t, tmpdir)
@@ -513,6 +573,7 @@ def main():
             ("a remote shell: the terminal's namespace, the file server through it, a long wait",
              cluster.remote_shell),
             ("exit statuses come back: failure, a fault, a missing program", cluster.statuses),
+            ("a job that can't start: why comes back to the terminal", cluster.jobs_that_cannot_start),
             ("a program on the CPU server opens a window on the terminal's desktop",
              lambda: cluster.remote_window(workdir)),
             ("the CPU server dies under a job: the terminal notices and carries on",

@@ -188,6 +188,7 @@ Further:
   datagram, one request at a time per write: a clock is fine; a
   terminal window repaints slowly.
 - Every machine listens on UDP 5640.
-- If the CPU server can't import the terminal's namespace, the job ends
-  with status 125 and the reason is printed on the CPU server's console,
-  not the terminal's.
+- ~~If the CPU server can't import the terminal's namespace, the job
+  ends with status 125 and the reason is printed on the CPU server's
+  console, not the terminal's.~~ Fixed in M14: `cpu` prints the reason
+  (`cpu: HOST: cannot reach the terminal's namespace (...): ...`).
