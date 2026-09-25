@@ -12,7 +12,11 @@
 .set MB_FLAGS,    (MB_ALIGN | MB_MEMINFO)
 .set MB_CHECKSUM, -(MB_MAGIC + MB_FLAGS)
 
-.section .multiboot
+/* "a" (alloc) is required explicitly: recent binutils gives a
+ * non-standard section name no flags by default, which would leave
+ * this section out of any loadable segment -- and then out of the
+ * first 8 KiB of the file where a Multiboot loader looks for it. */
+.section .multiboot, "a"
 .align 4
 .long MB_MAGIC
 .long MB_FLAGS

@@ -1,12 +1,13 @@
 # ManiOS Founding Proposal
 
-**Status:** Proposed — awaiting approval. No kernel, driver, or bootloader
-code should be merged until the open decisions in §11 are resolved.
+**Status:** D1–D4 accepted (§11, 2026-09-25). **M1 achieved**: ManiOS
+boots on i386 and reaches a ZKT kernel console, verified in QEMU
+(`make test`) — see §7 and §12.
 
-**Scope of this document:** This is the response to the ManiOS founding
-prompt's "First Task" — architecture, strategy, and planning only. It
-contains no OS implementation code, per the founding prompt's explicit
-instruction not to generate large amounts of code before approval.
+**Scope of this document:** Originally the response to the ManiOS
+founding prompt's "First Task" — architecture, strategy, and planning.
+Sections 1–11 remain that proposal (now accepted); §12 records M1's
+implementation status as it was built.
 
 ---
 
@@ -435,7 +436,7 @@ a concrete shape rather than only a diagram.
 | Milestone | Goal | Depends on |
 |---|---|---|
 | M0 | This proposal + repo scaffolding | — |
-| M1 | Multiboot kernel reaches a ZKT kernel console (serial + VGA text) | §4 toolchain, §2.1–2.2 |
+| M1 | **Achieved.** Multiboot kernel reaches a ZKT kernel console (serial + VGA text) | §4 toolchain, §2.1–2.2 |
 | M2 | Physical + virtual memory management, kernel heap | M1 |
 | M3 | Full interrupt/exception handling, PIC remap, PIT timer IRQ | M1 |
 | M4 | Cooperative then preemptive multitasking (kernel threads) | M2, M3 |
@@ -610,5 +611,52 @@ below reflects that.
   the repository owner's behalf, and should be raised explicitly if it
   needs to change.
 
-With D1–D4 confirmed, work proceeds to §10's task list, starting with M1
-(§7).
+With D1–D4 confirmed, work proceeded to §10's task list, starting with M1
+(§7) — see §12 for its outcome.
+
+---
+
+## 12. M1 Status: Achieved
+
+All of §7's 12 steps and §10's task list are implemented and verified:
+
+- `zkt/arch/i386/boot.S`, `linker.ld`, `gdt.c`/`gdt_flush.S`,
+  `idt.c`/`idt_flush.S`, `zkt/arch/i386/isr.S` (exception stubs) +
+  `exception.c` (dispatch to `panic_dump`), `pic.c`,
+  `zkt/drivers/serial.c`, `zkt/drivers/vga_text.c`,
+  `zkt/kernel/kconsole.c`, `zkt/kernel/panic.c`, `zkt/kernel/main.c`.
+- `tools/toolchain/build-i686-elf-toolchain.sh` (binutils 2.42 + GCC
+  13.2.0, C-only, `--without-headers`), root `Makefile`,
+  `tools/qemu-run.sh`, `tests/boot_smoke_test.sh`.
+- `make test` boots the kernel headlessly in QEMU and asserts the
+  banner on the serial port — **PASS**.
+- The fault path was verified manually (a temporary `int $0x00`
+  triggered in `kernel_main`, then reverted before commit): the
+  divide-by-zero stub fired, `isr_handler` correctly resolved
+  vector 0 to `"Divide-by-zero"`, and `panic_dump` printed a full
+  register dump before halting — confirming the IDT, the 32 exception
+  stubs, and the panic handler all work end-to-end, not just the
+  happy-path boot banner.
+
+One bug was found and fixed during bring-up, worth recording since it's
+a generically useful gotcha: **`isr.c` and `isr.S` shared the file stem
+`isr`**, so the Makefile's `%.o: %.c` and `%.o: %.S` pattern rules both
+resolved to `build/zkt/arch/i386/isr.o`. Only the `.c` rule ever fired
+(pattern-rule precedence), so the assembly exception stubs were never
+compiled, and the object list still listed the same `.o` twice — which
+`ld` rejected as `multiple definition of isr_handler` while also
+reporting every `isrN` symbol undefined. Fixed by renaming the C
+dispatcher to `exception.c`; no two source files under `zkt/` should
+share a stem across `.c`/`.S` going forward.
+
+A second bug: GAS gives a **non-standard section name no flags by
+default** on this binutils version (2.42). `.section .multiboot`
+without an explicit `"a"` (alloc) flag produced a `.multiboot` section
+with no `SHF_ALLOC`, so the linker did not place it in a loadable
+segment — it landed at file offset 9216, past the 8 KiB window a
+Multiboot loader scans for the header, and QEMU refused to boot the
+image (`Error loading uncompressed kernel without PVH ELF Note`). Fixed
+by declaring `.section .multiboot, "a"` explicitly in `boot.S`.
+
+Proceeding to M2 (physical + virtual memory management, kernel heap)
+is unblocked.
