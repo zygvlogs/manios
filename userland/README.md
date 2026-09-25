@@ -11,7 +11,9 @@ program:
   the coreutils — `cat`, `echo`, `ls`, `wc`, `sum`, `sleep`, `pwd`,
   `bind`, `unbind`, `uptime`, `true`, `false` — plus `mount` (ZRP,
   M10), `gfxdemo` (M11), `cpu` and `cpud` (the terminal's and the CPU
-  server's halves of remote execution, M13) and `hello`. The desktop's programs (`desktop`,
+  server's halves of remote execution, M13), `install` (puts ManiOS on
+  a hard disk, M14, [docs/install.md](../docs/install.md)), `dd`
+  (copies blocks, e.g. to and from disks) and `hello`. The desktop's programs (`desktop`,
   `term`, `clock`, `about`) are built from `desktop/` into `/bin` too.
 - `test/` — test programs, installed in `/boot/test`: `utest` (system
   calls), `ctest` (libc), `gtest` (libgfx), `ztest` (a program

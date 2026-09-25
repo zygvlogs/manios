@@ -24,6 +24,22 @@ clone. It does not depend on the Linux kernel.
 | M11 — graphics: linear framebuffer (Bochs VBE, VGA 13h), 2D library, own font | Achieved ([notes](docs/milestones/M11-graphics.md)) |
 | M12 — desktop environment MVP: compositor, window system as files, panel, launcher, terminal | Achieved ([notes](docs/milestones/M12-desktop.md), [design](docs/desktop/DESIGN.md)) |
 | M13 — cluster roles: file server, CPU server, terminal; authenticated ZRP2 | Achieved ([notes](docs/milestones/M13-cluster-roles.md), [ADR-0005](docs/adr/0005-cluster-roles-and-authentication.md)) |
+| M14 — own boot loader, bootable hybrid ISO, installer, releases | Achieved ([notes](docs/milestones/M14-installer-release.md), [ADR-0006](docs/adr/0006-native-boot-loader-and-installer.md)) |
+
+## Download and install
+
+Each release on the [Releases](https://github.com/zygvlogs/manios/releases)
+page has a bootable ISO, `manios-VERSION.iso`. It boots from a CD, from
+a USB stick it is written to, or in QEMU:
+
+```
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.14.0.iso -boot d
+```
+
+and `install ata0` puts ManiOS on a hard disk. ManiOS boots with its own
+boot loader, which offers to edit the kernel's command line for 3
+seconds. See [docs/install.md](docs/install.md). ManiOS has only been
+tested in QEMU so far; reports from real (old) PCs are welcome.
 
 The full architecture and roadmap are in
 [`docs/FOUNDING-PROPOSAL.md`](docs/FOUNDING-PROPOSAL.md).
@@ -32,12 +48,18 @@ The full architecture and roadmap are in
 
 ```
 make toolchain   # once: builds the i686-elf cross-compiler (~15 min)
-make             # builds build/manios-zkt.elf
-make run         # boots it in QEMU (486 CPU model), serial on the terminal
+make             # builds build/manios-zkt.elf and the ISO, build/manios.iso
+make run         # boots the kernel in QEMU (486 CPU model), serial on the terminal
 make test        # headless boot tests, plus interactive console tests
+make release     # dist/: the ISO, the kernel, SHA256SUMS
 ```
 
-Requires `qemu-system-i386`, Python 3 and mtools (for the tests), plus
+Pushing a tag `vVERSION` (matching the `VERSION` file) makes GitHub
+Actions build, run `make test` and publish a release
+([workflow](.github/workflows/release.yml)).
+
+Requires `qemu-system-i386`, Python 3 and mtools (for the tests; xorriso
+optionally), plus
 the usual GCC build dependencies (GMP, MPFR, MPC, texinfo, bison, flex)
 for `make toolchain`.
 
@@ -87,7 +109,7 @@ redirection (`ls /bin | wc`, `cat < FILE`, `echo x > /dev/null`).
 ## Repository layout
 
 ```
-boot/         bootloader
+boot/         the ManiOS boot loader: MBR, CD boot image, stage 2 (ADR-0006)
 zkt/          ZygKernel Technology — the kernel
   arch/i386/  first target architecture (only place with #ifdef/asm)
   mm/         physical + virtual memory management, kernel heap
@@ -102,11 +124,14 @@ libc/         ManiOS's own C library (stdio, malloc, strings, file servers, ...)
 desktop/      the desktop environment: libgfx/ (2D graphics), libwin/ (windows),
               wm/ (the compositor), apps/ (terminal, clock, about)
 userland/     user programs (bin/), test programs (test/), boot files (etc/)
-tools/        cross-toolchain build scripts, image builder, QEMU scripts
+tools/        cross-toolchain build script, boot area / ISO / disk image builders,
+              QEMU script
 third_party/  vendored BSD-derived source + license notices ledger
 docs/         architecture, roadmap, and ADRs
-tests/        boot smoke tests, unit tests
-build/        build output (git-ignored)
+tests/        boot smoke tests, console, network, graphics, desktop, cluster
+              and install tests
+.github/      the release workflow
+build/        build output (git-ignored); dist/: release files (git-ignored)
 ```
 
 ## Read next

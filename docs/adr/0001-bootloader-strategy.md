@@ -1,6 +1,8 @@
 # ADR-0001: Boot on Multiboot first, native ManiOS bootloader later
 
-**Status:** Accepted
+**Status:** Accepted; its "native bootloader later" plan is carried out
+and superseded by [ADR-0006](0006-native-boot-loader-and-installer.md)
+(M14). The kernel remains a Multiboot 1 kernel.
 **Date:** 2026-09-25
 
 ## Context

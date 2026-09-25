@@ -41,6 +41,13 @@ the terminal's namespace (console, files, even windows); the protocol
 became ZRP2, with mutual shared-key authentication and long-waiting
 requests — see [ADR-0005](adr/0005-cluster-roles-and-authentication.md)
 and [docs/milestones/M13-cluster-roles.md](milestones/M13-cluster-roles.md).
+**M14 achieved**: the native boot loader §4.1 deferred (MBR, El Torito
+CD boot, stage 2 with an editable command line; LBA or CHS), a hybrid
+ISO that boots from CD or USB stick, an installer that runs on ManiOS
+itself, and releases published by GitHub Actions — see
+[ADR-0006](adr/0006-native-boot-loader-and-installer.md),
+[docs/install.md](install.md) and
+[docs/milestones/M14-installer-release.md](milestones/M14-installer-release.md).
 
 **Scope of this document:** Originally the response to the ManiOS
 founding prompt's "First Task" — architecture, strategy, and planning.
@@ -385,6 +392,9 @@ is stable enough that bootloader bugs aren't hiding behind kernel bugs
 that make debugging unnecessarily hard" pattern the founding prompt
 warns against implicitly.
 
+*(M14 carried this out: ManiOS now boots with its own loader, which
+starts ZKT through the same Multiboot interface — ADR-0006.)*
+
 ### 4.2 Toolchain
 - A dedicated **`i686-elf` cross-compiler** (binutils + GCC built with
   `--target=i686-elf`, no host libc), per the well-established OSDev
@@ -494,6 +504,7 @@ a concrete shape rather than only a diagram.
 | M11 | **Achieved** ([notes](milestones/M11-graphics.md)). Graphics: linear framebuffer driver, basic 2D primitives | M8 |
 | M12 | **Achieved** ([notes](milestones/M12-desktop.md), [design](desktop/DESIGN.md)). ManiOS Desktop Environment MVP (compositor, shell, launcher) | M11 |
 | M13 | **Achieved** ([notes](milestones/M13-cluster-roles.md)). Cluster roles: file server / CPU server / terminal (ADR-0003) | M8, M10 |
+| M14 | **Achieved** ([notes](milestones/M14-installer-release.md)). Native boot loader, bootable ISO, installer, published releases (ADR-0006) | M6, M9 |
 
 Each milestone gets its own short design note under `docs/` when it
 starts (not written speculatively now), following the ADR practice

@@ -7,6 +7,20 @@
   any `ZKT PANIC`. The in-kernel self-tests (e.g. `zkt/mm/mm_selftest.c`)
   run during that boot, so their result is part of the gate.
 
+- `install_test.py` (also run by `make test`; takes the build
+  directory) — the native boot path and the installer (M14,
+  [ADR-0006](../docs/adr/0006-native-boot-loader-and-installer.md)),
+  with no `-kernel`: QEMU's BIOS boots the ISO, disks and a USB-stick
+  image. It checks the ISO's structure (ISO 9660, El Torito, the hybrid
+  MBR; with `xorriso` too if installed) and that it is rebuilt byte for
+  byte; boots the CD; edits the loader's command line over serial and
+  from the keyboard; runs `install` (its refusals, the question, the
+  write) and checks the disk from outside; boots the installed disk
+  with its command line and installs a clone from it; boots the ISO as
+  a hard disk, a CHS-only build, and an 8 MiB machine; and makes the
+  loader explain too little memory, a damaged boot area, a bad header
+  and a disk without a boot partition.
+
 - `console_test.py` (also run by `make test`) — boots the kernel with
   the serial line on stdio and drives the shell, then (after `exit`)
   the `ZKT>` monitor, two ways:
@@ -36,7 +50,7 @@
   `screendump`: text is read back off the screen by matching character
   cells against `font.txt`. It opens the menu, runs commands in a
   terminal window, runs `wintest` inside the desktop, drags, focuses and
-  closes windows, and exits back to the text console; and on a machine
+  closes windows, scrolls the terminal back with PgUp/PgDn, and exits back to the text console; and on a machine
   without Bochs VBE, checks the desktop explains and exits.
 
 - `cluster_test.py` (also run by `make test`) — the cluster roles
@@ -44,9 +58,9 @@
   wrong key, connected through a hub the test runs, which is also a host
   with its own implementation of ZRP2's authentication. It checks the
   keys both ways, remote execution with the terminal's console and
-  namespace (and the file server through it), exit statuses, a remote
-  program's window on the terminal's desktop, and a CPU server dying
-  under a job.
+  namespace (and the file server through it), exit statuses, jobs that
+  cannot start (their reason reaches the terminal), a remote program's
+  window on the terminal's desktop, and a CPU server dying under a job.
 
 - `tools/mkfont.py --check` (in `make test`) — the generated font
   matches `desktop/libgfx/font.txt`.
@@ -58,5 +72,6 @@
   (`fault`, `fbtest`, `wintest`); they are in the boot archive under
   `/boot/test`.
 
-Not yet wired into CI (GitHub Actions); see
-[`docs/FOUNDING-PROPOSAL.md` §12](../docs/FOUNDING-PROPOSAL.md#12-m1-status-achieved).
+GitHub Actions runs all of them (`make test`) before it publishes a
+release ([`.github/workflows/release.yml`](../.github/workflows/release.yml));
+they are not run on every push.

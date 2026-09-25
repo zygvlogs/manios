@@ -31,7 +31,10 @@ subdirectories together.
 - `kerrno.c` / `kerrno.h` — kernel error codes and their messages
 - `ring.h` — byte ring buffer
 - `panic.c` — `panic()` / `panic_dump()`
-- `multiboot.c` — Multiboot memory map → generic `struct mem_region` list
+- `multiboot.c` — Multiboot memory map → generic `struct mem_region`
+  list; the command line; modules (M14)
+- `bootmod.c` — Multiboot modules as read-only devices (`/dev/bootarea`,
+  the boot area the ManiOS loader started us from; M14)
 - `timer.c` — system tick (drives the scheduler), uptime and sleep, on
   top of the arch `clock.h`
 - `kstring.c` — `mem*` and a few `str*` functions

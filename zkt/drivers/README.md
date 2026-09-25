@@ -23,7 +23,8 @@ userspace servers (ADR-0002).
 - `vga_text.c` — 80x25 text mode with hardware cursor (and a shadow
   copy while graphics own the display); device `vga`
 - `ata.c` — ATA disks over PIO, LBA28 with a CHS fallback; devices
-  `ata0`–`ata3` ([M6 notes](../../docs/milestones/M6-ata-storage.md))
+  `ata0`–`ata3` ([M6 notes](../../docs/milestones/M6-ata-storage.md));
+  reads, and since M14 writes (followed by a cache flush)
 - `mbr.c` — MBR primary partitions as block devices (`ata0p1`…)
 - `pci.c` — PCI configuration space and bus scan
 - `fb.c` — the framebuffer: devices `fb` and `fbctl`, Bochs VBE modes

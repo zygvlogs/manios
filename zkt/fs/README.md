@@ -13,7 +13,9 @@ The virtual filesystem and namespaces. Design and verification:
   archive's files)
 - `bootfs.c` — the boot archive (ustar, linked into the kernel) as a
   ramfs tree at `/boot`
-- `devfs.c` — every registered device as a file under `/dev`
+- `devfs.c` — every registered device as a file under `/dev`; block
+  devices can be written at any offset (partial blocks are read,
+  changed and written back; M14)
 - `fat.c` — read-only FAT12/16, mounted at `/n/<device>`
 - `pipe.c` — pipes: two connected ends, a message per write, both
   directions; also the channel a userspace ZRP server is mounted over
