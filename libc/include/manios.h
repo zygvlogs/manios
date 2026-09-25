@@ -39,6 +39,11 @@ char *getcwd(char *buf, size_t size);
 int bind(const char *new_path, const char *old_path, int flag);
 int unbind(const char *old_path);
 int nsfork(void); /* from now on, binds made here are private to this process */
+/* Attaches to the ZRP server at `dial` ("udp!A.B.C.D!PORT", "udp!A.B.C.D"
+ * or "A.B.C.D"; the port defaults to 5640) and binds its tree onto
+ * old_path with `flag`, as bind() does. aname selects an export; NULL
+ * or "" for the default. */
+int mount(const char *dial, const char *old_path, int flag, const char *aname);
 
 /* A raw system call: returns the kernel's result (a negated error
  * number on failure) and leaves errno alone. */

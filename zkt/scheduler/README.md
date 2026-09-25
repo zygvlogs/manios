@@ -7,7 +7,8 @@ Kernel threads and the scheduler. Design and verification:
   cooperative or preemptive mode, sleep list, idle thread, exit and
   reaping
 - `sched.c` also provides wait queues (condition-variable style,
-  wakeable from IRQ handlers)
+  wakeable from IRQ handlers), with optional deadlines
+  (`waitq_sleep_until`, M10)
 - `mutex.c` — sleeping mutex built on a wait queue
 - Each thread carries a namespace (`zkt/fs/namespace.c`), inherited
   from its creator, and an address space

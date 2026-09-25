@@ -14,7 +14,8 @@ OBJCOPY := $(abspath $(CROSS_PREFIX)objcopy)
 # instructions in .S files and inline asm alike.
 ARCHFLAGS := -march=i386 -Wa,-march=i386
 
-INCLUDES := -Izkt/abi -Izkt/arch/i386 -Izkt/drivers -Izkt/fs -Izkt/kernel -Izkt/mm -Izkt/scheduler
+INCLUDES := -Izkt/abi -Izkt/arch/i386 -Izkt/drivers -Izkt/fs -Izkt/kernel -Izkt/mm -Izkt/net \
+            -Izkt/scheduler
 # Stack guard pages are 4 KiB; a frame bigger than that could step over
 # one without touching it, so flag frames at half that size.
 CFLAGS := -std=gnu11 -ffreestanding -O2 -g -Wall -Wextra -Wframe-larger-than=2048 \
@@ -26,7 +27,7 @@ BUILD := build
 KERNEL := $(BUILD)/manios-zkt.elf
 
 C_SOURCES := $(wildcard zkt/arch/i386/*.c zkt/drivers/*.c zkt/fs/*.c zkt/kernel/*.c \
-                          zkt/mm/*.c zkt/scheduler/*.c)
+                          zkt/mm/*.c zkt/net/*.c zkt/scheduler/*.c)
 S_SOURCES := $(wildcard zkt/arch/i386/*.S)
 OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(C_SOURCES)) \
            $(patsubst %.S,$(BUILD)/%.o,$(S_SOURCES))
@@ -119,6 +120,7 @@ run: $(KERNEL)
 test: $(KERNEL)
 	tests/boot_smoke_test.sh $(KERNEL)
 	python3 tests/console_test.py $(KERNEL)
+	python3 tests/net_test.py $(KERNEL)
 
 clean:
 	rm -rf $(BUILD)

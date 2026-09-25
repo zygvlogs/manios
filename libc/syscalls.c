@@ -55,6 +55,12 @@ int unbind(const char *old_path)                { return (int)SC1(SYS_UNBIND, ol
 int nsfork(void)                                { return (int)SC0(SYS_NSFORK); }
 int chdir(const char *path)                     { return (int)SC1(SYS_CHDIR, path); }
 
+int mount(const char *dial, const char *old_path, int flag, const char *aname)
+{
+	return (int)check(zkt_syscall(SYS_MOUNT, (uint32_t)dial, (uint32_t)old_path, (uint32_t)flag,
+	                              (uint32_t)aname, 0));
+}
+
 void *sbrk(intptr_t increment)
 {
 	long r = SC1(SYS_SBRK, increment);

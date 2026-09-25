@@ -32,7 +32,8 @@ struct file {
 	struct location loc;
 	uint32_t offset; /* files and devices */
 	size_t member;   /* directories: union member being listed... */
-	uint32_t index;  /* ...and the next entry within it */
+	uint32_t index;  /* ...and the next entry within it... */
+	uint32_t entry;  /* ...which is entry number `entry` of the whole listing */
 };
 
 static bool can_read(const struct file *f)
@@ -78,6 +79,7 @@ int vfs_open(const char *path, int mode, struct file **out)
 	f->offset = 0;
 	f->member = 0;
 	f->index = 0;
+	f->entry = 0;
 	*out = f;
 	return 0;
 }
@@ -99,6 +101,27 @@ long vfs_read(struct file *f, void *buf, size_t len)
 		f->offset += (uint32_t)n;
 	}
 	return n;
+}
+
+long vfs_pread(struct file *f, void *buf, size_t len, uint32_t offset)
+{
+	struct vnode *v = f->loc.v[0];
+	if (!can_read(f)) {
+		return -EBADF;
+	}
+	if (v->type == VNODE_DIR) {
+		return -EISDIR;
+	}
+	return v->ops->read ? v->ops->read(v, offset, buf, len) : -ENODEV;
+}
+
+long vfs_pwrite(struct file *f, const void *buf, size_t len, uint32_t offset)
+{
+	struct vnode *v = f->loc.v[0];
+	if (!can_write(f)) {
+		return -EBADF;
+	}
+	return v->ops->write(v, offset, buf, len);
 }
 
 long vfs_write(struct file *f, const void *buf, size_t len)
@@ -138,6 +161,7 @@ int vfs_readdir(struct file *f, struct dirent *out)
 		         ? v->ops->readdir(v, f->index, out) : 0;
 		if (rc == 1) {
 			f->index++;
+			f->entry++;
 			return 1;
 		}
 		if (rc < 0) {
@@ -147,6 +171,23 @@ int vfs_readdir(struct file *f, struct dirent *out)
 		f->index = 0;
 	}
 	return 0;
+}
+
+int vfs_readdir_at(struct file *f, uint32_t entry, struct dirent *out)
+{
+	if (entry < f->entry) {
+		f->member = 0;
+		f->index = 0;
+		f->entry = 0;
+	}
+	while (f->entry < entry) {
+		struct dirent skipped;
+		int rc = vfs_readdir(f, &skipped);
+		if (rc <= 0) {
+			return rc;
+		}
+	}
+	return vfs_readdir(f, out);
 }
 
 enum vnode_type vfs_type(const struct file *f)

@@ -21,6 +21,8 @@ hybrid-kernel design decision.
   in-tree drivers (serial, VGA text, keyboard, PIT, ATA/IDE, …).
 - `fs/` — the VFS (vnode-style) abstraction and filesystem
   implementations.
+- `net/` — Ethernet/ARP, IPv4, ICMP, UDP, and ZRP, the resource protocol
+  (ADR-0003).
 - `kernel/` — boot handoff, `kernel_main()`, panic/logging, processes,
   system calls, the ELF loader — the glue that wires the other
   subdirectories together.
@@ -39,5 +41,7 @@ M4 (kernel threads, [notes](../docs/milestones/M4-multitasking.md)) and
 M5 (driver framework, [notes](../docs/milestones/M5-driver-framework.md)) and
 M6 (ATA storage, [notes](../docs/milestones/M6-ata-storage.md)), M7
 (VFS and namespaces, [notes](../docs/milestones/M7-vfs-namespaces.md))
-and M8 (userspace, [notes](../docs/milestones/M8-userspace.md)).
+M8 (userspace, [notes](../docs/milestones/M8-userspace.md)), M9 (libc and
+shell, [notes](../docs/milestones/M9-libc-shell.md)) and M10 (networking and
+ZRP, [notes](../docs/milestones/M10-networking-zrp.md)).
 `ipc/` is still empty.

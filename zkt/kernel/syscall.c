@@ -11,6 +11,7 @@
 #include "vfs.h"
 #include "vmm.h"
 #include "zkt_abi.h"
+#include "zrp.h"
 
 #define IO_CHUNK 512
 
@@ -190,6 +191,16 @@ static long sys_wait(struct process *p, int pid, int *ustatus)
 	return rc;
 }
 
+static int bind_flag(int flag, enum bind_flag *out)
+{
+	switch (flag) {
+	case BIND_FLAG_REPLACE: *out = BIND_REPLACE; return 0;
+	case BIND_FLAG_BEFORE:  *out = BIND_BEFORE; return 0;
+	case BIND_FLAG_AFTER:   *out = BIND_AFTER; return 0;
+	default:                return -EINVAL;
+	}
+}
+
 static long sys_bind(struct process *p, const char *unew, const char *uold, int flag)
 {
 	char new_path[VFS_PATH_MAX + 1], old_path[VFS_PATH_MAX + 1];
@@ -200,12 +211,9 @@ static long sys_bind(struct process *p, const char *unew, const char *uold, int 
 	if (rc) {
 		return rc;
 	}
-	switch (flag) {
-	case BIND_FLAG_REPLACE: return vfs_bind(new_path, old_path, BIND_REPLACE);
-	case BIND_FLAG_BEFORE:  return vfs_bind(new_path, old_path, BIND_BEFORE);
-	case BIND_FLAG_AFTER:   return vfs_bind(new_path, old_path, BIND_AFTER);
-	default:                return -EINVAL;
-	}
+	enum bind_flag how;
+	rc = bind_flag(flag, &how);
+	return rc ? rc : vfs_bind(new_path, old_path, how);
 }
 
 static long sys_unbind(struct process *p, const char *uold)
@@ -213,6 +221,34 @@ static long sys_unbind(struct process *p, const char *uold)
 	char path[VFS_PATH_MAX + 1];
 	long rc = copy_path(p, path, uold);
 	return rc ? rc : vfs_unbind(path);
+}
+
+static long sys_mount(struct process *p, const char *udial, const char *uold, int flag,
+                      const char *uaname)
+{
+	char dial[64], aname[VFS_NAME_MAX + 1] = "", old_path[VFS_PATH_MAX + 1], label[40];
+	enum bind_flag how;
+	long rc = copy_string_from_user(dial, udial, sizeof(dial));
+	if (rc >= 0) {
+		rc = copy_path(p, old_path, uold);
+	}
+	if (rc >= 0 && uaname) {
+		rc = copy_string_from_user(aname, uaname, sizeof(aname));
+	}
+	if (rc >= 0) {
+		rc = bind_flag(flag, &how);
+	}
+	if (rc < 0) {
+		return rc;
+	}
+	struct vnode *root;
+	rc = zrp_mount(dial, aname, &root, label, sizeof(label));
+	if (rc) {
+		return rc;
+	}
+	rc = vfs_mount(root, label, old_path, how);
+	vnode_unref(root); /* the mount holds its own reference */
+	return rc;
 }
 
 static long sys_chdir(struct process *p, const char *upath)
@@ -260,7 +296,6 @@ static long sys_fstat(struct process *p, int fd, struct zkt_dirent *uout)
 long syscall_dispatch(uint32_t num, uint32_t a0, uint32_t a1, uint32_t a2,
                       uint32_t a3, uint32_t a4)
 {
-	(void)a3;
 	(void)a4;
 	struct process *p = process_current();
 	if (!p) {
@@ -285,6 +320,8 @@ long syscall_dispatch(uint32_t num, uint32_t a0, uint32_t a1, uint32_t a2,
 	case SYS_SBRK:   return process_sbrk(p, (int32_t)a0);
 	case SYS_CHDIR:  return sys_chdir(p, (const char *)a0);
 	case SYS_GETCWD: return sys_getcwd(p, (char *)a0, a1);
+	case SYS_MOUNT:  return sys_mount(p, (const char *)a0, (const char *)a1, (int)a2,
+	                                  (const char *)a3);
 	default:         return -ENOSYS;
 	}
 }

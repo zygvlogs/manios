@@ -11,7 +11,9 @@
 #include "kstring.h"
 #include "panic.h"
 #include "pmm.h"
+#include "net.h"
 #include "process.h"
+#include "zrp.h"
 #include "sched.h"
 #include "timer.h"
 #include "vfs.h"
@@ -299,6 +301,95 @@ static void cmd_run(int argc, char **argv)
 	}
 }
 
+static void cmd_net(int argc, char **argv)
+{
+	(void)argc;
+	(void)argv;
+	char a[16], m[16], g[16];
+	for (struct netif *ifc = netif_first(); ifc; ifc = ifc->next) {
+		kprintf("%-4s %s netmask %s gateway %s", ifc->name, ip_format(ifc->ip, a),
+		        ip_format(ifc->netmask, m), ip_format(ifc->gateway, g));
+		if (!ifc->loopback) {
+			kprintf(" mac %02x:%02x:%02x:%02x:%02x:%02x", ifc->mac[0], ifc->mac[1], ifc->mac[2],
+			        ifc->mac[3], ifc->mac[4], ifc->mac[5]);
+		}
+		kprintf("\n     rx %lu frames (%lu dropped), tx %lu frames (%lu errors)\n",
+		        (unsigned long)ifc->rx_frames, (unsigned long)ifc->rx_dropped,
+		        (unsigned long)ifc->tx_frames, (unsigned long)ifc->tx_errors);
+	}
+	kprintf("ip: %lu in, %lu bad, %lu fragments, %lu not ours; udp: %lu in, %lu bad, %lu no port;"
+	        " echo replies %lu; zrp retransmits %lu\n",
+	        (unsigned long)net_stats.ip_in, (unsigned long)net_stats.ip_bad,
+	        (unsigned long)net_stats.ip_fragments, (unsigned long)net_stats.ip_not_ours,
+	        (unsigned long)net_stats.udp_in, (unsigned long)net_stats.udp_bad,
+	        (unsigned long)net_stats.udp_no_port, (unsigned long)net_stats.icmp_echo_replied,
+	        (unsigned long)zrp_client_retransmits());
+}
+
+static void cmd_arp(int argc, char **argv)
+{
+	(void)argc;
+	(void)argv;
+	uint32_t ips[16];
+	uint8_t macs[16][ETH_ALEN];
+	size_t n = arp_snapshot(ips, macs, 16);
+	for (size_t i = 0; i < n; i++) {
+		char a[16];
+		kprintf("%-15s %02x:%02x:%02x:%02x:%02x:%02x\n", ip_format(ips[i], a), macs[i][0],
+		        macs[i][1], macs[i][2], macs[i][3], macs[i][4], macs[i][5]);
+	}
+}
+
+static void cmd_ping(int argc, char **argv)
+{
+	uint32_t ip, count = 3;
+	if (argc < 2 || argc > 3 || !ip_parse(argv[1], &ip, 0) || (argc == 3 && !parse_u32(argv[2], &count))) {
+		kprintf("usage: ping A.B.C.D [COUNT]\n");
+		return;
+	}
+	for (uint32_t seq = 1; seq <= count; seq++) {
+		long rtt = icmp_ping(ip, (uint16_t)seq, 1000);
+		if (rtt < 0) {
+			kprintf("ping %s: seq %lu: %s\n", argv[1], (unsigned long)seq, kstrerror((int)rtt));
+		} else {
+			kprintf("ping %s: seq %lu: reply in %ld ms\n", argv[1], (unsigned long)seq, rtt);
+		}
+		if (seq < count) {
+			timer_sleep_ms(200);
+		}
+	}
+}
+
+static void cmd_mount(int argc, char **argv)
+{
+	if (argc < 3 || argc > 4) {
+		kprintf("usage: mount DIAL OLD [ANAME]  (DIAL: udp!A.B.C.D[!PORT])\n");
+		return;
+	}
+	struct vnode *root;
+	char label[40];
+	int rc = zrp_mount(argv[1], argc == 4 ? argv[3] : "", &root, label, sizeof(label));
+	if (rc == 0) {
+		rc = vfs_mount(root, label, argv[2], BIND_REPLACE);
+		vnode_unref(root);
+	}
+	if (rc) {
+		kprintf("mount: %s: %s\n", argv[1], kstrerror(rc));
+	}
+}
+
+static void cmd_export(int argc, char **argv)
+{
+	int err;
+	if (argc != 2) {
+		kprintf("usage: export PATH  (serves PATH over ZRP, udp port %d)\n", ZRP_PORT);
+	} else if (!zrp_serve(argv[1], ZRP_PORT, &err)) {
+		kprintf("export: %s: %s\n", argv[1], kstrerror(err));
+	} else {
+		kprintf("exporting %s on udp port %d\n", argv[1], ZRP_PORT);
+	}
+}
+
 static const struct command COMMANDS[] = {
 	{ "help", "list commands", cmd_help },
 	{ "echo", "ARGS... - print the arguments", cmd_echo },
@@ -314,6 +405,11 @@ static const struct command COMMANDS[] = {
 	{ "unbind", "OLD - undo binds on OLD", cmd_unbind },
 	{ "ns", "show this namespace's binds", cmd_ns },
 	{ "run", "PATH [ARGS...] - run a user program", cmd_run },
+	{ "net", "network interfaces and counters", cmd_net },
+	{ "arp", "the ARP cache", cmd_arp },
+	{ "ping", "A.B.C.D [COUNT] - ICMP echo", cmd_ping },
+	{ "mount", "DIAL OLD [ANAME] - mount a ZRP server", cmd_mount },
+	{ "export", "PATH - serve PATH over ZRP", cmd_export },
 	{ 0, 0, 0 },
 };
 

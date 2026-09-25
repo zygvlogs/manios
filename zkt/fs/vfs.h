@@ -60,11 +60,17 @@ struct file;
 int vfs_open(const char *path, int mode, struct file **out);
 long vfs_read(struct file *f, void *buf, size_t len);
 long vfs_write(struct file *f, const void *buf, size_t len);
+/* At an explicit offset, leaving the file's own offset alone. */
+long vfs_pread(struct file *f, void *buf, size_t len, uint32_t offset);
+long vfs_pwrite(struct file *f, const void *buf, size_t len, uint32_t offset);
 /* Another reference to the same open file (sharing its offset). */
 struct file *vfs_dup(struct file *f);
 /* The last element of the path it was opened by ("/" for the root). */
 const char *vfs_name(const struct file *f);
 int vfs_readdir(struct file *f, struct dirent *out); /* 1, 0 at end, or error */
+/* Entry number `entry` of the listing (from 0): continues from the last
+ * one read, or starts over when asked for an earlier one. */
+int vfs_readdir_at(struct file *f, uint32_t entry, struct dirent *out);
 enum vnode_type vfs_type(const struct file *f);
 uint32_t vfs_size(const struct file *f);
 /* Drops a reference; the file closes with the last one. */

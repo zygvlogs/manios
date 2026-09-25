@@ -18,6 +18,14 @@
   partitionless FAT, none). Needs Python 3 and mtools, and the build's
   `build/bootfs/` programs.
 
+- `net_test.py` (also run by `make test`) — the NE2000, the IPv4 stack
+  and ZRP, on the wire. QEMU's socket netdev delivers the guest's
+  Ethernet frames to the test, which speaks ARP/IPv4/ICMP/UDP and ZRP
+  itself. It checks the guest's replies and checksums, sends it
+  malformed packets and floods, and runs its own ZRP server (on a lossy
+  link) and client against the guest's. Then it connects two ManiOS
+  machines, one serving a FAT volume to the other.
+
 - `userland/test/` holds the test programs the kernel runs at every
   boot (`utest` for system calls, `ctest` for libc) and that the
   console test starts (`fault`); they are in the boot archive under

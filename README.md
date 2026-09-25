@@ -20,7 +20,8 @@ clone. It does not depend on the Linux kernel.
 | M7 — VFS, Plan 9-style namespaces and union directories, FAT12/16, devfs | Achieved ([notes](docs/milestones/M7-vfs-namespaces.md)) |
 | M8 — userspace: ring 3 processes, ELF loader, syscalls | Achieved ([notes](docs/milestones/M8-userspace.md)) |
 | M9 — libc, versioned syscall ABI, coreutils, shell | Achieved ([notes](docs/milestones/M9-libc-shell.md)) |
-| M10 — networking, and ZRP (the resource protocol) over the network | Next |
+| M10 — networking (NE2000, IPv4/UDP), and ZRP (the resource protocol) over the network | Achieved ([notes](docs/milestones/M10-networking-zrp.md), [protocol](docs/zrp.md)) |
+| M11 — graphics: linear framebuffer, basic 2D | Next |
 
 The full architecture and roadmap are in
 [`docs/FOUNDING-PROPOSAL.md`](docs/FOUNDING-PROPOSAL.md).
@@ -47,6 +48,13 @@ makes a union of two volumes. `newns` gives the shell a private
 namespace. `exit` leaves the shell for the `ZKT>` kernel monitor, a
 debugging console with its own `help`; `run /bin/sh` goes back.
 
+Machines share files over ZRP, ManiOS's 9P-style protocol. `make run`
+attaches an NE2000 to QEMU's user network. A machine booted with
+`-append "ip=10.0.0.1/24 export=/n/ata0p1"` serves that directory, and
+on another, `mount udp!10.0.0.1 /n` puts it at `/n`
+(`tests/net_test.py` connects two machines this way). ZRP v1 has no
+authentication: use it only on trusted networks.
+
 ## Repository layout
 
 ```
@@ -58,6 +66,7 @@ zkt/          ZygKernel Technology — the kernel
   ipc/        inter-process communication
   drivers/    driver framework + in-tree drivers
   fs/         VFS + filesystem implementations
+  net/        network stack and ZRP
   kernel/     init, panic, logging, processes, syscalls, ELF loader
   abi/        the system call ABI header shared with userspace
 libc/         ManiOS's own C library (stdio, malloc, strings, ...)

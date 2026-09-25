@@ -1,15 +1,20 @@
 #include <stdint.h>
 #include "arch.h"
+#include "cmdline.h"
 #include "cpu.h"
 #include "device.h"
 #include "drivers.h"
 #include "fs_init.h"
 #include "heap.h"
 #include "kconsole.h"
+#include "kerrno.h"
 #include "kprintf.h"
 #include "mm_selftest.h"
 #include "monitor.h"
 #include "multiboot.h"
+#include "net.h"
+#include "net_selftest.h"
+#include "zrp.h"
 #include "panic.h"
 #include "pmm.h"
 #include "sched.h"
@@ -22,6 +27,21 @@
 
 #define MAX_MEM_REGIONS 64
 
+/* export=PATH serves PATH (in the kernel namespace) over ZRP. */
+static void export_from_cmdline(void)
+{
+	char path[VFS_PATH_MAX + 1];
+	if (!cmdline_get("export", path, sizeof(path))) {
+		return;
+	}
+	int err;
+	if (zrp_serve(path, ZRP_PORT, &err)) {
+		kprintf("zrp: exporting %s on udp port %d\n", path, ZRP_PORT);
+	} else {
+		kprintf("zrp: cannot export %s: %s\n", path, kstrerror(err));
+	}
+}
+
 void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 {
 	arch_early_init();
@@ -33,6 +53,10 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	if (multiboot_magic != MULTIBOOT_BOOTLOADER_MAGIC) {
 		panic("not booted by a Multiboot loader; no memory map available");
 	}
+
+	char line[CMDLINE_MAX];
+	multiboot_cmdline(multiboot_info_phys, line, sizeof(line));
+	cmdline_set(line);
 
 	struct mem_region regions[MAX_MEM_REGIONS];
 	size_t region_count = multiboot_memory_regions(multiboot_info_phys, regions,
@@ -86,6 +110,11 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 
 	libc_selftest();
 	kprintf("Milestone M9: libc, ABI v%d and shell online (self-test passed).\n", ZKT_ABI_VERSION);
+
+	net_init();
+	net_selftest();
+	kprintf("Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed).\n");
+	export_from_cmdline();
 
 	if (!thread_create("console", console_main, 0)) {
 		panic("could not start the console thread");

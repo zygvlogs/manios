@@ -163,12 +163,21 @@ static struct mount *find_mount(struct namespace *ns, const char *canon)
 	return 0;
 }
 
+/* Replaces loc with what is mounted at canon, if anything. The mount
+ * table is locked only while it is read, and what loc held is released
+ * after: releasing a remote vnode is a network request (M10). */
 static void apply_mount(struct namespace *ns, const char *canon, struct location *loc)
 {
+	struct location replaced;
+	mutex_lock(&ns->lock);
 	struct mount *m = find_mount(ns, canon);
 	if (m) {
-		location_release(loc);
+		replaced = *loc;
 		location_copy(loc, &m->loc);
+	}
+	mutex_unlock(&ns->lock);
+	if (m) {
+		location_release(&replaced);
 	}
 }
 
@@ -199,7 +208,10 @@ int ns_resolve(struct namespace *ns, const char *path, struct location *loc, cha
 		return rc;
 	}
 
-	mutex_lock(&ns->lock);
+	/* The mount table is locked only while consulted (apply_mount), never
+	 * across a walk: a walk may wait on a remote server, and would hold
+	 * up every thread sharing this namespace. The references in loc keep
+	 * each step's vnodes alive meanwhile. ns->root never changes. */
 	loc->count = 1;
 	loc->v[0] = ns->root;
 	vnode_ref(ns->root);
@@ -221,7 +233,6 @@ int ns_resolve(struct namespace *ns, const char *path, struct location *loc, cha
 		rc = walk_location(loc, name, &next);
 		location_release(loc);
 		if (rc) {
-			mutex_unlock(&ns->lock);
 			return rc;
 		}
 
@@ -240,7 +251,6 @@ int ns_resolve(struct namespace *ns, const char *path, struct location *loc, cha
 			p++;
 		}
 	}
-	mutex_unlock(&ns->lock);
 
 	if (canon) {
 		strlcpy(canon, clean, VFS_PATH_MAX + 1);
@@ -250,10 +260,11 @@ int ns_resolve(struct namespace *ns, const char *path, struct location *loc, cha
 
 int ns_set_mount(struct namespace *ns, const char *canon, struct location *loc)
 {
+	struct location old = { .count = 0 };
 	mutex_lock(&ns->lock);
 	struct mount *m = find_mount(ns, canon);
 	if (m) {
-		location_release(&m->loc);
+		old = m->loc; /* released below, outside the lock (see apply_mount) */
 	} else {
 		m = kmalloc(sizeof(*m));
 		if (!m) {
@@ -272,6 +283,7 @@ int ns_set_mount(struct namespace *ns, const char *canon, struct location *loc)
 	m->loc = *loc;
 	loc->count = 0;
 	mutex_unlock(&ns->lock);
+	location_release(&old);
 	return 0;
 }
 

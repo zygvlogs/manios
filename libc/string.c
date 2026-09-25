@@ -243,6 +243,11 @@ char *strerror(int err)
 	case ERANGE:       return "result too large";
 	case ENAMETOOLONG: return "file name too long";
 	case ENOSYS:       return "function not implemented";
+	case EPROTO:       return "protocol error";
+	case EADDRINUSE:   return "address in use";
+	case ENETUNREACH:  return "network unreachable";
+	case ETIMEDOUT:    return "timed out";
+	case EHOSTUNREACH: return "host unreachable";
 	default:           return "unknown error";
 	}
 }

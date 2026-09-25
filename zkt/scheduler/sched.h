@@ -1,6 +1,7 @@
 #ifndef ZKT_SCHEDULER_SCHED_H
 #define ZKT_SCHEDULER_SCHED_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -85,6 +86,10 @@ size_t sched_snapshot(struct thread_info *out, size_t max);
 /* Blocks the calling thread on wq. Interrupts must be disabled (panics
  * otherwise); they are disabled again when it returns. */
 void waitq_sleep(struct waitq *wq);
+
+/* As waitq_sleep, but also returns at timer tick `tick`: true if woken,
+ * false if the time ran out. */
+bool waitq_sleep_until(struct waitq *wq, uint64_t tick);
 
 /* Safe from IRQ handlers. */
 void waitq_wake_one(struct waitq *wq);

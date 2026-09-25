@@ -7,7 +7,9 @@ subdirectories together.
   VMM → heap → memory self-test → scheduler (becomes thread "main") →
   timer → interrupts on → scheduler self-tests → drivers → kernel
   namespace and mounts → VFS self-test → user-program and libc
-  self-tests → console thread → `thread_exit()`
+  self-tests → network (`net_init`, loopback ZRP self-test, `export=`)
+  → console thread → `thread_exit()`
+- `cmdline.c` — the kernel command line (`KEY=VALUE` words)
 - `process.c` — user processes: spawn, exit, wait, descriptor tables,
   ending a process on a CPU exception
   ([M8 notes](../../docs/milestones/M8-userspace.md))

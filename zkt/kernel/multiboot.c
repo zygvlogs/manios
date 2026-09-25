@@ -3,6 +3,7 @@
 #include "panic.h"
 
 #define MULTIBOOT_INFO_MEMORY  (1u << 0) /* mem_lower / mem_upper valid */
+#define MULTIBOOT_INFO_CMDLINE (1u << 2) /* cmdline valid */
 #define MULTIBOOT_INFO_MEM_MAP (1u << 6) /* mmap_addr / mmap_length valid */
 #define MULTIBOOT_MEMORY_AVAILABLE 1
 
@@ -69,4 +70,21 @@ size_t multiboot_memory_regions(uint32_t mbi_phys, struct mem_region *out, size_
 	}
 
 	panic("multiboot: boot loader provided no memory information");
+}
+
+void multiboot_cmdline(uint32_t mbi_phys, char *out, size_t size)
+{
+	const struct multiboot_info *mbi = boot_phys(mbi_phys, sizeof(*mbi));
+	size_t n = 0;
+	if (mbi->flags & MULTIBOOT_INFO_CMDLINE) {
+		/* Checked a byte at a time: the string's length is unknown. */
+		for (uint32_t addr = mbi->cmdline; n + 1 < size; addr++, n++) {
+			char c = *(const char *)boot_phys(addr, 1);
+			if (!c) {
+				break;
+			}
+			out[n] = c;
+		}
+	}
+	out[n] = '\0';
 }

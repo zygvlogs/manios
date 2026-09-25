@@ -44,8 +44,11 @@ struct thread {
 	struct namespace *ns;    /* inherited from the creating thread (ADR-0003) */
 	struct address_space *as; /* NULL: the kernel's own */
 	void *process;           /* owning user process, or NULL */
-	struct thread *next;     /* run queue, sleep list or wait queue link */
-	struct thread *all_next; /* every thread not yet reclaimed */
+	struct thread *next;       /* run queue or wait queue link */
+	struct thread *sleep_next; /* sleep list link: a timed wait is on both */
+	struct waitq *waiting_on;  /* the wait queue of a timed wait */
+	bool timed_out;
+	struct thread *all_next;   /* every thread not yet reclaimed */
 };
 
 static struct thread *current;
@@ -102,10 +105,39 @@ static void sleep_insert(struct thread *t)
 {
 	struct thread **link = &sleepers;
 	while (*link && (*link)->wake_tick <= t->wake_tick) {
-		link = &(*link)->next;
+		link = &(*link)->sleep_next;
 	}
-	t->next = *link;
+	t->sleep_next = *link;
 	*link = t;
+}
+
+static void sleep_remove(struct thread *t)
+{
+	struct thread **link = &sleepers;
+	while (*link && *link != t) {
+		link = &(*link)->sleep_next;
+	}
+	if (*link) {
+		*link = t->sleep_next;
+	}
+}
+
+static void waitq_remove(struct waitq *wq, struct thread *t)
+{
+	struct thread *prev = NULL;
+	for (struct thread *c = wq->head; c; prev = c, c = c->next) {
+		if (c == t) {
+			if (prev) {
+				prev->next = c->next;
+			} else {
+				wq->head = c->next;
+			}
+			if (wq->tail == c) {
+				wq->tail = prev;
+			}
+			return;
+		}
+	}
 }
 
 /* Runs on the new thread right after every switch. A thread that exited
@@ -186,6 +218,9 @@ static struct thread *thread_alloc(const char *name, void (*entry)(void *), void
 	t->entry = entry;
 	t->arg = arg;
 	t->next = NULL;
+	t->sleep_next = NULL;
+	t->waiting_on = NULL;
+	t->timed_out = false;
 	t->ns = current ? current->ns : NULL;
 	ns_ref(t->ns);
 	t->as = NULL;
@@ -218,6 +253,9 @@ void sched_init(void)
 	main_thread->state = THREAD_RUNNING;
 	main_thread->stack_top = 0;
 	main_thread->next = NULL;
+	main_thread->sleep_next = NULL;
+	main_thread->waiting_on = NULL;
+	main_thread->timed_out = false;
 	main_thread->ns = NULL;
 	main_thread->as = NULL;
 	main_thread->process = NULL;
@@ -362,6 +400,19 @@ void waitq_sleep(struct waitq *wq)
 	schedule();
 }
 
+bool waitq_sleep_until(struct waitq *wq, uint64_t tick)
+{
+	if (cpu_interrupts_enabled()) {
+		panic("waitq_sleep_until: interrupts must be disabled around the condition check");
+	}
+	current->waiting_on = wq;
+	current->timed_out = false;
+	current->wake_tick = tick;
+	sleep_insert(current);
+	waitq_sleep(wq);
+	return !current->timed_out;
+}
+
 static struct thread *waitq_pop(struct waitq *wq)
 {
 	struct thread *t = wq->head;
@@ -369,6 +420,10 @@ static struct thread *waitq_pop(struct waitq *wq)
 		wq->head = t->next;
 		if (!wq->head) {
 			wq->tail = NULL;
+		}
+		if (t->waiting_on) { /* a timed wait, woken in time */
+			sleep_remove(t);
+			t->waiting_on = NULL;
 		}
 		t->state = THREAD_RUNNABLE;
 		run_enqueue(t);
@@ -406,7 +461,12 @@ void sched_tick(uint64_t now)
 
 	while (sleepers && sleepers->wake_tick <= now) {
 		struct thread *t = sleepers;
-		sleepers = t->next;
+		sleepers = t->sleep_next;
+		if (t->waiting_on) { /* a timed wait ran out */
+			waitq_remove(t->waiting_on, t);
+			t->waiting_on = NULL;
+			t->timed_out = true;
+		}
 		t->state = THREAD_RUNNABLE;
 		run_enqueue(t);
 	}

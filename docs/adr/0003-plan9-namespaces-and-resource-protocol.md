@@ -1,6 +1,6 @@
 # ADR-0003: Plan 9-inspired per-process namespaces and a uniform resource protocol (ZRP), for cluster transparency
 
-**Status:** Accepted (direction); wire format and syscalls to be finalized when M7/M10 begin
+**Status:** Accepted. Namespaces implemented at M7/M8; ZRP wire format v1 and `mount` at M10 ([docs/zrp.md](../zrp.md))
 **Date:** 2026-09-25
 
 ## Context
@@ -133,6 +133,19 @@ spawned child shares its parent's namespace, as with `rfork` without
 `RFNAMEG`; `nsfork` is `RFNAMEG`. The boot archive is mounted at
 `/boot` and `/bin` is a bind of `/boot/bin`, so a disk's `bin/` can be
 unioned in front of it or behind it.
+
+## Implementation status (M10)
+
+ZRP version 1 is specified in [docs/zrp.md](../zrp.md), and runs over
+UDP with Plan 9 IL-style retransmission
+([M10 notes](../milestones/M10-networking-zrp.md)). The kernel has a
+server, which exports a directory of the namespace that started it, and
+a client, which is a filesystem. The `mount(dial, old, flag, aname)`
+system call attaches to a server and binds its tree as `bind` does. Two
+ManiOS machines can now read each other's files and run each other's
+programs. Authentication, and the cluster roles themselves, remain for
+M13. Local IPC as a ZRP transport is not built yet: servers are kernel
+threads, reached over UDP even locally (loopback).
 
 ## Note: mounts keyed by path
 

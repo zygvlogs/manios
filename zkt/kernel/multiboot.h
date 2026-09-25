@@ -12,4 +12,9 @@
  * written. Panics if the loader supplied no memory information. */
 size_t multiboot_memory_regions(uint32_t mbi_phys, struct mem_region *out, size_t max);
 
+/* Copies the kernel command line (empty if the loader gave none),
+ * truncated to fit. Call before pmm_init(): the string lies in memory
+ * the PMM may hand out. */
+void multiboot_cmdline(uint32_t mbi_phys, char *out, size_t size);
+
 #endif

@@ -9,7 +9,7 @@ program:
 - `bin/` — installed in `/boot/bin`, bound at `/bin`: the shell `sh`
   (which ManiOS boots into) and the coreutils — `cat`, `echo`, `ls`,
   `wc`, `sum`, `sleep`, `pwd`, `bind`, `unbind`, `uptime`, `true`,
-  `false` — plus `hello`
+  `false` — plus `mount` (ZRP, M10) and `hello`
 - `test/` — test programs, installed in `/boot/test`: `utest` (system
   calls) and `ctest` (libc), run at every boot, and their helpers
   `fault`, `isotest`, `nstest`

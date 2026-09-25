@@ -16,6 +16,9 @@ userspace servers (ADR-0002).
 - `ata.c` — ATA disks over PIO, LBA28 with a CHS fallback; devices
   `ata0`–`ata3` ([M6 notes](../../docs/milestones/M6-ata-storage.md))
 - `mbr.c` — MBR primary partitions as block devices (`ata0p1`…)
+- `ne2000.c` — NE2000-compatible ISA Ethernet (DP8390), registered with
+  the network stack as interface `ne0`
+  ([M10 notes](../../docs/milestones/M10-networking-zrp.md))
 
 The console device `cons` lives in `zkt/kernel/kconsole.c`. See
 [`docs/FOUNDING-PROPOSAL.md` §2.7](../../docs/FOUNDING-PROPOSAL.md#27-driver-framework).

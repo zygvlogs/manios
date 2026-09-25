@@ -21,6 +21,10 @@ see [docs/milestones/M8-userspace.md](milestones/M8-userspace.md).
 **M9 achieved**: a C library, ABI version 1 (checked by the loader),
 coreutils, and a shell that ManiOS boots into — see
 [docs/milestones/M9-libc-shell.md](milestones/M9-libc-shell.md).
+**M10 achieved**: an NE2000 driver, IPv4/ICMP/UDP, and ZRP — two ManiOS
+machines share files, and run each other's programs, over the network —
+see [docs/milestones/M10-networking-zrp.md](milestones/M10-networking-zrp.md)
+and the protocol, [docs/zrp.md](zrp.md).
 
 **Scope of this document:** Originally the response to the ManiOS
 founding prompt's "First Task" — architecture, strategy, and planning.
@@ -470,7 +474,7 @@ a concrete shape rather than only a diagram.
 | M7 | **Achieved** ([notes](milestones/M7-vfs-namespaces.md)). VFS + first filesystem, per-process namespaces & union dirs (ADR-0003) | M6 |
 | M8 | **Achieved** ([notes](milestones/M8-userspace.md)). Userspace: ELF loader, ring 3 processes, first syscalls, namespace ops (bind/mount) | M4, M7 |
 | M9 | **Achieved** ([notes](milestones/M9-libc-shell.md)). libc + syscall ABI stabilization, coreutils, shell | M8 |
-| M10 | Networking + ZRP transport over the network (ADR-0003) | M8 |
+| M10 | **Achieved** ([notes](milestones/M10-networking-zrp.md)). Networking + ZRP transport over the network (ADR-0003) | M8 |
 | M11 | Graphics: linear framebuffer driver, basic 2D primitives | M8 |
 | M12 | ManiOS Desktop Environment MVP (compositor, shell, launcher) | M11 |
 | M13 | Cluster roles: file server / CPU server / terminal (ADR-0003) | M8, M10 |

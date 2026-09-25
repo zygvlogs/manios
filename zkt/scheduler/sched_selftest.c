@@ -1,5 +1,6 @@
 #include "sched_selftest.h"
 #include <stdint.h>
+#include "cpu.h"
 #include "heap.h"
 #include "kstring.h"
 #include "mutex.h"
@@ -131,6 +132,23 @@ static void locked_incrementer(void *unused)
 	}
 }
 
+static struct waitq timed_wq = WAITQ_INIT;
+static volatile int timed_results[2]; /* 1 woken, 0 timed out, -1 not yet */
+static volatile uint64_t timed_out_after;
+
+/* Waits twice with a deadline: main wakes the first wait early; nobody
+ * wakes the second. */
+static void timed_waiter(void *unused)
+{
+	(void)unused;
+	uint32_t flags = cpu_irq_save();
+	timed_results[0] = waitq_sleep_until(&timed_wq, timer_ticks() + 50);
+	uint64_t start = timer_ticks();
+	timed_results[1] = waitq_sleep_until(&timed_wq, start + 3);
+	timed_out_after = timer_ticks() - start;
+	cpu_irq_restore(flags);
+}
+
 void sched_selftest_sync(void)
 {
 	size_t baseline = sched_thread_count();
@@ -139,4 +157,15 @@ void sched_selftest_sync(void)
 	create("lock-b", locked_incrementer, 0);
 	wait_for_threads(baseline);
 	expect(shared_counter == 40, "selftest: mutex did not serialize a read-modify-write");
+
+	timed_results[0] = timed_results[1] = -1;
+	create("timed", timed_waiter, 0);
+	timer_sleep_ms(20); /* the waiter is blocked by now */
+	waitq_wake_all(&timed_wq);
+	wait_for_threads(baseline);
+	expect(timed_results[0] == 1, "selftest: a timed wait woken in time reported a timeout");
+	expect(timed_results[1] == 0 && timed_out_after >= 3 && timed_out_after < 10,
+	       "selftest: a timed wait did not time out on schedule");
+	expect(timed_wq.head == NULL && timed_wq.tail == NULL,
+	       "selftest: a timed-out thread was left on its wait queue");
 }

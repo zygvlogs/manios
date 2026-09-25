@@ -25,6 +25,11 @@ const char *kstrerror(int err)
 	case EFAULT:       return "bad address";
 	case EMFILE:       return "too many open files";
 	case ENOSYS:       return "no such system call";
+	case EPROTO:       return "protocol error";
+	case EADDRINUSE:   return "address in use";
+	case ENETUNREACH:  return "network unreachable";
+	case ETIMEDOUT:    return "timed out";
+	case EHOSTUNREACH: return "host unreachable";
 	default:           return "unknown error";
 	}
 }

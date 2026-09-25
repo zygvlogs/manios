@@ -38,6 +38,9 @@
 #define SYS_SBRK    14 /* (int32_t increment) -> the previous end of the heap */
 #define SYS_CHDIR   15 /* (const char *path) */
 #define SYS_GETCWD  16 /* (char *buf, uint32_t len) -> length, without the NUL */
+#define SYS_MOUNT   17 /* (const char *dial, const char *old, int flag, const char *aname):
+                        * attach to the ZRP server at dial ("udp!A.B.C.D!PORT") and bind
+                        * its tree onto old, as SYS_BIND does. aname may be NULL. */
 
 /* Paths may be relative to the process's current directory ("/" for a
  * program the kernel starts; a child inherits its parent's). They are
@@ -106,5 +109,10 @@ struct zkt_dirent {
 #define ERANGE       34
 #define ENAMETOOLONG 36
 #define ENOSYS       38
+#define EPROTO       71  /* a malformed protocol message (ZRP) */
+#define EADDRINUSE   98
+#define ENETUNREACH 101
+#define ETIMEDOUT   110
+#define EHOSTUNREACH 113
 
 #endif
