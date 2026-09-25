@@ -1,0 +1,19 @@
+# Build output
+/build/
+*.o
+*.elf
+*.bin
+*.img
+*.iso
+
+# Cross-toolchain (built by tools/toolchain scripts, not vendored)
+/tools/toolchain/i686-elf/
+/tools/toolchain/*.tar.gz
+/tools/toolchain/*.tar.bz2
+/tools/toolchain/build/
+
+# Editor / OS cruft
+.vscode/
+.idea/
+*.swp
+.DS_Store
