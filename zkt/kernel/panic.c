@@ -1,12 +1,14 @@
 #include "panic.h"
 #include "kconsole.h"
 #include "cpu.h"
+#include "fb.h"
 #include "sched.h"
 
 /* Interrupts go off for good, so no other thread runs past a panic. */
 static void panic_header(const char *msg)
 {
 	cpu_irq_save();
+	fb_emergency_text(); /* a graphics mode would hide the message */
 	kconsole_write("\n*** ZKT PANIC: ");
 	kconsole_write(msg);
 	kconsole_write(" ***\n");

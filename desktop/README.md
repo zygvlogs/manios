@@ -6,8 +6,10 @@ application, notification system, terminal, theme system, and
 application/window APIs. Native, with its own visual identity — never a
 repackaging of an existing desktop environment.
 
-Depends on a working framebuffer driver and userspace (milestone M11+,
-see [`docs/FOUNDING-PROPOSAL.md` §6](../docs/FOUNDING-PROPOSAL.md#6-development-roadmap)
-and [§1.4](../docs/FOUNDING-PROPOSAL.md#14-desktop-environment-forward-reference)).
-Gets its own founding-proposal-style design document when the project
-reaches that milestone. Not started yet.
+- `libgfx/` — the 2D graphics library everything here draws with:
+  canvases, clipping, primitives, blending, text in ManiOS's own font
+  (`font.txt`), and output to the screen (`/dev/fb`)
+  ([M11 notes](../docs/milestones/M11-graphics.md))
+
+The desktop itself is milestone M12
+([`docs/FOUNDING-PROPOSAL.md` §6](../docs/FOUNDING-PROPOSAL.md#6-development-roadmap)).

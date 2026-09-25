@@ -12,6 +12,7 @@
 #include "panic.h"
 #include "pmm.h"
 #include "net.h"
+#include "pci.h"
 #include "process.h"
 #include "zrp.h"
 #include "sched.h"
@@ -301,6 +302,16 @@ static void cmd_run(int argc, char **argv)
 	}
 }
 
+static void cmd_pci(int argc, char **argv)
+{
+	(void)argc;
+	(void)argv;
+	for (const struct pci_device *d = pci_next(0); d; d = pci_next(d)) {
+		kprintf("%02x:%02x.%x  %04x:%04x  class %02x.%02x.%02x  irq %u\n", d->bus, d->dev, d->fn,
+		        d->vendor, d->device, d->class, d->subclass, d->prog_if, d->irq);
+	}
+}
+
 static void cmd_net(int argc, char **argv)
 {
 	(void)argc;
@@ -405,6 +416,7 @@ static const struct command COMMANDS[] = {
 	{ "unbind", "OLD - undo binds on OLD", cmd_unbind },
 	{ "ns", "show this namespace's binds", cmd_ns },
 	{ "run", "PATH [ARGS...] - run a user program", cmd_run },
+	{ "pci", "list PCI devices", cmd_pci },
 	{ "net", "network interfaces and counters", cmd_net },
 	{ "arp", "the ARP cache", cmd_arp },
 	{ "ping", "A.B.C.D [COUNT] - ICMP echo", cmd_ping },

@@ -12,6 +12,8 @@ __attribute__((noreturn)) void _exit(int code); /* exit() without library cleanu
 
 long read(int fd, void *buf, size_t len);   /* 0 at end of file */
 long write(int fd, const void *buf, size_t len);
+/* whence: SEEK_SET, SEEK_CUR, SEEK_END. Returns the new offset. */
+long lseek(int fd, long offset, int whence);
 int open(const char *path, int mode);       /* OREAD, OWRITE, ORDWR */
 int close(int fd);
 int fstat(int fd, struct zkt_dirent *out);

@@ -60,6 +60,9 @@ struct file;
 int vfs_open(const char *path, int mode, struct file **out);
 long vfs_read(struct file *f, void *buf, size_t len);
 long vfs_write(struct file *f, const void *buf, size_t len);
+/* Moves the file's offset (SEEK_SET/CUR/END, zkt_abi.h); returns it.
+ * A directory can only be rewound. Shared by vfs_dup copies. */
+long vfs_seek(struct file *f, int32_t offset, int whence);
 /* At an explicit offset, leaving the file's own offset alone. */
 long vfs_pread(struct file *f, void *buf, size_t len, uint32_t offset);
 long vfs_pwrite(struct file *f, const void *buf, size_t len, uint32_t offset);

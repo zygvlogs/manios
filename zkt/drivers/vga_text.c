@@ -16,7 +16,11 @@
 #define CRTC_CURSOR_HIGH 0x0E
 #define CRTC_CURSOR_LOW  0x0F
 
-static uint16_t *const vga_memory = P2V(VGA_TEXT_PHYS);
+static uint16_t *const vga_hardware = P2V(VGA_TEXT_PHYS);
+/* While a graphics mode owns the display, text goes to a shadow copy,
+ * shown again when text mode returns. */
+static uint16_t shadow[VGA_WIDTH * VGA_HEIGHT];
+static uint16_t *vga_memory = P2V(VGA_TEXT_PHYS);
 static size_t vga_row = 0;
 static size_t vga_col = 0;
 
@@ -27,6 +31,9 @@ static inline uint16_t vga_entry(char c, uint8_t color)
 
 static void update_cursor(void)
 {
+	if (vga_memory == shadow) {
+		return;
+	}
 	uint16_t pos = (uint16_t)(vga_row * VGA_WIDTH + vga_col);
 	outb(CRTC_INDEX, CRTC_CURSOR_LOW);
 	outb(CRTC_DATA, (uint8_t)(pos & 0xFF));
@@ -97,6 +104,31 @@ void vga_write(const char *buf, size_t len)
 		vga_putc(buf[i]);
 	}
 	update_cursor();
+	cpu_irq_restore(flags);
+}
+
+void vga_text_suspend(void)
+{
+	uint32_t flags = cpu_irq_save();
+	if (vga_memory != shadow) {
+		for (size_t i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++) {
+			shadow[i] = vga_hardware[i];
+		}
+		vga_memory = shadow;
+	}
+	cpu_irq_restore(flags);
+}
+
+void vga_text_resume(void)
+{
+	uint32_t flags = cpu_irq_save();
+	if (vga_memory == shadow) {
+		for (size_t i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++) {
+			vga_hardware[i] = shadow[i];
+		}
+		vga_memory = vga_hardware;
+		update_cursor();
+	}
 	cpu_irq_restore(flags);
 }
 

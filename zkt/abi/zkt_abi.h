@@ -41,6 +41,8 @@
 #define SYS_MOUNT   17 /* (const char *dial, const char *old, int flag, const char *aname):
                         * attach to the ZRP server at dial ("udp!A.B.C.D!PORT") and bind
                         * its tree onto old, as SYS_BIND does. aname may be NULL. */
+#define SYS_SEEK    18 /* (int fd, int32_t offset, int whence) -> the new offset. A
+                        * directory can only be rewound (offset 0, SEEK_SET). */
 
 /* Paths may be relative to the process's current directory ("/" for a
  * program the kernel starts; a child inherits its parent's). They are
@@ -51,6 +53,11 @@
 #define ZKT_ARGS_MAX   16   /* SYS_SPAWN arguments, argv[0] included */
 #define ZKT_ARG_BYTES  1024 /* SYS_SPAWN argument strings, NULs included */
 #define ZKT_PATH_MAX   255  /* bytes in a path, without the NUL */
+
+/* SYS_SEEK whence. */
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
 
 /* Open modes. */
 #define OREAD  0

@@ -320,6 +320,10 @@ long syscall_dispatch(uint32_t num, uint32_t a0, uint32_t a1, uint32_t a2,
 	case SYS_SBRK:   return process_sbrk(p, (int32_t)a0);
 	case SYS_CHDIR:  return sys_chdir(p, (const char *)a0);
 	case SYS_GETCWD: return sys_getcwd(p, (char *)a0, a1);
+	case SYS_SEEK: {
+		struct file *f = process_fd(p, (int)a0);
+		return f ? vfs_seek(f, (int32_t)a1, (int)a2) : -EBADF;
+	}
 	case SYS_MOUNT:  return sys_mount(p, (const char *)a0, (const char *)a1, (int)a2,
 	                                  (const char *)a3);
 	default:         return -ENOSYS;

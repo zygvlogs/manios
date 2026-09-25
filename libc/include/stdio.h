@@ -6,11 +6,14 @@
 
 #define EOF (-1)
 #define BUFSIZ 512
+#define SEEK_SET 0 /* as in zkt_abi.h */
+#define SEEK_CUR 1
+#define SEEK_END 2
 
 /* A buffered stream over a descriptor. stdin is read a buffer at a time
  * (from the console: a line at a time), stdout is flushed at every
  * newline, stderr is unbuffered. Reading from stdin flushes stdout
- * first, so prompts appear. There is no seeking. */
+ * first, so prompts appear. */
 typedef struct manios_file FILE;
 extern FILE *stdin, *stdout, *stderr;
 
@@ -24,6 +27,11 @@ int fileno(FILE *f);
 int feof(FILE *f);
 int ferror(FILE *f);
 void clearerr(FILE *f);
+
+/* whence: SEEK_SET, SEEK_CUR, SEEK_END. */
+int fseek(FILE *f, long offset, int whence);
+long ftell(FILE *f);
+void rewind(FILE *f);
 
 int fgetc(FILE *f);
 int getc(FILE *f);

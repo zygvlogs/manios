@@ -22,6 +22,12 @@ struct char_device_ops {
 	 * bytes read, or a negated error. */
 	long (*read)(struct device *dev, void *buf, size_t len);
 	long (*write)(struct device *dev, const void *buf, size_t len);
+	/* Optional, for devices addressed by byte offset (the framebuffer):
+	 * used instead of read/write when present, and `size` gives the
+	 * file size devfs reports. */
+	long (*pread)(struct device *dev, uint32_t offset, void *buf, size_t len);
+	long (*pwrite)(struct device *dev, uint32_t offset, const void *buf, size_t len);
+	uint32_t (*size)(struct device *dev);
 };
 
 struct block_device_ops {

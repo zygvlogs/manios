@@ -12,7 +12,9 @@ OBJCOPY := $(abspath $(CROSS_PREFIX)objcopy)
 # The i686-elf compiler defaults to -march=pentiumpro; ZKT targets the
 # 80386, so pin code generation, and have the assembler reject post-386
 # instructions in .S files and inline asm alike.
-ARCHFLAGS := -march=i386 -Wa,-march=i386
+# -mno-80387: a 386 may have no floating-point unit, so nothing may use
+# one (floating-point code then fails to link, for want of libgcc).
+ARCHFLAGS := -march=i386 -Wa,-march=i386 -mno-80387
 
 INCLUDES := -Izkt/abi -Izkt/arch/i386 -Izkt/drivers -Izkt/fs -Izkt/kernel -Izkt/mm -Izkt/net \
             -Izkt/scheduler
@@ -40,12 +42,16 @@ OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(C_SOURCES)) \
 # the file: the kernel copies segments rather than mapping file pages,
 # so the padding would only waste space in the kernel image.
 USER_CFLAGS := -std=gnu11 -ffreestanding -fno-asynchronous-unwind-tables -O2 -g \
-               -Wall -Wextra -MMD -MP $(ARCHFLAGS) -Ilibc/include -Izkt/abi
+               -Wall -Wextra -MMD -MP $(ARCHFLAGS) -Ilibc/include -Izkt/abi -Idesktop/libgfx
 USER_LDFLAGS := -nostdlib -static -T userland/user.ld -Wl,-n
 
 LIBC := $(BUILD)/libc/libc.a
 CRT0 := $(BUILD)/libc/crt0.o
 LIBC_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard libc/*.c))
+# The 2D graphics library (M11); linked into every program, which only
+# takes what it uses.
+LIBGFX := $(BUILD)/desktop/libgfx/libgfx.a
+LIBGFX_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard desktop/libgfx/*.c))
 USER_PROGRAMS := $(patsubst userland/%.c,%,$(wildcard userland/bin/*.c userland/test/*.c))
 USER_OBJECTS := $(patsubst %,$(BUILD)/userland/%.o,$(USER_PROGRAMS))
 BOOTFS_FILES := $(patsubst %,$(BUILD)/bootfs/%,$(USER_PROGRAMS)) \
@@ -84,12 +90,20 @@ $(LIBC): $(LIBC_OBJECTS)
 	@rm -f $@
 	$(AR) rcs $@ $^
 
+$(BUILD)/desktop/%.o: desktop/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(USER_CFLAGS) -c $< -o $@
+
+$(LIBGFX): $(LIBGFX_OBJECTS)
+	@rm -f $@
+	$(AR) rcs $@ $^
+
 $(BUILD)/userland/%.o: userland/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(USER_CFLAGS) -c $< -o $@
 
-$(BUILD)/userland/%.elf: $(BUILD)/userland/%.o $(CRT0) $(LIBC) userland/user.ld
-	$(CC) $(USER_LDFLAGS) -o $@ $(CRT0) $< $(LIBC)
+$(BUILD)/userland/%.elf: $(BUILD)/userland/%.o $(CRT0) $(LIBGFX) $(LIBC) userland/user.ld
+	$(CC) $(USER_LDFLAGS) -o $@ $(CRT0) $< $(LIBGFX) $(LIBC)
 
 $(BUILD)/bootfs/%: $(BUILD)/userland/%.elf
 	@mkdir -p $(dir $@)
@@ -118,9 +132,11 @@ run: $(KERNEL)
 	tools/qemu-run.sh $(KERNEL)
 
 test: $(KERNEL)
+	python3 tools/mkfont.py --check
 	tests/boot_smoke_test.sh $(KERNEL)
 	python3 tests/console_test.py $(KERNEL)
 	python3 tests/net_test.py $(KERNEL)
+	python3 tests/gfx_test.py $(KERNEL)
 
 clean:
 	rm -rf $(BUILD)
@@ -128,4 +144,5 @@ clean:
 # Keep the unstripped programs for debugging (addr2line, objdump).
 .SECONDARY: $(patsubst %,$(BUILD)/userland/%.elf,$(USER_PROGRAMS)) $(USER_OBJECTS) $(CRT0)
 
--include $(OBJECTS:.o=.d) $(LIBC_OBJECTS:.o=.d) $(CRT0:.o=.d) $(USER_OBJECTS:.o=.d)
+-include $(OBJECTS:.o=.d) $(LIBC_OBJECTS:.o=.d) $(CRT0:.o=.d) $(USER_OBJECTS:.o=.d) \
+         $(LIBGFX_OBJECTS:.o=.d)

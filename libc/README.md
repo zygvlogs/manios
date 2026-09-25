@@ -10,7 +10,8 @@ ManiOS's own C library, built against the ZKT system call ABI
   ELF note naming the ABI version, which the kernel requires
 - `syscalls.c` — one wrapper per system call (`-1` and `errno` on
   failure), and `zkt_syscall()` for raw access
-- `stdio.c`, `format.c` — buffered streams and the printf family
+- `stdio.c`, `format.c` — buffered streams (with `fseek`/`ftell`), and
+  the printf family
   (no floating point; 64-bit integers without libgcc)
 - `malloc.c` — `malloc`/`free`/`calloc`/`realloc` over `sbrk`
 - `stdlib.c` — `exit`/`atexit`/`abort`, `strtol` family, `qsort`,

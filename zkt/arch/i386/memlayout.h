@@ -32,6 +32,10 @@
 #define KERNEL_PAGES_START 0xE2000000
 #define KERNEL_PAGES_SIZE 0x01000000
 
+/* Where a linear framebuffer's device memory is mapped (fb.c). */
+#define KERNEL_FB_START 0xE3000000
+#define KERNEL_FB_SIZE 0x01000000
+
 /* User space is everything below the kernel. Page directory entries
  * from here up are the kernel's, identical in every address space. */
 #define USER_SPACE_TOP KERNEL_VIRT_BASE

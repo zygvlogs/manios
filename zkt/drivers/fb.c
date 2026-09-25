@@ -1,0 +1,314 @@
+/* The framebuffer: devices "fb" and "fbctl" (M11). Design notes:
+ * docs/milestones/M11-graphics.md.
+ *
+ * Two kinds of graphics mode:
+ *  - Bochs VBE ("BGA", QEMU's -vga std and Bochs/VirtualBox): any size,
+ *    32-bit pixels (0x00RRGGBB), a linear framebuffer at the PCI BAR;
+ *  - VGA mode 13h, on any VGA card: 320x200, one RGB 3-3-2 byte per pixel.
+ * Text mode's state is saved on the way into graphics and restored on
+ * the way out (vga_hw.c, vga_text.c).
+ *
+ * fbctl reads as "text\n", or "WIDTH HEIGHT DEPTH PITCH FORMAT DRIVER\n";
+ * writing "mode W H", "mode vga" or "text" changes the mode. fb is the
+ * pixels, read and written at byte offsets (row y starts at y * PITCH). */
+#include "fb.h"
+#include <stdbool.h>
+#include "device.h"
+#include "io.h"
+#include "kerrno.h"
+#include "kprintf.h"
+#include "kstring.h"
+#include "memlayout.h"
+#include "mutex.h"
+#include "pci.h"
+#include "vga_hw.h"
+#include "vga_text.h"
+#include "vmm.h"
+
+#define VBE_INDEX 0x01CE
+#define VBE_DATA  0x01CF
+#define VBE_ID     0
+#define VBE_XRES   1
+#define VBE_YRES   2
+#define VBE_BPP    3
+#define VBE_ENABLE 4
+#define VBE_VIRT_WIDTH 6
+#define VBE_X_OFFSET 8
+#define VBE_Y_OFFSET 9
+#define VBE_MEMORY_64K 10
+#define VBE_ENABLED 0x01
+#define VBE_LFB     0x40
+
+#define BGA_VENDOR 0x1234
+#define BGA_DEVICE 0x1111
+
+enum kind { TEXT, BGA, VGA13 };
+
+static struct mutex lock = MUTEX_INIT;
+static enum kind kind = TEXT;
+static uint32_t width, height, pitch, depth;
+static uint8_t *pixels; /* kernel address of the visible framebuffer */
+static uint32_t bytes;
+static uint32_t mapped_pages;
+
+static bool bga_present;
+static uintptr_t bga_phys;
+static uint32_t bga_memory;
+
+static uint16_t dispi_read(uint16_t index)
+{
+	outw(VBE_INDEX, index);
+	return inw(VBE_DATA);
+}
+
+static void dispi_write(uint16_t index, uint16_t value)
+{
+	outw(VBE_INDEX, index);
+	outw(VBE_DATA, value);
+}
+
+static void unmap_lfb(void)
+{
+	for (uint32_t i = 0; i < mapped_pages; i++) {
+		uintptr_t phys;
+		vmm_unmap_page(KERNEL_FB_START + i * PAGE_SIZE, &phys); /* device memory: not the PMM's */
+	}
+	mapped_pages = 0;
+}
+
+static int map_lfb(uintptr_t phys, uint32_t len)
+{
+	uint32_t pages = (len + PAGE_SIZE - 1) / PAGE_SIZE;
+	for (uint32_t i = 0; i < pages; i++) {
+		if (vmm_map_page(KERNEL_FB_START + i * PAGE_SIZE, phys + i * PAGE_SIZE, VMM_WRITABLE) != 0) {
+			unmap_lfb();
+			return -ENOMEM;
+		}
+		mapped_pages = i + 1;
+	}
+	return 0;
+}
+
+/* Leaves whatever graphics mode is on, without touching text state. */
+static void leave_graphics(void)
+{
+	if (kind == BGA) {
+		dispi_write(VBE_ENABLE, 0);
+		unmap_lfb();
+	}
+	pixels = 0;
+	bytes = 0;
+}
+
+static void enter_graphics(void)
+{
+	if (kind == TEXT) {
+		vga_text_suspend();
+		vga_save_text();
+	} else {
+		leave_graphics();
+	}
+}
+
+static int set_text(void)
+{
+	if (kind != TEXT) {
+		leave_graphics();
+		vga_restore_text();
+		vga_text_resume();
+		kind = TEXT;
+	}
+	return 0;
+}
+
+static int set_bga(uint32_t w, uint32_t h)
+{
+	if (!bga_present) {
+		return -ENODEV;
+	}
+	if (w < 320 || h < 200 || w > 1600 || h > 1200 || w % 8 || (uint64_t)w * h * 4 > bga_memory) {
+		return -EINVAL;
+	}
+	enter_graphics();
+	kind = BGA;
+	dispi_write(VBE_ENABLE, 0);
+	dispi_write(VBE_XRES, (uint16_t)w);
+	dispi_write(VBE_YRES, (uint16_t)h);
+	dispi_write(VBE_BPP, 32);
+	dispi_write(VBE_X_OFFSET, 0);
+	dispi_write(VBE_Y_OFFSET, 0);
+	dispi_write(VBE_ENABLE, VBE_ENABLED | VBE_LFB);
+	width = dispi_read(VBE_XRES);
+	height = dispi_read(VBE_YRES);
+	pitch = dispi_read(VBE_VIRT_WIDTH) * 4;
+	depth = 32;
+	bytes = pitch * height;
+	if (width != w || height != h || map_lfb(bga_phys, bytes) != 0) {
+		set_text();
+		return -EINVAL;
+	}
+	pixels = (uint8_t *)KERNEL_FB_START;
+	memset(pixels, 0, bytes);
+	return 0;
+}
+
+static int set_vga13(void)
+{
+	enter_graphics();
+	kind = VGA13;
+	vga_set_mode13();
+	width = 320;
+	height = 200;
+	pitch = 320;
+	depth = 8;
+	bytes = pitch * height;
+	pixels = P2V(0xA0000);
+	return 0;
+}
+
+static int describe(char *buf, size_t size)
+{
+	if (kind == TEXT) {
+		return ksnprintf(buf, size, "text\n");
+	}
+	return ksnprintf(buf, size, "%lu %lu %lu %lu %s %s\n", (unsigned long)width,
+	                 (unsigned long)height, (unsigned long)depth, (unsigned long)pitch,
+	                 kind == BGA ? "xrgb8888" : "rgb332", kind == BGA ? "bga" : "vga");
+}
+
+static long ctl_pread(struct device *dev, uint32_t offset, void *buf, size_t len)
+{
+	(void)dev;
+	char text[64];
+	mutex_lock(&lock);
+	int n = describe(text, sizeof(text));
+	mutex_unlock(&lock);
+	if (offset >= (uint32_t)n) {
+		return 0;
+	}
+	size_t k = (size_t)n - offset < len ? (size_t)n - offset : len;
+	memcpy(buf, text + offset, k);
+	return (long)k;
+}
+
+static bool parse_number(const char **p, uint32_t *out)
+{
+	uint32_t v = 0;
+	const char *s = *p;
+	while (*s == ' ') {
+		s++;
+	}
+	const char *start = s;
+	while (*s >= '0' && *s <= '9' && v < 100000) {
+		v = v * 10 + (uint32_t)(*s++ - '0');
+	}
+	*p = s;
+	*out = v;
+	return s != start;
+}
+
+static long ctl_pwrite(struct device *dev, uint32_t offset, const void *buf, size_t len)
+{
+	(void)dev;
+	(void)offset;
+	char cmd[32];
+	if (len >= sizeof(cmd)) {
+		return -EINVAL;
+	}
+	memcpy(cmd, buf, len);
+	cmd[len] = '\0';
+	while (len && (cmd[len - 1] == '\n' || cmd[len - 1] == ' ')) {
+		cmd[--len] = '\0';
+	}
+	int rc = -EINVAL;
+	mutex_lock(&lock);
+	if (!strcmp(cmd, "text")) {
+		rc = set_text();
+	} else if (!strcmp(cmd, "mode vga")) {
+		rc = set_vga13();
+	} else if (!strncmp(cmd, "mode ", 5)) {
+		const char *p = cmd + 5;
+		uint32_t w, h;
+		if (parse_number(&p, &w) && parse_number(&p, &h) && !*p) {
+			rc = set_bga(w, h);
+		}
+	}
+	mutex_unlock(&lock);
+	return rc ? rc : (long)len;
+}
+
+static long fb_pread(struct device *dev, uint32_t offset, void *buf, size_t len)
+{
+	(void)dev;
+	mutex_lock(&lock);
+	long rc;
+	if (kind == TEXT) {
+		rc = -ENXIO;
+	} else if (offset >= bytes) {
+		rc = 0;
+	} else {
+		rc = (long)(len < bytes - offset ? len : bytes - offset);
+		memcpy(buf, pixels + offset, (size_t)rc);
+	}
+	mutex_unlock(&lock);
+	return rc;
+}
+
+static long fb_pwrite(struct device *dev, uint32_t offset, const void *buf, size_t len)
+{
+	(void)dev;
+	mutex_lock(&lock);
+	long rc;
+	if (kind == TEXT) {
+		rc = -ENXIO;
+	} else if (offset >= bytes) {
+		rc = -ENXIO;
+	} else {
+		rc = (long)(len < bytes - offset ? len : bytes - offset);
+		memcpy(pixels + offset, buf, (size_t)rc);
+	}
+	mutex_unlock(&lock);
+	return rc;
+}
+
+static uint32_t fb_size(struct device *dev)
+{
+	(void)dev;
+	return bytes;
+}
+
+static const struct char_device_ops fb_ops = { .pread = fb_pread, .pwrite = fb_pwrite, .size = fb_size };
+static const struct char_device_ops ctl_ops = { .pread = ctl_pread, .pwrite = ctl_pwrite };
+static struct device fb_device = { .name = "fb", .class = DEVICE_CHAR, .char_ops = &fb_ops };
+static struct device ctl_device = { .name = "fbctl", .class = DEVICE_CHAR, .char_ops = &ctl_ops };
+
+void fb_init(void)
+{
+	const struct pci_device *pci = pci_find(BGA_VENDOR, BGA_DEVICE);
+	uint16_t id = dispi_read(VBE_ID);
+	if (pci && id >= 0xB0C0 && id <= 0xB0C5) {
+		bga_present = true;
+		bga_phys = pci->bar[0] & PCI_BAR_MEM_MASK;
+		bga_memory = id >= 0xB0C5 ? (uint32_t)dispi_read(VBE_MEMORY_64K) * 65536 : 4u << 20;
+		if (bga_memory > KERNEL_FB_SIZE) {
+			bga_memory = KERNEL_FB_SIZE;
+		}
+		kprintf("fb: Bochs VBE at pci %02x:%02x.%x, framebuffer 0x%08lx, %lu KiB\n", pci->bus,
+		        pci->dev, pci->fn, (unsigned long)bga_phys, (unsigned long)(bga_memory / 1024));
+	}
+	device_register(&fb_device);
+	device_register(&ctl_device);
+}
+
+void fb_emergency_text(void)
+{
+	/* No lock: a panic may have interrupted a holder. */
+	if (kind == BGA) {
+		dispi_write(VBE_ENABLE, 0);
+	}
+	if (kind != TEXT) {
+		vga_restore_text();
+		vga_text_resume();
+		kind = TEXT;
+	}
+}

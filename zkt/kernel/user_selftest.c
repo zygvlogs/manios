@@ -100,3 +100,8 @@ void libc_selftest(void)
 {
 	run_checked("/boot/test/ctest");
 }
+
+void gfx_selftest(void)
+{
+	run_checked("/boot/test/gtest");
+}

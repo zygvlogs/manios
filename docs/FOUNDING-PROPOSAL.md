@@ -25,6 +25,9 @@ coreutils, and a shell that ManiOS boots into — see
 machines share files, and run each other's programs, over the network —
 see [docs/milestones/M10-networking-zrp.md](milestones/M10-networking-zrp.md)
 and the protocol, [docs/zrp.md](zrp.md).
+**M11 achieved**: graphics — a Bochs VBE linear framebuffer and VGA
+mode 13h behind `/dev/fb`, and a userspace 2D library with ManiOS's own
+font — see [docs/milestones/M11-graphics.md](milestones/M11-graphics.md).
 
 **Scope of this document:** Originally the response to the ManiOS
 founding prompt's "First Task" — architecture, strategy, and planning.
@@ -475,7 +478,7 @@ a concrete shape rather than only a diagram.
 | M8 | **Achieved** ([notes](milestones/M8-userspace.md)). Userspace: ELF loader, ring 3 processes, first syscalls, namespace ops (bind/mount) | M4, M7 |
 | M9 | **Achieved** ([notes](milestones/M9-libc-shell.md)). libc + syscall ABI stabilization, coreutils, shell | M8 |
 | M10 | **Achieved** ([notes](milestones/M10-networking-zrp.md)). Networking + ZRP transport over the network (ADR-0003) | M8 |
-| M11 | Graphics: linear framebuffer driver, basic 2D primitives | M8 |
+| M11 | **Achieved** ([notes](milestones/M11-graphics.md)). Graphics: linear framebuffer driver, basic 2D primitives | M8 |
 | M12 | ManiOS Desktop Environment MVP (compositor, shell, launcher) | M11 |
 | M13 | Cluster roles: file server / CPU server / terminal (ADR-0003) | M8, M10 |
 

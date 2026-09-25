@@ -173,6 +173,27 @@ int vfs_readdir(struct file *f, struct dirent *out)
 	return 0;
 }
 
+long vfs_seek(struct file *f, int32_t offset, int whence)
+{
+	if (f->loc.v[0]->type == VNODE_DIR) {
+		if (offset != 0 || whence != SEEK_SET) {
+			return -EINVAL;
+		}
+		f->member = 0;
+		f->index = 0;
+		f->entry = 0;
+		return 0;
+	}
+	int64_t base = whence == SEEK_SET ? 0 : whence == SEEK_CUR ? (int64_t)f->offset
+	             : whence == SEEK_END ? (int64_t)f->loc.v[0]->size : -1;
+	int64_t target = base + offset;
+	if (base < 0 || target < 0 || target > 0x7FFFFFFF) {
+		return -EINVAL;
+	}
+	f->offset = (uint32_t)target;
+	return (long)target;
+}
+
 int vfs_readdir_at(struct file *f, uint32_t entry, struct dirent *out)
 {
 	if (entry < f->entry) {

@@ -9,10 +9,10 @@ struct dev_node {
 	struct device *dev;
 };
 
-static uint32_t device_bytes(const struct device *d)
+static uint32_t device_bytes(struct device *d)
 {
 	if (d->class != DEVICE_BLOCK) {
-		return 0;
+		return d->char_ops && d->char_ops->size ? d->char_ops->size(d) : 0;
 	}
 	uint64_t bytes = (uint64_t)d->block_count * d->block_size;
 	return bytes > 0xFFFFFFFFu ? 0xFFFFFFFFu : (uint32_t)bytes; /* 32-bit offsets */
@@ -56,14 +56,19 @@ static long read_block_bytes(struct device *d, uint32_t offset, uint8_t *buf, si
 static long dev_read(struct vnode *v, uint32_t offset, void *buf, size_t len)
 {
 	struct device *d = ((struct dev_node *)v)->dev;
-	return d->class == DEVICE_BLOCK ? read_block_bytes(d, offset, buf, len)
-	                                : device_read(d, buf, len);
+	if (d->class == DEVICE_BLOCK) {
+		return read_block_bytes(d, offset, buf, len);
+	}
+	return d->char_ops->pread ? d->char_ops->pread(d, offset, buf, len) : device_read(d, buf, len);
 }
 
 static long dev_write(struct vnode *v, uint32_t offset, const void *buf, size_t len)
 {
-	(void)offset;
-	return device_write(((struct dev_node *)v)->dev, buf, len);
+	struct device *d = ((struct dev_node *)v)->dev;
+	if (d->class == DEVICE_CHAR && d->char_ops->pwrite) {
+		return d->char_ops->pwrite(d, offset, buf, len);
+	}
+	return device_write(d, buf, len);
 }
 
 static void dev_release(struct vnode *v)

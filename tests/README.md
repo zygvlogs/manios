@@ -26,6 +26,14 @@
   link) and client against the guest's. Then it connects two ManiOS
   machines, one serving a FAT volume to the other.
 
+- `gfx_test.py` (also run by `make test`) — the framebuffer and
+  libgfx, checked on the screen itself through QEMU's `screendump`:
+  colours where `gfxdemo` draws them, in each mode, and text mode
+  restored pixel for pixel afterwards.
+
+- `tools/mkfont.py --check` (in `make test`) — the generated font
+  matches `desktop/libgfx/font.txt`.
+
 - `userland/test/` holds the test programs the kernel runs at every
   boot (`utest` for system calls, `ctest` for libc) and that the
   console test starts (`fault`); they are in the boot archive under

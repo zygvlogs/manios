@@ -116,6 +116,9 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	kprintf("Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed).\n");
 	export_from_cmdline();
 
+	gfx_selftest();
+	kprintf("Milestone M11: graphics online (framebuffer, 2D library; self-test passed).\n");
+
 	if (!thread_create("console", console_main, 0)) {
 		panic("could not start the console thread");
 	}

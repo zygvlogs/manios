@@ -152,6 +152,37 @@ int feof(FILE *f) { return (f->flags & F_EOF) != 0; }
 int ferror(FILE *f) { return (f->flags & F_ERR) != 0; }
 void clearerr(FILE *f) { f->flags &= ~(F_EOF | F_ERR); }
 
+/* --- positioning --- */
+
+int fseek(FILE *f, long offset, int whence)
+{
+	if (fflush(f) == EOF) {
+		return -1;
+	}
+	if (whence == SEEK_CUR) { /* from where the program has read to, not the buffer's end */
+		offset -= (long)(f->rlen - f->rpos) + (f->unget != EOF);
+	}
+	f->rpos = f->rlen = 0;
+	f->unget = EOF;
+	f->flags &= ~F_EOF;
+	return lseek(f->fd, offset, whence) < 0 ? -1 : 0;
+}
+
+long ftell(FILE *f)
+{
+	long pos = lseek(f->fd, 0, SEEK_CUR);
+	if (pos < 0) {
+		return -1;
+	}
+	return pos - (long)(f->rlen - f->rpos) - (f->unget != EOF) + (long)f->wlen;
+}
+
+void rewind(FILE *f)
+{
+	fseek(f, 0, SEEK_SET);
+	clearerr(f);
+}
+
 /* --- input --- */
 
 static int refill(FILE *f)

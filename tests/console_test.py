@@ -341,7 +341,7 @@ SCENARIOS = [
     {
         "name": "no disk",
         "disk": None,
-        "boot": ["devices: cons com1 vga\r\n", "Milestone M9: libc, ABI v1 and shell online"],
+        "boot": ["devices: cons com1 vga fb fbctl\r\n", "Milestone M9: libc, ABI v1 and shell online"],
         "shell": [
             ("serial", "ls /bin", ["cat", "echo", "ls", "sh", "wc"]),
             ("serial", "echo 'a;b' c\\;d; echo e", ["\r\na;b c;d\r\ne\r\n"]),
@@ -363,6 +363,7 @@ SCENARIOS = [
             ("serial", "help", ["commands:", "threads", "devices"]),
             ("serial", "echo over serial", ["\r\nover serial\r\n"]),
             ("serial", "devices", ["cons", "com1", "vga"]),
+            ("serial", "pci", ["00:02.0  1234:1111  class 03.00.00", "00:01.1  8086:7010  class 01.01"]),
             ("keyboard", "uptime", ["uptime: "]),
             ("keyboard", "threads", ["console", "idle", "running"]),
             ("keyboard", "echo Hello, World! (x_y)", ["\r\nHello, World! (x_y)\r\n"]),
@@ -394,7 +395,7 @@ SCENARIOS = [
         "disk": write_patterned_disk,
         "boot": ["ata0: QEMU HARDDISK, 8 MiB, LBA", "ata0: CHS cross-check passed",
                  "ata0p1: type 0x06, sectors 2048-16383",
-                 "devices: cons com1 vga ata0 ata0p1\r\n"],
+                 "devices: cons com1 vga ata0 ata0p1 fb fbctl\r\n"],
         "cases": [
             ("serial", "devices", ["ata0     block  16384 x 512 bytes (8 MiB)",
                                    "ata0p1   block  14336 x 512 bytes (7 MiB)"]),
@@ -444,7 +445,7 @@ SCENARIOS = [
     {
         "name": "partitionless FAT disk",
         "disk": write_superfloppy,
-        "boot": ["devices: cons com1 vga ata0\r\n"],
+        "boot": ["devices: cons com1 vga ata0 fb fbctl\r\n"],
         "cases": [],
     },
 ]

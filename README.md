@@ -21,7 +21,8 @@ clone. It does not depend on the Linux kernel.
 | M8 — userspace: ring 3 processes, ELF loader, syscalls | Achieved ([notes](docs/milestones/M8-userspace.md)) |
 | M9 — libc, versioned syscall ABI, coreutils, shell | Achieved ([notes](docs/milestones/M9-libc-shell.md)) |
 | M10 — networking (NE2000, IPv4/UDP), and ZRP (the resource protocol) over the network | Achieved ([notes](docs/milestones/M10-networking-zrp.md), [protocol](docs/zrp.md)) |
-| M11 — graphics: linear framebuffer, basic 2D | Next |
+| M11 — graphics: linear framebuffer (Bochs VBE, VGA 13h), 2D library, own font | Achieved ([notes](docs/milestones/M11-graphics.md)) |
+| M12 — desktop environment MVP: compositor, shell, launcher | Next |
 
 The full architecture and roadmap are in
 [`docs/FOUNDING-PROPOSAL.md`](docs/FOUNDING-PROPOSAL.md).
@@ -55,6 +56,10 @@ on another, `mount udp!10.0.0.1 /n` puts it at `/n`
 (`tests/net_test.py` connects two machines this way). ZRP v1 has no
 authentication: use it only on trusted networks.
 
+`gfxdemo` shows the graphics (640x480; `gfxdemo 800 600`, or
+`gfxdemo vga` for 320x200 on any VGA card) and returns to text on
+Enter.
+
 ## Repository layout
 
 ```
@@ -70,6 +75,7 @@ zkt/          ZygKernel Technology — the kernel
   kernel/     init, panic, logging, processes, syscalls, ELF loader
   abi/        the system call ABI header shared with userspace
 libc/         ManiOS's own C library (stdio, malloc, strings, ...)
+desktop/      the desktop environment; libgfx/, the 2D graphics library
 userland/     user programs (bin/), test programs (test/), boot files (etc/)
 desktop/      ManiOS Desktop Environment
 tools/        cross-toolchain build scripts, image builder, QEMU scripts

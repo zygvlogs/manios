@@ -12,10 +12,15 @@ userspace servers (ADR-0002).
 - `serial.c` — COM1: polled early/panic output; IRQ-driven RX and
   buffered TX; device `com1`
 - `ps2kbd.c` — PS/2 keyboard (US layout), feeding the console
-- `vga_text.c` — 80x25 text mode with hardware cursor; device `vga`
+- `vga_text.c` — 80x25 text mode with hardware cursor (and a shadow
+  copy while graphics own the display); device `vga`
 - `ata.c` — ATA disks over PIO, LBA28 with a CHS fallback; devices
   `ata0`–`ata3` ([M6 notes](../../docs/milestones/M6-ata-storage.md))
 - `mbr.c` — MBR primary partitions as block devices (`ata0p1`…)
+- `pci.c` — PCI configuration space and bus scan
+- `fb.c` — the framebuffer: devices `fb` and `fbctl`, Bochs VBE modes
+  ([M11 notes](../../docs/milestones/M11-graphics.md))
+- `vga_hw.c` — VGA registers: saving/restoring text mode, mode 13h
 - `ne2000.c` — NE2000-compatible ISA Ethernet (DP8390), registered with
   the network stack as interface `ne0`
   ([M10 notes](../../docs/milestones/M10-networking-zrp.md))

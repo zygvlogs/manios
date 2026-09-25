@@ -7,7 +7,9 @@
  * leaked. Panics on failure. Needs fs_init(). */
 void user_selftest(void);
 
-/* The same for the C library's conformance test, /boot/test/ctest. */
+/* The same for the C library's conformance test, /boot/test/ctest, and
+ * the 2D graphics library's, /boot/test/gtest. */
 void libc_selftest(void);
+void gfx_selftest(void);
 
 #endif

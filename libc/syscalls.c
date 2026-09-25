@@ -40,6 +40,7 @@ __attribute__((noreturn)) void _exit(int code)
 long read(int fd, void *buf, size_t len)        { return SC3(SYS_READ, fd, buf, len); }
 long write(int fd, const void *buf, size_t len) { return SC3(SYS_WRITE, fd, buf, len); }
 int open(const char *path, int mode)            { return (int)SC2(SYS_OPEN, path, mode); }
+long lseek(int fd, long offset, int whence)     { return SC3(SYS_SEEK, fd, offset, whence); }
 int close(int fd)                               { return (int)SC1(SYS_CLOSE, fd); }
 int fstat(int fd, struct zkt_dirent *out)       { return (int)SC2(SYS_FSTAT, fd, out); }
 int spawn(const char *path, char *const argv[]) { return (int)SC2(SYS_SPAWN, path, argv); }
