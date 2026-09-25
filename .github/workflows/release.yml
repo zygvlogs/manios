@@ -1,0 +1,102 @@
+# Builds ManiOS, runs the whole test suite, and publishes a GitHub
+# Release with the bootable ISO (ADR-0006, docs/install.md).
+#
+# Publishing: push a tag named v<VERSION>, where <VERSION> is the
+# VERSION file's contents (git tag v0.14.0 && git push origin v0.14.0).
+# The release notes are docs/releases/<VERSION>.md.
+#
+# Run by hand (workflow_dispatch), it builds and tests the chosen branch
+# and keeps the files as a workflow artifact; with "publish" set, it also
+# creates the tag v<VERSION> on that commit and publishes the release.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish release v<VERSION> from this commit"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag against VERSION
+        if: github.ref_type == 'tag' || inputs.publish
+        run: |
+          version="$(cat VERSION)"
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match VERSION ($version)"
+            exit 1
+          fi
+          test -f "docs/releases/$version.md" || { echo "::error::no docs/releases/$version.md"; exit 1; }
+
+      - name: Install build and test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential bison flex libgmp-dev libmpfr-dev libmpc-dev texinfo \
+            qemu-system-x86 mtools xorriso python3 curl xz-utils
+
+      # The i686-elf cross toolchain (binutils + GCC) takes a while to
+      # build; it only changes when its script does. It is saved as soon
+      # as it is built, so a failing test doesn't lose it.
+      - name: Restore the cross toolchain
+        id: toolchain
+        uses: actions/cache/restore@v4
+        with:
+          path: tools/toolchain/i686-elf
+          key: i686-elf-ubuntu-24.04-${{ hashFiles('tools/toolchain/build-i686-elf-toolchain.sh') }}
+
+      - name: Build the cross toolchain
+        if: steps.toolchain.outputs.cache-hit != 'true'
+        run: make toolchain && rm -rf tools/toolchain/build
+
+      - name: Save the cross toolchain
+        if: steps.toolchain.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: tools/toolchain/i686-elf
+          key: ${{ steps.toolchain.outputs.cache-primary-key }}
+
+      - name: Build
+        run: make -j"$(nproc)"
+
+      - name: Test
+        run: make test
+
+      - name: Collect the release files
+        run: make release && ls -l dist && cat dist/SHA256SUMS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: manios-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+
+      - name: Publish the release
+        if: github.ref_type == 'tag' || inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(cat VERSION)"
+          # Before 1.0, and before ManiOS has been tried on real hardware,
+          # releases are marked as pre-releases.
+          case "$version" in 0.*) pre=--prerelease ;; *) pre= ;; esac
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            where=--verify-tag            # the pushed tag
+          else
+            where="--target $GITHUB_SHA"  # a new tag on this commit
+          fi
+          gh release create "v$version" dist/* $pre $where \
+            --title "ManiOS $version" \
+            --notes-file "docs/releases/$version.md"
