@@ -135,4 +135,5 @@ doesn't fit either. At most the bitmap is 128 KiB, for 4 GiB of RAM.
 - There is one global page directory. Per-process address spaces (M8)
   will need the kernel's entries 768–1022 shared by every directory;
   pre-allocating those page tables is the simple way to get that.
-- No locking: nothing runs concurrently until M4 (multitasking).
+- No locking. Since M3, IRQ handlers must not call into the PMM, VMM
+  or heap (see `irq.h`); M4 (multitasking) will need real locks.

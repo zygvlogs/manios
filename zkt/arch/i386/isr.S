@@ -1,16 +1,18 @@
 /*
- * Entry stubs for the 32 CPU exception vectors (0-31). Vectors that
- * don't have a CPU-pushed error code get a dummy zero pushed in its
- * place, so isr_common_stub can treat every vector uniformly. This is
- * the standard, widely-documented i386 exception-stub pattern (Intel
- * SDM vol. 3, chapter 6) -- original code implementing a public spec.
+ * Entry stubs for the 32 CPU exception vectors (0-31) and the 16 PIC
+ * IRQ vectors (32-47, see pic.h). Vectors without a CPU-pushed error
+ * code get a dummy zero in its place, so isr_common_stub can treat every
+ * vector uniformly. Standard i386 pattern (Intel SDM vol. 3, ch. 6) --
+ * original code implementing a public spec.
+ *
+ * All IDT entries are interrupt gates, which clear IF on entry; iret
+ * restores the interrupted context's IF. No stub touches IF itself.
  */
 
 .macro ISR_NOERRCODE num
 .global isr\num
 .type isr\num, @function
 isr\num:
-	cli
 	push $0
 	push $\num
 	jmp isr_common_stub
@@ -20,8 +22,17 @@ isr\num:
 .global isr\num
 .type isr\num, @function
 isr\num:
-	cli
 	push $\num
+	jmp isr_common_stub
+.endm
+
+/* Must match IRQ_BASE_VECTOR in pic.h. */
+.macro IRQ num, vector
+.global irq\num
+.type irq\num, @function
+irq\num:
+	push $0
+	push $\vector
 	jmp isr_common_stub
 .endm
 
@@ -60,6 +71,23 @@ ISR_ERRCODE   29  /* VMM communication exception */
 ISR_ERRCODE   30  /* Security exception */
 ISR_NOERRCODE 31  /* Reserved */
 
+IRQ 0, 32
+IRQ 1, 33
+IRQ 2, 34
+IRQ 3, 35
+IRQ 4, 36
+IRQ 5, 37
+IRQ 6, 38
+IRQ 7, 39
+IRQ 8, 40
+IRQ 9, 41
+IRQ 10, 42
+IRQ 11, 43
+IRQ 12, 44
+IRQ 13, 45
+IRQ 14, 46
+IRQ 15, 47
+
 .extern isr_handler
 .type isr_common_stub, @function
 isr_common_stub:
@@ -86,6 +114,5 @@ isr_common_stub:
 
 	popa
 	add $8, %esp      /* discard int_no and err_code pushed by the stub */
-	sti
 	iret
 .size isr_common_stub, . - isr_common_stub

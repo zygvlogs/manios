@@ -1,5 +1,8 @@
 #include "idt.h"
 #include <stdint.h>
+#include "irq.h"
+#include "isr.h"
+#include "pic.h"
 
 struct idt_entry {
 	uint16_t base_low;
@@ -36,6 +39,14 @@ extern void isr24(void); extern void isr25(void); extern void isr26(void);
 extern void isr27(void); extern void isr28(void); extern void isr29(void);
 extern void isr30(void); extern void isr31(void);
 
+/* IRQ stubs, one per PIC line 0-15 (isr.S). */
+extern void irq0(void);  extern void irq1(void);  extern void irq2(void);
+extern void irq3(void);  extern void irq4(void);  extern void irq5(void);
+extern void irq6(void);  extern void irq7(void);  extern void irq8(void);
+extern void irq9(void);  extern void irq10(void); extern void irq11(void);
+extern void irq12(void); extern void irq13(void); extern void irq14(void);
+extern void irq15(void);
+
 static void idt_set_gate(int idx, uint32_t base, uint16_t sel, uint8_t flags)
 {
 	idt[idx].base_low = (uint16_t)(base & 0xFFFF);
@@ -65,5 +76,24 @@ void idt_init(void)
 		             IDT_FLAG_PRESENT_RING0_INT32);
 	}
 
+	void (*const irq_stubs[IRQ_LINES])(void) = {
+		irq0, irq1, irq2,  irq3,  irq4,  irq5,  irq6,  irq7,
+		irq8, irq9, irq10, irq11, irq12, irq13, irq14, irq15,
+	};
+	for (int i = 0; i < IRQ_LINES; i++) {
+		idt_set_gate(IRQ_BASE_VECTOR + i, (uint32_t)irq_stubs[i], KERNEL_CODE_SEL,
+		             IDT_FLAG_PRESENT_RING0_INT32);
+	}
+
 	idt_flush((uint32_t)&idtp);
+}
+
+/* Only vectors 0-31 and the IRQ range have present gates, so nothing
+ * else can reach here. */
+void isr_handler(registers_t *regs)
+{
+	if (regs->int_no < IRQ_BASE_VECTOR) {
+		exception_handle(regs);
+	}
+	irq_dispatch(regs->int_no - IRQ_BASE_VECTOR);
 }

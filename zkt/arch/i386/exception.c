@@ -41,10 +41,9 @@ static const char *const EXCEPTION_NAMES[32] = {
 	"Reserved",
 };
 
-void isr_handler(registers_t *regs)
+__attribute__((noreturn)) void exception_handle(registers_t *regs)
 {
-	const char *name = (regs->int_no < 32) ? EXCEPTION_NAMES[regs->int_no]
-	                                        : "Unknown exception";
+	const char *name = EXCEPTION_NAMES[regs->int_no];
 
 	if (regs->int_no == EXC_PAGE_FAULT) {
 		kconsole_write("\npage fault at 0x");

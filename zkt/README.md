@@ -29,6 +29,7 @@ Generic code includes architecture headers by name (`"memlayout.h"`,
 sets, never by `../arch/<cpu>/` path, so another architecture can
 supply headers of the same names.
 
-Implemented so far: M1 (boot, console, exceptions) and M2 (memory
-management, [notes](../docs/milestones/M2-memory-management.md)).
+Implemented so far: M1 (boot, console, exceptions), M2 (memory
+management, [notes](../docs/milestones/M2-memory-management.md)) and M3
+(hardware IRQs and timer, [notes](../docs/milestones/M3-interrupts-and-timer.md)).
 `fs/`, `ipc/` and `scheduler/` are still empty.

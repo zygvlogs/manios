@@ -1,10 +1,8 @@
 #ifndef ZKT_ARCH_I386_IDT_H
 #define ZKT_ARCH_I386_IDT_H
 
-/* Builds the IDT and wires vectors 0-31 to the CPU exception stubs in
- * isr.S. IRQ vectors (32-47, after pic_remap()) are wired starting at
- * M3/M5 once there are handlers for them -- see
- * docs/FOUNDING-PROPOSAL.md §7. */
+/* Builds the IDT: vectors 0-31 go to the CPU exception stubs and
+ * IRQ_BASE_VECTOR..+15 to the PIC IRQ stubs, all in isr.S. */
 void idt_init(void);
 
 #endif

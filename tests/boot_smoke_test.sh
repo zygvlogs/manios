@@ -12,6 +12,7 @@ PROMPT="ZKT> "
 EXPECTED=(
 	"Milestone M1: kernel console reached."
 	"Milestone M2: memory manager online (self-test passed)."
+	"Milestone M3: interrupts online (PIT timer at 100 Hz)."
 )
 
 # "<RAM MiB> <QEMU CPU model> <why>". QEMU's oldest model is the 486;
@@ -37,7 +38,7 @@ run_case() {
 	local mem="$1" cpu="$2"
 	: >"$LOG"
 	qemu-system-i386 -kernel "$KERNEL" -cpu "$cpu" -m "$mem" \
-		-serial "file:$LOG" -display none -no-reboot -no-shutdown 2>"$QEMU_ERR" &
+		-serial "file:$LOG" -display none -no-reboot 2>"$QEMU_ERR" &
 	local pid=$!
 	local deadline=$((SECONDS + TIMEOUT_SECS))
 	while ((SECONDS < deadline)) && kill -0 "$pid" 2>/dev/null; do
@@ -46,6 +47,10 @@ run_case() {
 		fi
 		sleep 0.2
 	done
+	if ! kill -0 "$pid" 2>/dev/null; then
+		# With -no-reboot, a triple fault makes QEMU exit instead of reset.
+		echo "(QEMU exited on its own: triple fault, or failed to start)" >>"$QEMU_ERR"
+	fi
 	kill "$pid" 2>/dev/null || true
 	wait "$pid" 2>/dev/null || true
 

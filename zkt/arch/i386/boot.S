@@ -41,7 +41,11 @@ boot_page_directory:
 .skip PAGE_SIZE
 boot_page_table0:
 .skip PAGE_SIZE
-.balign 16
+/* Unmapped by vmm_init(), so overflowing the stack below faults instead
+ * of silently overwriting boot_page_table0. */
+.global kernel_stack_guard
+kernel_stack_guard:
+.skip PAGE_SIZE
 stack_bottom:
 .skip 16384                     /* 16 KiB kernel entry stack */
 stack_top:

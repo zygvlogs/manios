@@ -1,9 +1,13 @@
 # zkt/kernel/
 
-The glue: boot handoff from `zkt/arch/<cpu>/`, `kernel_main()`,
-panic/logging, and syscall dispatch (once the syscall ABI exists at
-M8). This is where the M1 milestone's entry point
-(`kernel_main()` wiring GDT → IDT → PIC → serial → VGA → banner → idle
-loop) will live.
+Architecture-neutral kernel core, and the glue that wires the other
+subdirectories together. Syscall dispatch joins it once the syscall ABI
+exists (M8).
 
-See [`docs/FOUNDING-PROPOSAL.md` §7](../../docs/FOUNDING-PROPOSAL.md#7-first-bootable-prototype-plan-m1-in-detail).
+- `main.c` — `kernel_main()`: CPU tables → console → memory map → PMM →
+  VMM → heap → memory self-test → timer → interrupts on → prompt
+- `kconsole.c` — console output to both serial and VGA
+- `panic.c` — `panic()` / `panic_dump()`
+- `multiboot.c` — Multiboot memory map → generic `struct mem_region` list
+- `timer.c` — system tick, uptime and sleep, on top of the arch `clock.h`
+- `kstring.c` — `memset` / `memcpy` / `memmove` / `memcmp`

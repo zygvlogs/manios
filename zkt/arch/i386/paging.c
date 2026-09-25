@@ -16,6 +16,7 @@
 #define PTE_ADDR_MASK 0xFFFFF000u
 
 extern uint32_t boot_page_directory[1024]; /* boot.S */
+extern char kernel_stack_guard[];          /* boot.S */
 
 static uint32_t *const page_directory = (uint32_t *)RECURSIVE_PD_ADDR;
 
@@ -39,6 +40,10 @@ void vmm_init(void)
 	boot_page_directory[RECURSIVE_PD_INDEX] =
 	    V2P(boot_page_directory) | PTE_PRESENT | PTE_WRITABLE;
 	cpu_flush_tlb();
+
+	/* The frame stays reserved in the PMM; only the mapping goes. */
+	uintptr_t guard_phys;
+	vmm_unmap_page((uintptr_t)kernel_stack_guard, &guard_phys);
 }
 
 int vmm_map_page(uintptr_t virt, uintptr_t phys, unsigned flags)

@@ -4,6 +4,8 @@
 boots on i386 and reaches a ZKT kernel console, verified in QEMU
 (`make test`) — see §7 and §12. **M2 achieved**: memory management —
 see [docs/milestones/M2-memory-management.md](milestones/M2-memory-management.md).
+**M3 achieved**: hardware IRQs and the PIT timer — see
+[docs/milestones/M3-interrupts-and-timer.md](milestones/M3-interrupts-and-timer.md).
 
 **Scope of this document:** Originally the response to the ManiOS
 founding prompt's "First Task" — architecture, strategy, and planning.
@@ -444,7 +446,7 @@ a concrete shape rather than only a diagram.
 | M0 | This proposal + repo scaffolding | — |
 | M1 | **Achieved.** Multiboot kernel reaches a ZKT kernel console (serial + VGA text) | §4 toolchain, §2.1–2.2 |
 | M2 | **Achieved** ([notes](milestones/M2-memory-management.md)). Physical + virtual memory management, kernel heap | M1 |
-| M3 | Full interrupt/exception handling, PIC remap, PIT timer IRQ | M1 |
+| M3 | **Achieved** ([notes](milestones/M3-interrupts-and-timer.md)). Full interrupt/exception handling, PIC remap, PIT timer IRQ | M1 |
 | M4 | Cooperative then preemptive multitasking (kernel threads) | M2, M3 |
 | M5 | Driver framework + keyboard, VGA, serial, PIT drivers formalized | M3, M4 |
 | M6 | Storage: ATA/IDE PIO block driver | M5 |
