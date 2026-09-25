@@ -24,5 +24,11 @@ hybrid-kernel design decision.
 - `kernel/` — boot handoff, `kernel_main()`, panic/logging, syscall
   dispatch — the glue that wires the other subdirectories together.
 
-Empty until [the open decisions](../docs/FOUNDING-PROPOSAL.md#11-open-decisions-requiring-approval)
-in the founding proposal are confirmed.
+Generic code includes architecture headers by name (`"memlayout.h"`,
+`"cpu.h"`, …) through the per-architecture include path the Makefile
+sets, never by `../arch/<cpu>/` path, so another architecture can
+supply headers of the same names.
+
+Implemented so far: M1 (boot, console, exceptions) and M2 (memory
+management, [notes](../docs/milestones/M2-memory-management.md)).
+`fs/`, `ipc/` and `scheduler/` are still empty.

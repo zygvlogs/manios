@@ -12,4 +12,5 @@ if [ ! -f "$KERNEL" ]; then
 	exit 1
 fi
 
-exec qemu-system-i386 -kernel "$KERNEL" -serial stdio -m 32
+# A 486 is QEMU's oldest CPU model and the closest to ZKT's i386 target.
+exec qemu-system-i386 -kernel "$KERNEL" -cpu 486 -serial stdio -m 32

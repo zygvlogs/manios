@@ -7,18 +7,28 @@ its place, and a desktop environment that is genuinely its own.
 ManiOS is **not** a Linux distribution and **not** a BSD or AmigaOS
 clone. It does not depend on the Linux kernel.
 
-## Status: Proposed — pre-implementation
+## Status
 
-This repository currently contains the founding architecture proposal
-and repository scaffolding only. No kernel, driver, or bootloader code
-has been written yet — see
-[`docs/FOUNDING-PROPOSAL.md`](docs/FOUNDING-PROPOSAL.md) for the full
-architecture, roadmap, and the open decisions that need sign-off before
-implementation begins.
+| Milestone | State |
+|---|---|
+| M1 — boots on i386 to a ZKT kernel console | Achieved |
+| M2 — physical/virtual memory, higher-half kernel, kernel heap | Achieved ([notes](docs/milestones/M2-memory-management.md)) |
+| M3 — interrupts, PIT timer | Next |
 
-First milestone target:
+The full architecture and roadmap are in
+[`docs/FOUNDING-PROPOSAL.md`](docs/FOUNDING-PROPOSAL.md).
 
-> ManiOS boots on i386 and reaches a ZKT kernel console.
+## Build and run
+
+```
+make toolchain   # once: builds the i686-elf cross-compiler (~15 min)
+make             # builds build/manios-zkt.elf
+make run         # boots it in QEMU (486 CPU model), serial on the terminal
+make test        # headless boot tests under several CPU/RAM configurations
+```
+
+Requires `qemu-system-i386`, plus the usual GCC build dependencies
+(GMP, MPFR, MPC, texinfo, bison, flex) for `make toolchain`.
 
 ## Repository layout
 

@@ -11,5 +11,6 @@ void kconsole_init(void);
 void kconsole_putc(char c);
 void kconsole_write(const char *s);
 void kconsole_write_hex32(uint32_t value);
+void kconsole_write_dec(uint32_t value);
 
 #endif

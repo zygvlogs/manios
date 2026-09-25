@@ -1,13 +1,18 @@
 # zkt/arch/i386/
 
-The first ManiOS target architecture. Will hold, in the order they're
-built (see [`docs/FOUNDING-PROPOSAL.md` §7](../../../docs/FOUNDING-PROPOSAL.md#7-first-bootable-prototype-plan-m1-in-detail)):
+The first ManiOS target architecture. Code generation is pinned to the
+80386 (`-march=i386`); see
+[M2 notes](../../../docs/milestones/M2-memory-management.md).
 
-- `boot.S` — Multiboot header + kernel entry stub
-- `linker.ld` — higher-half link layout
-- `gdt.c` / `gdt_flush.S` — flat GDT setup
-- `idt.c` / `isr.S` — IDT and CPU exception handlers
-- `pic.c` — 8259 PIC remap
-
-Empty until [M1 implementation tasks](../../../docs/FOUNDING-PROPOSAL.md#10-exact-first-implementation-tasks)
-begin.
+- `boot.S` — Multiboot header, `_start` (runs with paging off), boot
+  page table, jump to the higher half
+- `linker.ld` — higher-half link layout (VMA `0xC0000000` + physical)
+- `memlayout.h` — virtual memory layout constants, `P2V` / `V2P`
+- `cpu.h` — interrupt enable/halt, CR2, TLB flush
+- `io.h` — port I/O
+- `gdt.c` / `gdt_flush.S` — flat GDT
+- `idt.c` / `idt_flush.S` — IDT
+- `isr.S` / `isr.h` — CPU exception entry stubs, saved register layout
+- `exception.c` — exception dispatch, page-fault diagnostics
+- `pic.c` — 8259 PIC remap (all IRQs masked until M3)
+- `paging.c` — two-level paging behind `zkt/mm/vmm.h`

@@ -1,6 +1,6 @@
 #include "kconsole.h"
-#include "../drivers/serial.h"
-#include "../drivers/vga_text.h"
+#include "serial.h"
+#include "vga_text.h"
 
 static const char HEX_DIGITS[] = "0123456789abcdef";
 
@@ -35,4 +35,16 @@ void kconsole_write_hex32(uint32_t value)
 		value >>= 4;
 	}
 	kconsole_write(buf);
+}
+
+void kconsole_write_dec(uint32_t value)
+{
+	char buf[11];
+	int i = 10;
+	buf[i] = '\0';
+	do {
+		buf[--i] = (char)('0' + value % 10);
+		value /= 10;
+	} while (value);
+	kconsole_write(&buf[i]);
 }

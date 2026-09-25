@@ -1,12 +1,14 @@
 #include "vga_text.h"
 #include <stddef.h>
 #include <stdint.h>
+#include "memlayout.h"
 
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
 #define VGA_DEFAULT_COLOR 0x07 /* light grey on black */
+#define VGA_TEXT_PHYS 0xB8000
 
-static uint16_t *const vga_memory = (uint16_t *)0xB8000;
+static uint16_t *const vga_memory = P2V(VGA_TEXT_PHYS);
 static size_t vga_row = 0;
 static size_t vga_col = 0;
 

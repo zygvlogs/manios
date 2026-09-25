@@ -1,15 +1,20 @@
 #include <stdint.h>
+#include "cpu.h"
+#include "heap.h"
 #include "kconsole.h"
-#include "../arch/i386/gdt.h"
-#include "../arch/i386/idt.h"
-#include "../arch/i386/pic.h"
+#include "mm_selftest.h"
+#include "multiboot.h"
+#include "panic.h"
+#include "pmm.h"
+#include "vmm.h"
+#include "gdt.h"
+#include "idt.h"
+#include "pic.h"
 
-#define MULTIBOOT_BOOTLOADER_MAGIC 0x2BADB002
+#define MAX_MEM_REGIONS 64
 
-void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_addr)
+void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 {
-	(void)multiboot_info_addr; /* memory map parsing arrives with M2 */
-
 	gdt_init();
 	idt_init();
 	pic_remap_and_mask();
@@ -20,13 +25,29 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_addr)
 	kconsole_write("Milestone M1: kernel console reached.\n");
 
 	if (multiboot_magic != MULTIBOOT_BOOTLOADER_MAGIC) {
-		kconsole_write("warning: not booted via a Multiboot-compliant loader\n");
+		panic("not booted by a Multiboot loader; no memory map available");
 	}
+
+	struct mem_region regions[MAX_MEM_REGIONS];
+	size_t region_count = multiboot_memory_regions(multiboot_info_phys, regions,
+	                                               MAX_MEM_REGIONS);
+	pmm_init(regions, region_count);
+	vmm_init();
+	heap_init();
+
+	kconsole_write("memory: ");
+	kconsole_write_dec(pmm_usable_frames() * 4);
+	kconsole_write(" KiB usable, ");
+	kconsole_write_dec(pmm_free_frames());
+	kconsole_write(" frames free\n");
+
+	mm_selftest();
+	kconsole_write("Milestone M2: memory manager online (self-test passed).\n");
 
 	kconsole_write("ZKT> ");
 
-	__asm__ volatile ("sti");
+	cpu_enable_interrupts();
 	for (;;) {
-		__asm__ volatile ("hlt");
+		cpu_wait_for_interrupt();
 	}
 }

@@ -1,5 +1,12 @@
 #include "isr.h"
-#include "../kernel/panic.h"
+#include "cpu.h"
+#include "kconsole.h"
+#include "panic.h"
+
+#define EXC_PAGE_FAULT 14
+#define PF_PRESENT (1u << 0) /* 0 = page not present, 1 = protection violation */
+#define PF_WRITE   (1u << 1)
+#define PF_USER    (1u << 2)
 
 /* Exception names/order match the Intel SDM vol. 3 vector list (public
  * architecture reference); vectors without an assigned Intel meaning
@@ -38,5 +45,14 @@ void isr_handler(registers_t *regs)
 {
 	const char *name = (regs->int_no < 32) ? EXCEPTION_NAMES[regs->int_no]
 	                                        : "Unknown exception";
+
+	if (regs->int_no == EXC_PAGE_FAULT) {
+		kconsole_write("\npage fault at 0x");
+		kconsole_write_hex32(cpu_read_cr2());
+		kconsole_write((regs->err_code & PF_PRESENT) ? ": protection violation"
+		                                             : ": page not present");
+		kconsole_write((regs->err_code & PF_WRITE) ? ", write" : ", read");
+		kconsole_write((regs->err_code & PF_USER) ? ", user mode\n" : ", kernel mode\n");
+	}
 	panic_dump(name, regs);
 }

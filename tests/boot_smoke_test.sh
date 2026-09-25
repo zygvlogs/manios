@@ -1,14 +1,28 @@
 #!/usr/bin/env bash
-# M1 CI gate: boots the kernel headlessly in QEMU and checks that the
-# ZKT console banner appears on the serial port. See
-# docs/FOUNDING-PROPOSAL.md §7, step 11.
+# CI gate: boots the kernel headlessly in QEMU under several machine
+# configurations and checks the serial console for each milestone's
+# marker, the final prompt, and the absence of a panic.
 #
 # Usage: tests/boot_smoke_test.sh [path-to-kernel-elf]
 set -euo pipefail
 
 KERNEL="${1:-build/manios-zkt.elf}"
-EXPECTED="Milestone M1: kernel console reached."
-TIMEOUT_SECS=10
+TIMEOUT_SECS=15
+PROMPT="ZKT> "
+EXPECTED=(
+	"Milestone M1: kernel console reached."
+	"Milestone M2: memory manager online (self-test passed)."
+)
+
+# "<RAM MiB> <QEMU CPU model> <why>". QEMU's oldest model is the 486;
+# it faults on post-386 instructions such as CMOV, which is what keeps
+# the -march=i386 build honest. A 486 has no PAE, so the >4 GiB case
+# needs a newer model.
+CASES=(
+	"8 486 small old-hardware machine"
+	"256 486 typical memory size"
+	"4096 qemu32 RAM above 4 GiB must be ignored"
+)
 
 if [ ! -f "$KERNEL" ]; then
 	echo "error: kernel image not found at $KERNEL (build it first: make)" >&2
@@ -16,21 +30,45 @@ if [ ! -f "$KERNEL" ]; then
 fi
 
 LOG="$(mktemp)"
-trap 'rm -f "$LOG"' EXIT
+QEMU_ERR="$(mktemp)"
+trap 'rm -f "$LOG" "$QEMU_ERR"' EXIT
 
-timeout "${TIMEOUT_SECS}s" qemu-system-i386 \
-	-kernel "$KERNEL" \
-	-serial "file:$LOG" \
-	-display none \
-	-no-reboot -no-shutdown \
-	-m 32 || true
+run_case() {
+	local mem="$1" cpu="$2"
+	: >"$LOG"
+	qemu-system-i386 -kernel "$KERNEL" -cpu "$cpu" -m "$mem" \
+		-serial "file:$LOG" -display none -no-reboot -no-shutdown 2>"$QEMU_ERR" &
+	local pid=$!
+	local deadline=$((SECONDS + TIMEOUT_SECS))
+	while ((SECONDS < deadline)) && kill -0 "$pid" 2>/dev/null; do
+		if grep -qF -e "$PROMPT" -e "ZKT PANIC" "$LOG"; then
+			break
+		fi
+		sleep 0.2
+	done
+	kill "$pid" 2>/dev/null || true
+	wait "$pid" 2>/dev/null || true
 
-if grep -qF "$EXPECTED" "$LOG"; then
-	echo "PASS: ZKT kernel console banner found in serial output"
-	exit 0
-fi
+	grep -qF "ZKT PANIC" "$LOG" && return 1
+	for line in "${EXPECTED[@]}" "$PROMPT"; do
+		grep -qF "$line" "$LOG" || return 1
+	done
+	return 0
+}
 
-echo "FAIL: expected banner not found in serial output within ${TIMEOUT_SECS}s"
-echo "--- serial log ---"
-cat "$LOG"
-exit 1
+failed=0
+for c in "${CASES[@]}"; do
+	read -r mem cpu why <<<"$c"
+	if run_case "$mem" "$cpu"; then
+		echo "PASS: ${mem} MiB, cpu=${cpu} (${why})"
+	else
+		echo "FAIL: ${mem} MiB, cpu=${cpu} (${why})"
+		echo "--- serial log ---"
+		cat "$LOG"
+		echo "--- qemu stderr ---"
+		cat "$QEMU_ERR"
+		echo "-------------------"
+		failed=1
+	fi
+done
+exit "$failed"

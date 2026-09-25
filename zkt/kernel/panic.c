@@ -1,11 +1,24 @@
 #include "panic.h"
 #include "kconsole.h"
+#include "cpu.h"
 
-__attribute__((noreturn)) void panic_dump(const char *msg, registers_t *regs)
+static void panic_header(const char *msg)
 {
 	kconsole_write("\n*** ZKT PANIC: ");
 	kconsole_write(msg);
 	kconsole_write(" ***\n");
+}
+
+__attribute__((noreturn)) void panic(const char *msg)
+{
+	panic_header(msg);
+	kconsole_write("System halted.\n");
+	cpu_halt_forever();
+}
+
+__attribute__((noreturn)) void panic_dump(const char *msg, registers_t *regs)
+{
+	panic_header(msg);
 
 	kconsole_write("int_no=0x");
 	kconsole_write_hex32(regs->int_no);
@@ -32,9 +45,5 @@ __attribute__((noreturn)) void panic_dump(const char *msg, registers_t *regs)
 	kconsole_write("\n");
 
 	kconsole_write("System halted.\n");
-
-	__asm__ volatile ("cli");
-	for (;;) {
-		__asm__ volatile ("hlt");
-	}
+	cpu_halt_forever();
 }

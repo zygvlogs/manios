@@ -1,8 +1,11 @@
 # tests/
 
-Boot smoke tests and unit tests. First test (M1): a headless QEMU boot
-with a timeout, asserting the ZKT kernel console banner appears on the
-serial port — this becomes the first CI gate.
+- `boot_smoke_test.sh` (`make test`) — boots the kernel headlessly in
+  QEMU under several RAM sizes and CPU models, including a 486, which
+  faults on post-386 instructions. It requires every milestone marker
+  and the `ZKT> ` prompt on the serial port, and fails on any
+  `ZKT PANIC`. The in-kernel self-tests (e.g. `zkt/mm/mm_selftest.c`)
+  run during that boot, so their result is part of the gate.
 
-See [`docs/FOUNDING-PROPOSAL.md` §7, step 11](../docs/FOUNDING-PROPOSAL.md#7-first-bootable-prototype-plan-m1-in-detail).
-Empty until then.
+Not yet wired into CI (GitHub Actions); see
+[`docs/FOUNDING-PROPOSAL.md` §12](../docs/FOUNDING-PROPOSAL.md#12-m1-status-achieved).

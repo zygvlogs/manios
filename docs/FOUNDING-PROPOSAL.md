@@ -2,7 +2,8 @@
 
 **Status:** D1–D4 accepted (§11, 2026-09-25). **M1 achieved**: ManiOS
 boots on i386 and reaches a ZKT kernel console, verified in QEMU
-(`make test`) — see §7 and §12.
+(`make test`) — see §7 and §12. **M2 achieved**: memory management —
+see [docs/milestones/M2-memory-management.md](milestones/M2-memory-management.md).
 
 **Scope of this document:** Originally the response to the ManiOS
 founding prompt's "First Task" — architecture, strategy, and planning.
@@ -350,7 +351,11 @@ warns against implicitly.
   `--target=i686-elf`, no host libc), per the well-established OSDev
   cross-compiler practice — this is what prevents the kernel binary from
   accidentally depending on the build host's libc/ABI. Build scripts live
-  under `tools/`.
+  under `tools/`. Despite the `i686` in its name, this compiler is only
+  a freestanding x86 target; its *default* code generation is
+  `-march=pentiumpro`, so the Makefile pins `-march=i386` (and the
+  assembler's `-march=i386`) to keep the kernel runnable on a 386/486.
+  This was found at M2, where the default emitted `CMOV`.
 - Assembly in GAS (`.S` files, AT&T syntax) to keep a single assembler
   toolchain (no separate NASM dependency) — open to revisiting if NASM's
   Intel syntax proves meaningfully better for readability once real
@@ -363,7 +368,8 @@ warns against implicitly.
 - **Primary target: QEMU** (`qemu-system-i386`), scriptable, fast,
   serial-console-friendly, and CI-friendly (headless boot + serial log
   capture is enough to assert "reached the ZKT kernel console" in an
-  automated smoke test).
+  automated smoke test). Tests boot on QEMU's `486` CPU model, its
+  oldest, which faults on post-386 instructions such as `CMOV`.
 - **Secondary target: real old x86 hardware**, tested manually/
   periodically once QEMU boot is solid — real hardware surfaces BIOS
   quirks and timing bugs QEMU won't, but is not the fast inner-loop
@@ -437,7 +443,7 @@ a concrete shape rather than only a diagram.
 |---|---|---|
 | M0 | This proposal + repo scaffolding | — |
 | M1 | **Achieved.** Multiboot kernel reaches a ZKT kernel console (serial + VGA text) | §4 toolchain, §2.1–2.2 |
-| M2 | Physical + virtual memory management, kernel heap | M1 |
+| M2 | **Achieved** ([notes](milestones/M2-memory-management.md)). Physical + virtual memory management, kernel heap | M1 |
 | M3 | Full interrupt/exception handling, PIC remap, PIT timer IRQ | M1 |
 | M4 | Cooperative then preemptive multitasking (kernel threads) | M2, M3 |
 | M5 | Driver framework + keyboard, VGA, serial, PIT drivers formalized | M3, M4 |
@@ -618,7 +624,11 @@ With D1–D4 confirmed, work proceeded to §10's task list, starting with M1
 
 ## 12. M1 Status: Achieved
 
-All of §7's 12 steps and §10's task list are implemented and verified:
+§7's steps and §10's task list are implemented and verified, with one
+exception: the smoke test is **not yet wired into CI**. §10 task 12
+called for that, and an earlier version of this section wrongly said
+everything was done. There is no GitHub Actions workflow yet; the test
+runs locally via `make test`. Everything else:
 
 - `zkt/arch/i386/boot.S`, `linker.ld`, `gdt.c`/`gdt_flush.S`,
   `idt.c`/`idt_flush.S`, `zkt/arch/i386/isr.S` (exception stubs) +
@@ -658,5 +668,6 @@ Multiboot loader scans for the header, and QEMU refused to boot the
 image (`Error loading uncompressed kernel without PVH ELF Note`). Fixed
 by declaring `.section .multiboot, "a"` explicitly in `boot.S`.
 
-Proceeding to M2 (physical + virtual memory management, kernel heap)
-is unblocked.
+M2 (memory management) followed; it has its own milestone note,
+[docs/milestones/M2-memory-management.md](milestones/M2-memory-management.md),
+per the one-design-note-per-milestone practice in §6.

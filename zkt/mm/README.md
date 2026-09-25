@@ -1,9 +1,13 @@
 # zkt/mm/
 
-Memory management: physical memory manager (bitmap frame allocator over
-the boot-time memory map), virtual memory manager (i386 two-level
-paging, higher-half kernel mapping), and the kernel heap
-(`kmalloc`/`kfree` free-list allocator).
+Architecture-neutral memory management. Design and verification:
+[M2 notes](../../docs/milestones/M2-memory-management.md).
 
-See [`docs/FOUNDING-PROPOSAL.md` §2.3–2.5](../../docs/FOUNDING-PROPOSAL.md#23-physical-memory-management-pmm).
-Targeted at milestone M2.
+- `pmm.c` — physical frame allocator: one bit per 4 KiB frame, built
+  from a boot-protocol-neutral `struct mem_region` list
+- `vmm.h` — virtual memory interface (map / unmap / translate); the
+  i386 implementation is `zkt/arch/i386/paging.c`
+- `heap.c` — `kmalloc` / `kfree`, a first-fit free list that grows the
+  heap region on demand
+- `mm_selftest.c` — boot-time checks of all three, which
+  `make test` gates on
