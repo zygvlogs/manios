@@ -3,7 +3,8 @@
 #include <stdint.h>
 #include "io.h"
 #include "irq.h"
-#include "kconsole.h"
+#include "input.h"
+#include "zkt_abi.h"
 
 #define PS2_DATA    0x60
 #define PS2_STATUS  0x64
@@ -11,6 +12,7 @@
 
 #define STATUS_OUTPUT_FULL 0x01
 #define STATUS_INPUT_FULL  0x02
+#define STATUS_AUX_DATA    0x20
 
 #define CMD_READ_CONFIG  0x20
 #define CMD_WRITE_CONFIG 0x60
@@ -30,6 +32,17 @@
 #define SC_RSHIFT     0x36
 #define SC_CAPSLOCK   0x3A
 #define SC_ENTER      0x1C
+#define SC_F1         0x3B
+#define SC_F10        0x44
+
+/* Extended (0xE0-prefixed) keys that have a ZKT_KEY_ code. */
+static const struct {
+	uint8_t code, key;
+} EXTENDED_KEYS[] = {
+	{ 0x48, ZKT_KEY_UP },   { 0x50, ZKT_KEY_DOWN }, { 0x4B, ZKT_KEY_LEFT },  { 0x4D, ZKT_KEY_RIGHT },
+	{ 0x47, ZKT_KEY_HOME }, { 0x4F, ZKT_KEY_END },  { 0x49, ZKT_KEY_PGUP },  { 0x51, ZKT_KEY_PGDN },
+	{ 0x52, ZKT_KEY_INSERT }, { 0x53, ZKT_KEY_DELETE },
+};
 
 /* Scancode set 1, US layout, codes 0x00-0x39; 0 = no character. Split
  * into one literal per row of the keyboard. */
@@ -64,6 +77,9 @@ static void send_command(uint8_t cmd)
 
 static void kbd_irq(void)
 {
+	if (inb(PS2_STATUS) & STATUS_AUX_DATA) {
+		return; /* the mouse's byte: its IRQ handler takes it */
+	}
 	uint8_t code = inb(PS2_DATA);
 	if (code == SC_EXTENDED) {
 		extended = true;
@@ -80,13 +96,25 @@ static void kbd_irq(void)
 		return;
 	}
 	if (was_extended) {
-		if (code == SC_ENTER && !released) { /* keypad Enter */
-			console_input('\n');
+		if (released) {
+			return;
 		}
-		return; /* arrows, Home/End etc.: nothing to send yet */
+		if (code == SC_ENTER) { /* keypad Enter */
+			input_key('\n');
+		}
+		for (unsigned i = 0; i < sizeof(EXTENDED_KEYS) / sizeof(EXTENDED_KEYS[0]); i++) {
+			if (EXTENDED_KEYS[i].code == code) {
+				input_key(EXTENDED_KEYS[i].key);
+			}
+		}
+		return;
 	}
 	if (code == SC_LSHIFT || code == SC_RSHIFT) {
 		shift = !released;
+		return;
+	}
+	if (!released && code >= SC_F1 && code <= SC_F10) {
+		input_key((uint8_t)(ZKT_KEY_F1 + code - SC_F1));
 		return;
 	}
 	if (released || code >= sizeof(NORMAL)) {
@@ -105,7 +133,7 @@ static void kbd_irq(void)
 		c &= 0x1F;
 	}
 	if (c) {
-		console_input(c);
+		input_key((uint8_t)c);
 	}
 }
 

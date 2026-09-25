@@ -68,6 +68,19 @@ int process_fd_install(struct process *p, struct file *f)
 	return -EMFILE;
 }
 
+int process_fd_install_at(struct process *p, int fd, struct file *f)
+{
+	if (fd < 0 || fd >= PROC_FD_MAX) {
+		return -EBADF;
+	}
+	struct file *old = p->fds[fd];
+	p->fds[fd] = f;
+	if (old) {
+		vfs_close(old);
+	}
+	return fd;
+}
+
 int process_fd_close(struct process *p, int fd)
 {
 	struct file *f = process_fd(p, fd);
@@ -263,6 +276,31 @@ int process_spawn(const char *path, int argc, char *const argv[], struct process
 		return -ENOMEM;
 	}
 	return (int)p->pid;
+}
+
+int process_reap(struct process *parent, int *status)
+{
+	uint32_t flags = cpu_irq_save();
+	bool children = false;
+	struct process *p = processes;
+	for (; p; p = p->next) {
+		if (p->parent == parent && !p->orphaned && !p->waited_on) {
+			children = true;
+			if (p->exited) {
+				break;
+			}
+		}
+	}
+	if (!p) {
+		cpu_irq_restore(flags);
+		return children ? 0 : -ECHILD;
+	}
+	unlink_process(p);
+	cpu_irq_restore(flags);
+	int pid = (int)p->pid;
+	*status = p->status;
+	kfree(p);
+	return pid;
 }
 
 int process_wait(struct process *parent, int pid, int *status)

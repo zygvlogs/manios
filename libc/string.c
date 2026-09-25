@@ -243,6 +243,7 @@ char *strerror(int err)
 	case ERANGE:       return "result too large";
 	case ENAMETOOLONG: return "file name too long";
 	case ENOSYS:       return "function not implemented";
+	case EPIPE:        return "broken pipe";
 	case EPROTO:       return "protocol error";
 	case EADDRINUSE:   return "address in use";
 	case ENETUNREACH:  return "network unreachable";

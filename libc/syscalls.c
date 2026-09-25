@@ -42,6 +42,14 @@ long write(int fd, const void *buf, size_t len) { return SC3(SYS_WRITE, fd, buf,
 int open(const char *path, int mode)            { return (int)SC2(SYS_OPEN, path, mode); }
 long lseek(int fd, long offset, int whence)     { return SC3(SYS_SEEK, fd, offset, whence); }
 int close(int fd)                               { return (int)SC1(SYS_CLOSE, fd); }
+int pipe(int fds[2])                            { return (int)SC1(SYS_PIPE, fds); }
+int dup(int fd)                                 { return (int)SC1(SYS_DUP, fd); }
+int dup2(int fd, int newfd)                     { return (int)SC2(SYS_DUP2, fd, newfd); }
+int poll(struct zkt_pollfd *fds, int count, int timeout_ms)
+{
+	return (int)SC3(SYS_POLL, fds, count, timeout_ms);
+}
+int reap(int *status)                           { return (int)SC1(SYS_REAP, status); }
 int fstat(int fd, struct zkt_dirent *out)       { return (int)SC2(SYS_FSTAT, fd, out); }
 int spawn(const char *path, char *const argv[]) { return (int)SC2(SYS_SPAWN, path, argv); }
 int wait(int pid, int *status)                  { return (int)SC2(SYS_WAIT, pid, status); }
@@ -55,6 +63,12 @@ int bind(const char *new_path, const char *old_path, int flag)
 int unbind(const char *old_path)                { return (int)SC1(SYS_UNBIND, old_path); }
 int nsfork(void)                                { return (int)SC0(SYS_NSFORK); }
 int chdir(const char *path)                     { return (int)SC1(SYS_CHDIR, path); }
+
+int mountfd(int fd, const char *old_path, int flag, const char *aname)
+{
+	return (int)check(zkt_syscall(SYS_MOUNTFD, (uint32_t)fd, (uint32_t)old_path, (uint32_t)flag,
+	                              (uint32_t)aname, 0));
+}
 
 int mount(const char *dial, const char *old_path, int flag, const char *aname)
 {

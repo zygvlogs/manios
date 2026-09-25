@@ -84,6 +84,22 @@ int vfs_open(const char *path, int mode, struct file **out)
 	return 0;
 }
 
+int vfs_open_vnode(struct vnode *v, int mode, const char *name, struct file **out)
+{
+	struct file *f = kmalloc(sizeof(*f));
+	if (!f) {
+		return -ENOMEM;
+	}
+	memset(f, 0, sizeof(*f));
+	f->refs = 1;
+	f->mode = mode;
+	f->loc.count = 1;
+	f->loc.v[0] = v;
+	strlcpy(f->name, name, sizeof(f->name));
+	*out = f;
+	return 0;
+}
+
 long vfs_read(struct file *f, void *buf, size_t len)
 {
 	struct vnode *v = f->loc.v[0];
@@ -209,6 +225,17 @@ int vfs_readdir_at(struct file *f, uint32_t entry, struct dirent *out)
 		}
 	}
 	return vfs_readdir(f, out);
+}
+
+struct vnode *vfs_vnode(struct file *f)
+{
+	return f->loc.v[0];
+}
+
+int vfs_poll(struct file *f)
+{
+	struct vnode *v = f->loc.v[0];
+	return v->ops->poll ? v->ops->poll(v) : 1;
 }
 
 enum vnode_type vfs_type(const struct file *f)

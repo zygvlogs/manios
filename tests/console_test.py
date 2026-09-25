@@ -32,7 +32,7 @@ KEY_NAMES = {" ": "spc", "\n": "ret", "\b": "backspace", "-": "minus",
 SHIFTED = {"!": "1", "@": "2", "#": "3", "$": "4", "%": "5", "^": "6",
            "&": "7", "*": "8", "(": "9", ")": "0", "_": "minus",
            "+": "equal", ":": "semicolon", "<": "comma", ">": "dot",
-           "?": "slash", '"': "apostrophe"}
+           "?": "slash", '"': "apostrophe", "|": "backslash"}
 
 
 class TestFailure(Exception):
@@ -341,7 +341,7 @@ SCENARIOS = [
     {
         "name": "no disk",
         "disk": None,
-        "boot": ["devices: cons com1 vga fb fbctl\r\n", "Milestone M9: libc, ABI v1 and shell online"],
+        "boot": ["devices: cons com1 vga null kbd mouse fb fbctl time\r\n", "Milestone M9: libc, ABI v1 and shell online"],
         "shell": [
             ("serial", "ls /bin", ["cat", "echo", "ls", "sh", "wc"]),
             ("serial", "echo 'a;b' c\\;d; echo e", ["\r\na;b c;d\r\ne\r\n"]),
@@ -357,6 +357,16 @@ SCENARIOS = [
             ("serial", "newns; bind /boot /n; ls /n", ["bin/", "etc/"]),
             ("serial", "sh -c 'ls /n; exit 3'; echo done", ["bin/", "\r\ndone\r\n"]),
             ("serial", "uptime", ["up "]),
+            # Pipelines and redirection (M12); the shell is still in /boot.
+            ("serial", "echo a b c | wc", ["\r\n      1       3       6\r\n"]),
+            ("keyboard", "cat < etc/motd | cat | wc", ["\r\n      1       3      19\r\n"]),
+            ("serial", "echo hidden > /dev/null; echo shown", ["\r\nshown\r\n", "!\r\nhidden\r\n"]),
+            ("serial", "echo x > /boot/nosuch", ["sh: /boot/nosuch: no such file or directory"]),
+            ("serial", "nosuch | wc", ["sh: nosuch: not found", "      0       0       0"]),
+            ("serial", "| wc", ["sh: empty command in a pipeline"]),
+            ("serial", "cat <", ["sh: < needs a file"]),
+            ("serial", "cd / | wc", ["sh: cd: a builtin can't be in a pipeline or redirected"]),
+            ("serial", "echo '|' \"<\"", ["\r\n| <\r\n"]),
             ("serial", "/boot/test/ctest", ["ctest: all ", " checks passed", "!FAIL"]),
         ],
         "cases": [
@@ -395,7 +405,7 @@ SCENARIOS = [
         "disk": write_patterned_disk,
         "boot": ["ata0: QEMU HARDDISK, 8 MiB, LBA", "ata0: CHS cross-check passed",
                  "ata0p1: type 0x06, sectors 2048-16383",
-                 "devices: cons com1 vga ata0 ata0p1 fb fbctl\r\n"],
+                 "devices: cons com1 vga null kbd mouse ata0 ata0p1 fb fbctl time\r\n"],
         "cases": [
             ("serial", "devices", ["ata0     block  16384 x 512 bytes (8 MiB)",
                                    "ata0p1   block  14336 x 512 bytes (7 MiB)"]),
@@ -445,7 +455,7 @@ SCENARIOS = [
     {
         "name": "partitionless FAT disk",
         "disk": write_superfloppy,
-        "boot": ["devices: cons com1 vga ata0 fb fbctl\r\n"],
+        "boot": ["devices: cons com1 vga null kbd mouse ata0 fb fbctl time\r\n"],
         "cases": [],
     },
 ]

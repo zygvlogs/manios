@@ -16,6 +16,15 @@ long write(int fd, const void *buf, size_t len);
 long lseek(int fd, long offset, int whence);
 int open(const char *path, int mode);       /* OREAD, OWRITE, ORDWR */
 int close(int fd);
+/* A connected pair: fds[0] and fds[1] each read what the other writes.
+ * Each write is one message (a read returns bytes of one message only);
+ * an empty write reads as end of file. */
+int pipe(int fds[2]);
+int dup(int fd);
+int dup2(int fd, int newfd);
+/* Waits up to timeout_ms (-1: forever) until a read of one of the
+ * files would not block; sets each ready flag, returns how many. */
+int poll(struct zkt_pollfd *fds, int count, int timeout_ms);
 int fstat(int fd, struct zkt_dirent *out);
 
 /* Starts the program at `path` with the NULL-terminated argv; it shares
@@ -24,6 +33,9 @@ int spawn(const char *path, char *const argv[]);
 /* Waits for child `pid`; stores its status (ZKT_WAIT_*) if non-NULL. */
 int wait(int pid, int *status);
 int getpid(void);
+/* An exited child's pid (status stored), without waiting: 0 while all
+ * are running, -1 with ECHILD when there are none. */
+int reap(int *status);
 
 int sleep_ms(uint32_t ms);
 uint32_t uptime_ms(void); /* never fails */
@@ -46,6 +58,9 @@ int nsfork(void); /* from now on, binds made here are private to this process */
  * old_path with `flag`, as bind() does. aname selects an export; NULL
  * or "" for the default. */
 int mount(const char *dial, const char *old_path, int flag, const char *aname);
+/* The same, with the ZRP server on the other end of pipe `fd`: how a
+ * program serves files to others (zrpsrv.h does the serving). */
+int mountfd(int fd, const char *old_path, int flag, const char *aname);
 
 /* A raw system call: returns the kernel's result (a negated error
  * number on failure) and leaves errno alone. */

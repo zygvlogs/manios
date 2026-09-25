@@ -119,6 +119,10 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	gfx_selftest();
 	kprintf("Milestone M11: graphics online (framebuffer, 2D library; self-test passed).\n");
 
+	channel_selftest();
+	kprintf("Milestone M12: pipes, input devices and userspace file servers online "
+	        "(self-test passed).\n");
+
 	if (!thread_create("console", console_main, 0)) {
 		panic("could not start the console thread");
 	}

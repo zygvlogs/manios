@@ -28,6 +28,12 @@ struct char_device_ops {
 	long (*pread)(struct device *dev, uint32_t offset, void *buf, size_t len);
 	long (*pwrite)(struct device *dev, uint32_t offset, const void *buf, size_t len);
 	uint32_t (*size)(struct device *dev);
+	/* Optional: devfs calls open and close as a /dev file is opened and
+	 * its last reference goes; poll says whether a read would not block
+	 * (called with interrupts off). */
+	void (*open)(struct device *dev);
+	void (*close)(struct device *dev);
+	int (*poll)(struct device *dev);
 };
 
 struct block_device_ops {

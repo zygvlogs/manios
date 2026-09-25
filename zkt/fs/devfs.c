@@ -73,13 +73,24 @@ static long dev_write(struct vnode *v, uint32_t offset, const void *buf, size_t 
 
 static void dev_release(struct vnode *v)
 {
+	struct device *d = ((struct dev_node *)v)->dev;
+	if (d->class == DEVICE_CHAR && d->char_ops->close) {
+		d->char_ops->close(d);
+	}
 	kfree(v);
+}
+
+static int dev_poll(struct vnode *v)
+{
+	struct device *d = ((struct dev_node *)v)->dev;
+	return d->class == DEVICE_CHAR && d->char_ops->poll ? d->char_ops->poll(d) : 1;
 }
 
 static const struct vnode_ops dev_ops = {
 	.read = dev_read,
 	.write = dev_write,
 	.release = dev_release,
+	.poll = dev_poll,
 };
 
 static int root_walk(struct vnode *dir, const char *name, struct vnode **out)
@@ -98,6 +109,9 @@ static int root_walk(struct vnode *dir, const char *name, struct vnode **out)
 	n->vnode.size = device_bytes(d);
 	n->vnode.refs = 1;
 	n->dev = d;
+	if (d->class == DEVICE_CHAR && d->char_ops->open) {
+		d->char_ops->open(d);
+	}
 	*out = &n->vnode;
 	return 0;
 }

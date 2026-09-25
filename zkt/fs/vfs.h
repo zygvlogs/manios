@@ -12,10 +12,12 @@
 #define VFS_PATH_MAX 255
 #define VFS_UNION_MAX 8 /* members of one union directory */
 
+/* The same numbers as ZKT_TYPE_* (zkt_abi.h). */
 enum vnode_type {
 	VNODE_DIR,
 	VNODE_FILE,
 	VNODE_DEVICE,
+	VNODE_PIPE,
 };
 
 struct dirent {
@@ -38,6 +40,9 @@ struct vnode_ops {
 	int (*readdir)(struct vnode *dir, uint32_t index, struct dirent *out);
 	/* Called when the last reference goes; frees the vnode. */
 	void (*release)(struct vnode *v);
+	/* Whether a read would return without blocking: 1 or 0. Called with
+	 * interrupts off, so it must not block. NULL: always ready. */
+	int (*poll)(struct vnode *v);
 };
 
 /* Filesystems embed this in their own node structure. */
@@ -58,6 +63,9 @@ void vnode_unref(struct vnode *v);
  * can't be written fails at open (EISDIR, EROFS). */
 struct file;
 int vfs_open(const char *path, int mode, struct file **out);
+/* An open file for a vnode that no path reaches (a pipe end); takes
+ * over the caller's reference. */
+int vfs_open_vnode(struct vnode *v, int mode, const char *name, struct file **out);
 long vfs_read(struct file *f, void *buf, size_t len);
 long vfs_write(struct file *f, const void *buf, size_t len);
 /* Moves the file's offset (SEEK_SET/CUR/END, zkt_abi.h); returns it.
@@ -75,6 +83,10 @@ int vfs_readdir(struct file *f, struct dirent *out); /* 1, 0 at end, or error */
  * one read, or starts over when asked for an earlier one. */
 int vfs_readdir_at(struct file *f, uint32_t entry, struct dirent *out);
 enum vnode_type vfs_type(const struct file *f);
+/* The vnode an open file refers to (its first union member). */
+struct vnode *vfs_vnode(struct file *f);
+/* The vnode's poll operation (vfs.h): 1 if a read won't block. */
+int vfs_poll(struct file *f);
 uint32_t vfs_size(const struct file *f);
 /* Drops a reference; the file closes with the last one. */
 void vfs_close(struct file *f);

@@ -15,6 +15,7 @@
 #define ZRP_PORT 5640
 #define ZRP_VERSION "ZRP1"
 #define ZRP_MSIZE 1472 /* the largest UDP payload one Ethernet frame carries */
+#define ZRP_CHANNEL_MSIZE 16384 /* over a local channel (a pipe) */
 #define ZRP_MSIZE_MIN 256
 #define ZRP_HEADER 7
 #define ZRP_NOTAG 0xFFFF
@@ -82,6 +83,12 @@ void zrp_server_stats(struct zrp_server *srv, struct zrp_server_stats *out);
  * "udp!A.B.C.D" or "A.B.C.D" (port 5640). Stores a reference to the
  * root vnode, and a label for the mount table. */
 int zrp_mount(const char *dial, const char *aname, struct vnode **root, char *label, size_t size);
+
+/* The same over a channel: `chan` is a pipe end whose other end a ZRP
+ * server reads and writes (SYS_MOUNTFD). The session takes its own
+ * reference to it. */
+int zrp_mount_channel(struct vnode *chan, const char *aname, struct vnode **root, char *label,
+                      size_t size);
 
 /* Client requests retransmitted since boot (for tests and `net`). */
 uint32_t zrp_client_retransmits(void);

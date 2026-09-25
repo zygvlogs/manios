@@ -12,4 +12,8 @@ void user_selftest(void);
 void libc_selftest(void);
 void gfx_selftest(void);
 
+/* The userspace file server test, /boot/test/ztest: a program serving
+ * files over a pipe mounted with SYS_MOUNTFD (M12). */
+void channel_selftest(void);
+
 #endif

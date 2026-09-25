@@ -54,5 +54,11 @@ uint32_t process_pid(const struct process *p);
 struct file *process_fd(struct process *p, int fd);
 int process_fd_install(struct process *p, struct file *f);
 int process_fd_close(struct process *p, int fd);
+/* Puts f at descriptor fd, closing what was there. */
+int process_fd_install_at(struct process *p, int fd, struct file *f);
+
+/* Collects any exited child without waiting: its pid (and status), 0
+ * if the children are all still running, -ECHILD if there are none. */
+int process_reap(struct process *parent, int *status);
 
 #endif

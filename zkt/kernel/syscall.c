@@ -4,6 +4,8 @@
 #include "kprintf.h"
 #include "kstring.h"
 #include "namespace.h"
+#include "pipe.h"
+#include "poll.h"
 #include "process.h"
 #include "sched.h"
 #include "timer.h"
@@ -15,11 +17,49 @@
 
 #define IO_CHUNK 512
 
+#define MESSAGE_MAX (256 * 1024)
+
+/* A pipe moves whole messages: one bounce buffer, one transfer. */
+static long read_message(struct file *f, uint8_t *ubuf, uint32_t len)
+{
+	if (!vmm_user_range_ok((uintptr_t)ubuf, len, true)) {
+		return -EFAULT;
+	}
+	size_t n = len < MESSAGE_MAX ? len : MESSAGE_MAX;
+	uint8_t *buf = kmalloc(n ? n : 1);
+	if (!buf) {
+		return -ENOMEM;
+	}
+	long got = vfs_read(f, buf, n);
+	if (got > 0 && copy_to_user(ubuf, buf, (size_t)got)) {
+		got = -EFAULT;
+	}
+	kfree(buf);
+	return got;
+}
+
+static long write_message(struct file *f, const uint8_t *ubuf, uint32_t len)
+{
+	if (len > MESSAGE_MAX) {
+		return -EINVAL;
+	}
+	uint8_t *buf = kmalloc(len ? len : 1);
+	if (!buf) {
+		return -ENOMEM;
+	}
+	long rc = copy_from_user(buf, ubuf, len) ? -EFAULT : vfs_write(f, buf, len);
+	kfree(buf);
+	return rc;
+}
+
 static long sys_read(struct process *p, int fd, uint8_t *ubuf, uint32_t len)
 {
 	struct file *f = process_fd(p, fd);
 	if (!f) {
 		return -EBADF;
+	}
+	if (vfs_type(f) == VNODE_PIPE) {
+		return read_message(f, ubuf, len);
 	}
 	if (!len) {
 		return 0;
@@ -79,6 +119,9 @@ static long sys_write(struct process *p, int fd, const uint8_t *ubuf, uint32_t l
 	struct file *f = process_fd(p, fd);
 	if (!f) {
 		return -EBADF;
+	}
+	if (vfs_type(f) == VNODE_PIPE) {
+		return write_message(f, ubuf, len);
 	}
 	uint8_t chunk[IO_CHUNK];
 	uint32_t done = 0;
@@ -251,6 +294,97 @@ static long sys_mount(struct process *p, const char *udial, const char *uold, in
 	return rc;
 }
 
+static long sys_pipe(struct process *p, int *ufds)
+{
+	struct vnode *ends[2];
+	int rc = pipe_create(ends);
+	if (rc) {
+		return rc;
+	}
+	/* Each end's reference passes to its file; a file that can't be
+	 * made leaves its reference with us to drop. */
+	struct file *files[2] = { 0, 0 };
+	for (int i = 0; i < 2; i++) {
+		if (vfs_open_vnode(ends[i], ORDWR, "pipe", &files[i]) != 0) {
+			files[i] = 0;
+			vnode_unref(ends[i]);
+			rc = -ENOMEM;
+		}
+	}
+	int fds[2] = { -1, -1 };
+	if (rc == 0) {
+		fds[0] = process_fd_install(p, files[0]);
+		fds[1] = fds[0] < 0 ? -1 : process_fd_install(p, files[1]);
+		rc = fds[0] < 0 ? fds[0] : fds[1] < 0 ? fds[1] : 0;
+	}
+	if (rc == 0 && copy_to_user(ufds, fds, sizeof(fds))) {
+		rc = -EFAULT;
+	}
+	if (rc) {
+		for (int i = 0; i < 2; i++) {
+			if (fds[i] >= 0) {
+				process_fd_close(p, fds[i]);
+			} else if (files[i]) {
+				vfs_close(files[i]);
+			}
+		}
+	}
+	return rc;
+}
+
+static long sys_dup2(struct process *p, int fd, int newfd)
+{
+	struct file *f = process_fd(p, fd);
+	if (!f || newfd < 0 || newfd >= PROC_FD_MAX) {
+		return -EBADF;
+	}
+	if (fd == newfd) {
+		return newfd;
+	}
+	return process_fd_install_at(p, newfd, vfs_dup(f));
+}
+
+static long sys_reap(struct process *p, int *ustatus)
+{
+	int status;
+	int pid = process_reap(p, &status);
+	if (pid > 0 && ustatus && copy_to_user(ustatus, &status, sizeof(status))) {
+		return -EFAULT;
+	}
+	return pid;
+}
+
+static long sys_mountfd(struct process *p, int fd, const char *uold, int flag, const char *uaname)
+{
+	char aname[VFS_NAME_MAX + 1] = "", old_path[VFS_PATH_MAX + 1], label[40];
+	enum bind_flag how;
+	struct file *f = process_fd(p, fd);
+	if (!f) {
+		return -EBADF;
+	}
+	if (vfs_type(f) != VNODE_PIPE) {
+		return -EINVAL;
+	}
+	long rc = copy_path(p, old_path, uold);
+	if (rc >= 0 && uaname) {
+		rc = copy_string_from_user(aname, uaname, sizeof(aname));
+	}
+	if (rc >= 0) {
+		rc = bind_flag(flag, &how);
+	}
+	if (rc < 0) {
+		return rc;
+	}
+	struct vnode *root;
+	rc = zrp_mount_channel(vfs_vnode(f), aname, &root, label, sizeof(label));
+	if (rc) {
+		return rc;
+	}
+	rc = vfs_mount(root, label, old_path, how);
+	vnode_unref(root);
+	return rc;
+}
+
 static long sys_chdir(struct process *p, const char *upath)
 {
 	char path[VFS_PATH_MAX + 1];
@@ -320,10 +454,26 @@ long syscall_dispatch(uint32_t num, uint32_t a0, uint32_t a1, uint32_t a2,
 	case SYS_SBRK:   return process_sbrk(p, (int32_t)a0);
 	case SYS_CHDIR:  return sys_chdir(p, (const char *)a0);
 	case SYS_GETCWD: return sys_getcwd(p, (char *)a0, a1);
+	case SYS_POLL:   return poll_files(p, (void *)a0, a1, (int32_t)a2);
+	case SYS_PIPE:   return sys_pipe(p, (int *)a0);
+	case SYS_DUP: {
+		struct file *f = process_fd(p, (int)a0);
+		if (!f) {
+			return -EBADF;
+		}
+		int fd = process_fd_install(p, vfs_dup(f));
+		if (fd < 0) {
+			vfs_close(f);
+		}
+		return fd;
+	}
+	case SYS_DUP2:   return sys_dup2(p, (int)a0, (int)a1);
+	case SYS_REAP:   return sys_reap(p, (int *)a0);
 	case SYS_SEEK: {
 		struct file *f = process_fd(p, (int)a0);
 		return f ? vfs_seek(f, (int32_t)a1, (int)a2) : -EBADF;
 	}
+	case SYS_MOUNTFD: return sys_mountfd(p, (int)a0, (const char *)a1, (int)a2, (const char *)a3);
 	case SYS_MOUNT:  return sys_mount(p, (const char *)a0, (const char *)a1, (int)a2,
 	                                  (const char *)a3);
 	default:         return -ENOSYS;

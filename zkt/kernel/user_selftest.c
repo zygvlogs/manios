@@ -105,3 +105,8 @@ void gfx_selftest(void)
 {
 	run_checked("/boot/test/gtest");
 }
+
+void channel_selftest(void)
+{
+	run_checked("/boot/test/ztest");
+}

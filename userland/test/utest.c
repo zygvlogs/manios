@@ -72,6 +72,16 @@ static int run(const char *path, const char *arg)
 	return status;
 }
 
+/* Digits only, and a time after 2020. */
+static int strtol_ok(const char *s)
+{
+	long v = 0;
+	for (; *s >= '0' && *s <= '9'; s++) {
+		v = v * 10 + (*s - '0');
+	}
+	return *s == '\n' && v > 1577836800;
+}
+
 static int exists(const char *path)
 {
 	int fd = open(path, OREAD);
@@ -277,6 +287,100 @@ static void test_sbrk(void)
 	check(run(FAULT, "shrunk") == (ZKT_WAIT_KILLED | 14), "memory given back by sbrk faults", 0);
 }
 
+/* Pipes, descriptors, poll, reap (M12). */
+static void test_pipes(void)
+{
+	int fds[2], status;
+	char buf[64];
+	check(pipe(fds) == 0 && fds[0] >= 3 && fds[1] > fds[0], "pipe", 0);
+	check(write(fds[0], "hello", 5) == 5 && write(fds[0], "world!", 6) == 6, "writes to a pipe", 0);
+	check(read(fds[1], buf, sizeof(buf)) == 5 && !memcmp(buf, "hello", 5),
+	      "a read returns one message", 0);
+	check(read(fds[1], buf, 3) == 3 && !memcmp(buf, "wor", 3) && read(fds[1], buf, 10) == 3
+	      && !memcmp(buf, "ld!", 3), "a short read leaves the rest of the message", 0);
+	check(write(fds[1], "back", 4) == 4 && read(fds[0], buf, sizeof(buf)) == 4,
+	      "a pipe works in both directions", 0);
+	check(write(fds[0], "", 0) == 0 && read(fds[1], buf, sizeof(buf)) == 0,
+	      "an empty write reads as end of file", 0);
+
+	struct zkt_pollfd pf[2] = { { fds[1], 1 }, { fds[0], 1 } };
+	check(poll(pf, 2, 0) == 0 && !pf[0].ready && !pf[1].ready, "poll: nothing to read", 0);
+	uint32_t t0 = uptime_ms();
+	long waited;
+	check(poll(pf, 1, 50) == 0 && (waited = (long)(uptime_ms() - t0)) >= 40 && waited < 1000,
+	      "poll times out", 0);
+	write(fds[0], "x", 1);
+	check(poll(pf, 2, -1) == 1 && pf[0].ready && !pf[1].ready, "poll finds the readable end", 0);
+	read(fds[1], buf, 1);
+	check_err(poll(pf, ZKT_FD_MAX + 1, 0), EINVAL, "polling too many descriptors is EINVAL");
+	struct zkt_pollfd bad = { 99, 0 };
+	check_err(poll(&bad, 1, 0), EBADF, "polling a bad descriptor is EBADF");
+
+	int d = dup(fds[0]);
+	check(d > fds[1] && write(d, "via dup", 7) == 7 && read(fds[1], buf, sizeof(buf)) == 7,
+	      "dup shares the file", d);
+	check(dup2(fds[0], 9) == 9 && write(9, "nine", 4) == 4 && read(fds[1], buf, sizeof(buf)) == 4,
+	      "dup2 to a chosen descriptor", 0);
+	check_err(dup2(fds[0], ZKT_FD_MAX), EBADF, "dup2 beyond the table is EBADF");
+	check_err(dup(99), EBADF, "dup of a bad descriptor is EBADF");
+	close(d);
+	close(9);
+	close(fds[0]);
+	check(poll(pf, 1, 0) == 1, "a pipe whose other end is gone polls readable", 0);
+	check(read(fds[1], buf, sizeof(buf)) == 0, "the other end closed: end of file", 0);
+	check_err(write(fds[1], "x", 1), EPIPE, "writing with no reader is EPIPE");
+	close(fds[1]);
+
+	struct zkt_dirent st;
+	pipe(fds);
+	check(fstat(fds[0], &st) == 0 && st.type == ZKT_TYPE_PIPE, "fstat of a pipe", (long)st.type);
+	static char big[100000], back[100000];
+	for (unsigned i = 0; i < sizeof(big); i++) {
+		big[i] = (char)(i * 7);
+	}
+	check(write(fds[0], big, sizeof(big)) == sizeof(big) && read(fds[1], back, sizeof(back)) == sizeof(back)
+	      && !memcmp(big, back, sizeof(big)), "a 100 KB message arrives whole", 0);
+
+	/* A child's standard output into a pipe: its end of file comes when
+	 * the child exits, since it holds the only other copy. */
+	int saved = dup(1);
+	dup2(fds[0], 1);
+	char *argv[] = { "/bin/hello", "piped", 0 };
+	int pid = spawn(argv[0], argv);
+	dup2(saved, 1);
+	close(saved);
+	close(fds[0]);
+	char out[256];
+	long n, total = 0;
+	while ((n = read(fds[1], out + total, sizeof(out) - 1 - (size_t)total)) > 0) {
+		total += n;
+	}
+	out[total] = '\0';
+	check(pid > 0 && wait(pid, &status) == pid && status == 0
+	      && strstr(out, "Hello from ManiOS userspace!\nargs: piped\n"), "a child writing into a pipe",
+	      total);
+	close(fds[1]);
+
+	check_err(reap(&status), ECHILD, "reap with no children is ECHILD");
+	char *spin[] = { FAULT, "spin", 0 };
+	pid = spawn(FAULT, spin);
+	check(reap(&status) == 0, "reap while the child runs is 0", 0);
+	int got;
+	while ((got = reap(&status)) == 0) {
+		sleep_ms(20);
+	}
+	check(got == pid && status == 0, "reap collects the child once it exits", got);
+
+	int fd = open("/dev/time", OREAD);
+	n = read(fd, buf, sizeof(buf) - 1);
+	close(fd);
+	buf[n > 0 ? n : 0] = '\0';
+	check(n > 1 && buf[n - 1] == '\n' && strtol_ok(buf), "/dev/time reads as seconds", n);
+	fd = open("/dev/null", ORDWR);
+	check(write(fd, "gone", 4) == 4 && read(fd, buf, sizeof(buf)) == 0, "/dev/null", 0);
+	close(fd);
+}
+
 static void test_namespaces(void)
 {
 	check(run("/boot/test/nstest", "bind") == 0 && exists("/n/bin/hello"),
@@ -298,6 +402,7 @@ int main(void)
 	test_processes();
 	test_directories();
 	test_sbrk();
+	test_pipes();
 	test_namespaces();
 
 	if (failures) {
