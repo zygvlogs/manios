@@ -18,7 +18,16 @@ enum thread_state {
 	THREAD_RUNNABLE,
 	THREAD_RUNNING,
 	THREAD_SLEEPING,
+	THREAD_BLOCKED,
 	THREAD_DEAD,
+};
+
+static const char *const STATE_NAMES[] = {
+	[THREAD_RUNNABLE] = "ready",
+	[THREAD_RUNNING] = "running",
+	[THREAD_SLEEPING] = "sleeping",
+	[THREAD_BLOCKED] = "blocked",
+	[THREAD_DEAD] = "dead",
 };
 
 struct thread {
@@ -30,7 +39,8 @@ struct thread {
 	uint64_t wake_tick;
 	void (*entry)(void *);
 	void *arg;
-	struct thread *next; /* run queue or sleep list link */
+	struct thread *next;     /* run queue, sleep list or wait queue link */
+	struct thread *all_next; /* every thread not yet reclaimed */
 };
 
 static struct thread *current;
@@ -38,6 +48,7 @@ static struct thread *idle;
 static struct thread *run_head, *run_tail; /* FIFO of runnable threads */
 static struct thread *sleepers;            /* sorted by wake_tick */
 static struct thread *switched_from;       /* for finish_switch() */
+static struct thread *all_threads;
 static bool preemptive;
 static unsigned slice_left;
 static uint32_t next_id;
@@ -66,6 +77,21 @@ static struct thread *run_dequeue(void)
 	return t;
 }
 
+static void all_threads_add(struct thread *t)
+{
+	t->all_next = all_threads;
+	all_threads = t;
+}
+
+static void all_threads_remove(struct thread *t)
+{
+	struct thread **link = &all_threads;
+	while (*link != t) {
+		link = &(*link)->all_next;
+	}
+	*link = t->all_next;
+}
+
 /* Equal wake ticks keep sleep order, so wakeups are deterministic. */
 static void sleep_insert(struct thread *t)
 {
@@ -83,6 +109,7 @@ static void finish_switch(void)
 {
 	struct thread *prev = switched_from;
 	if (prev->state == THREAD_DEAD) {
+		all_threads_remove(prev);
 		if (prev->stack_top) {
 			kstack_free(prev->stack_top);
 		}
@@ -153,6 +180,7 @@ static struct thread *thread_alloc(const char *name, void (*entry)(void *), void
 	uint32_t flags = cpu_irq_save();
 	t->id = next_id++;
 	thread_count++;
+	all_threads_add(t);
 	cpu_irq_restore(flags);
 	return t;
 }
@@ -177,6 +205,7 @@ void sched_init(void)
 	main_thread->stack_top = 0;
 	main_thread->next = NULL;
 	thread_count++;
+	all_threads_add(main_thread);
 
 	idle = thread_alloc("idle", idle_loop, NULL);
 	if (!idle) {
@@ -228,9 +257,84 @@ __attribute__((noreturn)) void thread_exit(void)
 	panic("thread_exit: a dead thread was scheduled again");
 }
 
+struct thread *thread_current(void)
+{
+	return current;
+}
+
 const char *thread_current_name(void)
 {
 	return current ? current->name : NULL;
+}
+
+size_t sched_snapshot(struct thread_info *out, size_t max)
+{
+	size_t n = 0;
+	uint32_t flags = cpu_irq_save();
+	for (struct thread *t = all_threads; t && n < max; t = t->all_next, n++) {
+		out[n].id = t->id;
+		out[n].name = t->name;
+		out[n].state = STATE_NAMES[t->state];
+	}
+	cpu_irq_restore(flags);
+	return n;
+}
+
+/* A thread woken from an IRQ that interrupted idle should not wait for
+ * the next tick to run. Switching here, inside the IRQ, is the same
+ * thing the timer does for preemption. */
+static void resched_if_idle(void)
+{
+	if (current && current == idle && run_head) {
+		schedule();
+	}
+}
+
+void waitq_sleep(struct waitq *wq)
+{
+	if (cpu_interrupts_enabled()) {
+		panic("waitq_sleep: interrupts must be disabled around the condition check");
+	}
+	current->state = THREAD_BLOCKED;
+	current->next = NULL;
+	if (wq->tail) {
+		wq->tail->next = current;
+	} else {
+		wq->head = current;
+	}
+	wq->tail = current;
+	schedule();
+}
+
+static struct thread *waitq_pop(struct waitq *wq)
+{
+	struct thread *t = wq->head;
+	if (t) {
+		wq->head = t->next;
+		if (!wq->head) {
+			wq->tail = NULL;
+		}
+		t->state = THREAD_RUNNABLE;
+		run_enqueue(t);
+	}
+	return t;
+}
+
+void waitq_wake_one(struct waitq *wq)
+{
+	uint32_t flags = cpu_irq_save();
+	waitq_pop(wq);
+	resched_if_idle();
+	cpu_irq_restore(flags);
+}
+
+void waitq_wake_all(struct waitq *wq)
+{
+	uint32_t flags = cpu_irq_save();
+	while (waitq_pop(wq)) {
+	}
+	resched_if_idle();
+	cpu_irq_restore(flags);
 }
 
 size_t sched_thread_count(void)

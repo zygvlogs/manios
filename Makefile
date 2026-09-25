@@ -55,6 +55,7 @@ run: $(KERNEL)
 
 test: $(KERNEL)
 	tests/boot_smoke_test.sh $(KERNEL)
+	python3 tests/console_test.py $(KERNEL)
 
 clean:
 	rm -rf $(BUILD)

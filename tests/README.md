@@ -7,5 +7,11 @@
   `ZKT PANIC`. The in-kernel self-tests (e.g. `zkt/mm/mm_selftest.c`)
   run during that boot, so their result is part of the gate.
 
+- `console_test.py` (also run by `make test`) — boots the kernel with
+  the serial line on stdio and drives the `ZKT>` monitor two ways:
+  typing over serial, and pressing keys on the emulated PS/2 keyboard
+  through the QEMU monitor's `sendkey`. It checks echo, line editing
+  and command output. Needs Python 3.
+
 Not yet wired into CI (GitHub Actions); see
 [`docs/FOUNDING-PROPOSAL.md` §12](../docs/FOUNDING-PROPOSAL.md#12-m1-status-achieved).

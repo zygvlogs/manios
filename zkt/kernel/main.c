@@ -1,9 +1,13 @@
 #include <stdint.h>
 #include "arch.h"
 #include "cpu.h"
+#include "device.h"
+#include "drivers.h"
 #include "heap.h"
 #include "kconsole.h"
+#include "kprintf.h"
 #include "mm_selftest.h"
+#include "monitor.h"
 #include "multiboot.h"
 #include "panic.h"
 #include "pmm.h"
@@ -58,6 +62,18 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	kconsole_write("Milestone M4: kernel threads online "
 	               "(cooperative + preemptive scheduling, self-test passed).\n");
 
-	kconsole_write("ZKT> ");
-	thread_exit(); /* the idle thread keeps the CPU from here */
+	sched_selftest_sync();
+	drivers_init();
+	kprintf("Milestone M5: driver framework online "
+	        "(keyboard + serial console input, mutex self-test passed).\n");
+	kprintf("devices:");
+	for (struct device *d = device_next(0); d; d = device_next(d)) {
+		kprintf(" %s", d->name);
+	}
+	kprintf("\n");
+
+	if (!thread_create("monitor", monitor_main, 0)) {
+		panic("could not start the monitor thread");
+	}
+	thread_exit();
 }

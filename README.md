@@ -15,7 +15,8 @@ clone. It does not depend on the Linux kernel.
 | M2 — physical/virtual memory, higher-half kernel, kernel heap | Achieved ([notes](docs/milestones/M2-memory-management.md)) |
 | M3 — hardware IRQs, PIT timer | Achieved ([notes](docs/milestones/M3-interrupts-and-timer.md)) |
 | M4 — multitasking: kernel threads, cooperative + preemptive scheduling | Achieved ([notes](docs/milestones/M4-multitasking.md)) |
-| M5 — driver framework, keyboard | Next |
+| M5 — driver framework, keyboard, interactive `ZKT>` monitor | Achieved ([notes](docs/milestones/M5-driver-framework.md)) |
+| M6 — ATA storage | Next |
 
 The full architecture and roadmap are in
 [`docs/FOUNDING-PROPOSAL.md`](docs/FOUNDING-PROPOSAL.md).
@@ -26,11 +27,13 @@ The full architecture and roadmap are in
 make toolchain   # once: builds the i686-elf cross-compiler (~15 min)
 make             # builds build/manios-zkt.elf
 make run         # boots it in QEMU (486 CPU model), serial on the terminal
-make test        # headless boot tests under several CPU/RAM configurations
+make test        # headless boot tests, plus interactive console tests
 ```
 
-Requires `qemu-system-i386`, plus the usual GCC build dependencies
-(GMP, MPFR, MPC, texinfo, bison, flex) for `make toolchain`.
+Requires `qemu-system-i386` and Python 3 (for the console tests), plus
+the usual GCC build dependencies (GMP, MPFR, MPC, texinfo, bison, flex)
+for `make toolchain`. At the `ZKT>` prompt, `help` lists the kernel
+monitor's commands.
 
 ## Repository layout
 

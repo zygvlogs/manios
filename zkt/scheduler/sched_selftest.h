@@ -7,4 +7,7 @@
 void sched_selftest_cooperative(void);
 void sched_selftest_preemptive(void);
 
+/* Mutex mutual exclusion under forced interleaving. */
+void sched_selftest_sync(void);
+
 #endif

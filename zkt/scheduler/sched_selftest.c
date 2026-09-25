@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "heap.h"
 #include "kstring.h"
+#include "mutex.h"
 #include "panic.h"
 #include "pmm.h"
 #include "sched.h"
@@ -113,4 +114,29 @@ void sched_selftest_preemptive(void)
 	expect(!slept_too_little, "selftest: timer_sleep_ms returned early");
 	expect(wake_len == 2 && wake_log[0] == 'S' && wake_log[1] == 'L',
 	       "selftest: sleepers did not wake in deadline order");
+}
+
+static struct mutex test_lock = MUTEX_INIT;
+static volatile uint32_t shared_counter;
+
+static void locked_incrementer(void *unused)
+{
+	(void)unused;
+	for (int i = 0; i < 20; i++) {
+		mutex_lock(&test_lock);
+		uint32_t v = shared_counter;
+		thread_yield(); /* invite the other thread in mid-update */
+		shared_counter = v + 1;
+		mutex_unlock(&test_lock);
+	}
+}
+
+void sched_selftest_sync(void)
+{
+	size_t baseline = sched_thread_count();
+	shared_counter = 0;
+	create("lock-a", locked_incrementer, 0);
+	create("lock-b", locked_incrementer, 0);
+	wait_for_threads(baseline);
+	expect(shared_counter == 40, "selftest: mutex did not serialize a read-modify-write");
 }

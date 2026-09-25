@@ -6,6 +6,28 @@
 
 struct thread;
 
+struct thread_info {
+	uint32_t id;
+	const char *name;
+	const char *state;
+};
+
+/* Threads blocked until an event. Use it like a condition variable:
+ *
+ *     flags = cpu_irq_save();
+ *     while (!condition)
+ *         waitq_sleep(&wq);
+ *     ...consume...
+ *     cpu_irq_restore(flags);
+ *
+ * and have the producer (a thread or an IRQ handler) make the condition
+ * true, then call waitq_wake_one()/waitq_wake_all(). Checking with
+ * interrupts off is what makes the wakeup impossible to miss. */
+struct waitq {
+	struct thread *head, *tail;
+};
+#define WAITQ_INIT { 0, 0 }
+
 /* Turns the calling boot context into thread "main" and creates the idle
  * thread. Scheduling starts cooperative: threads switch only when they
  * yield, sleep or exit, until sched_enable_preemption(). Call once, with
@@ -29,8 +51,22 @@ void thread_sleep_until(uint64_t tick);
 
 __attribute__((noreturn)) void thread_exit(void);
 
+/* The running thread, or NULL before sched_init(). */
+struct thread *thread_current(void);
+
 /* The running thread's name, or NULL before sched_init(). */
 const char *thread_current_name(void);
+
+/* Copies up to `max` entries describing live threads; returns how many. */
+size_t sched_snapshot(struct thread_info *out, size_t max);
+
+/* Blocks the calling thread on wq. Interrupts must be disabled (panics
+ * otherwise); they are disabled again when it returns. */
+void waitq_sleep(struct waitq *wq);
+
+/* Safe from IRQ handlers. */
+void waitq_wake_one(struct waitq *wq);
+void waitq_wake_all(struct waitq *wq);
 
 /* Threads not yet reclaimed, including main (until it exits) and idle. */
 size_t sched_thread_count(void);

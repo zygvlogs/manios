@@ -62,7 +62,8 @@ in M8.
   drained through the polled UART holds interrupts off for milliseconds
   (about 20 ms for 80 characters at 38400 baud), stalling ticks. The
   proper fix is buffered, interrupt-driven serial, which belongs with
-  the M5 driver framework.
+  the M5 driver framework. *Resolved in M5:* threads now write through
+  a mutex and a TX ring drained by the serial interrupt.
 - **Cooperative mode is a real scheduler mode, not just a test mode.**
   Scheduling starts cooperative and `sched_enable_preemption()` switches
   it on. That lets the cooperative test assert exact `ABABAB`
@@ -135,6 +136,7 @@ in M8.
 - No priorities (the §2.6 step after round-robin), and no blocking
   primitives besides sleep: no mutexes, wait queues or join. These will
   be added when the first real consumer (a driver in M5) needs them.
+  *M5 added wait queues and a mutex; join is still missing.*
 - A single address space: all threads are kernel threads until M8.
 - A kernel stack frame bigger than the 4 KiB guard page could still
   step over it; the compile-time frame limit mitigates this, but it

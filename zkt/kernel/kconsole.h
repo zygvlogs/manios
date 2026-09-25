@@ -1,16 +1,28 @@
 #ifndef ZKT_KERNEL_KCONSOLE_H
 #define ZKT_KERNEL_KCONSOLE_H
 
+#include <stddef.h>
 #include <stdint.h>
 
-/* The M1 kernel console: every message goes to both the serial port
- * and the VGA text display, since either one may be the only thing
- * visible depending on how ZKT was booted (see
- * docs/FOUNDING-PROPOSAL.md §4.3 on serial as a first-class surface). */
+/* The kernel console: output goes to both COM1 and the VGA display,
+ * since either may be the only thing visible (FOUNDING-PROPOSAL §4.3);
+ * input comes from the PS/2 keyboard and COM1. Each write is one
+ * message: messages from different threads never interleave. */
 void kconsole_init(void);
 void kconsole_putc(char c);
 void kconsole_write(const char *s);
+void kconsole_write_n(const char *s, size_t len);
 void kconsole_write_hex32(uint32_t value);
 void kconsole_write_dec(uint32_t value);
+
+/* Queues one input byte for readers of device "cons". Called by the
+ * keyboard and serial IRQ handlers; the byte is dropped if the queue
+ * is full. */
+void console_input(char c);
+
+/* Registers device "cons": reads return queued input bytes (blocking
+ * until at least one arrives), writes go to the console output. This is
+ * the equivalent of Plan 9's /dev/cons. */
+void console_register(void);
 
 #endif

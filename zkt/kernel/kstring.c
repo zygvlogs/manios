@@ -52,3 +52,42 @@ int memcmp(const void *a, const void *b, size_t n)
 	}
 	return 0;
 }
+
+size_t strlen(const char *s)
+{
+	size_t n = 0;
+	while (s[n]) {
+		n++;
+	}
+	return n;
+}
+
+int strcmp(const char *a, const char *b)
+{
+	while (*a && *a == *b) {
+		a++;
+		b++;
+	}
+	return (unsigned char)*a - (unsigned char)*b;
+}
+
+int strncmp(const char *a, const char *b, size_t n)
+{
+	for (; n; n--, a++, b++) {
+		if (*a != *b || !*a) {
+			return (unsigned char)*a - (unsigned char)*b;
+		}
+	}
+	return 0;
+}
+
+size_t strlcpy(char *dst, const char *src, size_t size)
+{
+	size_t len = strlen(src);
+	if (size) {
+		size_t n = len < size - 1 ? len : size - 1;
+		memcpy(dst, src, n);
+		dst[n] = '\0';
+	}
+	return len;
+}

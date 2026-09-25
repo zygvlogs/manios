@@ -32,5 +32,6 @@ supply headers of the same names.
 Implemented so far: M1 (boot, console, exceptions), M2 (memory
 management, [notes](../docs/milestones/M2-memory-management.md)), M3
 (hardware IRQs and timer, [notes](../docs/milestones/M3-interrupts-and-timer.md))
-and M4 (kernel threads, [notes](../docs/milestones/M4-multitasking.md)).
+M4 (kernel threads, [notes](../docs/milestones/M4-multitasking.md)) and
+M5 (driver framework, [notes](../docs/milestones/M5-driver-framework.md)).
 `fs/` and `ipc/` are still empty.

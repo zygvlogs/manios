@@ -1,12 +1,18 @@
 # zkt/drivers/
 
-The driver framework (a small vtable-style interface per device class —
-block, character, network, input, display) and in-tree drivers built
-against it. Drivers run in-kernel in the first milestones but are
-written to the framework interface from the start so individual drivers
-can move to userspace servers later without a rewrite.
+The driver framework and the in-tree PC drivers. Design and
+verification: [M5 notes](../../docs/milestones/M5-driver-framework.md).
+Drivers run in the kernel for now, but they are written to the
+framework interface so that individual drivers can later move to
+userspace servers (ADR-0002).
 
-First drivers (M1/M5): serial (COM1), VGA text console, PS/2 keyboard,
-PIT timer, ATA/IDE PIO block driver.
+- `device.c` / `device.h` — the registry: named character and block
+  devices, each with an operations table
+- `drivers.c` — starts the drivers and registers their devices at boot
+- `serial.c` — COM1: polled early/panic output; IRQ-driven RX and
+  buffered TX; device `com1`
+- `ps2kbd.c` — PS/2 keyboard (US layout), feeding the console
+- `vga_text.c` — 80x25 text mode with hardware cursor; device `vga`
 
-See [`docs/FOUNDING-PROPOSAL.md` §2.7](../../docs/FOUNDING-PROPOSAL.md#27-driver-framework).
+The console device `cons` lives in `zkt/kernel/kconsole.c`. See
+[`docs/FOUNDING-PROPOSAL.md` §2.7](../../docs/FOUNDING-PROPOSAL.md#27-driver-framework).

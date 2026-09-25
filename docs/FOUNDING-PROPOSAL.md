@@ -8,6 +8,8 @@ see [docs/milestones/M2-memory-management.md](milestones/M2-memory-management.md
 [docs/milestones/M3-interrupts-and-timer.md](milestones/M3-interrupts-and-timer.md).
 **M4 achieved**: kernel threads with cooperative and preemptive
 scheduling — see [docs/milestones/M4-multitasking.md](milestones/M4-multitasking.md).
+**M5 achieved**: driver framework, keyboard, interactive kernel monitor —
+see [docs/milestones/M5-driver-framework.md](milestones/M5-driver-framework.md).
 
 **Scope of this document:** Originally the response to the ManiOS
 founding prompt's "First Task" — architecture, strategy, and planning.
@@ -450,7 +452,7 @@ a concrete shape rather than only a diagram.
 | M2 | **Achieved** ([notes](milestones/M2-memory-management.md)). Physical + virtual memory management, kernel heap | M1 |
 | M3 | **Achieved** ([notes](milestones/M3-interrupts-and-timer.md)). Full interrupt/exception handling, PIC remap, PIT timer IRQ | M1 |
 | M4 | **Achieved** ([notes](milestones/M4-multitasking.md)). Cooperative then preemptive multitasking (kernel threads) | M2, M3 |
-| M5 | Driver framework + keyboard, VGA, serial, PIT drivers formalized | M3, M4 |
+| M5 | **Achieved** ([notes](milestones/M5-driver-framework.md)). Driver framework + keyboard, VGA, serial, PIT drivers formalized | M3, M4 |
 | M6 | Storage: ATA/IDE PIO block driver | M5 |
 | M7 | VFS + first filesystem, per-process namespaces & union dirs (ADR-0003) | M6 |
 | M8 | Userspace: ELF loader, ring 3 processes, first syscalls, namespace ops (bind/mount) | M4, M7 |

@@ -1,0 +1,185 @@
+#include "monitor.h"
+#include <stdbool.h>
+#include <stdint.h>
+#include "device.h"
+#include "heap.h"
+#include "kconsole.h"
+#include "kprintf.h"
+#include "kstring.h"
+#include "panic.h"
+#include "pmm.h"
+#include "sched.h"
+#include "timer.h"
+
+#define LINE_MAX 128
+#define ARGS_MAX 8
+
+struct command {
+	const char *name;
+	const char *usage;
+	void (*run)(int argc, char **argv);
+};
+
+static void cmd_help(int argc, char **argv);
+
+static void cmd_echo(int argc, char **argv)
+{
+	for (int i = 1; i < argc; i++) {
+		kprintf(i + 1 < argc ? "%s " : "%s", argv[i]);
+	}
+	kprintf("\n");
+}
+
+static void cmd_uptime(int argc, char **argv)
+{
+	(void)argc;
+	(void)argv;
+	uint32_t ms = (uint32_t)timer_uptime_ms();
+	kprintf("uptime: %lu.%03lu s\n", ms / 1000, ms % 1000);
+}
+
+static void cmd_mem(int argc, char **argv)
+{
+	(void)argc;
+	(void)argv;
+	kprintf("physical: %lu KiB free of %lu KiB usable\n",
+	        pmm_free_frames() * 4, pmm_usable_frames() * 4);
+	kprintf("heap: %lu bytes in use\n", heap_used());
+}
+
+static void cmd_threads(int argc, char **argv)
+{
+	(void)argc;
+	(void)argv;
+	struct thread_info info[32];
+	size_t n = sched_snapshot(info, 32);
+	kprintf("  id  state     name\n");
+	for (size_t i = 0; i < n; i++) {
+		kprintf("%4lu  %-8s  %s\n", info[i].id, info[i].state, info[i].name);
+	}
+}
+
+static void cmd_devices(int argc, char **argv)
+{
+	(void)argc;
+	(void)argv;
+	for (struct device *d = device_next(0); d; d = device_next(d)) {
+		if (d->class == DEVICE_BLOCK) {
+			kprintf("  %-8s block  %lu x %lu bytes (%lu MiB)\n", d->name, d->block_count,
+			        d->block_size, d->block_count / (1024 * 1024 / d->block_size));
+		} else {
+			kprintf("  %-8s char   %s%s\n", d->name,
+			        d->char_ops->read ? "read " : "", d->char_ops->write ? "write" : "");
+		}
+	}
+}
+
+static const struct command COMMANDS[] = {
+	{ "help", "list commands", cmd_help },
+	{ "echo", "ARGS... - print the arguments", cmd_echo },
+	{ "uptime", "time since boot", cmd_uptime },
+	{ "mem", "physical memory and heap usage", cmd_mem },
+	{ "threads", "list kernel threads", cmd_threads },
+	{ "devices", "list registered devices", cmd_devices },
+	{ 0, 0, 0 },
+};
+
+static void cmd_help(int argc, char **argv)
+{
+	(void)argc;
+	(void)argv;
+	kprintf("commands:\n");
+	for (const struct command *c = COMMANDS; c->name; c++) {
+		kprintf("  %-10s %s\n", c->name, c->usage);
+	}
+}
+
+static struct device *cons;
+
+/* Reads one line with echo and backspace. Terminals send '\r' for
+ * Enter, some follow it with '\n'; either ends the line, but a '\n'
+ * right after a '\r' is swallowed rather than taken as an empty line. */
+static void read_line(char *line, size_t max)
+{
+	static bool after_cr;
+	size_t len = 0;
+
+	for (;;) {
+		char c;
+		if (device_read(cons, &c, 1) != 1) {
+			continue;
+		}
+		if (c == '\n' && after_cr) {
+			after_cr = false;
+			continue;
+		}
+		after_cr = c == '\r';
+
+		if (c == '\r' || c == '\n') {
+			kconsole_write("\n");
+			line[len] = '\0';
+			return;
+		}
+		if (c == '\b' || c == 0x7F) {
+			if (len) {
+				len--;
+				kconsole_write("\b \b");
+			}
+			continue;
+		}
+		if (c >= 0x20 && c < 0x7F && len + 1 < max) {
+			line[len++] = c;
+			kconsole_putc(c);
+		}
+	}
+}
+
+static int split(char *line, char **argv)
+{
+	int argc = 0;
+	char *p = line;
+	while (argc < ARGS_MAX) {
+		while (*p == ' ') {
+			*p++ = '\0';
+		}
+		if (!*p) {
+			break;
+		}
+		argv[argc++] = p;
+		while (*p && *p != ' ') {
+			p++;
+		}
+	}
+	return argc;
+}
+
+void monitor_main(void *unused)
+{
+	(void)unused;
+	cons = device_find("cons");
+	if (!cons) {
+		panic("monitor: no console device");
+	}
+
+	for (;;) {
+		char line[LINE_MAX];
+		char *argv[ARGS_MAX];
+
+		kconsole_write("ZKT> ");
+		read_line(line, sizeof(line));
+		int argc = split(line, argv);
+		if (argc == 0) {
+			continue;
+		}
+
+		const struct command *c = COMMANDS;
+		while (c->name && strcmp(c->name, argv[0]) != 0) {
+			c++;
+		}
+		if (c->name) {
+			c->run(argc, argv);
+		} else {
+			kprintf("unknown command: %s (try help)\n", argv[0]);
+		}
+	}
+}
