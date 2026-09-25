@@ -20,9 +20,13 @@ void kconsole_write_dec(uint32_t value);
  * is full. */
 void console_input(char c);
 
-/* Registers device "cons": reads return queued input bytes (blocking
- * until at least one arrives), writes go to the console output. This is
- * the equivalent of Plan 9's /dev/cons. */
+/* Registers device "cons", the equivalent of Plan 9's /dev/cons. Writes
+ * go to the console output. Reads are "cooked": input is echoed and can
+ * be edited (backspace, ^U erases the line) until Enter, and a read
+ * returns at most one line, ending in '\n'. ^D on an empty line reads
+ * as end of file (0 bytes). A line holds up to CONSOLE_LINE_MAX - 1
+ * characters, newline included. */
+#define CONSOLE_LINE_MAX 256
 void console_register(void);
 
 #endif

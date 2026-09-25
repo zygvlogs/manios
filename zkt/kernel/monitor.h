@@ -7,4 +7,8 @@
  * thread; it never returns. */
 void monitor_main(void *unused);
 
+/* The console thread: runs the shell, /bin/sh, and when it exits (or
+ * can't start) falls back to the monitor. Never returns. */
+void console_main(void *unused);
+
 #endif

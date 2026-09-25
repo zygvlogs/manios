@@ -35,10 +35,12 @@ OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(C_SOURCES)) \
 # per .c file -- userland/bin/ goes to /bin, userland/test/ to
 # /boot/test -- packed with userland/etc/ into the boot archive the
 # kernel links in (zkt/fs/bootfs.c). Like the kernel, programs are
-# linked without libgcc.
+# linked without libgcc. -n drops the page alignment of segments within
+# the file: the kernel copies segments rather than mapping file pages,
+# so the padding would only waste space in the kernel image.
 USER_CFLAGS := -std=gnu11 -ffreestanding -fno-asynchronous-unwind-tables -O2 -g \
                -Wall -Wextra -MMD -MP $(ARCHFLAGS) -Ilibc/include -Izkt/abi
-USER_LDFLAGS := -nostdlib -static -T userland/user.ld -Wl,-z,max-page-size=4096
+USER_LDFLAGS := -nostdlib -static -T userland/user.ld -Wl,-n
 
 LIBC := $(BUILD)/libc/libc.a
 CRT0 := $(BUILD)/libc/crt0.o

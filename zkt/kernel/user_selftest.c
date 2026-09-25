@@ -57,33 +57,46 @@ static bool resolves(const char *path)
 	return true;
 }
 
-void user_selftest(void)
+/* Runs a test program, which must exit 0 and leave no frames or heap
+ * behind once its threads are reclaimed. */
+static void run_checked(const char *path)
 {
 	size_t baseline = sched_thread_count();
-
-	/* The first process also creates kernel tables that stay. */
-	if (run("/bin/hello") != 0) {
-		panic("selftest: user: /bin/hello did not exit 0");
-	}
-	wait_for_threads(baseline);
 	size_t frames = frames_in_use();
 	size_t heap_bytes = heap_used();
 
-	int status = run("/boot/test/utest");
+	int status = run(path);
 	wait_for_threads(baseline);
 	if (status != 0) {
-		kprintf("selftest: user: utest status 0x%x\n", status);
-		panic("selftest: user: system call conformance test failed");
+		kprintf("selftest: user: %s status 0x%x\n", path, status);
+		panic("selftest: user: a conformance test failed");
 	}
 	if (frames_in_use() != frames) {
-		kprintf("selftest: user: %lu frames before, %lu after\n", frames, frames_in_use());
+		kprintf("selftest: user: %lu frames before %s, %lu after\n", frames, path, frames_in_use());
 		panic("selftest: user: processes leaked physical memory");
 	}
 	if (heap_used() != heap_bytes || heap_check() != 0) {
 		panic("selftest: user: processes leaked heap memory");
 	}
+}
+
+void user_selftest(void)
+{
+	/* The first process also creates kernel tables that stay. */
+	size_t baseline = sched_thread_count();
+	if (run("/bin/hello") != 0) {
+		panic("selftest: user: /bin/hello did not exit 0");
+	}
+	wait_for_threads(baseline);
+
+	run_checked("/boot/test/utest");
 	/* utest forked its namespace before binding anything. */
 	if (resolves("/n/bin") || !resolves("/bin/hello")) {
 		panic("selftest: user: a process's private binds leaked into the kernel's namespace");
 	}
+}
+
+void libc_selftest(void)
+{
+	run_checked("/boot/test/ctest");
 }

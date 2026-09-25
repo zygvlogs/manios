@@ -16,7 +16,7 @@
 #include "timer.h"
 #include "vfs.h"
 
-#define LINE_MAX 128
+#define LINE_MAX CONSOLE_LINE_MAX
 #define ARGS_MAX 16
 
 struct command {
@@ -329,42 +329,18 @@ static void cmd_help(int argc, char **argv)
 
 static struct device *cons;
 
-/* Reads one line with echo and backspace. Terminals send '\r' for
- * Enter, some follow it with '\n'; either ends the line, but a '\n'
- * right after a '\r' is swallowed rather than taken as an empty line. */
+/* One line from the cooked console (kconsole.c does the editing and
+ * echo), without its newline. End of file reads as an empty line. */
 static void read_line(char *line, size_t max)
 {
-	static bool after_cr;
-	size_t len = 0;
-
-	for (;;) {
-		char c;
-		if (device_read(cons, &c, 1) != 1) {
-			continue;
-		}
-		if (c == '\n' && after_cr) {
-			after_cr = false;
-			continue;
-		}
-		after_cr = c == '\r';
-
-		if (c == '\r' || c == '\n') {
-			kconsole_write("\n");
-			line[len] = '\0';
-			return;
-		}
-		if (c == '\b' || c == 0x7F) {
-			if (len) {
-				len--;
-				kconsole_write("\b \b");
-			}
-			continue;
-		}
-		if (c >= 0x20 && c < 0x7F && len + 1 < max) {
-			line[len++] = c;
-			kconsole_putc(c);
-		}
+	long n = device_read(cons, line, max - 1);
+	if (n < 0) {
+		n = 0;
 	}
+	if (n > 0 && line[n - 1] == '\n') {
+		n--;
+	}
+	line[n] = '\0';
 }
 
 static int split(char *line, char **argv)
@@ -384,6 +360,23 @@ static int split(char *line, char **argv)
 		}
 	}
 	return argc;
+}
+
+#define SHELL "/bin/sh"
+
+void console_main(void *unused)
+{
+	char *argv[] = { SHELL, 0 };
+	int pid = process_spawn(SHELL, 1, argv, 0);
+	if (pid < 0) {
+		kprintf("console: cannot start %s: %s\n", SHELL, kstrerror(pid));
+	} else {
+		int status;
+		process_wait(0, pid, &status);
+		kprintf("console: the shell has exited; this is the kernel monitor "
+		        "(run %s to go back)\n", SHELL);
+	}
+	monitor_main(unused);
 }
 
 void monitor_main(void *unused)

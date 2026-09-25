@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # CI gate: boots the kernel headlessly in QEMU under several machine
 # configurations and checks the serial console for each milestone's
-# marker, the final prompt, and the absence of a panic.
+# marker, the shell's prompt, and the absence of a panic.
 #
 # Usage: tests/boot_smoke_test.sh [path-to-kernel-elf]
 set -euo pipefail
 
 KERNEL="${1:-build/manios-zkt.elf}"
 TIMEOUT_SECS=15
-PROMPT="ZKT> "
+PROMPT="manios% " # the shell, /bin/sh
 EXPECTED=(
 	"Milestone M1: kernel console reached."
 	"Milestone M2: memory manager online (self-test passed)."
@@ -18,6 +18,7 @@ EXPECTED=(
 	"Milestone M6: ATA storage driver online."
 	"Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed)."
 	"Milestone M8: userspace online (ring 3 processes, system calls; self-test passed)."
+	"Milestone M9: libc, ABI v1 and shell online (self-test passed)."
 )
 
 # "<RAM MiB> <QEMU CPU model> <why>". QEMU's oldest model is the 486;

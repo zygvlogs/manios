@@ -8,6 +8,7 @@
 #include "kprintf.h"
 #include "kstring.h"
 #include "memlayout.h"
+#include "namespace.h"
 #include "pmm.h"
 #include "sched.h"
 #include "vmm.h"
@@ -28,8 +29,15 @@ struct process {
 	struct waitq exited_wq;
 	uintptr_t entry;
 	uintptr_t user_sp;
+	uintptr_t brk_start, brk; /* the heap: [brk_start, brk), grown by sbrk */
+	char cwd[VFS_PATH_MAX + 1]; /* absolute and cleaned */
 	struct process *next;
 };
+
+static uintptr_t page_up(uintptr_t addr)
+{
+	return (addr + PAGE_SIZE - 1) & ~(uintptr_t)(PAGE_SIZE - 1);
+}
 
 static struct process *processes;
 static uint32_t next_pid = 1;
@@ -191,6 +199,7 @@ int process_spawn(const char *path, int argc, char *const argv[], struct process
 	p->exited_wq = (struct waitq)WAITQ_INIT;
 	p->parent = parent;
 	strlcpy(p->name, basename(path), sizeof(p->name));
+	strlcpy(p->cwd, parent ? parent->cwd : "/", sizeof(p->cwd));
 	p->as = vmm_as_create();
 	if (!p->as) {
 		kfree(image);
@@ -203,7 +212,9 @@ int process_spawn(const char *path, int argc, char *const argv[], struct process
 	 * the child, never into whichever space was active before. */
 	struct address_space *own = thread_address_space();
 	thread_set_address_space(p->as);
-	rc = elf_load(image, size, &p->entry);
+	uintptr_t image_end;
+	rc = elf_load(image, size, &p->entry, &image_end);
+	p->brk_start = p->brk = page_up(image_end);
 	if (rc == 0) {
 		rc = setup_stack(argc, argv, &p->user_sp);
 	}
@@ -317,6 +328,65 @@ __attribute__((noreturn)) void process_exit(int status)
 	}
 	cpu_irq_restore(flags);
 	thread_exit();
+}
+
+const char *process_cwd(const struct process *p)
+{
+	return p->cwd;
+}
+
+int process_chdir(struct process *p, const char *path)
+{
+	struct file *f;
+	int rc = vfs_open(path, OREAD, &f);
+	if (rc) {
+		return rc;
+	}
+	enum vnode_type type = vfs_type(f);
+	vfs_close(f);
+	return type == VNODE_DIR ? vfs_clean_path(path, p->cwd) : -ENOTDIR;
+}
+
+/* Runs in the process's own address space (a system call), so the heap
+ * pages are mapped where the program sees them. */
+long process_sbrk(struct process *p, int32_t increment)
+{
+	uintptr_t old = p->brk, new_brk;
+	if (increment >= 0) {
+		if ((uint32_t)increment > USER_IMAGE_TOP - old) {
+			return -ENOMEM;
+		}
+		new_brk = old + (uint32_t)increment;
+	} else {
+		uint32_t decrement = 0u - (uint32_t)increment;
+		if (decrement > old - p->brk_start) {
+			return -EINVAL;
+		}
+		new_brk = old - decrement;
+	}
+
+	uintptr_t top = page_up(old), new_top = page_up(new_brk);
+	for (uintptr_t page = top; page < new_top; page += PAGE_SIZE) {
+		uintptr_t frame = pmm_alloc_frame();
+		if (!frame || vmm_map_page(page, frame, VMM_WRITABLE | VMM_USER) != 0) {
+			if (frame) {
+				pmm_free_frame(frame);
+			}
+			for (uintptr_t undo = top; undo < page; undo += PAGE_SIZE) {
+				vmm_unmap_page(undo, &frame);
+				pmm_free_frame(frame);
+			}
+			return -ENOMEM;
+		}
+		memset((void *)page, 0, PAGE_SIZE);
+	}
+	for (uintptr_t page = new_top; page < top; page += PAGE_SIZE) {
+		uintptr_t frame;
+		vmm_unmap_page(page, &frame);
+		pmm_free_frame(frame);
+	}
+	p->brk = new_brk;
+	return (long)old;
 }
 
 __attribute__((noreturn)) void process_kill_current(uint32_t vector, const char *what,

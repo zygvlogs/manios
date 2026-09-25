@@ -19,7 +19,8 @@ clone. It does not depend on the Linux kernel.
 | M6 — ATA storage (PIO, CHS fallback, MBR partitions) | Achieved ([notes](docs/milestones/M6-ata-storage.md)) |
 | M7 — VFS, Plan 9-style namespaces and union directories, FAT12/16, devfs | Achieved ([notes](docs/milestones/M7-vfs-namespaces.md)) |
 | M8 — userspace: ring 3 processes, ELF loader, syscalls | Achieved ([notes](docs/milestones/M8-userspace.md)) |
-| M9 — libc, stable syscall ABI, coreutils, shell | Next |
+| M9 — libc, versioned syscall ABI, coreutils, shell | Achieved ([notes](docs/milestones/M9-libc-shell.md)) |
+| M10 — networking, and ZRP (the resource protocol) over the network | Next |
 
 The full architecture and roadmap are in
 [`docs/FOUNDING-PROPOSAL.md`](docs/FOUNDING-PROPOSAL.md).
@@ -35,12 +36,16 @@ make test        # headless boot tests, plus interactive console tests
 
 Requires `qemu-system-i386`, Python 3 and mtools (for the tests), plus
 the usual GCC build dependencies (GMP, MPFR, MPC, texinfo, bison, flex)
-for `make toolchain`. At the `ZKT>` prompt, `help` lists the kernel
-monitor's commands. For example, `ls /dev` lists devices, and with a
-FAT disk attached (`qemu-system-i386 ... -drive file=disk.img,format=raw`),
-`ls /n/ata0p1` lists its files, while `bind -a /n/ata0p2 /n/ata0p1`
-makes a union of two volumes. `run /bin/hello` starts a user program
-from the boot archive (`ls /boot`).
+for `make toolchain`.
+
+ManiOS boots into its shell, `manios% `. The programs are in `/bin`
+(`ls /bin`; the shell's `help` lists its builtins). For example,
+`ls -l /dev` lists devices, and with a FAT disk attached
+(`qemu-system-i386 ... -drive file=disk.img,format=raw`),
+`cd /n/ata0p1; ls` lists its files, while `bind -a /n/ata0p2 /n/ata0p1`
+makes a union of two volumes. `newns` gives the shell a private
+namespace. `exit` leaves the shell for the `ZKT>` kernel monitor, a
+debugging console with its own `help`; `run /bin/sh` goes back.
 
 ## Repository layout
 
@@ -55,7 +60,7 @@ zkt/          ZygKernel Technology — the kernel
   fs/         VFS + filesystem implementations
   kernel/     init, panic, logging, processes, syscalls, ELF loader
   abi/        the system call ABI header shared with userspace
-libc/         ManiOS's own C library
+libc/         ManiOS's own C library (stdio, malloc, strings, ...)
 userland/     user programs (bin/), test programs (test/), boot files (etc/)
 desktop/      ManiOS Desktop Environment
 tools/        cross-toolchain build scripts, image builder, QEMU scripts

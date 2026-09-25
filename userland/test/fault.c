@@ -1,6 +1,8 @@
 /* Misbehaves on request, so tests can check that the kernel ends the
  * process -- and only the process. Usage: fault MODE. */
+#include <assert.h>
 #include <manios.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define KERNEL_ADDR 0xC0100000u /* inside the kernel image */
@@ -49,6 +51,17 @@ int main(int argc, char **argv)
 		unsigned quotient, remainder = 0, zero = 0;
 		__asm__ volatile("divl %2" : "=a"(quotient), "+d"(remainder) : "rm"(zero), "0"(1u));
 		sink = quotient;
+	} else if (!strcmp(mode, "shrunk")) {
+		char *p = sbrk(4096);
+		p[0] = 1;
+		sbrk(-4096);
+		p[0] = 2; /* the page is gone */
+	} else if (!strcmp(mode, "doublefree")) {
+		char *p = malloc(32);
+		free(p);
+		free(p); /* malloc detects it and aborts: status 134 */
+	} else if (!strcmp(mode, "assert")) {
+		assert(argc == 99);
 	} else if (!strcmp(mode, "exit42")) {
 		return 42;
 	} else if (!strcmp(mode, "spin")) {

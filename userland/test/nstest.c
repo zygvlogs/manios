@@ -1,6 +1,7 @@
 /* Namespace changes made by a child, for utest to observe from the
  * parent (ADR-0003: a child shares its parent's namespace unless it
- * forks it). Usage: nstest bind | fork-unbind. */
+ * forks it), and directory inheritance. Usage: nstest bind |
+ * fork-unbind | cwd. */
 #include <manios.h>
 #include <string.h>
 
@@ -27,6 +28,11 @@ int main(int argc, char **argv)
 			return 1;
 		}
 		return exists("/bin/hello") ? 1 : 0;
+	}
+	if (!strcmp(mode, "cwd")) {
+		/* utest runs this from /boot. */
+		char buf[ZKT_PATH_MAX + 1];
+		return getcwd(buf, sizeof(buf)) && !strcmp(buf, "/boot") && exists("etc/motd") ? 0 : 1;
 	}
 	return 1;
 }

@@ -121,7 +121,6 @@ static void test_files(void)
 	check_err(open("/bin/hello", OWRITE), EROFS, "the boot archive is read-only");
 	check_err(open("/bin", OWRITE), EISDIR, "a directory cannot be opened for writing");
 	check_err(open("/no/such/file", OREAD), ENOENT, "a missing file is ENOENT");
-	check_err(open("bin/hello", OREAD), EINVAL, "a relative path is EINVAL");
 	check(write(1, buf, 0) == 0, "an empty write writes nothing", 0);
 
 	int fds[ZKT_FD_MAX];
@@ -234,6 +233,50 @@ static void test_processes(void)
 	check(sa == 0 && sb == 0, "processes have separate address spaces", sa * 256 + sb);
 }
 
+/* The current directory (M9): relative paths, "..", inheritance. */
+static void test_directories(void)
+{
+	char buf[ZKT_PATH_MAX + 1];
+	check(getcwd(buf, sizeof(buf)) && !strcmp(buf, "/"), "a kernel-started program starts at /", 0);
+	check(chdir("/boot/test/../etc/.") == 0 && getcwd(buf, sizeof(buf))
+	      && !strcmp(buf, "/boot/etc"), "chdir cleans the path", 0);
+	check(getcwd(buf, 9) == NULL && errno == ERANGE && getcwd(buf, 10) == buf,
+	      "getcwd needs room for the NUL, else ERANGE", 0);
+	check(exists("motd") && exists("../bin/hello") && exists("/bin/hello"),
+	      "relative paths start at the current directory", 0);
+	check(chdir("..") == 0 && exists("bin/hello") && chdir("../../..") == 0
+	      && getcwd(buf, sizeof(buf)) && !strcmp(buf, "/"), ".. stops at the root", 0);
+	check_err(chdir("/boot/etc/motd"), ENOTDIR, "chdir to a file is ENOTDIR");
+	check_err(chdir("/no/such/dir"), ENOENT, "chdir to a missing directory is ENOENT");
+	check(getcwd((char *)KERNEL_ADDR, 64) == NULL && errno == EFAULT, "getcwd into the kernel is EFAULT", 0);
+
+	check(chdir("/boot") == 0 && run("test/nstest", "cwd") == 0,
+	      "a child starts in its parent's directory, and spawn takes relative paths", 0);
+	chdir("/");
+}
+
+/* The heap (M9). */
+static void test_sbrk(void)
+{
+	char *start = sbrk(0);
+	check(start != (void *)-1 && ((uintptr_t)start & 0xFFF) == 0 && (uintptr_t)start > (uintptr_t)main,
+	      "the heap starts on a page after the program", (long)(uintptr_t)start);
+	check(sbrk(3 * 4096 + 5) == start, "sbrk returns the previous end", 0);
+	int zeroed = 1;
+	for (int i = 0; i < 3 * 4096 + 5; i++) {
+		zeroed &= start[i] == 0;
+		start[i] = (char)i;
+	}
+	check(zeroed && start[3 * 4096 + 4] == (char)(3 * 4096 + 4), "new heap memory is zeroed and writable", 0);
+	int fd = open("/bin/hello", OREAD);
+	check_err(read(fd, start + 3 * 4096 + 5, 4096), EFAULT, "the heap ends at the break's page");
+	close(fd);
+	check(sbrk(-(3 * 4096 + 5)) == start + 3 * 4096 + 5 && sbrk(0) == start, "the heap shrinks", 0);
+	check_err((long)sbrk(-1), EINVAL, "shrinking below the start is EINVAL");
+	check_err((long)sbrk(INT32_MIN), EINVAL, "sbrk(INT32_MIN) is EINVAL");
+	check(run(FAULT, "shrunk") == (ZKT_WAIT_KILLED | 14), "memory given back by sbrk faults", 0);
+}
+
 static void test_namespaces(void)
 {
 	check(run("/boot/test/nstest", "bind") == 0 && exists("/n/bin/hello"),
@@ -253,6 +296,8 @@ int main(void)
 	test_pointers();
 	test_time();
 	test_processes();
+	test_directories();
+	test_sbrk();
 	test_namespaces();
 
 	if (failures) {

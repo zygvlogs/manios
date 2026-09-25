@@ -16,8 +16,9 @@ struct process;
 
 /* Starts the ELF executable at `path` with argv[0..argc). The child
  * shares the caller's namespace, as in Plan 9, and inherits the calling
- * process's descriptors 0-2; when the caller is a kernel thread, 0-2
- * are /dev/cons. The caller -- a process, or the kernel when `parent`
+ * process's descriptors 0-2 and current directory; when the caller is a
+ * kernel thread, 0-2 are /dev/cons and the directory is "/". `path`
+ * must be absolute. The caller -- a process, or the kernel when `parent`
  * is NULL -- must process_wait() for it. Returns the pid, or a negated
  * error. */
 int process_spawn(const char *path, int argc, char *const argv[], struct process *parent);
@@ -34,6 +35,17 @@ __attribute__((noreturn)) void process_exit(int status);
  * with ZKT_WAIT_KILLED | vector. */
 __attribute__((noreturn)) void process_kill_current(uint32_t vector, const char *what,
                                                     uint32_t fault_addr);
+
+/* The current directory: an absolute, cleaned path. process_chdir
+ * takes an absolute path and checks it names a directory. */
+const char *process_cwd(const struct process *p);
+int process_chdir(struct process *p, const char *path);
+
+/* Moves the end of the calling process's heap by `increment` bytes and
+ * returns the previous end, or -ENOMEM / -EINVAL. The heap starts on
+ * the page after the program image and may grow up to the stack's
+ * guard page; new memory is zeroed. */
+long process_sbrk(struct process *p, int32_t increment);
 
 struct process *process_current(void);
 uint32_t process_pid(const struct process *p);

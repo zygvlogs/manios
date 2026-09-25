@@ -18,6 +18,7 @@
 #include "user_selftest.h"
 #include "vfs_selftest.h"
 #include "vmm.h"
+#include "zkt_abi.h"
 
 #define MAX_MEM_REGIONS 64
 
@@ -83,8 +84,11 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	user_selftest();
 	kprintf("Milestone M8: userspace online (ring 3 processes, system calls; self-test passed).\n");
 
-	if (!thread_create("monitor", monitor_main, 0)) {
-		panic("could not start the monitor thread");
+	libc_selftest();
+	kprintf("Milestone M9: libc, ABI v%d and shell online (self-test passed).\n", ZKT_ABI_VERSION);
+
+	if (!thread_create("console", console_main, 0)) {
+		panic("could not start the console thread");
 	}
 	thread_exit();
 }

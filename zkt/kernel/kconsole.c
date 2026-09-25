@@ -1,4 +1,5 @@
 #include "kconsole.h"
+#include <stdbool.h>
 #include "cpu.h"
 #include "device.h"
 #include "kstring.h"
@@ -83,20 +84,87 @@ void console_input(char c)
 	waitq_wake_all(&input_ready);
 }
 
-static long cons_read(struct device *dev, void *buf, size_t len)
+static char raw_getc(void)
 {
-	(void)dev;
-	uint8_t *out = buf;
-	size_t n = 0;
-
 	uint32_t flags = cpu_irq_save();
 	while (ring_empty(&input)) {
 		waitq_sleep(&input_ready);
 	}
-	while (n < len && !ring_empty(&input)) {
-		out[n++] = ring_pop(&input);
-	}
+	char c = (char)ring_pop(&input);
 	cpu_irq_restore(flags);
+	return c;
+}
+
+/* The line discipline: the console is "cooked", as Plan 9's /dev/cons
+ * is. Input is echoed and edited a line at a time, and a read returns at
+ * most one line. Serves the monitor and user programs alike. */
+#define CTRL_D 0x04
+#define CTRL_U 0x15
+
+static struct mutex reader_lock = MUTEX_INIT;
+static char line[CONSOLE_LINE_MAX];
+static size_t line_len, line_pos; /* a finished line, handed out from line_pos */
+
+/* Terminals send '\r' for Enter, and some follow it with '\n'. Either
+ * ends the line, but a '\n' right after a '\r' is swallowed rather than
+ * taken as an empty line. Returns false for end of file: ^D on an empty
+ * line. ^D after some input ends the line without a newline. */
+static bool edit_line(void)
+{
+	static bool after_cr;
+	line_len = 0;
+	for (;;) {
+		char c = raw_getc();
+		if (c == '\n' && after_cr) {
+			after_cr = false;
+			continue;
+		}
+		after_cr = c == '\r';
+
+		if (c == '\r' || c == '\n') {
+			kconsole_write("\n");
+			line[line_len++] = '\n';
+			return true;
+		}
+		if (c == CTRL_D) {
+			return line_len > 0;
+		}
+		if (c == '\b' || c == 0x7F || c == CTRL_U) {
+			do {
+				if (line_len) {
+					line_len--;
+					kconsole_write("\b \b");
+				}
+			} while (c == CTRL_U && line_len);
+			continue;
+		}
+		/* One byte stays free for the newline. */
+		if (c >= 0x20 && c < 0x7F && line_len + 1 < CONSOLE_LINE_MAX) {
+			line[line_len++] = c;
+			kconsole_putc(c);
+		}
+	}
+}
+
+static long cons_read(struct device *dev, void *buf, size_t len)
+{
+	(void)dev;
+	if (!len) {
+		return 0;
+	}
+	mutex_lock(&reader_lock);
+	if (line_pos == line_len) {
+		line_pos = 0;
+		if (!edit_line()) {
+			line_len = 0;
+			mutex_unlock(&reader_lock);
+			return 0;
+		}
+	}
+	size_t n = line_len - line_pos < len ? line_len - line_pos : len;
+	memcpy(buf, line + line_pos, n);
+	line_pos += n;
+	mutex_unlock(&reader_lock);
 	return (long)n;
 }
 

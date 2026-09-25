@@ -14,9 +14,11 @@ long zkt_syscall(uint32_t num, uint32_t a0, uint32_t a1, uint32_t a2, uint32_t a
 	return r;
 }
 
+/* Only -1..-ZKT_ERRNO_MAX mean failure: a result can be an address
+ * above 2 GiB, which is negative as a long. */
 static long check(long r)
 {
-	if (r < 0) {
+	if ((unsigned long)r >= (unsigned long)-ZKT_ERRNO_MAX) {
 		errno = (int)-r;
 		return -1;
 	}
@@ -51,3 +53,15 @@ int bind(const char *new_path, const char *old_path, int flag)
 }
 int unbind(const char *old_path)                { return (int)SC1(SYS_UNBIND, old_path); }
 int nsfork(void)                                { return (int)SC0(SYS_NSFORK); }
+int chdir(const char *path)                     { return (int)SC1(SYS_CHDIR, path); }
+
+void *sbrk(intptr_t increment)
+{
+	long r = SC1(SYS_SBRK, increment);
+	return r == -1 ? (void *)-1 : (void *)r;
+}
+
+char *getcwd(char *buf, size_t size)
+{
+	return SC2(SYS_GETCWD, buf, size) == -1 ? NULL : buf;
+}

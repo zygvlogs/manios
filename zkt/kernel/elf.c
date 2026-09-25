@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "pmm.h"
 #include "vmm.h"
+#include "zkt_abi.h"
 
 #define EI_NIDENT 16
 #define ELFCLASS32 1
@@ -14,6 +15,7 @@
 #define ET_EXEC 2
 #define EM_386 3
 #define PT_LOAD 1
+#define PT_NOTE 4
 #define PF_W 2
 
 struct elf_header {
@@ -26,9 +28,6 @@ struct elf_header {
 struct elf_phdr {
 	uint32_t type, offset, vaddr, paddr, filesz, memsz, flags, align;
 } __attribute__((packed));
-
-/* Everything below the stack, less the guard page under it. */
-#define USER_IMAGE_TOP (USER_STACK_TOP - (USER_STACK_PAGES + 1) * PAGE_SIZE)
 
 static bool valid_header(const struct elf_header *h, size_t size)
 {
@@ -68,6 +67,44 @@ static int map_range(uintptr_t start, uintptr_t end)
 	return 0;
 }
 
+/* The version in the executable's ZKT ABI note (zkt_abi.h), or 0 if it
+ * has none. Notes are a 12-byte header, then the name and the
+ * descriptor, each padded to 4 bytes. */
+static uint32_t abi_version(const uint8_t *image, size_t size, const struct elf_header *h,
+                            const struct elf_phdr *ph)
+{
+	for (uint16_t i = 0; i < h->phnum; i++) {
+		if (ph[i].type != PT_NOTE || ph[i].offset > size || ph[i].filesz > size - ph[i].offset) {
+			continue;
+		}
+		const uint8_t *note = image + ph[i].offset;
+		uint32_t left = ph[i].filesz;
+		while (left >= 12) {
+			uint32_t namesz, descsz, type;
+			memcpy(&namesz, note, 4);
+			memcpy(&descsz, note + 4, 4);
+			memcpy(&type, note + 8, 4);
+			left -= 12;
+			if (namesz > left || descsz > left) {
+				break;
+			}
+			uint32_t name_len = (namesz + 3) & ~3u, desc_len = (descsz + 3) & ~3u;
+			if (name_len > left || desc_len > left - name_len) {
+				break;
+			}
+			if (type == ZKT_NOTE_ABI && namesz == sizeof(ZKT_NOTE_NAME)
+			    && memcmp(note + 12, ZKT_NOTE_NAME, namesz) == 0 && descsz == 4) {
+				uint32_t version;
+				memcpy(&version, note + 12 + name_len, 4);
+				return version;
+			}
+			note += 12 + name_len + desc_len;
+			left -= name_len + desc_len;
+		}
+	}
+	return 0;
+}
+
 static bool writable_segment_covers(const struct elf_header *h, const struct elf_phdr *ph,
                                     uintptr_t page)
 {
@@ -80,15 +117,20 @@ static bool writable_segment_covers(const struct elf_header *h, const struct elf
 	return false;
 }
 
-int elf_load(const uint8_t *image, size_t size, uintptr_t *entry)
+int elf_load(const uint8_t *image, size_t size, uintptr_t *entry, uintptr_t *image_end)
 {
 	const struct elf_header *h = (const void *)image;
 	if (!valid_header(h, size)) {
 		return -ENOEXEC;
 	}
 	const struct elf_phdr *ph = (const void *)(image + h->phoff);
+	uint32_t version = abi_version(image, size, h, ph);
+	if (version == 0 || version > ZKT_ABI_VERSION) {
+		return -ENOEXEC;
+	}
 
 	bool entry_loaded = false;
+	uintptr_t end = USER_IMAGE_MIN;
 	for (uint16_t i = 0; i < h->phnum; i++) {
 		if (ph[i].type != PT_LOAD || ph[i].memsz == 0) {
 			continue;
@@ -103,6 +145,9 @@ int elf_load(const uint8_t *image, size_t size, uintptr_t *entry)
 		memcpy((void *)ph[i].vaddr, image + ph[i].offset, ph[i].filesz);
 		if (h->entry >= ph[i].vaddr && h->entry - ph[i].vaddr < ph[i].memsz) {
 			entry_loaded = true;
+		}
+		if (ph[i].vaddr + ph[i].memsz > end) {
+			end = ph[i].vaddr + ph[i].memsz;
 		}
 	}
 	if (!entry_loaded) {
@@ -123,5 +168,6 @@ int elf_load(const uint8_t *image, size_t size, uintptr_t *entry)
 		}
 	}
 	*entry = h->entry;
+	*image_end = end;
 	return 0;
 }

@@ -26,6 +26,15 @@ int getpid(void);
 int sleep_ms(uint32_t ms);
 uint32_t uptime_ms(void); /* never fails */
 
+/* Moves the end of the heap; returns the previous end, or (void *)-1.
+ * malloc() uses it: other code should not, unless it never frees. */
+void *sbrk(intptr_t increment);
+
+/* Relative paths start from the current directory. getcwd returns buf,
+ * or NULL (ERANGE if it is too small). */
+int chdir(const char *path);
+char *getcwd(char *buf, size_t size);
+
 /* Namespaces (ADR-0003). flag: BIND_FLAG_REPLACE, _BEFORE or _AFTER. */
 int bind(const char *new_path, const char *old_path, int flag);
 int unbind(const char *old_path);

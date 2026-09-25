@@ -1,6 +1,7 @@
 #include "syscall.h"
 #include "heap.h"
 #include "kerrno.h"
+#include "kprintf.h"
 #include "kstring.h"
 #include "namespace.h"
 #include "process.h"
@@ -97,16 +98,29 @@ static long sys_write(struct process *p, int fd, const uint8_t *ubuf, uint32_t l
 	return (long)done;
 }
 
-static long copy_path(char *dst, const char *upath)
+_Static_assert(VFS_PATH_MAX == ZKT_PATH_MAX, "the ABI's path limit is the VFS's");
+
+/* Copies a path from the process and makes it absolute: a relative one
+ * is appended to the current directory (the VFS cleans the result). */
+static long copy_path(struct process *p, char *dst, const char *upath)
 {
-	long n = copy_string_from_user(dst, upath, VFS_PATH_MAX + 1);
-	return n < 0 ? n : 0;
+	char rel[VFS_PATH_MAX + 1];
+	long n = copy_string_from_user(rel, upath, sizeof(rel));
+	if (n < 0) {
+		return n;
+	}
+	if (rel[0] == '/') {
+		memcpy(dst, rel, (size_t)n + 1);
+		return 0;
+	}
+	int len = ksnprintf(dst, VFS_PATH_MAX + 1, "%s/%s", process_cwd(p), rel);
+	return len > VFS_PATH_MAX ? -ENAMETOOLONG : 0;
 }
 
 static long sys_open(struct process *p, const char *upath, int mode)
 {
 	char path[VFS_PATH_MAX + 1];
-	long rc = copy_path(path, upath);
+	long rc = copy_path(p, path, upath);
 	if (rc) {
 		return rc;
 	}
@@ -134,7 +148,7 @@ static long sys_spawn(struct process *p, const char *upath, char *const *uargv)
 	if (!a) {
 		return -ENOMEM;
 	}
-	long rc = copy_path(a->path, upath);
+	long rc = copy_path(p, a->path, upath);
 	int argc = 0;
 	size_t used = 0;
 	while (rc == 0) {
@@ -176,12 +190,12 @@ static long sys_wait(struct process *p, int pid, int *ustatus)
 	return rc;
 }
 
-static long sys_bind(const char *unew, const char *uold, int flag)
+static long sys_bind(struct process *p, const char *unew, const char *uold, int flag)
 {
 	char new_path[VFS_PATH_MAX + 1], old_path[VFS_PATH_MAX + 1];
-	long rc = copy_path(new_path, unew);
+	long rc = copy_path(p, new_path, unew);
 	if (!rc) {
-		rc = copy_path(old_path, uold);
+		rc = copy_path(p, old_path, uold);
 	}
 	if (rc) {
 		return rc;
@@ -194,11 +208,28 @@ static long sys_bind(const char *unew, const char *uold, int flag)
 	}
 }
 
-static long sys_unbind(const char *uold)
+static long sys_unbind(struct process *p, const char *uold)
 {
 	char path[VFS_PATH_MAX + 1];
-	long rc = copy_path(path, uold);
+	long rc = copy_path(p, path, uold);
 	return rc ? rc : vfs_unbind(path);
+}
+
+static long sys_chdir(struct process *p, const char *upath)
+{
+	char path[VFS_PATH_MAX + 1];
+	long rc = copy_path(p, path, upath);
+	return rc ? rc : process_chdir(p, path);
+}
+
+static long sys_getcwd(struct process *p, char *ubuf, uint32_t len)
+{
+	const char *cwd = process_cwd(p);
+	size_t n = strlen(cwd);
+	if (len < n + 1) {
+		return -ERANGE;
+	}
+	return copy_to_user(ubuf, cwd, n + 1) ? -EFAULT : (long)n;
 }
 
 static long sys_nsfork(void)
@@ -246,11 +277,14 @@ long syscall_dispatch(uint32_t num, uint32_t a0, uint32_t a1, uint32_t a2,
 	case SYS_WAIT:   return sys_wait(p, (int)a0, (int *)a1);
 	case SYS_GETPID: return (long)process_pid(p);
 	case SYS_SLEEP:  timer_sleep_ms(a0); return 0;
-	case SYS_BIND:   return sys_bind((const char *)a0, (const char *)a1, (int)a2);
-	case SYS_UNBIND: return sys_unbind((const char *)a0);
+	case SYS_BIND:   return sys_bind(p, (const char *)a0, (const char *)a1, (int)a2);
+	case SYS_UNBIND: return sys_unbind(p, (const char *)a0);
 	case SYS_NSFORK: return sys_nsfork();
 	case SYS_FSTAT:  return sys_fstat(p, (int)a0, (struct zkt_dirent *)a1);
 	case SYS_UPTIME: return (long)((uint32_t)timer_uptime_ms() & 0x7FFFFFFF);
+	case SYS_SBRK:   return process_sbrk(p, (int32_t)a0);
+	case SYS_CHDIR:  return sys_chdir(p, (const char *)a0);
+	case SYS_GETCWD: return sys_getcwd(p, (char *)a0, a1);
 	default:         return -ENOSYS;
 	}
 }

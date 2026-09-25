@@ -20,7 +20,8 @@ import sys
 import tempfile
 import time
 
-PROMPT = b"ZKT> "
+PROMPT = b"ZKT> "          # the kernel monitor
+SHELL_PROMPT = b"manios% "  # /bin/sh, where boot ends
 TIMEOUT = 15
 BOOTFS_DIR = "build/bootfs"  # the boot archive's contents; set from the kernel path
 
@@ -108,11 +109,13 @@ class Machine:
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
 
-def run_command(m, how, command, expect_in_output):
+def run_command(m, how, command, expect_in_output, prompt=PROMPT):
     """Types a command, checks its echo and output, waits for the next
-    prompt. A needle starting with "!" must not appear."""
-    (m.type_serial if how == "serial" else m.type_keyboard)(command + ("\r" if how == "serial" else "\n"))
-    out = m.expect(PROMPT)
+    prompt. A needle starting with "!" must not appear. A command ending
+    in ^D (end of input for the program it started) gets no Enter."""
+    enter = "" if command.endswith("\x04") else "\r" if how == "serial" else "\n"
+    (m.type_serial if how == "serial" else m.type_keyboard)(command + enter)
+    out = m.expect(prompt)
     for needle in expect_in_output:
         if needle.startswith("!"):
             if needle[1:] in out:
@@ -204,6 +207,12 @@ def malformed_elves(elf):
     phoff = struct.unpack_from("<I", elf, 28)[0]
     text_vaddr = struct.unpack_from("<I", elf, phoff + 8)[0]
     text_memsz = struct.unpack_from("<I", elf, phoff + 20)[0]
+    phnum = struct.unpack_from("<H", elf, 44)[0]
+    notes = [struct.unpack_from("<I", elf, phoff + i * 32 + 4)[0] for i in range(phnum)
+             if struct.unpack_from("<I", elf, phoff + i * 32)[0] == 4]  # PT_NOTE offsets
+    if len(notes) != 1:
+        raise TestFailure("test ELF: expected exactly one PT_NOTE (the ZKT ABI note)")
+    note = notes[0]  # namesz, descsz, type, "ZKT\0", version
 
     def patch(fmt, off, *values):
         out = bytearray(elf)
@@ -222,6 +231,8 @@ def malformed_elves(elf):
         "wrap": patch("<I", phoff + 20, 0x100000000 - text_vaddr),
         "filesz": patch("<I", phoff + 16, text_memsz + 1),     # filesz > memsz
         "offset": patch("<I", phoff + 4, len(elf)),            # data past the end
+        "noabi": patch("<I", note + 8, 2),                     # not the ABI note's type
+        "abi99": patch("<I", note + 16, 99),                   # a future ABI version
     }
 
 
@@ -296,7 +307,16 @@ def write_fat_disk(path):
     def sum_case(dev_path, data):
         return ("serial", f"sum {dev_path}", [f"{len(data)} bytes, fnv1a {fnv1a(data):08x}"])
 
-    return [
+    frag = files[(P1, "FRAG.BIN")]
+    shell = [
+        ("serial", "cd /n/ata0p1; ls", ["readme.txt", "docs/", "frag.bin"]),
+        # /bin/sum prints what the monitor's sum does; relative paths.
+        ("serial", "sum frag.bin", [f"frag.bin: {len(frag)} bytes, fnv1a {fnv1a(frag):08x}"]),
+        ("serial", "cd docs; cat ../readme.txt", ["This file lives on a FAT16 volume."]),
+        ("serial", "wc nested.txt", ["      1       2      12 nested.txt"]),
+        ("serial", "cd /", []),
+    ]
+    return {"shell": shell, "monitor": [
         sum_case("/n/ata0p1/frag.bin", files[(P1, "FRAG.BIN")]),
         sum_case("/n/ata0p1/big.bin", files[(P1, "BIG.BIN")]),
         sum_case("/n/ata0p2/frag12.bin", files[(P2, "FRAG12.BIN")]),
@@ -311,7 +331,7 @@ def write_fat_disk(path):
         ("serial", "bind -a /n/ata0p1/bin /bin", []),
         ("serial", "ls /bin", ["hello", "fault"]),
         ("serial", "run /bin/fault exit42", ["run: /bin/fault exited with status 42"]),
-    ]
+    ]}
 
 
 # --- scenarios -----------------------------------------------------------
@@ -321,13 +341,30 @@ SCENARIOS = [
     {
         "name": "no disk",
         "disk": None,
-        "boot": ["devices: cons com1 vga\r\n"],
+        "boot": ["devices: cons com1 vga\r\n", "Milestone M9: libc, ABI v1 and shell online"],
+        "shell": [
+            ("serial", "ls /bin", ["cat", "echo", "ls", "sh", "wc"]),
+            ("serial", "echo 'a;b' c\\;d; echo e", ["\r\na;b c;d\r\ne\r\n"]),
+            ("keyboard", "cd /boot; pwd", ["\r\n/boot\r\n"]),
+            ("serial", "ls", ["bin/", "etc/", "test/"]),
+            ("serial", "cat etc/motd", ["\r\nWelcome to ManiOS.\r\n"]),
+            ("serial", "wc etc/motd", ["      1       3      19 etc/motd"]),
+            # Typed ahead: the shell reads one line, cat the next, then ^D.
+            ("serial", "cat\rtwo words\r\x04", ["two words\r\ntwo words\r\n"]),
+            ("serial", "nosuch", ["sh: nosuch: not found"]),
+            ("serial", "test/fault null",
+             ["]: killed: Page fault at 0x00000000", "sh: test/fault: killed (vector 14)"]),
+            ("serial", "newns; bind /boot /n; ls /n", ["bin/", "etc/"]),
+            ("serial", "sh -c 'ls /n; exit 3'; echo done", ["bin/", "\r\ndone\r\n"]),
+            ("serial", "uptime", ["up "]),
+            ("serial", "/boot/test/ctest", ["ctest: all ", " checks passed", "!FAIL"]),
+        ],
         "cases": [
             ("serial", "help", ["commands:", "threads", "devices"]),
             ("serial", "echo over serial", ["\r\nover serial\r\n"]),
             ("serial", "devices", ["cons", "com1", "vga"]),
             ("keyboard", "uptime", ["uptime: "]),
-            ("keyboard", "threads", ["monitor", "idle", "running"]),
+            ("keyboard", "threads", ["console", "idle", "running"]),
             ("keyboard", "echo Hello, World! (x_y)", ["\r\nHello, World! (x_y)\r\n"]),
             # Backspace must erase on screen ("\b \b") and in the line buffer.
             ("keyboard", "uptimx\be", ["uptimx\b \be", "uptime: "]),
@@ -347,7 +384,9 @@ SCENARIOS = [
             ("serial", "run /boot/etc/motd", ["run: /boot/etc/motd: not an executable"]),
             ("serial", "run /boot/test/utest", ["utest: all ", " checks passed", "!FAIL"]),
             # Every process thread is gone once its program has exited.
-            ("serial", "threads", ["monitor", "!hello", "!fault", "!utest", "!isotest"]),
+            ("serial", "threads", ["console", "!hello", "!fault", "!utest", "!isotest"]),
+            # The shell's newns kept its bind of /boot on /n private.
+            ("serial", "ls /n", ["!bin/"]),
         ],
     },
     {
@@ -411,33 +450,47 @@ SCENARIOS = [
 ]
 
 
+def run_cases(m, name, cases, prompt):
+    failures = 0
+    for how, command, needles in cases:
+        try:
+            run_command(m, how, command, needles, prompt)
+            print(f"PASS: [{name}] {how}: {command!r}")
+        except TestFailure as e:
+            print(f"FAIL: [{name}] {e}")
+            failures += 1
+            m.mark = len(m.output)
+            m.type_serial("\r")
+            m.expect(prompt)
+    return failures
+
+
 def run_scenario(kernel, scenario, workdir):
-    extra, generated_cases = [], []
+    """Boot ends at the shell: its cases run first, then `exit` drops to
+    the kernel monitor for the monitor cases. Generated cases (which
+    depend on the disk image's data) are plain reads, so they run before
+    the scenario's own cases, which may rebind things."""
+    extra, generated = [], {}
     if scenario["disk"]:
         path = os.path.join(workdir, scenario["name"].replace(" ", "-") + ".img")
-        generated_cases = scenario["disk"](path) or []
+        generated = scenario["disk"](path) or {}
         extra = ["-drive", f"file={path},format=raw,if=ide"]
     m = Machine(kernel, extra)
+    name = scenario["name"]
     failures = 0
     try:
-        boot = m.expect(PROMPT)
+        boot = m.expect(SHELL_PROMPT)
         for needle in scenario["boot"]:
             if needle not in boot:
                 raise TestFailure(f"boot output lacks {needle!r}:\n{boot}")
-        print(f"PASS: [{scenario['name']}] boot")
-        # Generated cases are plain reads; run them before any binds.
-        for how, command, needles in generated_cases + scenario["cases"]:
-            try:
-                run_command(m, how, command, needles)
-                print(f"PASS: [{scenario['name']}] {how}: {command!r}")
-            except TestFailure as e:
-                print(f"FAIL: [{scenario['name']}] {e}")
-                failures += 1
-                m.mark = len(m.output)
-                m.type_serial("\r")
-                m.expect(PROMPT)
+        print(f"PASS: [{name}] boot")
+        failures += run_cases(m, name, generated.get("shell", []) + scenario.get("shell", []),
+                              SHELL_PROMPT)
+        run_command(m, "serial", "exit", ["console: the shell has exited"])
+        print(f"PASS: [{name}] exit to the monitor")
+        failures += run_cases(m, name, generated.get("monitor", []) + scenario["cases"], PROMPT)
     except TestFailure as e:
-        print(f"FAIL: [{scenario['name']}] {e}")
+        print(f"FAIL: [{name}] {e}")
         failures += 1
     finally:
         m.close()
