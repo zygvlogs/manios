@@ -8,8 +8,8 @@ typedef void (*irq_handler_t)(void);
 /* Installs the handler for IRQ line `irq` and unmasks the line. Panics
  * if the line doesn't exist or already has a handler. Handlers run with
  * interrupts disabled, after the PIC has been acknowledged, and must not
- * call the PMM, VMM or heap: those take no locks, so an IRQ arriving
- * mid-allocation would corrupt them. */
+ * sleep, yield or exit: that would suspend whichever thread happened to
+ * be interrupted. */
 void irq_install_handler(unsigned irq, irq_handler_t handler);
 
 /* Called from isr_handler for vectors IRQ_BASE_VECTOR..+15. */

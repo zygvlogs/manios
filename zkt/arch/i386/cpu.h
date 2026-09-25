@@ -3,21 +3,11 @@
 #ifndef ZKT_ARCH_I386_CPU_H
 #define ZKT_ARCH_I386_CPU_H
 
-#include <stdbool.h>
 #include <stdint.h>
-
-#define EFLAGS_IF (1u << 9)
 
 static inline void cpu_enable_interrupts(void)
 {
 	__asm__ volatile ("sti" : : : "memory");
-}
-
-static inline bool cpu_interrupts_enabled(void)
-{
-	uint32_t flags;
-	__asm__ volatile ("pushfl\n\tpopl %0" : "=r"(flags));
-	return flags & EFLAGS_IF;
 }
 
 /* Disables interrupts and returns the previous EFLAGS, for a critical
@@ -34,9 +24,12 @@ static inline void cpu_irq_restore(uint32_t flags)
 	__asm__ volatile ("pushl %0\n\tpopfl" : : "r"(flags) : "memory", "cc");
 }
 
-static inline void cpu_wait_for_interrupt(void)
+/* Enables interrupts and halts until the next one. STI takes effect only
+ * after the following instruction, so no interrupt can slip in between
+ * and leave the CPU halted with nothing to wake it. */
+static inline void cpu_idle(void)
 {
-	__asm__ volatile ("hlt");
+	__asm__ volatile ("sti\n\thlt" : : : "memory");
 }
 
 __attribute__((noreturn)) static inline void cpu_halt_forever(void)

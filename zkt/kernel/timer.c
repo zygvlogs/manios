@@ -1,7 +1,7 @@
 #include "timer.h"
 #include "clock.h"
 #include "cpu.h"
-#include "panic.h"
+#include "sched.h"
 
 /* Keeps millisecond conversion to a multiply: a 64-bit division would
  * pull in libgcc, which is built for i686
@@ -14,6 +14,7 @@ static volatile uint64_t ticks;
 static void timer_tick(void)
 {
 	ticks++;
+	sched_tick(ticks);
 }
 
 void timer_init(void)
@@ -41,13 +42,6 @@ void timer_sleep_ms(uint32_t ms)
 	if (ms == 0) {
 		return;
 	}
-	if (!cpu_interrupts_enabled()) {
-		panic("timer_sleep_ms: called with interrupts disabled");
-	}
-
 	/* +1: the current tick is already partly over. */
-	uint64_t until = timer_ticks() + (ms + MS_PER_TICK - 1) / MS_PER_TICK + 1;
-	while (timer_ticks() < until) {
-		cpu_wait_for_interrupt();
-	}
+	thread_sleep_until(timer_ticks() + (ms + MS_PER_TICK - 1) / MS_PER_TICK + 1);
 }

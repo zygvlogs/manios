@@ -23,6 +23,10 @@
 /* One otherwise-unused kernel page for the boot-time VMM self-test. */
 #define KERNEL_SELFTEST_VIRT 0xE0000000
 
+/* Kernel thread stacks, each below an unmapped guard page (kstack.c). */
+#define KERNEL_STACKS_START 0xE1000000
+#define KERNEL_STACKS_SIZE 0x01000000
+
 /* The last page directory entry maps the page directory itself, which
  * exposes every page table at a fixed virtual address. */
 #define RECURSIVE_PD_INDEX 1023
@@ -37,6 +41,9 @@
 
 /* linker.ld: first byte past the kernel image, .bss included (virtual). */
 extern char _kernel_end[];
+
+/* boot.S: the kernel's page directory -- still the only one. */
+extern uint32_t boot_page_directory[1024];
 #endif
 
 #endif

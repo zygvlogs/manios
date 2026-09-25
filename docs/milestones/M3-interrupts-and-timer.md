@@ -57,6 +57,9 @@ and the timer that §2.6's preemptive scheduler (M4) will run on.
   sleeps at least the requested time, at 10 ms granularity. If a tick
   lands between the check and the `hlt`, the sleep lasts one tick
   longer; it never hangs, because the clock is periodic.
+  *Update (M4):* `timer_sleep_ms()` now blocks the calling thread through
+  the scheduler, and the interrupts-disabled check is gone: the idle
+  thread runs with interrupts on, so the sleep always ends.
 
 ## Found and fixed along the way
 
@@ -100,7 +103,8 @@ and the timer that §2.6's preemptive scheduler (M4) will run on.
 ## Known limits (deliberately deferred)
 
 - No double-fault handler on a separate stack, so stack overflows reset
-  rather than report (see above; M4).
+  rather than report (see above). *Resolved in M4:* vector 8 is now a
+  task gate to its own TSS and stack, and overflows are reported.
 - Legacy 8259 PICs only. APIC/IOAPIC support belongs with newer
   hardware and SMP, which aren't on the i386-first roadmap.
 - One handler per IRQ line; no sharing, which PCI-era hardware will

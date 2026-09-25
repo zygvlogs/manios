@@ -9,5 +9,10 @@ Architecture-neutral memory management. Design and verification:
   i386 implementation is `zkt/arch/i386/paging.c`
 - `heap.c` — `kmalloc` / `kfree`, a first-fit free list that grows the
   heap region on demand
-- `mm_selftest.c` — boot-time checks of all three, which
+- `kstack.c` — 8 KiB kernel thread stacks, each above an unmapped
+  guard page ([M4 notes](../../docs/milestones/M4-multitasking.md))
+- `mm_selftest.c` — boot-time checks of the PMM, VMM and heap, which
   `make test` gates on
+
+All of these run each operation with interrupts off, which is their
+lock on one CPU.

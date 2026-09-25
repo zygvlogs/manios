@@ -14,7 +14,8 @@ clone. It does not depend on the Linux kernel.
 | M1 — boots on i386 to a ZKT kernel console | Achieved |
 | M2 — physical/virtual memory, higher-half kernel, kernel heap | Achieved ([notes](docs/milestones/M2-memory-management.md)) |
 | M3 — hardware IRQs, PIT timer | Achieved ([notes](docs/milestones/M3-interrupts-and-timer.md)) |
-| M4 — multitasking (kernel threads) | Next |
+| M4 — multitasking: kernel threads, cooperative + preemptive scheduling | Achieved ([notes](docs/milestones/M4-multitasking.md)) |
+| M5 — driver framework, keyboard | Next |
 
 The full architecture and roadmap are in
 [`docs/FOUNDING-PROPOSAL.md`](docs/FOUNDING-PROPOSAL.md).

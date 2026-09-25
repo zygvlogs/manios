@@ -1,5 +1,6 @@
 #include "idt.h"
 #include <stdint.h>
+#include "gdt.h"
 #include "irq.h"
 #include "isr.h"
 #include "pic.h"
@@ -18,8 +19,9 @@ struct idt_ptr {
 } __attribute__((packed));
 
 #define IDT_ENTRIES 256
-#define KERNEL_CODE_SEL 0x08 /* see gdt.c */
 #define IDT_FLAG_PRESENT_RING0_INT32 0x8E
+#define IDT_FLAG_PRESENT_RING0_TASK  0x85
+#define VECTOR_DOUBLE_FAULT 8
 
 static struct idt_entry idt[IDT_ENTRIES];
 static struct idt_ptr idtp;
@@ -72,16 +74,20 @@ void idt_init(void)
 		isr24, isr25, isr26, isr27, isr28, isr29, isr30, isr31,
 	};
 	for (int i = 0; i < 32; i++) {
-		idt_set_gate(i, (uint32_t)stubs[i], KERNEL_CODE_SEL,
+		idt_set_gate(i, (uint32_t)stubs[i], GDT_KERNEL_CODE_SEL,
 		             IDT_FLAG_PRESENT_RING0_INT32);
 	}
+	/* A double fault usually means the kernel stack is unusable, so it
+	 * switches to a separate task and stack (tss.c) instead of isr8. */
+	idt_set_gate(VECTOR_DOUBLE_FAULT, 0, GDT_DOUBLE_FAULT_TSS_SEL,
+	             IDT_FLAG_PRESENT_RING0_TASK);
 
 	void (*const irq_stubs[IRQ_LINES])(void) = {
 		irq0, irq1, irq2,  irq3,  irq4,  irq5,  irq6,  irq7,
 		irq8, irq9, irq10, irq11, irq12, irq13, irq14, irq15,
 	};
 	for (int i = 0; i < IRQ_LINES; i++) {
-		idt_set_gate(IRQ_BASE_VECTOR + i, (uint32_t)irq_stubs[i], KERNEL_CODE_SEL,
+		idt_set_gate(IRQ_BASE_VECTOR + i, (uint32_t)irq_stubs[i], GDT_KERNEL_CODE_SEL,
 		             IDT_FLAG_PRESENT_RING0_INT32);
 	}
 

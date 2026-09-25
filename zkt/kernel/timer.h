@@ -13,9 +13,8 @@ void timer_init(void);
 uint64_t timer_ticks(void);
 uint64_t timer_uptime_ms(void);
 
-/* Sleeps at least `ms` milliseconds, at tick granularity, halting the
- * CPU between ticks. Panics if interrupts are disabled, since no tick
- * could ever end the sleep. */
+/* Blocks the calling thread for at least `ms` milliseconds, at tick
+ * granularity. Not for IRQ handlers (see thread_sleep_until()). */
 void timer_sleep_ms(uint32_t ms);
 
 #endif

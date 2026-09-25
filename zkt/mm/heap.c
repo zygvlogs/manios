@@ -1,5 +1,6 @@
 #include "heap.h"
 #include <stdint.h>
+#include "cpu.h"
 #include "memlayout.h"
 #include "panic.h"
 #include "pmm.h"
@@ -24,6 +25,7 @@ _Static_assert(sizeof(struct block) % HEAP_ALIGN == 0,
 
 static struct block *heap_head;
 static uintptr_t heap_end; /* first unmapped byte of the heap region */
+static size_t used_bytes;
 
 void heap_init(void)
 {
@@ -97,11 +99,14 @@ static void *take_first_fit(size_t size)
 			b->size = size;
 		}
 		b->magic = MAGIC_USED;
+		used_bytes += b->size;
 		return b + 1;
 	}
 	return NULL;
 }
 
+/* The heap is shared by all threads and has no lock of its own: on a
+ * single CPU, running each operation with interrupts off is the lock. */
 void *kmalloc(size_t size)
 {
 	if (size == 0 || size > KERNEL_HEAP_MAX_SIZE) {
@@ -109,10 +114,12 @@ void *kmalloc(size_t size)
 	}
 	size = (size + HEAP_ALIGN - 1) & ~(size_t)(HEAP_ALIGN - 1);
 
+	uint32_t flags = cpu_irq_save();
 	void *p = take_first_fit(size);
 	if (!p && heap_grow(size) == 0) {
 		p = take_first_fit(size);
 	}
+	cpu_irq_restore(flags);
 	return p;
 }
 
@@ -122,6 +129,7 @@ void kfree(void *ptr)
 		return;
 	}
 
+	uint32_t flags = cpu_irq_save();
 	uintptr_t p = (uintptr_t)ptr;
 	if (p < KERNEL_HEAP_START + sizeof(struct block) || p >= heap_end
 	    || (p & (HEAP_ALIGN - 1))) {
@@ -135,6 +143,7 @@ void kfree(void *ptr)
 		panic("kfree: heap corruption or pointer not from kmalloc");
 	}
 	b->magic = MAGIC_FREE;
+	used_bytes -= b->size;
 
 	for (struct block *c = heap_head; c;) {
 		if (c->magic == MAGIC_FREE && c->next && c->next->magic == MAGIC_FREE) {
@@ -144,19 +153,32 @@ void kfree(void *ptr)
 			c = c->next;
 		}
 	}
+	cpu_irq_restore(flags);
+}
+
+size_t heap_used(void)
+{
+	return used_bytes;
 }
 
 int heap_check(void)
 {
+	uint32_t flags = cpu_irq_save();
 	uintptr_t expected = KERNEL_HEAP_START;
+	int ok = 0;
 	for (struct block *b = heap_head; b; b = b->next) {
 		if ((uintptr_t)b != expected
 		    || (b->magic != MAGIC_USED && b->magic != MAGIC_FREE)
 		    || b->size % HEAP_ALIGN
 		    || (b->magic == MAGIC_FREE && b->next && b->next->magic == MAGIC_FREE)) {
-			return -1;
+			ok = -1;
+			break;
 		}
 		expected = (uintptr_t)(b + 1) + b->size;
 	}
-	return expected == heap_end ? 0 : -1;
+	if (ok == 0 && expected != heap_end) {
+		ok = -1;
+	}
+	cpu_irq_restore(flags);
+	return ok;
 }

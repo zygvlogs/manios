@@ -1,4 +1,5 @@
 #include "pmm.h"
+#include "cpu.h"
 #include "kstring.h"
 #include "memlayout.h"
 #include "panic.h"
@@ -104,19 +105,24 @@ void pmm_init(const struct mem_region *regions, size_t count)
 	search_hint = 0;
 }
 
+/* Interrupts off is the PMM's lock (single CPU), as for the heap. */
 uintptr_t pmm_alloc_frame(void)
 {
-	for (size_t w = search_hint; w < word_count; w++) {
-		if (bitmap[w] != 0xFFFFFFFFu) {
-			size_t frame = w * BITS_PER_WORD + (size_t)__builtin_ctz(~bitmap[w]);
-			mark_used(frame);
-			free_count--;
-			search_hint = w;
-			return (uintptr_t)frame << PAGE_SHIFT;
-		}
+	uintptr_t phys = 0;
+	uint32_t flags = cpu_irq_save();
+	size_t w = search_hint;
+	while (w < word_count && bitmap[w] == 0xFFFFFFFFu) {
+		w++;
 	}
-	search_hint = word_count;
-	return 0;
+	search_hint = w;
+	if (w < word_count) {
+		size_t frame = w * BITS_PER_WORD + (size_t)__builtin_ctz(~bitmap[w]);
+		mark_used(frame);
+		free_count--;
+		phys = (uintptr_t)frame << PAGE_SHIFT;
+	}
+	cpu_irq_restore(flags);
+	return phys;
 }
 
 void pmm_free_frame(uintptr_t phys)
@@ -129,15 +135,17 @@ void pmm_free_frame(uintptr_t phys)
 	if (frame >= frame_count) {
 		panic("pmm_free_frame: address is beyond physical memory");
 	}
+
+	uint32_t flags = cpu_irq_save();
 	if (!is_used(frame)) {
 		panic("pmm_free_frame: frame is already free (double free)");
 	}
-
 	mark_free(frame);
 	free_count++;
 	if (frame / BITS_PER_WORD < search_hint) {
 		search_hint = frame / BITS_PER_WORD;
 	}
+	cpu_irq_restore(flags);
 }
 
 size_t pmm_free_frames(void)

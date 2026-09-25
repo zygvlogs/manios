@@ -30,6 +30,7 @@ sets, never by `../arch/<cpu>/` path, so another architecture can
 supply headers of the same names.
 
 Implemented so far: M1 (boot, console, exceptions), M2 (memory
-management, [notes](../docs/milestones/M2-memory-management.md)) and M3
-(hardware IRQs and timer, [notes](../docs/milestones/M3-interrupts-and-timer.md)).
-`fs/`, `ipc/` and `scheduler/` are still empty.
+management, [notes](../docs/milestones/M2-memory-management.md)), M3
+(hardware IRQs and timer, [notes](../docs/milestones/M3-interrupts-and-timer.md))
+and M4 (kernel threads, [notes](../docs/milestones/M4-multitasking.md)).
+`fs/` and `ipc/` are still empty.

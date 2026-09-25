@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "arch.h"
 #include "cpu.h"
 #include "heap.h"
 #include "kconsole.h"
@@ -6,20 +7,16 @@
 #include "multiboot.h"
 #include "panic.h"
 #include "pmm.h"
+#include "sched.h"
+#include "sched_selftest.h"
 #include "timer.h"
 #include "vmm.h"
-#include "gdt.h"
-#include "idt.h"
-#include "pic.h"
 
 #define MAX_MEM_REGIONS 64
 
 void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 {
-	gdt_init();
-	idt_init();
-	pic_remap_and_mask();
-
+	arch_early_init();
 	kconsole_init();
 
 	kconsole_write("ManiOS / ZKT (ZygKernel Technology)\n");
@@ -45,6 +42,7 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	mm_selftest();
 	kconsole_write("Milestone M2: memory manager online (self-test passed).\n");
 
+	sched_init(); /* from here on, this is thread "main" */
 	timer_init();
 	cpu_enable_interrupts();
 	/* Returns only after several ticks, i.e. only if IRQs are delivered
@@ -54,9 +52,12 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	kconsole_write_dec(TIMER_HZ);
 	kconsole_write(" Hz).\n");
 
-	kconsole_write("ZKT> ");
+	sched_selftest_cooperative();
+	sched_enable_preemption();
+	sched_selftest_preemptive();
+	kconsole_write("Milestone M4: kernel threads online "
+	               "(cooperative + preemptive scheduling, self-test passed).\n");
 
-	for (;;) {
-		cpu_wait_for_interrupt();
-	}
+	kconsole_write("ZKT> ");
+	thread_exit(); /* the idle thread keeps the CPU from here */
 }

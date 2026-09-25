@@ -15,8 +15,7 @@
 #define PTE_WRITABLE 0x002u
 #define PTE_ADDR_MASK 0xFFFFF000u
 
-extern uint32_t boot_page_directory[1024]; /* boot.S */
-extern char kernel_stack_guard[];          /* boot.S */
+extern char kernel_stack_guard[]; /* boot.S */
 
 static uint32_t *const page_directory = (uint32_t *)RECURSIVE_PD_ADDR;
 
@@ -46,7 +45,8 @@ void vmm_init(void)
 	vmm_unmap_page((uintptr_t)kernel_stack_guard, &guard_phys);
 }
 
-int vmm_map_page(uintptr_t virt, uintptr_t phys, unsigned flags)
+/* Interrupts off is the page tables' lock (single CPU). */
+static int map_page_locked(uintptr_t virt, uintptr_t phys, unsigned flags)
 {
 	uint32_t pdi = pd_index_of(virt);
 	uint32_t pti = pt_index_of(virt);
@@ -74,6 +74,14 @@ int vmm_map_page(uintptr_t virt, uintptr_t phys, unsigned flags)
 	return 0;
 }
 
+int vmm_map_page(uintptr_t virt, uintptr_t phys, unsigned flags)
+{
+	uint32_t irq_flags = cpu_irq_save();
+	int rc = map_page_locked(virt, phys, flags);
+	cpu_irq_restore(irq_flags);
+	return rc;
+}
+
 static uint32_t *pte_of(uintptr_t virt)
 {
 	uint32_t pdi = pd_index_of(virt);
@@ -86,22 +94,28 @@ static uint32_t *pte_of(uintptr_t virt)
 
 int vmm_unmap_page(uintptr_t virt, uintptr_t *phys_out)
 {
+	int rc = -1;
+	uint32_t flags = cpu_irq_save();
 	uint32_t *pte = pte_of(virt);
-	if (!pte || pd_index_of(virt) == RECURSIVE_PD_INDEX) {
-		return -1;
+	if (pte && pd_index_of(virt) != RECURSIVE_PD_INDEX) {
+		*phys_out = *pte & PTE_ADDR_MASK;
+		*pte = 0;
+		cpu_flush_tlb();
+		rc = 0;
 	}
-	*phys_out = *pte & PTE_ADDR_MASK;
-	*pte = 0;
-	cpu_flush_tlb();
-	return 0;
+	cpu_irq_restore(flags);
+	return rc;
 }
 
 int vmm_translate(uintptr_t virt, uintptr_t *phys_out)
 {
+	int rc = -1;
+	uint32_t flags = cpu_irq_save();
 	uint32_t *pte = pte_of(virt);
-	if (!pte) {
-		return -1;
+	if (pte) {
+		*phys_out = (*pte & PTE_ADDR_MASK) | (virt & (PAGE_SIZE - 1));
+		rc = 0;
 	}
-	*phys_out = (*pte & PTE_ADDR_MASK) | (virt & (PAGE_SIZE - 1));
-	return 0;
+	cpu_irq_restore(flags);
+	return rc;
 }

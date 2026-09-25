@@ -15,6 +15,9 @@ void *kmalloc(size_t size);
 /* Panics on a double free or a pointer kmalloc() did not return. */
 void kfree(void *ptr);
 
+/* Payload bytes currently allocated (after rounding to 16). */
+size_t heap_used(void);
+
 /* Walks every block; returns 0 if the heap is consistent, -1 if not. */
 int heap_check(void);
 

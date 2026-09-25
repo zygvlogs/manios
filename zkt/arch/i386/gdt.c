@@ -15,7 +15,7 @@ struct gdt_ptr {
 	uint32_t base;
 } __attribute__((packed));
 
-#define GDT_ENTRIES 3 /* null, kernel code, kernel data */
+#define GDT_ENTRIES 5 /* null, kernel code, kernel data, kernel TSS, double-fault TSS */
 
 static struct gdt_entry gdt[GDT_ENTRIES];
 static struct gdt_ptr gdtp;
@@ -52,4 +52,10 @@ void gdt_init(void)
 	gdt_set_gate(2, 0, 0xFFFFFFFF, 0x92, 0xCF);
 
 	gdt_flush((uint32_t)&gdtp);
+}
+
+void gdt_set_tss(uint16_t selector, uint32_t base, uint32_t limit)
+{
+	/* Access 0x89: present, ring 0, 32-bit available TSS; byte granularity. */
+	gdt_set_gate(selector / 8, base, limit, 0x89, 0x00);
 }

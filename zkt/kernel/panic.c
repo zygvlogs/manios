@@ -1,12 +1,21 @@
 #include "panic.h"
 #include "kconsole.h"
 #include "cpu.h"
+#include "sched.h"
 
+/* Interrupts go off for good, so no other thread runs past a panic. */
 static void panic_header(const char *msg)
 {
+	cpu_irq_save();
 	kconsole_write("\n*** ZKT PANIC: ");
 	kconsole_write(msg);
 	kconsole_write(" ***\n");
+	const char *thread = thread_current_name();
+	if (thread) {
+		kconsole_write("in thread: ");
+		kconsole_write(thread);
+		kconsole_write("\n");
+	}
 }
 
 __attribute__((noreturn)) void panic(const char *msg)
