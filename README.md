@@ -18,7 +18,8 @@ clone. It does not depend on the Linux kernel.
 | M5 — driver framework, keyboard, interactive `ZKT>` monitor | Achieved ([notes](docs/milestones/M5-driver-framework.md)) |
 | M6 — ATA storage (PIO, CHS fallback, MBR partitions) | Achieved ([notes](docs/milestones/M6-ata-storage.md)) |
 | M7 — VFS, Plan 9-style namespaces and union directories, FAT12/16, devfs | Achieved ([notes](docs/milestones/M7-vfs-namespaces.md)) |
-| M8 — userspace: ring 3 processes, ELF loader, syscalls | Next |
+| M8 — userspace: ring 3 processes, ELF loader, syscalls | Achieved ([notes](docs/milestones/M8-userspace.md)) |
+| M9 — libc, stable syscall ABI, coreutils, shell | Next |
 
 The full architecture and roadmap are in
 [`docs/FOUNDING-PROPOSAL.md`](docs/FOUNDING-PROPOSAL.md).
@@ -38,7 +39,8 @@ for `make toolchain`. At the `ZKT>` prompt, `help` lists the kernel
 monitor's commands. For example, `ls /dev` lists devices, and with a
 FAT disk attached (`qemu-system-i386 ... -drive file=disk.img,format=raw`),
 `ls /n/ata0p1` lists its files, while `bind -a /n/ata0p2 /n/ata0p1`
-makes a union of two volumes.
+makes a union of two volumes. `run /bin/hello` starts a user program
+from the boot archive (`ls /boot`).
 
 ## Repository layout
 
@@ -51,9 +53,10 @@ zkt/          ZygKernel Technology — the kernel
   ipc/        inter-process communication
   drivers/    driver framework + in-tree drivers
   fs/         VFS + filesystem implementations
-  kernel/     init, panic, logging, syscall dispatch
-libc/         ManiOS's own minimal C library
-userland/     init, shell, coreutils
+  kernel/     init, panic, logging, processes, syscalls, ELF loader
+  abi/        the system call ABI header shared with userspace
+libc/         ManiOS's own C library
+userland/     user programs (bin/), test programs (test/), boot files (etc/)
 desktop/      ManiOS Desktop Environment
 tools/        cross-toolchain build scripts, image builder, QEMU scripts
 third_party/  vendored BSD-derived source + license notices ledger

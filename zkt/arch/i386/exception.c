@@ -2,6 +2,7 @@
 #include "cpu.h"
 #include "kconsole.h"
 #include "panic.h"
+#include "process.h"
 
 #define EXC_PAGE_FAULT 14
 #define PF_PRESENT (1u << 0) /* 0 = page not present, 1 = protection violation */
@@ -44,6 +45,12 @@ static const char *const EXCEPTION_NAMES[32] = {
 __attribute__((noreturn)) void exception_handle(registers_t *regs)
 {
 	const char *name = EXCEPTION_NAMES[regs->int_no];
+
+	/* A fault in user mode is the program's, not the kernel's. */
+	if ((regs->cs & 3) == 3) {
+		process_kill_current(regs->int_no, name,
+		                     regs->int_no == EXC_PAGE_FAULT ? cpu_read_cr2() : 0);
+	}
 
 	if (regs->int_no == EXC_PAGE_FAULT) {
 		kconsole_write("\npage fault at 0x");

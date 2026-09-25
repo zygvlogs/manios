@@ -7,6 +7,7 @@
 struct ram_node {
 	struct vnode vnode;
 	char name[VFS_NAME_MAX + 1];
+	const uint8_t *data;       /* files only */
 	struct ram_node *children; /* in creation order */
 	struct ram_node *next;     /* sibling */
 };
@@ -38,14 +39,30 @@ static int ram_readdir(struct vnode *dir, uint32_t index, struct dirent *out)
 		return 0;
 	}
 	strlcpy(out->name, c->name, sizeof(out->name));
-	out->type = VNODE_DIR;
-	out->size = 0;
+	out->type = c->vnode.type;
+	out->size = c->vnode.size;
 	return 1;
+}
+
+static long ram_read(struct vnode *v, uint32_t offset, void *buf, size_t len)
+{
+	if (offset >= v->size) {
+		return 0;
+	}
+	if (len > v->size - offset) {
+		len = v->size - offset;
+	}
+	memcpy(buf, node_of(v)->data + offset, len);
+	return (long)len;
 }
 
 /* Nodes belong to their tree: the last reference only ever drops when
  * ramfs_destroy() releases the tree's own, which frees them directly. */
-static const struct vnode_ops ram_ops = { .walk = ram_walk, .readdir = ram_readdir };
+static const struct vnode_ops ram_ops = {
+	.walk = ram_walk,
+	.read = ram_read,
+	.readdir = ram_readdir,
+};
 
 static struct ram_node *new_node(const char *name)
 {
@@ -66,7 +83,9 @@ struct vnode *ramfs_create(void)
 	return root ? &root->vnode : 0;
 }
 
-int ramfs_mkdir(struct vnode *root, const char *path)
+/* Walks `path` from `root`, creating directories as needed, and returns
+ * the node for the last element (or NULL on error, stored in *rc). */
+static struct ram_node *make_path(struct vnode *root, const char *path, int *rc)
 {
 	struct ram_node *dir = node_of(root);
 	while (*path) {
@@ -74,7 +93,8 @@ int ramfs_mkdir(struct vnode *root, const char *path)
 		size_t n = 0;
 		while (path[n] && path[n] != '/') {
 			if (n == VFS_NAME_MAX) {
-				return -ENAMETOOLONG;
+				*rc = -ENAMETOOLONG;
+				return 0;
 			}
 			name[n] = path[n];
 			n++;
@@ -87,6 +107,10 @@ int ramfs_mkdir(struct vnode *root, const char *path)
 		if (n == 0) {
 			continue;
 		}
+		if (dir->vnode.type != VNODE_DIR) {
+			*rc = -ENOTDIR;
+			return 0;
+		}
 
 		struct ram_node **link = &dir->children;
 		while (*link && strcmp((*link)->name, name) != 0) {
@@ -95,11 +119,36 @@ int ramfs_mkdir(struct vnode *root, const char *path)
 		if (!*link) {
 			*link = new_node(name);
 			if (!*link) {
-				return -ENOMEM;
+				*rc = -ENOMEM;
+				return 0;
 			}
 		}
 		dir = *link;
 	}
+	*rc = 0;
+	return dir;
+}
+
+int ramfs_mkdir(struct vnode *root, const char *path)
+{
+	int rc;
+	struct ram_node *n = make_path(root, path, &rc);
+	return n && n->vnode.type != VNODE_DIR ? -EEXIST : rc;
+}
+
+int ramfs_add_file(struct vnode *root, const char *path, const void *data, uint32_t size)
+{
+	int rc;
+	struct ram_node *n = make_path(root, path, &rc);
+	if (!n) {
+		return rc;
+	}
+	if (n->children || n == node_of(root)) {
+		return -EEXIST;
+	}
+	n->vnode.type = VNODE_FILE;
+	n->vnode.size = size;
+	n->data = data;
 	return 0;
 }
 

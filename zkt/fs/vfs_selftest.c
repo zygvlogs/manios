@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include "heap.h"
 #include "kerrno.h"
+#include "zkt_abi.h"
 #include "namespace.h"
 #include "panic.h"
 #include "ramfs.h"
@@ -14,7 +15,7 @@ static const char *failure;
 static int resolve(const char *path)
 {
 	struct file *f;
-	int rc = vfs_open(path, &f);
+	int rc = vfs_open(path, OREAD, &f);
 	if (rc == 0) {
 		vfs_close(f);
 	}
@@ -26,7 +27,7 @@ static unsigned count_entries(const char *path)
 	struct file *f;
 	struct dirent d;
 	unsigned n = 0;
-	if (vfs_open(path, &f) == 0) {
+	if (vfs_open(path, OREAD, &f) == 0) {
 		while (vfs_readdir(f, &d) == 1) {
 			n++;
 		}

@@ -1,4 +1,5 @@
 #include "tss.h"
+#include "context.h"
 #include <stdint.h>
 #include "cpu.h"
 #include "gdt.h"
@@ -43,6 +44,11 @@ __attribute__((noreturn)) static void double_fault_task(void)
 	kconsole_write_hex32(cpu_read_cr2());
 	kconsole_write("\n");
 	panic("Double fault (a kernel stack overflow, if cr2 is just below esp)");
+}
+
+void arch_set_kernel_stack(uintptr_t top)
+{
+	kernel_tss.esp0 = (uint32_t)top;
 }
 
 void tss_init(void)

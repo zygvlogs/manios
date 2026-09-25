@@ -15,7 +15,8 @@ struct gdt_ptr {
 	uint32_t base;
 } __attribute__((packed));
 
-#define GDT_ENTRIES 5 /* null, kernel code, kernel data, kernel TSS, double-fault TSS */
+/* null, kernel code, kernel data, kernel TSS, double-fault TSS, user code, user data */
+#define GDT_ENTRIES 7
 
 static struct gdt_entry gdt[GDT_ENTRIES];
 static struct gdt_ptr gdtp;
@@ -50,6 +51,12 @@ void gdt_init(void)
 
 	/* Flat 4 GiB kernel data: present, ring 0, data segment, writable. */
 	gdt_set_gate(2, 0, 0xFFFFFFFF, 0x92, 0xCF);
+
+	/* The same flat segments at ring 3 (DPL 3: access 0xFA and 0xF2).
+	 * Paging's user/supervisor bit is what keeps user code out of the
+	 * kernel's half of the address space. */
+	gdt_set_gate(5, 0, 0xFFFFFFFF, 0xFA, 0xCF);
+	gdt_set_gate(6, 0, 0xFFFFFFFF, 0xF2, 0xCF);
 
 	gdt_flush((uint32_t)&gdtp);
 }

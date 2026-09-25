@@ -9,7 +9,10 @@ The virtual filesystem and namespaces. Design and verification:
 - `namespace.c` — per-thread mount tables (ADR-0003): Plan 9 style
   replace / before / after binds, union directories, lexical path
   cleaning, `ns_fork`
-- `ramfs.c` — in-memory directory trees (the kernel root; test trees)
+- `ramfs.c` — in-memory trees (the kernel root; test trees; the boot
+  archive's files)
+- `bootfs.c` — the boot archive (ustar, linked into the kernel) as a
+  ramfs tree at `/boot`
 - `devfs.c` — every registered device as a file under `/dev`
 - `fat.c` — read-only FAT12/16, mounted at `/n/<device>`
 - `fs_init.c` — builds the kernel namespace at boot

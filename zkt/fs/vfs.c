@@ -3,6 +3,7 @@
 #include "cpu.h"
 #include "heap.h"
 #include "kerrno.h"
+#include "zkt_abi.h"
 #include "kstring.h"
 #include "namespace.h"
 #include "sched.h"
@@ -25,23 +26,55 @@ void vnode_unref(struct vnode *v)
 }
 
 struct file {
+	uint32_t refs;
+	int mode;
+	char name[VFS_NAME_MAX + 1];
 	struct location loc;
 	uint32_t offset; /* files and devices */
 	size_t member;   /* directories: union member being listed... */
 	uint32_t index;  /* ...and the next entry within it */
 };
 
-int vfs_open(const char *path, struct file **out)
+static bool can_read(const struct file *f)
 {
+	return f->mode == OREAD || f->mode == ORDWR;
+}
+
+static bool can_write(const struct file *f)
+{
+	return f->mode == OWRITE || f->mode == ORDWR;
+}
+
+int vfs_open(const char *path, int mode, struct file **out)
+{
+	if (mode != OREAD && mode != OWRITE && mode != ORDWR) {
+		return -EINVAL;
+	}
 	struct file *f = kmalloc(sizeof(*f));
 	if (!f) {
 		return -ENOMEM;
 	}
-	int rc = ns_resolve(thread_namespace(), path, &f->loc, 0);
+	char canon[VFS_PATH_MAX + 1];
+	int rc = ns_resolve(thread_namespace(), path, &f->loc, canon);
 	if (rc) {
 		kfree(f);
 		return rc;
 	}
+	f->refs = 1;
+	f->mode = mode;
+	struct vnode *v = f->loc.v[0];
+	if (can_write(f) && (v->type == VNODE_DIR || !v->ops->write)) {
+		location_release(&f->loc);
+		kfree(f);
+		return v->type == VNODE_DIR ? -EISDIR : -EROFS;
+	}
+	const char *slash = canon;
+	for (const char *c = canon; *c; c++) {
+		if (*c == '/') {
+			slash = c;
+		}
+	}
+	strlcpy(f->name, canon[1] ? slash + 1 : "/", sizeof(f->name));
 	f->offset = 0;
 	f->member = 0;
 	f->index = 0;
@@ -52,6 +85,9 @@ int vfs_open(const char *path, struct file **out)
 long vfs_read(struct file *f, void *buf, size_t len)
 {
 	struct vnode *v = f->loc.v[0];
+	if (!can_read(f)) {
+		return -EBADF;
+	}
 	if (v->type == VNODE_DIR) {
 		return -EISDIR;
 	}
@@ -63,6 +99,32 @@ long vfs_read(struct file *f, void *buf, size_t len)
 		f->offset += (uint32_t)n;
 	}
 	return n;
+}
+
+long vfs_write(struct file *f, const void *buf, size_t len)
+{
+	struct vnode *v = f->loc.v[0];
+	if (!can_write(f)) {
+		return -EBADF;
+	}
+	long n = v->ops->write(v, f->offset, buf, len);
+	if (n > 0) {
+		f->offset += (uint32_t)n;
+	}
+	return n;
+}
+
+struct file *vfs_dup(struct file *f)
+{
+	uint32_t flags = cpu_irq_save();
+	f->refs++;
+	cpu_irq_restore(flags);
+	return f;
+}
+
+const char *vfs_name(const struct file *f)
+{
+	return f->name;
 }
 
 int vfs_readdir(struct file *f, struct dirent *out)
@@ -99,8 +161,13 @@ uint32_t vfs_size(const struct file *f)
 
 void vfs_close(struct file *f)
 {
-	location_release(&f->loc);
-	kfree(f);
+	uint32_t flags = cpu_irq_save();
+	bool last = --f->refs == 0;
+	cpu_irq_restore(flags);
+	if (last) {
+		location_release(&f->loc);
+		kfree(f);
+	}
 }
 
 /* Composes and installs a bind. Consumes both locations' references. */

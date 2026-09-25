@@ -3,8 +3,9 @@
 
 #include "vfs.h"
 
-/* An in-memory tree of directories (no files yet). The kernel's root
- * is one; tests build private ones. */
+/* An in-memory tree of directories and read-only files. The kernel's
+ * root is one, the boot archive (bootfs.c) another; tests build
+ * private ones. */
 
 /* Returns the root of a new, empty tree, or NULL when out of memory.
  * The tree holds a reference on every node, including the root. */
@@ -13,6 +14,10 @@ struct vnode *ramfs_create(void);
 /* Creates `path` (relative to the tree's root, e.g. "n/ata0p1") and any
  * missing parents. Existing directories are fine. */
 int ramfs_mkdir(struct vnode *root, const char *path);
+
+/* Adds a read-only file whose contents are `data` (not copied: it must
+ * outlive the tree), creating missing parent directories. */
+int ramfs_add_file(struct vnode *root, const char *path, const void *data, uint32_t size);
 
 /* Frees the whole tree. Panics if anything outside the tree still holds
  * a reference to one of its nodes, so leaked references show up. */

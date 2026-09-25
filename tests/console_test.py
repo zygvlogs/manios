@@ -22,6 +22,7 @@ import time
 
 PROMPT = b"ZKT> "
 TIMEOUT = 15
+BOOTFS_DIR = "build/bootfs"  # the boot archive's contents; set from the kernel path
 
 # QEMU `sendkey` names for the characters the tests type.
 KEY_NAMES = {" ": "spc", "\n": "ret", "\b": "backspace", "-": "minus",
@@ -108,11 +109,15 @@ class Machine:
 
 
 def run_command(m, how, command, expect_in_output):
-    """Types a command, checks its echo and output, waits for the next prompt."""
+    """Types a command, checks its echo and output, waits for the next
+    prompt. A needle starting with "!" must not appear."""
     (m.type_serial if how == "serial" else m.type_keyboard)(command + ("\r" if how == "serial" else "\n"))
     out = m.expect(PROMPT)
     for needle in expect_in_output:
-        if needle not in out:
+        if needle.startswith("!"):
+            if needle[1:] in out:
+                raise TestFailure(f"{how}: {command!r}: unexpected {needle[1:]!r} in:\n{out}")
+        elif needle not in out:
             raise TestFailure(f"{how}: {command!r}: expected {needle!r} in:\n{out}")
     return out
 
@@ -193,6 +198,33 @@ def fat_chain(img, part_start, name83):
     raise TestFailure(f"test image lacks {name83!r}")
 
 
+def malformed_elves(elf):
+    """Variants of a working ELF executable, each broken in one field the
+    kernel's loader must validate; "good" is the unmodified control."""
+    phoff = struct.unpack_from("<I", elf, 28)[0]
+    text_vaddr = struct.unpack_from("<I", elf, phoff + 8)[0]
+    text_memsz = struct.unpack_from("<I", elf, phoff + 20)[0]
+
+    def patch(fmt, off, *values):
+        out = bytearray(elf)
+        struct.pack_into(fmt, out, off, *values)
+        return bytes(out)
+
+    return {
+        "good": elf,
+        "trunc": elf[:40],
+        "machine": patch("<H", 18, 62),                        # x86-64
+        "phoff": patch("<I", 28, 0xFFFFFFF0),
+        "phnum": patch("<H", 44, 0xFFFF),
+        "entry": patch("<I", 24, 0x10000000),                  # in no segment
+        "kseg": patch("<I", phoff + 8, 0xC0000000),            # kernel half
+        "stackseg": patch("<I", phoff + 8, 0xBFFF0000),        # over the stack
+        "wrap": patch("<I", phoff + 20, 0x100000000 - text_vaddr),
+        "filesz": patch("<I", phoff + 16, text_memsz + 1),     # filesz > memsz
+        "offset": patch("<I", phoff + 4, len(elf)),            # data past the end
+    }
+
+
 FAT_DISK_SECTORS = 32768                # 16 MiB
 P1, P1_SECTORS = 2048, 16384            # FAT16, 1 sector per cluster
 P2, P2_SECTORS = 18432, 14336           # FAT12, 8 sectors per cluster
@@ -239,6 +271,14 @@ def write_fat_disk(path):
     mt("mdel", P1, "::/A.TMP")
     put(P1, "FRAG.BIN", bytes(rnd.randrange(256) for _ in range(20000)))
     put(P1, "BIG.BIN", bytes(rnd.randrange(256) for _ in range(50000)))
+    mt("mmd", P1, "::/BIN")
+    with open(os.path.join(BOOTFS_DIR, "test", "fault"), "rb") as f:
+        put(P1, "BIN/FAULT", f.read())
+    mt("mmd", P1, "::/BAD")
+    with open(os.path.join(BOOTFS_DIR, "bin", "hello"), "rb") as f:
+        hello = f.read()
+    for name, elf in malformed_elves(hello).items():
+        put(P1, f"BAD/{name.upper()}", elf)
     put(P2, "SAME.TXT", b"from p2\n")
     put(P2, "ONLY12.TXT", b"only on the FAT12 volume\n")
     put(P2, "A.TMP", bytes(9000))
@@ -263,6 +303,14 @@ def write_fat_disk(path):
         ("serial", "sum /dev/ata0 4096", [f"4096 bytes, fnv1a {fnv1a(img[:4096]):08x}"]),
         ("serial", "sum /dev/ata0p2 1024",
          [f"1024 bytes, fnv1a {fnv1a(img[P2 * 512:P2 * 512 + 1024]):08x}"]),
+        # The loader treats every ELF field as untrusted (M8).
+        ("serial", "run /n/ata0p1/bad/good", ["Hello from ManiOS userspace!"]),
+        *[("serial", f"run /n/ata0p1/bad/{name}", [f"run: /n/ata0p1/bad/{name}: not an executable"])
+          for name in malformed_elves(hello) if name != "good"],
+        # A program on disk, found through a union with /bin (M8).
+        ("serial", "bind -a /n/ata0p1/bin /bin", []),
+        ("serial", "ls /bin", ["hello", "fault"]),
+        ("serial", "run /bin/fault exit42", ["run: /bin/fault exited with status 42"]),
     ]
 
 
@@ -284,6 +332,22 @@ SCENARIOS = [
             # Backspace must erase on screen ("\b \b") and in the line buffer.
             ("keyboard", "uptimx\be", ["uptimx\b \be", "uptime: "]),
             ("serial", "nosuchcommand", ["unknown command: nosuchcommand"]),
+            # User programs from the boot archive (M8).
+            ("serial", "ls /boot", ["bin/", "test/", "etc/"]),
+            ("serial", "ls /bin", ["hello"]),
+            ("serial", "run /bin/hello one two",
+             ["\r\nHello from ManiOS userspace!\r\nargs: one two\r\n"]),
+            ("keyboard", "run /bin/hello", ["Hello from ManiOS userspace!\r\n", "!args:"]),
+            ("serial", "run /boot/test/fault null",
+             ["]: killed: Page fault at 0x00000000", "run: /boot/test/fault killed (vector 14)"]),
+            ("serial", "run /boot/test/fault priv",
+             ["]: killed: General protection fault", "killed (vector 13)"]),
+            ("serial", "run /boot/test/fault exit42", ["run: /boot/test/fault exited with status 42"]),
+            ("serial", "run /no/such", ["run: /no/such: no such file or directory"]),
+            ("serial", "run /boot/etc/motd", ["run: /boot/etc/motd: not an executable"]),
+            ("serial", "run /boot/test/utest", ["utest: all ", " checks passed", "!FAIL"]),
+            # Every process thread is gone once its program has exited.
+            ("serial", "threads", ["monitor", "!hello", "!fault", "!utest", "!isotest"]),
         ],
     },
     {
@@ -381,7 +445,9 @@ def run_scenario(kernel, scenario, workdir):
 
 
 def main():
+    global BOOTFS_DIR
     kernel = sys.argv[1] if len(sys.argv) > 1 else "build/manios-zkt.elf"
+    BOOTFS_DIR = os.path.join(os.path.dirname(kernel), "bootfs")
     workdir = tempfile.mkdtemp(prefix="zkt-disks-")
     try:
         failures = sum(run_scenario(kernel, sc, workdir) for sc in SCENARIOS)

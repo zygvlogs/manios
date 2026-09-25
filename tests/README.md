@@ -11,9 +11,16 @@
   the serial line on stdio and drives the `ZKT>` monitor two ways:
   typing over serial, and pressing keys on the emulated PS/2 keyboard
   through the QEMU monitor's `sendkey`. It checks echo, line editing
-  and command output. It runs several machine configurations with
-  disk images it generates (partitioned, partitionless FAT, none).
-  Needs Python 3 and mtools.
+  and command output, and runs user programs (including malformed ELF
+  files and a program on a FAT disk). It runs several machine
+  configurations with disk images it generates (partitioned,
+  partitionless FAT, none). Needs Python 3 and mtools, and the build's
+  `build/bootfs/` programs.
+
+- `userland/test/` holds the test programs the kernel runs at every
+  boot (`utest`, the system call conformance test) and that the
+  console test starts (`fault`); they are in the boot archive under
+  `/boot/test`.
 
 Not yet wired into CI (GitHub Actions); see
 [`docs/FOUNDING-PROPOSAL.md` §12](../docs/FOUNDING-PROPOSAL.md#12-m1-status-achieved).

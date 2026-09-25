@@ -1,13 +1,20 @@
 # zkt/kernel/
 
 Architecture-neutral kernel core, and the glue that wires the other
-subdirectories together. Syscall dispatch joins it once the syscall ABI
-exists (M8).
+subdirectories together.
 
 - `main.c` — `kernel_main()`: arch init → console → memory map → PMM →
   VMM → heap → memory self-test → scheduler (becomes thread "main") →
   timer → interrupts on → scheduler self-tests → drivers → kernel
-  namespace and mounts → VFS self-test → monitor thread → `thread_exit()`
+  namespace and mounts → VFS self-test → user-program self-test →
+  monitor thread → `thread_exit()`
+- `process.c` — user processes: spawn, exit, wait, descriptor tables,
+  ending a process on a CPU exception
+  ([M8 notes](../../docs/milestones/M8-userspace.md))
+- `syscall.c` — system call dispatch (the ABI is `zkt/abi/zkt_abi.h`)
+- `usercopy.c` — copying to and from user memory, checked first
+- `elf.c` — the ELF32 loader
+- `user_selftest.c` — runs the boot archive's test programs at boot
 - `kconsole.c` — console output (VGA + COM1) and input (keyboard + COM1),
   and device `cons`
 - `monitor.c` — the `ZKT>` kernel monitor (debugging console)

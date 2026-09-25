@@ -161,6 +161,11 @@ size_t heap_used(void)
 	return used_bytes;
 }
 
+size_t heap_mapped_bytes(void)
+{
+	return heap_end - KERNEL_HEAP_START;
+}
+
 int heap_check(void)
 {
 	uint32_t flags = cpu_irq_save();

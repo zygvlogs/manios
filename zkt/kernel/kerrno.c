@@ -18,6 +18,12 @@ const char *kstrerror(int err)
 	case EINVAL:       return "invalid argument";
 	case EROFS:        return "read-only file system";
 	case ENAMETOOLONG: return "name too long";
+	case E2BIG:        return "argument list too long";
+	case ENOEXEC:      return "not an executable";
+	case ECHILD:       return "no such child process";
+	case EFAULT:       return "bad address";
+	case EMFILE:       return "too many open files";
+	case ENOSYS:       return "no such system call";
 	default:           return "unknown error";
 	}
 }

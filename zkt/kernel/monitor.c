@@ -6,16 +6,18 @@
 #include "heap.h"
 #include "kconsole.h"
 #include "kerrno.h"
+#include "zkt_abi.h"
 #include "kprintf.h"
 #include "kstring.h"
 #include "panic.h"
 #include "pmm.h"
+#include "process.h"
 #include "sched.h"
 #include "timer.h"
 #include "vfs.h"
 
 #define LINE_MAX 128
-#define ARGS_MAX 8
+#define ARGS_MAX 16
 
 struct command {
 	const char *name;
@@ -145,7 +147,7 @@ static void cmd_ls(int argc, char **argv)
 	const char *path = argc > 1 ? argv[1] : "/";
 	struct file *f;
 	struct dirent d;
-	int rc = vfs_open(path, &f);
+	int rc = vfs_open(path, OREAD, &f);
 	if (rc == 0) {
 		while ((rc = vfs_readdir(f, &d)) == 1) {
 			kprintf("  %-4s %8lu  %s%s\n", type_name(d.type), d.size, d.name,
@@ -163,7 +165,7 @@ static long read_all(const char *path, uint32_t limit,
                      void (*fn)(const uint8_t *buf, size_t len, void *ctx), void *ctx)
 {
 	struct file *f;
-	int rc = vfs_open(path, &f);
+	int rc = vfs_open(path, OREAD, &f);
 	if (rc) {
 		return rc;
 	}
@@ -275,6 +277,28 @@ static void cmd_ns(int argc, char **argv)
 	ns_foreach(thread_namespace(), print_mount, 0);
 }
 
+/* Runs a user program in the monitor's namespace, with the console as
+ * its standard input and output, and waits for it. */
+static void cmd_run(int argc, char **argv)
+{
+	if (argc < 2) {
+		kprintf("usage: run PATH [ARGS...]\n");
+		return;
+	}
+	int pid = process_spawn(argv[1], argc - 1, argv + 1, 0);
+	if (pid < 0) {
+		kprintf("run: %s: %s\n", argv[1], kstrerror(pid));
+		return;
+	}
+	int status;
+	process_wait(0, pid, &status);
+	if (status & ZKT_WAIT_KILLED) {
+		kprintf("run: %s killed (vector %d)\n", argv[1], ZKT_WAIT_VECTOR(status));
+	} else if (status) {
+		kprintf("run: %s exited with status %d\n", argv[1], ZKT_WAIT_CODE(status));
+	}
+}
+
 static const struct command COMMANDS[] = {
 	{ "help", "list commands", cmd_help },
 	{ "echo", "ARGS... - print the arguments", cmd_echo },
@@ -289,6 +313,7 @@ static const struct command COMMANDS[] = {
 	{ "bind", "[-a|-b] NEW OLD - bind NEW onto OLD", cmd_bind },
 	{ "unbind", "OLD - undo binds on OLD", cmd_unbind },
 	{ "ns", "show this namespace's binds", cmd_ns },
+	{ "run", "PATH [ARGS...] - run a user program", cmd_run },
 	{ 0, 0, 0 },
 };
 

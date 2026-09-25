@@ -125,6 +125,17 @@ belong to threads until processes exist at M8. The vnode operations
 (walk / read / write at an offset / readdir / release) are shaped for a
 one-to-one mapping onto ZRP messages at M10.
 
+## Implementation status (M8)
+
+User processes reach namespaces through the `bind`, `unbind` and
+`nsfork` system calls ([M8 notes](../milestones/M8-userspace.md)). A
+spawned child shares its parent's namespace, as with `rfork` without
+`RFNAMEG`; `nsfork` is `RFNAMEG`. The boot archive is mounted at
+`/boot` and `/bin` is a bind of `/boot/bin`, so a disk's `bin/` can be
+unioned in front of it or behind it.
+
+## Note: mounts keyed by path
+
 One deliberate simplification: the mount table is keyed by cleaned
 *path*, not by the identity (qid) of the bound-over file as in Plan 9.
 With lexical `..` this differs only when a bound-over directory is

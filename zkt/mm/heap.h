@@ -18,6 +18,10 @@ void kfree(void *ptr);
 /* Payload bytes currently allocated (after rounding to 16). */
 size_t heap_used(void);
 
+/* Bytes of the heap region backed by frames. The heap never gives
+ * frames back, so this only grows. */
+size_t heap_mapped_bytes(void);
+
 /* Walks every block; returns 0 if the heap is consistent, -1 if not. */
 int heap_check(void);
 

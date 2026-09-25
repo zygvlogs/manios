@@ -1,0 +1,256 @@
+#include "syscall.h"
+#include "heap.h"
+#include "kerrno.h"
+#include "kstring.h"
+#include "namespace.h"
+#include "process.h"
+#include "sched.h"
+#include "timer.h"
+#include "usercopy.h"
+#include "vfs.h"
+#include "vmm.h"
+#include "zkt_abi.h"
+
+#define IO_CHUNK 512
+
+static long sys_read(struct process *p, int fd, uint8_t *ubuf, uint32_t len)
+{
+	struct file *f = process_fd(p, fd);
+	if (!f) {
+		return -EBADF;
+	}
+	if (!len) {
+		return 0;
+	}
+
+	if (vfs_type(f) == VNODE_DIR) {
+		uint32_t done = 0;
+		while (len - done >= sizeof(struct zkt_dirent)) {
+			struct dirent d;
+			int rc = vfs_readdir(f, &d);
+			if (rc <= 0) {
+				return done ? (long)done : rc;
+			}
+			struct zkt_dirent z;
+			memset(&z, 0, sizeof(z));
+			strlcpy(z.name, d.name, sizeof(z.name));
+			z.type = d.type;
+			z.size = d.size;
+			if (copy_to_user(ubuf + done, &z, sizeof(z))) {
+				return -EFAULT;
+			}
+			done += sizeof(z);
+		}
+		return done ? (long)done : -EINVAL; /* buffer smaller than one record */
+	}
+
+	/* Validate up front, so a bad buffer can't cost a byte of input. */
+	if (!vmm_user_range_ok((uintptr_t)ubuf, len, true)) {
+		return -EFAULT;
+	}
+	uint8_t chunk[IO_CHUNK];
+	uint32_t done = 0;
+	while (done < len) {
+		uint32_t want = len - done < IO_CHUNK ? len - done : IO_CHUNK;
+		long n = vfs_read(f, chunk, want);
+		if (n < 0) {
+			return done ? (long)done : n;
+		}
+		if (n == 0) {
+			break;
+		}
+		if (copy_to_user(ubuf + done, chunk, (size_t)n)) {
+			return -EFAULT;
+		}
+		done += (uint32_t)n;
+		/* A device returns what it has (a console: one line's worth);
+		 * don't block for more. */
+		if ((uint32_t)n < want || vfs_type(f) == VNODE_DEVICE) {
+			break;
+		}
+	}
+	return (long)done;
+}
+
+static long sys_write(struct process *p, int fd, const uint8_t *ubuf, uint32_t len)
+{
+	struct file *f = process_fd(p, fd);
+	if (!f) {
+		return -EBADF;
+	}
+	uint8_t chunk[IO_CHUNK];
+	uint32_t done = 0;
+	while (done < len) {
+		uint32_t n = len - done < IO_CHUNK ? len - done : IO_CHUNK;
+		if (copy_from_user(chunk, ubuf + done, n)) {
+			return done ? (long)done : -EFAULT;
+		}
+		long w = vfs_write(f, chunk, n);
+		if (w < 0) {
+			return done ? (long)done : w;
+		}
+		done += (uint32_t)w;
+		if ((uint32_t)w < n) {
+			break;
+		}
+	}
+	return (long)done;
+}
+
+static long copy_path(char *dst, const char *upath)
+{
+	long n = copy_string_from_user(dst, upath, VFS_PATH_MAX + 1);
+	return n < 0 ? n : 0;
+}
+
+static long sys_open(struct process *p, const char *upath, int mode)
+{
+	char path[VFS_PATH_MAX + 1];
+	long rc = copy_path(path, upath);
+	if (rc) {
+		return rc;
+	}
+	struct file *f;
+	rc = vfs_open(path, mode, &f);
+	if (rc) {
+		return rc;
+	}
+	int fd = process_fd_install(p, f);
+	if (fd < 0) {
+		vfs_close(f);
+	}
+	return fd;
+}
+
+struct spawn_args {
+	char path[VFS_PATH_MAX + 1];
+	char *argv[SPAWN_ARGS_MAX + 1];
+	char strings[SPAWN_ARG_BYTES];
+};
+
+static long sys_spawn(struct process *p, const char *upath, char *const *uargv)
+{
+	struct spawn_args *a = kmalloc(sizeof(*a));
+	if (!a) {
+		return -ENOMEM;
+	}
+	long rc = copy_path(a->path, upath);
+	int argc = 0;
+	size_t used = 0;
+	while (rc == 0) {
+		char *uarg;
+		if (copy_from_user(&uarg, uargv + argc, sizeof(uarg))) {
+			rc = -EFAULT;
+			break;
+		}
+		if (!uarg) {
+			break;
+		}
+		if (argc == SPAWN_ARGS_MAX || used >= SPAWN_ARG_BYTES) {
+			rc = -E2BIG;
+			break;
+		}
+		long n = copy_string_from_user(a->strings + used, uarg, SPAWN_ARG_BYTES - used);
+		if (n < 0) {
+			rc = n == -ENAMETOOLONG ? -E2BIG : n;
+			break;
+		}
+		a->argv[argc++] = a->strings + used;
+		used += (size_t)n + 1;
+	}
+	if (rc == 0) {
+		a->argv[argc] = 0;
+		rc = process_spawn(a->path, argc, a->argv, p);
+	}
+	kfree(a);
+	return rc;
+}
+
+static long sys_wait(struct process *p, int pid, int *ustatus)
+{
+	int status;
+	int rc = process_wait(p, pid, &status);
+	if (rc >= 0 && ustatus && copy_to_user(ustatus, &status, sizeof(status))) {
+		return -EFAULT; /* the child is reaped either way */
+	}
+	return rc;
+}
+
+static long sys_bind(const char *unew, const char *uold, int flag)
+{
+	char new_path[VFS_PATH_MAX + 1], old_path[VFS_PATH_MAX + 1];
+	long rc = copy_path(new_path, unew);
+	if (!rc) {
+		rc = copy_path(old_path, uold);
+	}
+	if (rc) {
+		return rc;
+	}
+	switch (flag) {
+	case BIND_FLAG_REPLACE: return vfs_bind(new_path, old_path, BIND_REPLACE);
+	case BIND_FLAG_BEFORE:  return vfs_bind(new_path, old_path, BIND_BEFORE);
+	case BIND_FLAG_AFTER:   return vfs_bind(new_path, old_path, BIND_AFTER);
+	default:                return -EINVAL;
+	}
+}
+
+static long sys_unbind(const char *uold)
+{
+	char path[VFS_PATH_MAX + 1];
+	long rc = copy_path(path, uold);
+	return rc ? rc : vfs_unbind(path);
+}
+
+static long sys_nsfork(void)
+{
+	struct namespace *ns = ns_fork(thread_namespace());
+	if (!ns) {
+		return -ENOMEM;
+	}
+	thread_set_namespace(ns);
+	ns_unref(ns);
+	return 0;
+}
+
+static long sys_fstat(struct process *p, int fd, struct zkt_dirent *uout)
+{
+	struct file *f = process_fd(p, fd);
+	if (!f) {
+		return -EBADF;
+	}
+	struct zkt_dirent z;
+	memset(&z, 0, sizeof(z));
+	strlcpy(z.name, vfs_name(f), sizeof(z.name));
+	z.type = vfs_type(f);
+	z.size = vfs_size(f);
+	return copy_to_user(uout, &z, sizeof(z));
+}
+
+long syscall_dispatch(uint32_t num, uint32_t a0, uint32_t a1, uint32_t a2,
+                      uint32_t a3, uint32_t a4)
+{
+	(void)a3;
+	(void)a4;
+	struct process *p = process_current();
+	if (!p) {
+		return -ENOSYS;
+	}
+
+	switch (num) {
+	case SYS_EXIT:   process_exit((int)(a0 & 0xFF));
+	case SYS_READ:   return sys_read(p, (int)a0, (uint8_t *)a1, a2);
+	case SYS_WRITE:  return sys_write(p, (int)a0, (const uint8_t *)a1, a2);
+	case SYS_OPEN:   return sys_open(p, (const char *)a0, (int)a1);
+	case SYS_CLOSE:  return process_fd_close(p, (int)a0);
+	case SYS_SPAWN:  return sys_spawn(p, (const char *)a0, (char *const *)a1);
+	case SYS_WAIT:   return sys_wait(p, (int)a0, (int *)a1);
+	case SYS_GETPID: return (long)process_pid(p);
+	case SYS_SLEEP:  timer_sleep_ms(a0); return 0;
+	case SYS_BIND:   return sys_bind((const char *)a0, (const char *)a1, (int)a2);
+	case SYS_UNBIND: return sys_unbind((const char *)a0);
+	case SYS_NSFORK: return sys_nsfork();
+	case SYS_FSTAT:  return sys_fstat(p, (int)a0, (struct zkt_dirent *)a1);
+	case SYS_UPTIME: return (long)((uint32_t)timer_uptime_ms() & 0x7FFFFFFF);
+	default:         return -ENOSYS;
+	}
+}

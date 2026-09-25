@@ -1,4 +1,5 @@
 #include "fs_init.h"
+#include "bootfs.h"
 #include "devfs.h"
 #include "device.h"
 #include "fat.h"
@@ -11,7 +12,8 @@
 void fs_init(void)
 {
 	struct vnode *root = ramfs_create();
-	if (!root || ramfs_mkdir(root, "dev") || ramfs_mkdir(root, "n")) {
+	if (!root || ramfs_mkdir(root, "dev") || ramfs_mkdir(root, "n")
+	    || ramfs_mkdir(root, "boot") || ramfs_mkdir(root, "bin")) {
 		panic("fs_init: cannot build the root directory");
 	}
 	struct namespace *ns = ns_create(root);
@@ -23,6 +25,14 @@ void fs_init(void)
 
 	if (vfs_mount(devfs_root(), "devfs", "/dev", BIND_REPLACE) != 0) {
 		panic("fs_init: cannot bind devfs at /dev");
+	}
+
+	/* The boot archive at /boot, and its programs at /bin -- as a bind,
+	 * so a disk's bin/ can later be unioned in front or behind. */
+	struct vnode *boot = bootfs_create();
+	if (!boot || vfs_mount(boot, "bootfs", "/boot", BIND_REPLACE) != 0
+	    || vfs_bind("/boot/bin", "/bin", BIND_REPLACE) != 0) {
+		panic("fs_init: cannot mount the boot archive");
 	}
 
 	/* The FAT roots keep the reference fat_mount() returned, so they stay

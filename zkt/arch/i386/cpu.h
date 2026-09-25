@@ -56,6 +56,12 @@ static inline uint32_t cpu_read_cr2(void)
 	return val;
 }
 
+/* Switches address space (and flushes the TLB). */
+static inline void cpu_load_cr3(uintptr_t pd_phys)
+{
+	__asm__ volatile ("mov %0, %%cr3" : : "r"(pd_phys) : "memory");
+}
+
 /* Flushes the whole TLB. INVLPG would flush a single page but only
  * exists from the 486 on, and ZKT targets the 80386. */
 static inline void cpu_flush_tlb(void)

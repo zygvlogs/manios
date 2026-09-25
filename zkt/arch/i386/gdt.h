@@ -8,10 +8,12 @@
 #define GDT_KERNEL_DATA_SEL      0x10
 #define GDT_KERNEL_TSS_SEL       0x18
 #define GDT_DOUBLE_FAULT_TSS_SEL 0x20
+#define GDT_USER_CODE_SEL        0x2B /* index 5, RPL 3 */
+#define GDT_USER_DATA_SEL        0x33 /* index 6, RPL 3 */
 
-/* Installs ZKT's flat GDT and reloads the segment registers. The TSS
- * slots stay not-present until tss_init() fills them. User-mode
- * segments are added with ring 3 (M8). */
+/* Installs ZKT's flat GDT (kernel and ring 3 code/data) and reloads
+ * the segment registers. The TSS slots stay not-present until
+ * tss_init() fills them. */
 void gdt_init(void);
 
 /* Fills the TSS descriptor for `selector` (32-bit, available, ring 0). */

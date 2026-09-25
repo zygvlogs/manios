@@ -10,6 +10,7 @@
 #include "namespace.h"
 #include "panic.h"
 #include "timer.h"
+#include "vmm.h"
 
 #define TIME_SLICE_MS 20
 #define TIME_SLICE_TICKS (TIME_SLICE_MS * TIMER_HZ / 1000)
@@ -41,6 +42,8 @@ struct thread {
 	void (*entry)(void *);
 	void *arg;
 	struct namespace *ns;    /* inherited from the creating thread (ADR-0003) */
+	struct address_space *as; /* NULL: the kernel's own */
+	void *process;           /* owning user process, or NULL */
 	struct thread *next;     /* run queue, sleep list or wait queue link */
 	struct thread *all_next; /* every thread not yet reclaimed */
 };
@@ -146,6 +149,10 @@ static void schedule(void)
 
 	current = next;
 	switched_from = prev;
+	vmm_as_activate(next->as);
+	if (next->stack_top) {
+		arch_set_kernel_stack(next->stack_top);
+	}
 	arch_context_switch(&prev->sp, next->sp);
 	finish_switch();
 }
@@ -181,6 +188,8 @@ static struct thread *thread_alloc(const char *name, void (*entry)(void *), void
 	t->next = NULL;
 	t->ns = current ? current->ns : NULL;
 	ns_ref(t->ns);
+	t->as = NULL;
+	t->process = NULL;
 
 	uint32_t flags = cpu_irq_save();
 	t->id = next_id++;
@@ -210,6 +219,8 @@ void sched_init(void)
 	main_thread->stack_top = 0;
 	main_thread->next = NULL;
 	main_thread->ns = NULL;
+	main_thread->as = NULL;
+	main_thread->process = NULL;
 	thread_count++;
 	all_threads_add(main_thread);
 
@@ -229,13 +240,39 @@ void sched_enable_preemption(void)
 
 struct thread *thread_create(const char *name, void (*entry)(void *), void *arg)
 {
+	return thread_create_in(name, entry, arg, NULL, NULL);
+}
+
+struct thread *thread_create_in(const char *name, void (*entry)(void *), void *arg,
+                                struct address_space *as, void *process)
+{
 	struct thread *t = thread_alloc(name, entry, arg);
 	if (t) {
+		t->as = as;
+		t->process = process;
 		uint32_t flags = cpu_irq_save();
 		run_enqueue(t);
 		cpu_irq_restore(flags);
 	}
 	return t;
+}
+
+struct address_space *thread_address_space(void)
+{
+	return current ? current->as : NULL;
+}
+
+void *thread_process(void)
+{
+	return current ? current->process : NULL;
+}
+
+void thread_set_address_space(struct address_space *as)
+{
+	uint32_t flags = cpu_irq_save();
+	current->as = as;
+	vmm_as_activate(as);
+	cpu_irq_restore(flags);
 }
 
 void thread_yield(void)

@@ -1,6 +1,12 @@
 # userland/
 
-Core userspace: init process, shell, coreutils. Depends on `libc/` and
-the syscall ABI (milestone M8+) — see
-[`docs/FOUNDING-PROPOSAL.md` §6](../docs/FOUNDING-PROPOSAL.md#6-development-roadmap).
-Not started yet.
+User programs, linked with `libc/` by `userland/user.ld` and packed
+into the boot archive, which the kernel mounts at `/boot`
+([M8 notes](../docs/milestones/M8-userspace.md)). Every `.c` file is one
+program:
+
+- `bin/` — programs, installed in `/boot/bin` (bound at `/bin`)
+- `test/` — test programs, installed in `/boot/test`: `utest` (the
+  system call conformance test run at every boot), `fault`, `isotest`,
+  `nstest`
+- `etc/` — plain files, installed in `/boot/etc`

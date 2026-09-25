@@ -6,6 +6,7 @@
 
 struct thread;
 struct namespace;
+struct address_space;
 
 struct thread_info {
 	uint32_t id;
@@ -43,6 +44,21 @@ void sched_enable_preemption(void);
  * entry returns. Returns NULL when out of memory. `name` must outlive
  * the thread. */
 struct thread *thread_create(const char *name, void (*entry)(void *), void *arg);
+
+/* As thread_create, but the thread runs in address space `as` and
+ * belongs to user process `process` (both may be NULL). */
+struct thread *thread_create_in(const char *name, void (*entry)(void *), void *arg,
+                                struct address_space *as, void *process);
+
+struct address_space *thread_address_space(void);
+
+/* The calling thread's user process, or NULL for a kernel thread. */
+void *thread_process(void);
+
+/* Moves the calling thread into another address space (NULL: the
+ * kernel's). It stays there across preemption, which is what lets the
+ * ELF loader fill a new process's address space from outside it. */
+void thread_set_address_space(struct address_space *as);
 
 void thread_yield(void);
 

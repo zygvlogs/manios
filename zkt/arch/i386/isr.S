@@ -5,7 +5,8 @@
  * vector uniformly. Standard i386 pattern (Intel SDM vol. 3, ch. 6) --
  * original code implementing a public spec.
  *
- * All IDT entries are interrupt gates, which clear IF on entry; iret
+ * Exception and IRQ entries are interrupt gates, which clear IF on
+ * entry; the system call entry is a trap gate, which leaves it on. iret
  * restores the interrupted context's IF. No stub touches IF itself.
  */
 
@@ -70,6 +71,7 @@ ISR_NOERRCODE 28  /* Hypervisor injection exception */
 ISR_ERRCODE   29  /* VMM communication exception */
 ISR_ERRCODE   30  /* Security exception */
 ISR_NOERRCODE 31  /* Reserved */
+ISR_NOERRCODE 128 /* System call (int $0x80) */
 
 IRQ 0, 32
 IRQ 1, 33

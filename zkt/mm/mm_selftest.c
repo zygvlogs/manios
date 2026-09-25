@@ -60,6 +60,61 @@ static void vmm_selftest(void)
 	pmm_free_frame(frame);
 }
 
+/* Two address spaces: their user halves are private, and a kernel page
+ * table created while either is active reaches both (paging.c). */
+static void address_space_selftest(void)
+{
+	const uintptr_t user_va = 0x00400000;
+	const uintptr_t kernel_va = KERNEL_SELFTEST_VIRT + 0x00400000; /* no page table yet */
+	const uint32_t magic = 0x5A4B5441u;
+	uintptr_t phys;
+
+	/* The first address space also creates kernel tables that stay. */
+	struct address_space *warmup = vmm_as_create();
+	expect(warmup != NULL, "selftest: vmm_as_create failed");
+	vmm_as_destroy(warmup);
+	size_t frames = pmm_free_frames();
+
+	struct address_space *a = vmm_as_create(), *b = vmm_as_create();
+	uintptr_t user_frame = pmm_alloc_frame(), kernel_frame = pmm_alloc_frame();
+	expect(a && b && user_frame && kernel_frame, "selftest: out of memory in the address space test");
+	expect(vmm_translate(kernel_va, &phys) != 0, "selftest: address space test page already mapped");
+
+	vmm_as_activate(a);
+	expect(vmm_map_page(user_va, user_frame, VMM_WRITABLE | VMM_USER) == 0,
+	       "selftest: mapping a user page failed");
+	expect(vmm_map_page(kernel_va, kernel_frame, VMM_WRITABLE | VMM_USER) != 0
+	       && vmm_map_page(user_va + PAGE_SIZE, kernel_frame, VMM_WRITABLE) != 0,
+	       "selftest: a user mapping in the kernel half, or the reverse, was accepted");
+	expect(vmm_map_page(kernel_va, kernel_frame, VMM_WRITABLE) == 0,
+	       "selftest: mapping a kernel page from a user address space failed");
+	*(volatile uint32_t *)kernel_va = magic;
+	expect(vmm_user_range_ok(user_va, PAGE_SIZE, true)
+	       && !vmm_user_range_ok(user_va, PAGE_SIZE + 1, false)
+	       && !vmm_user_range_ok(kernel_va, 4, false),
+	       "selftest: vmm_user_range_ok misjudged a range");
+
+	vmm_as_activate(b);
+	expect(vmm_translate(user_va, &phys) != 0 && !vmm_user_range_ok(user_va, 1, false),
+	       "selftest: a user page showed up in another address space");
+	expect(vmm_translate(kernel_va, &phys) == 0 && *(volatile uint32_t *)kernel_va == magic,
+	       "selftest: a new kernel page table did not reach every address space");
+	vmm_as_activate(NULL);
+	expect(vmm_translate(kernel_va, &phys) == 0 && *(volatile uint32_t *)kernel_va == magic,
+	       "selftest: a new kernel page table did not reach the kernel's address space");
+
+	vmm_as_activate(a);
+	vmm_as_clear_user(); /* frees user_frame and its page table */
+	vmm_as_activate(NULL);
+	expect(vmm_unmap_page(kernel_va, &phys) == 0 && phys == kernel_frame,
+	       "selftest: unmapping the kernel test page failed");
+	pmm_free_frame(kernel_frame);
+	vmm_as_destroy(a);
+	vmm_as_destroy(b);
+	/* All that stays is kernel_va's page table, shared by every space. */
+	expect(pmm_free_frames() == frames - 1, "selftest: address spaces leaked frames");
+}
+
 static int aligned16(const void *p)
 {
 	return !((uintptr_t)p & 15);
@@ -113,5 +168,6 @@ void mm_selftest(void)
 {
 	pmm_selftest();
 	vmm_selftest();
+	address_space_selftest();
 	heap_selftest();
 }

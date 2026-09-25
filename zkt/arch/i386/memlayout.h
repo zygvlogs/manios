@@ -27,6 +27,21 @@
 #define KERNEL_STACKS_START 0xE1000000
 #define KERNEL_STACKS_SIZE 0x01000000
 
+/* Single kernel pages with a fixed kernel address, e.g. page directories
+ * (kpage.c). */
+#define KERNEL_PAGES_START 0xE2000000
+#define KERNEL_PAGES_SIZE 0x01000000
+
+/* User space is everything below the kernel. Page directory entries
+ * from here up are the kernel's, identical in every address space. */
+#define USER_SPACE_TOP KERNEL_VIRT_BASE
+#define KERNEL_PD_FIRST (KERNEL_VIRT_BASE >> 22)
+
+/* User stacks end one page below the kernel; that last user page, and
+ * the one below the stack, stay unmapped as guards. */
+#define USER_STACK_TOP 0xBFFFF000
+#define USER_STACK_PAGES 16
+
 /* The last page directory entry maps the page directory itself, which
  * exposes every page table at a fixed virtual address. */
 #define RECURSIVE_PD_INDEX 1023
