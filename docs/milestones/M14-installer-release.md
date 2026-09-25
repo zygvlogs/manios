@@ -138,7 +138,12 @@ Further:
   same QEMU 8.2.2 as the development machine): the cross toolchain
   builds in about 12 minutes and is cached; the build and all of
   `make test` take under 4 minutes there. A trial run by hand (without
-  publishing) passed every suite before the first tag.
+  publishing) passed every suite first. **0.14.0 was published** by a
+  run by hand with "publish" (this development environment may push
+  only its branch, not tags), which created the tag `v0.14.0` on the
+  tested commit. The published ISO was then downloaded, checked against
+  `SHA256SUMS`, booted, installed on a blank disk, and the disk booted
+  with its command line.
 - `make test`: 190 checks (179 at M13), none failing — locally, and in
   GitHub Actions.
 - **Negative controls** (temporary sabotage, reverted afterward):

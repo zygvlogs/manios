@@ -54,8 +54,9 @@ make test        # headless boot tests, plus interactive console tests
 make release     # dist/: the ISO, the kernel, SHA256SUMS
 ```
 
-Pushing a tag `vVERSION` (matching the `VERSION` file) makes GitHub
-Actions build, run `make test` and publish a release
+Pushing a tag `vVERSION` (matching the `VERSION` file), or running the
+release workflow by hand with "publish" ticked, makes GitHub Actions
+build, run `make test` and publish a release
 ([workflow](.github/workflows/release.yml)).
 
 Requires `qemu-system-i386`, Python 3 and mtools (for the tests; xorriso
