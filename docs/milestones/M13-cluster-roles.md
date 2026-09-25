@@ -148,6 +148,7 @@ Further:
   and `Tauth` on a server without a key (`ENOSYS`). `console_test`
   gained `/dev/sysname`, `/dev/zrp`, `cpud` refusing without a key, and
   `cpu` without a network address.
+- `make test`: 179 checks (164 at M12), none failing.
 - **Negative controls** (temporary sabotage, reverted afterward), each
   caught:
 
