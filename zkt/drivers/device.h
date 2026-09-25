@@ -68,5 +68,6 @@ struct device *device_next(struct device *prev);
 long device_read(struct device *dev, void *buf, size_t len);
 long device_write(struct device *dev, const void *buf, size_t len);
 int device_read_blocks(struct device *dev, uint32_t lba, uint32_t count, void *buf);
+int device_write_blocks(struct device *dev, uint32_t lba, uint32_t count, const void *buf);
 
 #endif

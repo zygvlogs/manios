@@ -55,6 +55,17 @@ long device_write(struct device *dev, const void *buf, size_t len)
 	return dev->char_ops->write(dev, buf, len);
 }
 
+int device_write_blocks(struct device *dev, uint32_t lba, uint32_t count, const void *buf)
+{
+	if (dev->class != DEVICE_BLOCK || !dev->block_ops->write) {
+		return -ENODEV;
+	}
+	if (lba > dev->block_count || count > dev->block_count - lba) {
+		return -ENXIO;
+	}
+	return count ? dev->block_ops->write(dev, lba, count, buf) : 0;
+}
+
 int device_read_blocks(struct device *dev, uint32_t lba, uint32_t count, void *buf)
 {
 	if (dev->class != DEVICE_BLOCK || !dev->block_ops->read) {

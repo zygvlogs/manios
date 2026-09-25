@@ -37,7 +37,14 @@ static int partition_read(struct device *dev, uint32_t lba, uint32_t count, void
 	return device_read_blocks(p->disk, p->start + lba, count, buf);
 }
 
-static const struct block_device_ops partition_ops = { .read = partition_read };
+static int partition_write(struct device *dev, uint32_t lba, uint32_t count, const void *buf)
+{
+	struct partition *p = dev->driver_data;
+	return device_write_blocks(p->disk, p->start + lba, count, buf);
+}
+
+static const struct block_device_ops partition_ops = { .read = partition_read,
+	                                                   .write = partition_write };
 
 /* A FAT boot sector on a partitionless disk ("superfloppy") ends in
  * 55 AA too, and its bytes where partition entries would be can be

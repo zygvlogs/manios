@@ -40,11 +40,15 @@ class TestFailure(Exception):
 
 
 class Machine:
-    def __init__(self, kernel, extra_args=()):
+    """A QEMU machine with the serial line on a pipe and a monitor socket.
+    kernel=None boots from the machine's disks (M14's boot loader)."""
+
+    def __init__(self, kernel, extra_args=(), memory=32):
         self.tmpdir = tempfile.mkdtemp(prefix="zkt-console-")
         mon_path = os.path.join(self.tmpdir, "monitor.sock")
+        boot = ["-kernel", kernel] if kernel else []
         self.proc = subprocess.Popen(
-            ["qemu-system-i386", "-kernel", kernel, "-cpu", "486", "-m", "32",
+            ["qemu-system-i386", *boot, "-cpu", "486", "-m", str(memory),
              "-display", "none", "-no-reboot", "-serial", "stdio",
              "-monitor", f"unix:{mon_path},server,nowait", *extra_args],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

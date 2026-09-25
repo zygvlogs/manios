@@ -62,9 +62,58 @@ static long dev_read(struct vnode *v, uint32_t offset, void *buf, size_t len)
 	return d->char_ops->pread ? d->char_ops->pread(d, offset, buf, len) : device_read(d, buf, len);
 }
 
+/* Whole blocks go straight to the device, a message-full at a time;
+ * partial blocks are read, changed and written back. */
+static long write_block_bytes(struct device *d, uint32_t offset, const uint8_t *buf, size_t len)
+{
+	uint32_t size = device_bytes(d);
+	if (offset >= size) {
+		return len ? -ENXIO : 0;
+	}
+	if (len > size - offset) {
+		len = size - offset;
+	}
+	uint8_t *block = kmalloc(d->block_size);
+	if (!block) {
+		return -ENOMEM;
+	}
+	size_t done = 0;
+	int rc = 0;
+	while (done < len && rc == 0) {
+		uint32_t pos = offset + (uint32_t)done;
+		uint32_t lba = pos / d->block_size, within = pos % d->block_size;
+		size_t chunk = d->block_size - within;
+		if (chunk > len - done) {
+			chunk = len - done;
+		}
+		if (within == 0 && chunk == d->block_size) {
+			/* As many whole blocks as there are, straight from buf. */
+			uint32_t blocks = (uint32_t)((len - done) / d->block_size);
+			rc = device_write_blocks(d, lba, blocks, buf + done);
+			if (rc == 0) {
+				done += (size_t)blocks * d->block_size;
+			}
+			continue;
+		}
+		rc = device_read_blocks(d, lba, 1, block);
+		if (rc == 0) {
+			memcpy(block + within, buf + done, chunk);
+			rc = device_write_blocks(d, lba, 1, block);
+		}
+		if (rc == 0) {
+			done += chunk;
+		}
+	}
+	kfree(block);
+	return done ? (long)done : rc;
+}
+
 static long dev_write(struct vnode *v, uint32_t offset, const void *buf, size_t len)
 {
 	struct device *d = ((struct dev_node *)v)->dev;
+	if (d->class == DEVICE_BLOCK) {
+		return write_block_bytes(d, offset, buf, len);
+	}
 	if (d->class == DEVICE_CHAR && d->char_ops->pwrite) {
 		return d->char_ops->pwrite(d, offset, buf, len);
 	}

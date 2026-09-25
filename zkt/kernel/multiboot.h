@@ -17,4 +17,15 @@ size_t multiboot_memory_regions(uint32_t mbi_phys, struct mem_region *out, size_
  * the PMM may hand out. */
 void multiboot_cmdline(uint32_t mbi_phys, char *out, size_t size);
 
+/* A module the boot loader loaded with the kernel (M14: the ManiOS boot
+ * loader passes its boot area, which the installer copies to disk).
+ * `name` is made from the module's string: the last element of its
+ * first word, without an extension, in lowercase letters and digits. */
+#define BOOT_MODULES_MAX 4
+struct boot_module {
+	uint32_t start, end; /* physical, end exclusive */
+	char name[16];
+};
+size_t multiboot_modules(uint32_t mbi_phys, struct boot_module *out, size_t max);
+
 #endif

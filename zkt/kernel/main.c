@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "arch.h"
+#include "bootmod.h"
 #include "cmdline.h"
 #include "cpu.h"
 #include "device.h"
@@ -60,7 +61,7 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	arch_early_init();
 	kconsole_init();
 
-	kconsole_write("ManiOS / ZKT (ZygKernel Technology)\n");
+	kconsole_write("ManiOS " MANIOS_VERSION " / ZKT (ZygKernel Technology)\n");
 	kconsole_write("Milestone M1: kernel console reached.\n");
 
 	if (multiboot_magic != MULTIBOOT_BOOTLOADER_MAGIC) {
@@ -71,12 +72,21 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	multiboot_cmdline(multiboot_info_phys, line, sizeof(line));
 	cmdline_set(line);
 
-	struct mem_region regions[MAX_MEM_REGIONS];
+	struct mem_region regions[MAX_MEM_REGIONS + BOOT_MODULES_MAX];
 	size_t region_count = multiboot_memory_regions(multiboot_info_phys, regions,
 	                                               MAX_MEM_REGIONS);
+	/* Modules stay where the loader put them: their frames are reserved. */
+	struct boot_module modules[BOOT_MODULES_MAX];
+	size_t module_count = multiboot_modules(multiboot_info_phys, modules, BOOT_MODULES_MAX);
+	for (size_t i = 0; i < module_count; i++) {
+		regions[region_count++] = (struct mem_region){
+			modules[i].start, modules[i].end - modules[i].start, false
+		};
+	}
 	pmm_init(regions, region_count);
 	vmm_init();
 	heap_init();
+	bootmod_init(modules, module_count);
 
 	kconsole_write("memory: ");
 	kconsole_write_dec(pmm_usable_frames() * 4);

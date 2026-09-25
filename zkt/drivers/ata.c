@@ -36,8 +36,10 @@
 
 #define DEVCTL_NIEN 0x02 /* no interrupts: this driver polls */
 
-#define CMD_READ_SECTORS 0x20
-#define CMD_IDENTIFY     0xEC
+#define CMD_READ_SECTORS  0x20
+#define CMD_WRITE_SECTORS 0x30
+#define CMD_CACHE_FLUSH   0xE7 /* ATA-4 on; older drives abort it, harmlessly */
+#define CMD_IDENTIFY      0xEC
 
 #define SECTOR_SIZE 512
 #define MAX_SECTORS_PER_COMMAND 256
@@ -207,13 +209,68 @@ static int read_sectors(struct ata_drive *d, uint32_t lba, uint32_t count, void 
 	return rc;
 }
 
+/* PIO writes (M14, for the installer): each sector goes when the drive
+ * asks for it (DRQ); then the drive's write cache is flushed, so what
+ * was written survives the power going off. */
+static int write_sectors(struct ata_drive *d, uint32_t lba, uint32_t count, const void *buf,
+                         bool chs)
+{
+	struct ata_channel *ch = d->channel;
+	const uint16_t *in = buf;
+	int rc = 0;
+
+	mutex_lock(&ch->lock);
+	while (count && rc == 0) {
+		uint32_t n = count < MAX_SECTORS_PER_COMMAND ? count : MAX_SECTORS_PER_COMMAND;
+		set_address(d, lba, n, chs);
+		outb(ch->io + REG_COMMAND, CMD_WRITE_SECTORS);
+		for (uint32_t s = 0; s < n; s++) {
+			delay_400ns(ch);
+			int st = wait_data(ch);
+			if (st < 0 || (st & (STATUS_ERR | STATUS_DF)) || !(st & STATUS_DRQ)) {
+				rc = -EIO;
+				break;
+			}
+			for (int w = 0; w < SECTOR_SIZE / 2; w++) {
+				outw(ch->io + REG_DATA, *in++);
+			}
+		}
+		/* The last sector is on its way once the drive is not busy. */
+		delay_400ns(ch);
+		if (rc == 0 && wait_not_busy(ch) < 0) {
+			rc = -EIO;
+		}
+		if (rc == 0 && (inb(ch->io + REG_STATUS) & (STATUS_ERR | STATUS_DF))) {
+			rc = -EIO;
+		}
+		lba += n;
+		count -= n;
+	}
+	if (rc == 0) {
+		outb(ch->io + REG_DRIVE, DRIVE_BASE | (d->slave ? DRIVE_SLAVE : 0));
+		outb(ch->io + REG_COMMAND, CMD_CACHE_FLUSH);
+		delay_400ns(ch);
+		if (wait_not_busy(ch) < 0) {
+			rc = -EIO;
+		}
+	}
+	mutex_unlock(&ch->lock);
+	return rc;
+}
+
 static int ata_read(struct device *dev, uint32_t lba, uint32_t count, void *buf)
 {
 	struct ata_drive *d = dev->driver_data;
 	return read_sectors(d, lba, count, buf, !d->lba);
 }
 
-static const struct block_device_ops ata_ops = { .read = ata_read };
+static int ata_write(struct device *dev, uint32_t lba, uint32_t count, const void *buf)
+{
+	struct ata_drive *d = dev->driver_data;
+	return write_sectors(d, lba, count, buf, !d->lba);
+}
+
+static const struct block_device_ops ata_ops = { .read = ata_read, .write = ata_write };
 
 /* Model strings store two characters per word, high byte first. */
 static void copy_model(char *dst, const uint16_t *id)

@@ -27,7 +27,7 @@ static void draw(struct win *w)
 	gfx_fill(c, (struct gfx_rect){ 0, 0, WIDTH, HEIGHT }, BG);
 	gfx_fill(c, (struct gfx_rect){ 16, 16, 22, 22 }, AMBER);
 	gfx_text(c, 48, 16, "ManiOS", LIGHT, 2);
-	gfx_text(c, 48 + gfx_text_width("ManiOS", 2) + 10, 27, "desktop MVP (M12)", DIM, 1);
+	gfx_text(c, 48 + gfx_text_width("ManiOS", 2) + 10, 27, "version " MANIOS_VERSION, DIM, 1);
 	gfx_text(c, 16, 48, "Kernel: ZKT (ZygKernel Technology)", AMBER, 1);
 	for (int i = 0; i < 4; i++) {
 		gfx_text(c, 16, 68 + i * GFX_CELL_H, LINES[i], LIGHT, 1);

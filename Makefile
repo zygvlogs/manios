@@ -27,6 +27,21 @@ LDFLAGS := -ffreestanding -O2 -nostdlib -T zkt/arch/i386/linker.ld
 
 BUILD := build
 KERNEL := $(BUILD)/manios-zkt.elf
+VERSION := $(shell cat VERSION)
+CFLAGS += -DMANIOS_VERSION='"$(VERSION)"'
+
+# The ManiOS boot loader (M14, ADR-0006): boot sectors for disks (mbr)
+# and CDs (cdboot), and stage 2; the boot area packs them with the
+# kernel, and the ISO holds the boot area.
+BOOT_CFLAGS := -std=gnu11 -ffreestanding -Os -Wall -Wextra -fno-pic \
+               -fno-asynchronous-unwind-tables $(ARCHFLAGS) -Iboot -DMANIOS_VERSION='"$(VERSION)"'
+MBR := $(BUILD)/boot/mbr.bin
+CDBOOT := $(BUILD)/boot/cdboot.bin
+STAGE2 := $(BUILD)/boot/stage2.bin
+BOOTAREA := $(BUILD)/manios.bin
+ISO := $(BUILD)/manios.iso
+KERNEL_STRIPPED := $(BUILD)/manios-zkt.stripped.elf
+DIST := dist
 
 C_SOURCES := $(wildcard zkt/arch/i386/*.c zkt/drivers/*.c zkt/fs/*.c zkt/kernel/*.c \
                           zkt/mm/*.c zkt/net/*.c zkt/scheduler/*.c)
@@ -42,8 +57,9 @@ OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(C_SOURCES)) \
 # the file: the kernel copies segments rather than mapping file pages,
 # so the padding would only waste space in the kernel image.
 USER_CFLAGS := -std=gnu11 -ffreestanding -fno-asynchronous-unwind-tables -O2 -g \
+               -DMANIOS_VERSION='"$(VERSION)"' \
                -Wall -Wextra -MMD -MP $(ARCHFLAGS) -Ilibc/include -Izkt/abi -Idesktop/libgfx \
-               -Idesktop/libwin
+               -Idesktop/libwin -Iboot
 USER_LDFLAGS := -nostdlib -static -T userland/user.ld -Wl,-n
 
 LIBC := $(BUILD)/libc/libc.a
@@ -69,9 +85,9 @@ BOOTFS_FILES := $(patsubst %,$(BUILD)/bootfs/%,$(USER_PROGRAMS)) \
                 $(BUILD)/bootfs/bin/desktop $(DESKTOP_BOOTFS)
 BOOTFS_OBJECT := $(BUILD)/bootfs.o
 
-.PHONY: all toolchain run test clean
+.PHONY: all toolchain run test clean iso release test-images
 
-all: $(KERNEL)
+all: $(KERNEL) $(ISO)
 
 toolchain:
 	tools/toolchain/build-i686-elf-toolchain.sh
@@ -88,6 +104,10 @@ $(BUILD)/%.o: %.S
 	$(CC) $(ASFLAGS) -c $< -o $@
 
 $(BUILD)/libc/string.o: USER_CFLAGS += -fno-tree-loop-distribute-patterns
+
+# The version is compiled in where it is shown.
+$(BUILD)/zkt/kernel/main.o $(BUILD)/desktop/apps/about.o $(BUILD)/boot/stage2_entry.o \
+    $(BUILD)/boot/stage2.o: VERSION
 
 $(BUILD)/libc/%.o: libc/%.c
 	@mkdir -p $(dir $@)
@@ -157,12 +177,71 @@ $(KERNEL): $(OBJECTS) $(BOOTFS_OBJECT) zkt/arch/i386/linker.ld
 	@mkdir -p $(dir $@)
 	$(LD) $(LDFLAGS) -Wl,-Map=$(BUILD)/manios-zkt.map -o $@ $(OBJECTS) $(BOOTFS_OBJECT) -lgcc
 
+$(BUILD)/boot/%.o: boot/%.S boot/bootarea.h
+	@mkdir -p $(dir $@)
+	$(CC) $(BOOT_CFLAGS) -c $< -o $@
+
+$(BUILD)/boot/%.o: boot/%.c boot/bootarea.h
+	@mkdir -p $(dir $@)
+	$(CC) $(BOOT_CFLAGS) -c $< -o $@
+
+$(MBR): $(BUILD)/boot/mbr.o boot/sector.ld
+	$(LD) -nostdlib -T boot/sector.ld -o $@ $<
+	@test $$(stat -c %s $@) -eq 446 || { echo "$@: not 446 bytes"; rm -f $@; exit 1; }
+
+$(CDBOOT): $(BUILD)/boot/cdboot.o boot/sector.ld
+	$(LD) -nostdlib -T boot/sector.ld -o $@ $<
+	@test $$(stat -c %s $@) -eq 2048 || { echo "$@: not 2048 bytes"; rm -f $@; exit 1; }
+
+$(STAGE2): $(BUILD)/boot/stage2_entry.o $(BUILD)/boot/stage2.o boot/stage2.ld
+	$(LD) -nostdlib -T boot/stage2.ld -o $@ $(BUILD)/boot/stage2_entry.o $(BUILD)/boot/stage2.o
+
+$(KERNEL_STRIPPED): $(KERNEL)
+	$(STRIP) -o $@ $<
+
+$(BOOTAREA): $(MBR) $(STAGE2) $(KERNEL_STRIPPED) tools/mkbootarea.py VERSION
+	python3 tools/mkbootarea.py --mbr $(MBR) --stage2 $(STAGE2) --kernel $(KERNEL_STRIPPED) \
+	    --version $(VERSION) -o $@
+
+$(ISO): $(BOOTAREA) $(CDBOOT) $(MBR) tools/mkiso.py README.md LICENSE
+	python3 tools/mkiso.py --bootarea $(BOOTAREA) --cdboot $(CDBOOT) --mbr $(MBR) \
+	    --volume MANIOS_$(subst .,_,$(VERSION)) --file README.TXT=README.md \
+	    --file LICENSE.TXT=LICENSE -o $@
+
+iso: $(ISO)
+
+# Test builds of the boot sector and stage 2 that use CHS disk reads,
+# as on BIOSes without the LBA extensions (tests/install_test.py).
+$(BUILD)/boot/chs/%.o: boot/%.S boot/bootarea.h
+	@mkdir -p $(dir $@)
+	$(CC) $(BOOT_CFLAGS) -DFORCE_CHS -c $< -o $@
+
+$(BUILD)/boot/chs/mbr.bin: $(BUILD)/boot/chs/mbr.o boot/sector.ld
+	$(LD) -nostdlib -T boot/sector.ld -o $@ $<
+
+$(BUILD)/boot/chs/stage2.bin: $(BUILD)/boot/chs/stage2_entry.o $(BUILD)/boot/stage2.o boot/stage2.ld
+	$(LD) -nostdlib -T boot/stage2.ld -o $@ $(BUILD)/boot/chs/stage2_entry.o $(BUILD)/boot/stage2.o
+
+$(BUILD)/manios-chs.bin: $(BUILD)/boot/chs/mbr.bin $(BUILD)/boot/chs/stage2.bin $(KERNEL_STRIPPED)
+	python3 tools/mkbootarea.py --mbr $(BUILD)/boot/chs/mbr.bin --stage2 $(BUILD)/boot/chs/stage2.bin \
+	    --kernel $(KERNEL_STRIPPED) --version $(VERSION) -o $@
+
+test-images: $(ISO) $(BUILD)/manios-chs.bin
+
+# What a release publishes (.github/workflows/release.yml).
+release: $(ISO) $(KERNEL)
+	@mkdir -p $(DIST)
+	cp $(ISO) $(DIST)/manios-$(VERSION).iso
+	cp $(KERNEL) $(DIST)/manios-$(VERSION)-kernel.elf
+	cd $(DIST) && sha256sum manios-$(VERSION).iso manios-$(VERSION)-kernel.elf > SHA256SUMS
+
 run: $(KERNEL)
 	tools/qemu-run.sh $(KERNEL)
 
-test: $(KERNEL)
+test: $(KERNEL) test-images
 	python3 tools/mkfont.py --check
 	tests/boot_smoke_test.sh $(KERNEL)
+	python3 tests/install_test.py $(BUILD)
 	python3 tests/console_test.py $(KERNEL)
 	python3 tests/net_test.py $(KERNEL)
 	python3 tests/gfx_test.py $(KERNEL)
@@ -170,7 +249,7 @@ test: $(KERNEL)
 	python3 tests/cluster_test.py $(KERNEL)
 
 clean:
-	rm -rf $(BUILD)
+	rm -rf $(BUILD) $(DIST)
 
 # Keep the unstripped programs for debugging (addr2line, objdump).
 .SECONDARY: $(patsubst %,$(BUILD)/userland/%.elf,$(USER_PROGRAMS)) $(USER_OBJECTS) $(CRT0) \

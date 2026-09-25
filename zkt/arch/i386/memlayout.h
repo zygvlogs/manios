@@ -36,6 +36,10 @@
 #define KERNEL_FB_START 0xE3000000
 #define KERNEL_FB_SIZE 0x01000000
 
+/* Modules the boot loader loaded with the kernel (bootmod.c). */
+#define KERNEL_MODULES_START 0xE4000000
+#define KERNEL_MODULES_SIZE 0x01000000
+
 /* User space is everything below the kernel. Page directory entries
  * from here up are the kernel's, identical in every address space. */
 #define USER_SPACE_TOP KERNEL_VIRT_BASE

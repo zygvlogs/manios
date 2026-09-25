@@ -1,9 +1,11 @@
 #include "multiboot.h"
+#include <stdbool.h>
 #include "memlayout.h"
 #include "panic.h"
 
 #define MULTIBOOT_INFO_MEMORY  (1u << 0) /* mem_lower / mem_upper valid */
 #define MULTIBOOT_INFO_CMDLINE (1u << 2) /* cmdline valid */
+#define MULTIBOOT_INFO_MODS    (1u << 3) /* mods_count / mods_addr valid */
 #define MULTIBOOT_INFO_MEM_MAP (1u << 6) /* mmap_addr / mmap_length valid */
 #define MULTIBOOT_MEMORY_AVAILABLE 1
 
@@ -87,4 +89,62 @@ void multiboot_cmdline(uint32_t mbi_phys, char *out, size_t size)
 		}
 	}
 	out[n] = '\0';
+}
+
+struct multiboot_module {
+	uint32_t mod_start, mod_end, string, reserved;
+} __attribute__((packed));
+
+/* "boot/bootarea.bin args" -> "bootarea": the last element of the first
+ * word, up to its first '.', letters (lowercased) and digits only. */
+static void module_name(uint32_t string, size_t index, char *out, size_t size)
+{
+	size_t k = 0;
+	bool in_extension = false;
+	for (uint32_t addr = string; string && addr - string < 4096; addr++) {
+		char c = *(const char *)boot_phys(addr, 1);
+		if (!c || c == ' ') {
+			break;
+		}
+		if (c == '/') {
+			k = 0; /* a later element replaces this one */
+			in_extension = false;
+		} else if (c == '.') {
+			in_extension = true;
+		} else if (!in_extension && k + 1 < size) {
+			char l = c >= 'A' && c <= 'Z' ? (char)(c - 'A' + 'a') : c;
+			if ((l >= 'a' && l <= 'z') || (l >= '0' && l <= '9')) {
+				out[k++] = l;
+			}
+		}
+	}
+	if (k == 0) {
+		const char *prefix = "module";
+		while (*prefix && k + 2 < size) {
+			out[k++] = *prefix++;
+		}
+		out[k++] = (char)('0' + index % 10);
+	}
+	out[k] = '\0';
+}
+
+size_t multiboot_modules(uint32_t mbi_phys, struct boot_module *out, size_t max)
+{
+	const struct multiboot_info *mbi = boot_phys(mbi_phys, sizeof(*mbi));
+	if (!(mbi->flags & MULTIBOOT_INFO_MODS)) {
+		return 0;
+	}
+	size_t n = 0;
+	for (uint32_t i = 0; i < mbi->mods_count && n < max; i++) {
+		const struct multiboot_module *m =
+		    boot_phys(mbi->mods_addr + i * sizeof(*m), sizeof(*m));
+		if (m->mod_end <= m->mod_start) {
+			continue;
+		}
+		out[n].start = m->mod_start;
+		out[n].end = m->mod_end;
+		module_name(m->string, n, out[n].name, sizeof(out[n].name));
+		n++;
+	}
+	return n;
 }

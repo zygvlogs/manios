@@ -63,11 +63,23 @@ void pmm_init(const struct mem_region *regions, size_t count)
 	frame_count = (size_t)(top >> PAGE_SHIFT);
 	word_count = (frame_count + BITS_PER_WORD - 1) / BITS_PER_WORD;
 
-	/* The bitmap sits right after the kernel image, inside the boot
-	 * mapping, since no allocator exists yet to place it elsewhere. */
-	uintptr_t bitmap_start = (uintptr_t)_kernel_end;
-	uintptr_t bitmap_end = (bitmap_start + word_count * sizeof(uint32_t) + PAGE_SIZE - 1)
-	                       & ~(uintptr_t)(PAGE_SIZE - 1);
+	/* The bitmap sits after the kernel image, inside the boot mapping,
+	 * since no allocator exists yet to place it elsewhere -- but clear of
+	 * reserved ranges, such as modules a boot loader put right after the
+	 * kernel (M14). */
+	size_t bytes = word_count * sizeof(uint32_t);
+	uintptr_t bitmap_start = (uintptr_t)_kernel_end, bitmap_end;
+	for (bool moved = true; moved;) {
+		moved = false;
+		bitmap_end = (bitmap_start + bytes + PAGE_SIZE - 1) & ~(uintptr_t)(PAGE_SIZE - 1);
+		for (size_t i = 0; i < count; i++) {
+			uint64_t lo = regions[i].base, hi = region_end(&regions[i]);
+			if (!regions[i].usable && lo < V2P(bitmap_end) && hi > V2P(bitmap_start)) {
+				bitmap_start = (uintptr_t)P2V((uintptr_t)(hi + PAGE_SIZE - 1) & ~(uintptr_t)(PAGE_SIZE - 1));
+				moved = true;
+			}
+		}
+	}
 	if (V2P(bitmap_end) > BOOT_MAPPED_PHYS_LIMIT) {
 		panic("pmm: frame bitmap does not fit in the boot mapping");
 	}
