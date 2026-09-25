@@ -1,6 +1,6 @@
 # ADR-0001: Boot on Multiboot first, native ManiOS bootloader later
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-09-25
 
 ## Context

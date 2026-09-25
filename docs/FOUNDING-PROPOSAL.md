@@ -14,11 +14,12 @@ instruction not to generate large amounts of code before approval.
 
 > ManiOS is an independent operating system with **ZKT (ZygKernel
 > Technology)** at its core, BSD technology adopted deliberately and
-> legally where it earns its place, and a desktop environment that is
-> genuinely ours. It is not a Linux distribution and not a BSD or AmigaOS
-> clone. First target: a bootable i386 system reaching a ZKT kernel
-> console, built incrementally with a strong documentation and licensing
-> discipline from day one.
+> legally where it earns its place, a Plan 9-inspired namespace and
+> resource model that makes it cluster-transparent, and a desktop
+> environment that is genuinely ours. It is not a Linux distribution and
+> not a BSD or AmigaOS clone. First target: a bootable i386 system
+> reaching a ZKT kernel console, built incrementally with a strong
+> documentation and licensing discipline from day one.
 
 ---
 
@@ -109,6 +110,35 @@ its own founding-proposal-style design document when the project reaches
 that milestone; scaffolding only (`desktop/README.md`) is created now so
 the repository shape is visible today.
 
+### 1.5 Cluster / distributed vision (Plan 9-inspired)
+
+ManiOS targets a **Plan 9-style cluster model**: multiple ManiOS nodes
+sharing storage, compute, and devices transparently over the network,
+with no special-cased "remote" API. See
+[ADR-0003](adr/0003-plan9-namespaces-and-resource-protocol.md) for the
+full rationale; in outline:
+
+- **ZRP (ZygKernel Resource Protocol)** — ManiOS's own, original,
+  9P-inspired transport-agnostic protocol for reaching any resource
+  (local driver, local server process, or a resource on a remote ManiOS
+  node) through the same walk/open/read/write-style operations. Local
+  IPC (§2.8) and the future network stack (§6, M10) become two
+  *transports* for the same protocol, which is what makes local and
+  remote resources look identical to client code.
+- **Per-process namespaces** — each process has its own mount/bind
+  table (inherited at fork/spawn, independently mutable afterward), not
+  one global filesystem tree; union directories are part of this from
+  the start.
+- **Cluster roles** — a ManiOS node can act as a file server, a CPU
+  server, or a thin terminal that imports both, once userspace (M8) and
+  networking (M10) exist (tracked as milestone M13, §6).
+
+This reshapes the target design of VFS (§2.10), IPC (§2.8), and
+networking (§6/M10) but does not change the M1–M6 plan (boot, memory,
+interrupts, multitasking, drivers, storage) already detailed in this
+document. Wire format and namespace-manipulation syscalls are deferred
+to when M7/M8/M10 actually begin, per ADR-0003.
+
 ---
 
 ## 2. ZKT (ZygKernel Technology) Architecture
@@ -181,6 +211,10 @@ Synchronous message-passing "ports" (send/receive/reply, bounded message
 size, kernel-mediated) as the first primitive — simplest to reason about
 and to secure. Shared-memory regions and async queues are later additions
 once real workloads (e.g., a windowing system) demand the throughput.
+Per [ADR-0003](adr/0003-plan9-namespaces-and-resource-protocol.md)
+(§1.5), this port mechanism is designed to double as a local transport
+for **ZRP** later — its message format should not assume it will only
+ever carry ad hoc, per-subsystem payloads.
 
 ### 2.9 System-call interface
 i386 target uses the classic `int 0x80` software-interrupt gate initially
@@ -198,6 +232,10 @@ modeled on the well-documented 4.4BSD VFS/vnode interface design
 no code is copied; see §3.2 on the distinction). First concrete
 filesystem is likely a minimal read-only FAT or a purpose-built simple FS
 (`zkfs`?) for the initial disk image — decided at M6/M7, not now.
+Above this vnode dispatch layer, VFS is further shaped by
+[ADR-0003](adr/0003-plan9-namespaces-and-resource-protocol.md) (§1.5):
+per-process mount/bind tables and union directories, rather than one
+global mount table, are the target namespace structure once M7 begins.
 
 ### 2.11 Security boundaries
 Ring 0/ring 3 hardware separation (§1.2) plus, from the first userspace
@@ -403,12 +441,13 @@ a concrete shape rather than only a diagram.
 | M4 | Cooperative then preemptive multitasking (kernel threads) | M2, M3 |
 | M5 | Driver framework + keyboard, VGA, serial, PIT drivers formalized | M3, M4 |
 | M6 | Storage: ATA/IDE PIO block driver | M5 |
-| M7 | VFS + first filesystem (read-only to start) | M6 |
-| M8 | Userspace: ELF loader, ring 3 processes, first syscalls | M4, M7 |
+| M7 | VFS + first filesystem, per-process namespaces & union dirs (ADR-0003) | M6 |
+| M8 | Userspace: ELF loader, ring 3 processes, first syscalls, namespace ops (bind/mount) | M4, M7 |
 | M9 | libc + syscall ABI stabilization, coreutils, shell | M8 |
-| M10 | Networking (link layer up through a basic socket API) | M8 |
+| M10 | Networking + ZRP transport over the network (ADR-0003) | M8 |
 | M11 | Graphics: linear framebuffer driver, basic 2D primitives | M8 |
 | M12 | ManiOS Desktop Environment MVP (compositor, shell, launcher) | M11 |
+| M13 | Cluster roles: file server / CPU server / terminal (ADR-0003) | M8, M10 |
 
 Each milestone gets its own short design note under `docs/` when it
 starts (not written speculatively now), following the ADR practice
@@ -545,24 +584,31 @@ it is deliberately not executed in this change.
 
 ## 11. Open Decisions Requiring Approval
 
-This proposal makes recommendations rather than unilateral calls on
-anything that qualifies as a "major architectural change." Nothing below
-is implemented until confirmed:
+**D1, D2, and D3 were confirmed as recommended on 2026-09-25.** D4 was
+added the same day at the repository owner's explicit direction. Status
+below reflects that.
 
 - **D1 — Kernel style** (§1.2): hybrid kernel (monolithic-ish
-  performance, microkernel-*shaped* internal boundaries) — recommended
-  over a pure microkernel or a traditional fully-monolithic design.
-  Tracked as `docs/adr/0002-kernel-architecture-style.md` (currently
-  *Proposed*).
+  performance, microkernel-*shaped* internal boundaries), accepted over
+  a pure microkernel or a traditional fully-monolithic design.
+  `docs/adr/0002-kernel-architecture-style.md` — **Accepted**.
 - **D2 — Boot strategy** (§4.1): start on Multiboot (GRUB/QEMU-provided
   protected-mode handoff), defer a native ManiOS bootloader to a later,
-  separate milestone. Tracked as `docs/adr/0001-bootloader-strategy.md`
-  (currently *Proposed*).
-- **D3 — Project license** (§9.1): BSD-2-Clause recommended for
-  ManiOS-original code. No `LICENSE` file added yet.
-- Anything else in this document marked "recommended" is a default this
-  proposal is prepared to act on, not a decision already made on the
-  repository owner's behalf.
+  separate milestone. `docs/adr/0001-bootloader-strategy.md` —
+  **Accepted**.
+- **D3 — Project license** (§9.1): BSD-2-Clause for ManiOS-original
+  code. `LICENSE` added in the same change as this update.
+- **D4 — Plan 9-inspired cluster model** (§1.5): ZRP (ZygKernel Resource
+  Protocol) as a uniform local/remote resource protocol, per-process
+  namespaces with union directories, and file-server/CPU-server/terminal
+  cluster roles as milestone M13.
+  `docs/adr/0003-plan9-namespaces-and-resource-protocol.md` —
+  **Accepted** (direction); wire format and syscalls remain open until
+  M7/M8/M10.
+- Anything else in this document marked "recommended" remains a default
+  this proposal is prepared to act on, not a decision already made on
+  the repository owner's behalf, and should be raised explicitly if it
+  needs to change.
 
-Once these are confirmed (as-is, or amended), work proceeds to §10's
-task list, starting with M1 (§7).
+With D1–D4 confirmed, work proceeds to §10's task list, starting with M1
+(§7).

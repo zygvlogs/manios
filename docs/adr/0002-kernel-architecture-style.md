@@ -1,6 +1,6 @@
 # ADR-0002: Hybrid kernel — monolithic performance, microkernel-shaped boundaries
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-09-25
 
 ## Context

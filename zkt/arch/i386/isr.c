@@ -1,0 +1,42 @@
+#include "isr.h"
+#include "../kernel/panic.h"
+
+/* Exception names/order match the Intel SDM vol. 3 vector list (public
+ * architecture reference); vectors without an assigned Intel meaning
+ * are marked Reserved. */
+static const char *const EXCEPTION_NAMES[32] = {
+	"Divide-by-zero",
+	"Debug",
+	"Non-maskable interrupt",
+	"Breakpoint",
+	"Overflow",
+	"Bound range exceeded",
+	"Invalid opcode",
+	"Device not available",
+	"Double fault",
+	"Coprocessor segment overrun",
+	"Invalid TSS",
+	"Segment not present",
+	"Stack-segment fault",
+	"General protection fault",
+	"Page fault",
+	"Reserved",
+	"x87 FPU error",
+	"Alignment check",
+	"Machine check",
+	"SIMD floating-point exception",
+	"Virtualization exception",
+	"Control protection exception",
+	"Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Reserved",
+	"Hypervisor injection exception",
+	"VMM communication exception",
+	"Security exception",
+	"Reserved",
+};
+
+void isr_handler(registers_t *regs)
+{
+	const char *name = (regs->int_no < 32) ? EXCEPTION_NAMES[regs->int_no]
+	                                        : "Unknown exception";
+	panic_dump(name, regs);
+}
