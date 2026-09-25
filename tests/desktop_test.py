@@ -222,8 +222,11 @@ class Scenario:
 
         s = self.d.wait(lambda s: re.fullmatch(r"\d\d:\d\d:\d\d", reading(s)), "the clock's time")
         first = reading(s)
-        date = read_text(s, cx + 58, cy + 50, 14, CLOCK_DATE)
-        check(re.fullmatch(r"20\d\d-\d\d-\d\d UTC", date), f"the clock's date reads {date!r}")
+        # The first frame can still be arriving below the time (a window's
+        # pixels come in several writes): wait for the date line too.
+        self.d.wait(lambda s: re.fullmatch(r"20\d\d-\d\d-\d\d UTC",
+                                           read_text(s, cx + 58, cy + 50, 14, CLOCK_DATE)),
+                    "the clock's date, YYYY-MM-DD UTC")
         self.d.wait(lambda s: re.fullmatch(r"\d\d:\d\d:\d\d", reading(s)) and reading(s) != first,
                     "the clock ticking")
         tx, ty = self.term
