@@ -6,8 +6,8 @@ exists (M8).
 
 - `main.c` — `kernel_main()`: arch init → console → memory map → PMM →
   VMM → heap → memory self-test → scheduler (becomes thread "main") →
-  timer → interrupts on → scheduler self-tests → drivers → monitor thread →
-  `thread_exit()`
+  timer → interrupts on → scheduler self-tests → drivers → kernel
+  namespace and mounts → VFS self-test → monitor thread → `thread_exit()`
 - `kconsole.c` — console output (VGA + COM1) and input (keyboard + COM1),
   and device `cons`
 - `monitor.c` — the `ZKT>` kernel monitor (debugging console)

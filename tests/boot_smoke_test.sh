@@ -16,6 +16,7 @@ EXPECTED=(
 	"Milestone M4: kernel threads online (cooperative + preemptive scheduling, self-test passed)."
 	"Milestone M5: driver framework online (keyboard + serial console input, mutex self-test passed)."
 	"Milestone M6: ATA storage driver online."
+	"Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed)."
 )
 
 # "<RAM MiB> <QEMU CPU model> <why>". QEMU's oldest model is the 486;

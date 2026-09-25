@@ -1,4 +1,5 @@
 #include "monitor.h"
+#include "namespace.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include "device.h"
@@ -11,6 +12,7 @@
 #include "pmm.h"
 #include "sched.h"
 #include "timer.h"
+#include "vfs.h"
 
 #define LINE_MAX 128
 #define ARGS_MAX 8
@@ -133,6 +135,146 @@ static void cmd_read(int argc, char **argv)
 	kfree(buf);
 }
 
+static const char *type_name(enum vnode_type t)
+{
+	return t == VNODE_DIR ? "dir" : t == VNODE_DEVICE ? "dev" : "file";
+}
+
+static void cmd_ls(int argc, char **argv)
+{
+	const char *path = argc > 1 ? argv[1] : "/";
+	struct file *f;
+	struct dirent d;
+	int rc = vfs_open(path, &f);
+	if (rc == 0) {
+		while ((rc = vfs_readdir(f, &d)) == 1) {
+			kprintf("  %-4s %8lu  %s%s\n", type_name(d.type), d.size, d.name,
+			        d.type == VNODE_DIR ? "/" : "");
+		}
+		vfs_close(f);
+	}
+	if (rc < 0) {
+		kprintf("ls: %s: %s\n", path, kstrerror(rc));
+	}
+}
+
+/* Reads a file in chunks, handing each to fn; `limit` caps the bytes. */
+static long read_all(const char *path, uint32_t limit,
+                     void (*fn)(const uint8_t *buf, size_t len, void *ctx), void *ctx)
+{
+	struct file *f;
+	int rc = vfs_open(path, &f);
+	if (rc) {
+		return rc;
+	}
+	uint8_t buf[256];
+	uint32_t total = 0;
+	long n = 0;
+	while (total < limit) {
+		size_t want = limit - total < sizeof(buf) ? limit - total : sizeof(buf);
+		n = vfs_read(f, buf, want);
+		if (n <= 0) {
+			break;
+		}
+		fn(buf, (size_t)n, ctx);
+		total += (uint32_t)n;
+	}
+	vfs_close(f);
+	return n < 0 ? n : (long)total;
+}
+
+static void print_chunk(const uint8_t *buf, size_t len, void *ctx)
+{
+	(void)ctx;
+	kconsole_write_n((const char *)buf, len);
+}
+
+static void cmd_cat(int argc, char **argv)
+{
+	if (argc != 2) {
+		kprintf("usage: cat PATH\n");
+		return;
+	}
+	long rc = read_all(argv[1], 0xFFFFFFFFu, print_chunk, 0);
+	if (rc < 0) {
+		kprintf("cat: %s: %s\n", argv[1], kstrerror((int)rc));
+	}
+}
+
+/* FNV-1a, 32-bit: simple enough that tests can recompute it. */
+static void fnv1a_chunk(const uint8_t *buf, size_t len, void *ctx)
+{
+	uint32_t *h = ctx;
+	for (size_t i = 0; i < len; i++) {
+		*h = (*h ^ buf[i]) * 16777619u;
+	}
+}
+
+static void cmd_sum(int argc, char **argv)
+{
+	uint32_t limit = 0xFFFFFFFFu;
+	if (argc < 2 || argc > 3 || (argc == 3 && !parse_u32(argv[2], &limit))) {
+		kprintf("usage: sum PATH [BYTES]\n");
+		return;
+	}
+	uint32_t hash = 2166136261u;
+	long n = read_all(argv[1], limit, fnv1a_chunk, &hash);
+	if (n < 0) {
+		kprintf("sum: %s: %s\n", argv[1], kstrerror((int)n));
+	} else {
+		kprintf("%s: %lu bytes, fnv1a %08lx\n", argv[1], (uint32_t)n, hash);
+	}
+}
+
+static void cmd_bind(int argc, char **argv)
+{
+	enum bind_flag flag = BIND_REPLACE;
+	int i = 1;
+	if (argc == 4 && strcmp(argv[1], "-a") == 0) {
+		flag = BIND_AFTER;
+		i = 2;
+	} else if (argc == 4 && strcmp(argv[1], "-b") == 0) {
+		flag = BIND_BEFORE;
+		i = 2;
+	} else if (argc != 3) {
+		kprintf("usage: bind [-a|-b] NEW OLD\n");
+		return;
+	}
+	int rc = vfs_bind(argv[i], argv[i + 1], flag);
+	if (rc) {
+		kprintf("bind: %s\n", kstrerror(rc));
+	}
+}
+
+static void cmd_unbind(int argc, char **argv)
+{
+	if (argc != 2) {
+		kprintf("usage: unbind OLD\n");
+		return;
+	}
+	int rc = vfs_unbind(argv[1]);
+	if (rc) {
+		kprintf("unbind: %s: %s\n", argv[1], kstrerror(rc));
+	}
+}
+
+static void print_mount(const char *path, const struct location *loc, void *ctx)
+{
+	(void)ctx;
+	kprintf("  %s =", path);
+	for (size_t i = 0; i < loc->count; i++) {
+		kprintf(" %s", loc->label[i]);
+	}
+	kprintf("\n");
+}
+
+static void cmd_ns(int argc, char **argv)
+{
+	(void)argc;
+	(void)argv;
+	ns_foreach(thread_namespace(), print_mount, 0);
+}
+
 static const struct command COMMANDS[] = {
 	{ "help", "list commands", cmd_help },
 	{ "echo", "ARGS... - print the arguments", cmd_echo },
@@ -141,6 +283,12 @@ static const struct command COMMANDS[] = {
 	{ "threads", "list kernel threads", cmd_threads },
 	{ "devices", "list registered devices", cmd_devices },
 	{ "read", "DEVICE BLOCK - hex dump one block", cmd_read },
+	{ "ls", "[PATH] - list a directory", cmd_ls },
+	{ "cat", "PATH - print a file", cmd_cat },
+	{ "sum", "PATH [BYTES] - size and FNV-1a hash", cmd_sum },
+	{ "bind", "[-a|-b] NEW OLD - bind NEW onto OLD", cmd_bind },
+	{ "unbind", "OLD - undo binds on OLD", cmd_unbind },
+	{ "ns", "show this namespace's binds", cmd_ns },
 	{ 0, 0, 0 },
 };
 

@@ -17,7 +17,8 @@ clone. It does not depend on the Linux kernel.
 | M4 — multitasking: kernel threads, cooperative + preemptive scheduling | Achieved ([notes](docs/milestones/M4-multitasking.md)) |
 | M5 — driver framework, keyboard, interactive `ZKT>` monitor | Achieved ([notes](docs/milestones/M5-driver-framework.md)) |
 | M6 — ATA storage (PIO, CHS fallback, MBR partitions) | Achieved ([notes](docs/milestones/M6-ata-storage.md)) |
-| M7 — VFS, per-thread namespaces, FAT | Next |
+| M7 — VFS, Plan 9-style namespaces and union directories, FAT12/16, devfs | Achieved ([notes](docs/milestones/M7-vfs-namespaces.md)) |
+| M8 — userspace: ring 3 processes, ELF loader, syscalls | Next |
 
 The full architecture and roadmap are in
 [`docs/FOUNDING-PROPOSAL.md`](docs/FOUNDING-PROPOSAL.md).
@@ -34,7 +35,10 @@ make test        # headless boot tests, plus interactive console tests
 Requires `qemu-system-i386`, Python 3 and mtools (for the tests), plus
 the usual GCC build dependencies (GMP, MPFR, MPC, texinfo, bison, flex)
 for `make toolchain`. At the `ZKT>` prompt, `help` lists the kernel
-monitor's commands.
+monitor's commands. For example, `ls /dev` lists devices, and with a
+FAT disk attached (`qemu-system-i386 ... -drive file=disk.img,format=raw`),
+`ls /n/ata0p1` lists its files, while `bind -a /n/ata0p2 /n/ata0p1`
+makes a union of two volumes.
 
 ## Repository layout
 

@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 struct thread;
+struct namespace;
 
 struct thread_info {
 	uint32_t id;
@@ -53,6 +54,11 @@ __attribute__((noreturn)) void thread_exit(void);
 
 /* The running thread, or NULL before sched_init(). */
 struct thread *thread_current(void);
+
+/* The calling thread's namespace. New threads share their creator's;
+ * thread_set_namespace() switches to another (taking a reference). */
+struct namespace *thread_namespace(void);
+void thread_set_namespace(struct namespace *ns);
 
 /* The running thread's name, or NULL before sched_init(). */
 const char *thread_current_name(void);

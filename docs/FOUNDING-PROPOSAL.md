@@ -12,6 +12,9 @@ scheduling — see [docs/milestones/M4-multitasking.md](milestones/M4-multitaski
 see [docs/milestones/M5-driver-framework.md](milestones/M5-driver-framework.md).
 **M6 achieved**: ATA storage — see
 [docs/milestones/M6-ata-storage.md](milestones/M6-ata-storage.md).
+**M7 achieved**: VFS with Plan 9-style per-thread namespaces, union
+directories, devfs and FAT — see
+[docs/milestones/M7-vfs-namespaces.md](milestones/M7-vfs-namespaces.md).
 
 **Scope of this document:** Originally the response to the ManiOS
 founding prompt's "First Task" — architecture, strategy, and planning.
@@ -456,7 +459,7 @@ a concrete shape rather than only a diagram.
 | M4 | **Achieved** ([notes](milestones/M4-multitasking.md)). Cooperative then preemptive multitasking (kernel threads) | M2, M3 |
 | M5 | **Achieved** ([notes](milestones/M5-driver-framework.md)). Driver framework + keyboard, VGA, serial, PIT drivers formalized | M3, M4 |
 | M6 | **Achieved** ([notes](milestones/M6-ata-storage.md)). Storage: ATA/IDE PIO block driver | M5 |
-| M7 | VFS + first filesystem, per-process namespaces & union dirs (ADR-0003) | M6 |
+| M7 | **Achieved** ([notes](milestones/M7-vfs-namespaces.md)). VFS + first filesystem, per-process namespaces & union dirs (ADR-0003) | M6 |
 | M8 | Userspace: ELF loader, ring 3 processes, first syscalls, namespace ops (bind/mount) | M4, M7 |
 | M9 | libc + syscall ABI stabilization, coreutils, shell | M8 |
 | M10 | Networking + ZRP transport over the network (ADR-0003) | M8 |

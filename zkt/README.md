@@ -34,5 +34,6 @@ management, [notes](../docs/milestones/M2-memory-management.md)), M3
 (hardware IRQs and timer, [notes](../docs/milestones/M3-interrupts-and-timer.md))
 M4 (kernel threads, [notes](../docs/milestones/M4-multitasking.md)) and
 M5 (driver framework, [notes](../docs/milestones/M5-driver-framework.md)) and
-M6 (ATA storage, [notes](../docs/milestones/M6-ata-storage.md)).
-`fs/` and `ipc/` are still empty.
+M6 (ATA storage, [notes](../docs/milestones/M6-ata-storage.md)) and M7
+(VFS and namespaces, [notes](../docs/milestones/M7-vfs-namespaces.md)).
+`ipc/` is still empty.

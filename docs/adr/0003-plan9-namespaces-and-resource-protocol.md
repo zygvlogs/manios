@@ -115,3 +115,17 @@ reference):
 - Plan 9 from Bell Labs — public, well-documented OS design (9P
   protocol, namespaces, union directories, CPU/file/terminal server
   model). Referenced for its published design only; no source imported.
+
+## Implementation status (M7)
+
+Per-namespace mount tables with replace/before/after binds, union
+directories, lexical path cleaning, and namespace forking landed at M7.
+See [the M7 notes](../milestones/M7-vfs-namespaces.md). Namespaces
+belong to threads until processes exist at M8. The vnode operations
+(walk / read / write at an offset / readdir / release) are shaped for a
+one-to-one mapping onto ZRP messages at M10.
+
+One deliberate simplification: the mount table is keyed by cleaned
+*path*, not by the identity (qid) of the bound-over file as in Plan 9.
+With lexical `..` this differs only when a bound-over directory is
+reachable by two paths. Revisit when ZRP introduces qids.

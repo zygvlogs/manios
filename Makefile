@@ -11,7 +11,7 @@ LD := $(CROSS_PREFIX)gcc
 # instructions in .S files and inline asm alike.
 ARCHFLAGS := -march=i386 -Wa,-march=i386
 
-INCLUDES := -Izkt/arch/i386 -Izkt/drivers -Izkt/kernel -Izkt/mm -Izkt/scheduler
+INCLUDES := -Izkt/arch/i386 -Izkt/drivers -Izkt/fs -Izkt/kernel -Izkt/mm -Izkt/scheduler
 # Stack guard pages are 4 KiB; a frame bigger than that could step over
 # one without touching it, so flag frames at half that size.
 CFLAGS := -std=gnu11 -ffreestanding -O2 -g -Wall -Wextra -Wframe-larger-than=2048 \
@@ -22,8 +22,8 @@ LDFLAGS := -ffreestanding -O2 -nostdlib -T zkt/arch/i386/linker.ld
 BUILD := build
 KERNEL := $(BUILD)/manios-zkt.elf
 
-C_SOURCES := $(wildcard zkt/arch/i386/*.c zkt/drivers/*.c zkt/kernel/*.c zkt/mm/*.c \
-                          zkt/scheduler/*.c)
+C_SOURCES := $(wildcard zkt/arch/i386/*.c zkt/drivers/*.c zkt/fs/*.c zkt/kernel/*.c \
+                          zkt/mm/*.c zkt/scheduler/*.c)
 S_SOURCES := $(wildcard zkt/arch/i386/*.S)
 OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(C_SOURCES)) \
            $(patsubst %.S,$(BUILD)/%.o,$(S_SOURCES))

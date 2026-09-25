@@ -10,6 +10,7 @@ generated here; the partitionless-FAT one needs mtools).
 Usage: tests/console_test.py [path-to-kernel-elf]
 """
 import os
+import random
 import select
 import shutil
 import socket
@@ -156,6 +157,115 @@ def write_superfloppy(path):
         f.write(mbr_entry(0x80, 0x06, 100, 1000))
 
 
+def fnv1a(data):
+    h = 2166136261
+    for b in data:
+        h = ((h ^ b) * 16777619) & 0xFFFFFFFF
+    return h
+
+
+def fat_chain(img, part_start, name83):
+    """First-cluster chain of a root-directory file, read straight from
+    the image, so the test can assert its own preconditions."""
+    base = part_start * 512
+    bs = img[base:base + 512]
+    reserved, fats = struct.unpack_from("<H", bs, 14)[0], bs[16]
+    root_entries, fat_size = struct.unpack_from("<H", bs, 17)[0], struct.unpack_from("<H", bs, 22)[0]
+    total = struct.unpack_from("<H", bs, 19)[0] or struct.unpack_from("<I", bs, 32)[0]
+    root_sectors = (root_entries * 32 + 511) // 512
+    clusters = (total - reserved - fats * fat_size - root_sectors) // bs[13]
+    fat12 = clusters < 4085
+    fat = img[base + reserved * 512: base + (reserved + fat_size) * 512]
+    root = base + (reserved + fats * fat_size) * 512
+    for i in range(root_entries):
+        e = img[root + i * 32: root + i * 32 + 32]
+        if e[:11] != name83:
+            continue
+        c, chain = struct.unpack_from("<H", e, 26)[0], []
+        while 2 <= c < (0xFF8 if fat12 else 0xFFF8):
+            chain.append(c)
+            if fat12:
+                v = fat[c + c // 2] | fat[c + c // 2 + 1] << 8
+                c = v >> 4 if c & 1 else v & 0xFFF
+            else:
+                c = struct.unpack_from("<H", fat, c * 2)[0]
+        return chain
+    raise TestFailure(f"test image lacks {name83!r}")
+
+
+FAT_DISK_SECTORS = 32768                # 16 MiB
+P1, P1_SECTORS = 2048, 16384            # FAT16, 1 sector per cluster
+P2, P2_SECTORS = 18432, 14336           # FAT12, 8 sectors per cluster
+
+
+def write_fat_disk(path):
+    """Two FAT volumes built with mtools. A.TMP is deleted after B.TMP is
+    written, so the next big file fills A's hole and continues past B:
+    a fragmented chain. Returns the cases whose expected output depends
+    on the generated data."""
+    img = bytearray(FAT_DISK_SECTORS * 512)
+    img[446:462] = mbr_entry(0x00, 0x06, P1, P1_SECTORS)
+    img[462:478] = mbr_entry(0x00, 0x01, P2, P2_SECTORS)
+    img[510:512] = b"\x55\xaa"
+    with open(path, "wb") as f:
+        f.write(img)
+    srcdir = path + ".src"
+    os.makedirs(srcdir)
+    files = {}
+
+    def mt(tool, part, *args):
+        subprocess.run([tool, "-i", f"{path}@@{part * 512}", *args], check=True,
+                       stdout=subprocess.DEVNULL)
+
+    def put(part, name, data):
+        src = os.path.join(srcdir, name.replace("/", "_"))
+        with open(src, "wb") as f:
+            f.write(data)
+        mt("mcopy", part, src, "::/" + name)
+        files[(part, name)] = data
+
+    rnd = random.Random(7)
+    mt("mformat", P1, "-T", str(P1_SECTORS), "-h", "16", "-s", "63", "-H", str(P1), "-c", "1", "::")
+    mt("mformat", P2, "-T", str(P2_SECTORS), "-h", "16", "-s", "63", "-H", str(P2), "-c", "8", "::")
+    put(P1, "README.TXT", b"Welcome to ManiOS.\nThis file lives on a FAT16 volume.\n")
+    put(P1, "SAME.TXT", b"from p1\n")
+    mt("mmd", P1, "::/DOCS")
+    put(P1, "DOCS/NESTED.TXT", b"nested file\n")
+    for i in range(20):  # 21 entries: more than one 512-byte cluster holds
+        put(P1, f"DOCS/F{i:02d}.TXT", f"file {i}\n".encode())
+    put(P1, "manios-notes.txt", b"long name, 8.3 alias only\n")
+    put(P1, "A.TMP", bytes(3000))
+    put(P1, "B.TMP", b"b" * 1000)
+    mt("mdel", P1, "::/A.TMP")
+    put(P1, "FRAG.BIN", bytes(rnd.randrange(256) for _ in range(20000)))
+    put(P1, "BIG.BIN", bytes(rnd.randrange(256) for _ in range(50000)))
+    put(P2, "SAME.TXT", b"from p2\n")
+    put(P2, "ONLY12.TXT", b"only on the FAT12 volume\n")
+    put(P2, "A.TMP", bytes(9000))
+    put(P2, "B.TMP", b"b" * 5000)
+    mt("mdel", P2, "::/A.TMP")
+    put(P2, "FRAG12.BIN", bytes(rnd.randrange(256) for _ in range(40000)))
+
+    with open(path, "rb") as f:
+        img = f.read()
+    for part, name in ((P1, b"FRAG    BIN"), (P2, b"FRAG12  BIN")):
+        chain = fat_chain(img, part, name)
+        if all(b == a + 1 for a, b in zip(chain, chain[1:])):
+            raise TestFailure(f"test image: {name!r} is not fragmented, so it tests nothing")
+
+    def sum_case(dev_path, data):
+        return ("serial", f"sum {dev_path}", [f"{len(data)} bytes, fnv1a {fnv1a(data):08x}"])
+
+    return [
+        sum_case("/n/ata0p1/frag.bin", files[(P1, "FRAG.BIN")]),
+        sum_case("/n/ata0p1/big.bin", files[(P1, "BIG.BIN")]),
+        sum_case("/n/ata0p2/frag12.bin", files[(P2, "FRAG12.BIN")]),
+        ("serial", "sum /dev/ata0 4096", [f"4096 bytes, fnv1a {fnv1a(img[:4096]):08x}"]),
+        ("serial", "sum /dev/ata0p2 1024",
+         [f"1024 bytes, fnv1a {fnv1a(img[P2 * 512:P2 * 512 + 1024]):08x}"]),
+    ]
+
+
 # --- scenarios -----------------------------------------------------------
 
 # The serial line turns "\n" into "\r\n", so line ends are matched as that.
@@ -193,6 +303,42 @@ SCENARIOS = [
         ],
     },
     {
+        "name": "FAT volumes",
+        "disk": write_fat_disk,
+        "boot": ["ata0p1: FAT16, 8 MiB, mounted at /n/ata0p1",
+                 "ata0p2: FAT12, 7 MiB, mounted at /n/ata0p2"],
+        "cases": [
+            ("serial", "ls /", ["dir         0  dev/", "dir         0  n/"]),
+            ("serial", "ls /n/ata0p1", ["file       54  readme.txt", "dir         0  docs/",
+                                        "manios~1.txt", "file    20000  frag.bin"]),
+            ("serial", "cat /n/ata0p1/readme.txt",
+             ["Welcome to ManiOS.\r\nThis file lives on a FAT16 volume.\r\n"]),
+            ("serial", "cat /n/ata0p1/DOCS/NESTED.TXT", ["nested file\r\n"]),  # case-insensitive
+            ("serial", "ls /n/ata0p1/docs", ["nested.txt", "f00.txt", "f19.txt"]),
+            ("serial", "cat /n/ata0p1/manios~1.txt", ["long name, 8.3 alias only"]),
+            ("keyboard", "cat /n/ata0p2/only12.txt", ["only on the FAT12 volume"]),
+            ("serial", "cat /n/ata0p1/missing.txt", ["no such file or directory"]),
+            ("serial", "cat /n/ata0p1/docs", ["is a directory"]),
+            ("serial", "ls /n/ata0p1/readme.txt", ["not a directory"]),
+            ("serial", "cat n/ata0p1/readme.txt", ["invalid argument"]),
+            ("serial", "bind /n/ata0p1/readme.txt /n/ata0p2", ["bind: not a directory"]),
+            # Unions: the first member that has a name wins.
+            ("serial", "bind -a /n/ata0p2 /n/ata0p1", []),
+            ("serial", "cat /n/ata0p1/same.txt", ["from p1"]),
+            ("serial", "cat /n/ata0p1/only12.txt", ["only on the FAT12 volume"]),
+            ("serial", "ls /n/ata0p1", ["readme.txt", "only12.txt", "frag12.bin"]),
+            ("serial", "ns", ["/n/ata0p1 = fat:ata0p1 fat:ata0p2"]),
+            ("serial", "bind -b /n/ata0p2 /n/ata0p1", []),
+            ("serial", "cat /n/ata0p1/same.txt", ["from p2"]),
+            ("serial", "ns", ["/n/ata0p1 = fat:ata0p2 fat:ata0p1 fat:ata0p2"]),
+            ("serial", "unbind /n/ata0p1", []),
+            ("serial", "cat /n/ata0p1/same.txt", ["no such file or directory"]),
+            ("serial", "bind /n/ata0p2 /n/ata0p1", []),
+            ("serial", "cat /n/ata0p1/only12.txt", ["only on the FAT12 volume"]),
+            ("serial", "unbind /n/nothing", ["unbind: /n/nothing: no such file or directory"]),
+        ],
+    },
+    {
         "name": "partitionless FAT disk",
         "disk": write_superfloppy,
         "boot": ["devices: cons com1 vga ata0\r\n"],
@@ -202,10 +348,10 @@ SCENARIOS = [
 
 
 def run_scenario(kernel, scenario, workdir):
-    extra = []
+    extra, generated_cases = [], []
     if scenario["disk"]:
-        path = os.path.join(workdir, "disk.img")
-        scenario["disk"](path)
+        path = os.path.join(workdir, scenario["name"].replace(" ", "-") + ".img")
+        generated_cases = scenario["disk"](path) or []
         extra = ["-drive", f"file={path},format=raw,if=ide"]
     m = Machine(kernel, extra)
     failures = 0
@@ -215,7 +361,8 @@ def run_scenario(kernel, scenario, workdir):
             if needle not in boot:
                 raise TestFailure(f"boot output lacks {needle!r}:\n{boot}")
         print(f"PASS: [{scenario['name']}] boot")
-        for how, command, needles in scenario["cases"]:
+        # Generated cases are plain reads; run them before any binds.
+        for how, command, needles in generated_cases + scenario["cases"]:
             try:
                 run_command(m, how, command, needles)
                 print(f"PASS: [{scenario['name']}] {how}: {command!r}")

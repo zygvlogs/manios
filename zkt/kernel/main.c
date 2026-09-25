@@ -3,6 +3,7 @@
 #include "cpu.h"
 #include "device.h"
 #include "drivers.h"
+#include "fs_init.h"
 #include "heap.h"
 #include "kconsole.h"
 #include "kprintf.h"
@@ -14,6 +15,7 @@
 #include "sched.h"
 #include "sched_selftest.h"
 #include "timer.h"
+#include "vfs_selftest.h"
 #include "vmm.h"
 
 #define MAX_MEM_REGIONS 64
@@ -72,6 +74,10 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 		kprintf(" %s", d->name);
 	}
 	kprintf("\n");
+
+	fs_init();
+	vfs_selftest();
+	kprintf("Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed).\n");
 
 	if (!thread_create("monitor", monitor_main, 0)) {
 		panic("could not start the monitor thread");

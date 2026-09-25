@@ -7,6 +7,7 @@
 #include "cpu.h"
 #include "heap.h"
 #include "kstack.h"
+#include "namespace.h"
 #include "panic.h"
 #include "timer.h"
 
@@ -39,6 +40,7 @@ struct thread {
 	uint64_t wake_tick;
 	void (*entry)(void *);
 	void *arg;
+	struct namespace *ns;    /* inherited from the creating thread (ADR-0003) */
 	struct thread *next;     /* run queue, sleep list or wait queue link */
 	struct thread *all_next; /* every thread not yet reclaimed */
 };
@@ -110,6 +112,7 @@ static void finish_switch(void)
 	struct thread *prev = switched_from;
 	if (prev->state == THREAD_DEAD) {
 		all_threads_remove(prev);
+		ns_unref(prev->ns);
 		if (prev->stack_top) {
 			kstack_free(prev->stack_top);
 		}
@@ -176,6 +179,8 @@ static struct thread *thread_alloc(const char *name, void (*entry)(void *), void
 	t->entry = entry;
 	t->arg = arg;
 	t->next = NULL;
+	t->ns = current ? current->ns : NULL;
+	ns_ref(t->ns);
 
 	uint32_t flags = cpu_irq_save();
 	t->id = next_id++;
@@ -204,6 +209,7 @@ void sched_init(void)
 	main_thread->state = THREAD_RUNNING;
 	main_thread->stack_top = 0;
 	main_thread->next = NULL;
+	main_thread->ns = NULL;
 	thread_count++;
 	all_threads_add(main_thread);
 
@@ -260,6 +266,19 @@ __attribute__((noreturn)) void thread_exit(void)
 struct thread *thread_current(void)
 {
 	return current;
+}
+
+struct namespace *thread_namespace(void)
+{
+	return current ? current->ns : NULL;
+}
+
+void thread_set_namespace(struct namespace *ns)
+{
+	struct namespace *old = current->ns;
+	ns_ref(ns);
+	current->ns = ns;
+	ns_unref(old);
 }
 
 const char *thread_current_name(void)
