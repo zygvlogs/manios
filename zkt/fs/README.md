@@ -15,6 +15,9 @@ The virtual filesystem and namespaces. Design and verification:
   ramfs tree at `/boot`
 - `devfs.c` — every registered device as a file under `/dev`
 - `fat.c` — read-only FAT12/16, mounted at `/n/<device>`
+- `pipe.c` — pipes: two connected ends, a message per write, both
+  directions; also the channel a userspace ZRP server is mounted over
+  ([M12 notes](../../docs/milestones/M12-desktop.md))
 - `fs_init.c` — builds the kernel namespace at boot
 - `vfs_selftest.c` — boot-time checks of resolution, unions, namespace
   isolation and reference/heap leaks

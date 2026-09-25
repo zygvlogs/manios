@@ -16,9 +16,10 @@ with it. Its messages map one-to-one onto the kernel's vnode operations:
 A remote tree is therefore just another filesystem, bound into a
 namespace like any other.
 
-Two independent implementations follow this document: the kernel's
-(`zkt/net/zrp_*.c`) and the test suite's (`tests/net_test.py`). Each is
-tested against the other.
+Three independent implementations follow this document: the kernel's
+(`zkt/net/zrp_*.c`), the test suite's (`tests/net_test.py`), and, for
+servers that are programs, `libc/zrpsrv.c` (M12). Each is tested
+against another.
 
 ## Transport
 
@@ -43,6 +44,30 @@ adds its own reliability, in the style of Plan 9's IL:
   `Tclunk` must not fail just because the first copy already succeeded.
 - Tags count up, wrapping before 0xFFFF. 0xFFFF (`NOTAG`) is reserved
   for `Tversion`.
+
+### Local channels (M12)
+
+A program can serve files too: it reads requests from, and writes
+replies to, one end of a pipe, and the kernel mounts the other end
+(`SYS_MOUNTFD`, `mountfd()`). The desktop's window system is such a
+server ([ADR-0004](adr/0004-window-system-as-a-file-server.md)). The
+messages are the same; the transport differs:
+
+- A pipe keeps **message boundaries**: one write is one message, and a
+  reader with a large enough buffer gets it whole.
+- Nothing is lost, duplicated or reordered, so there is **no
+  retransmission** and no reply cache.
+- A client may have **any number of requests outstanding**, each with
+  its own tag. The server may answer them in any order, and may hold a
+  read until it has something to say (a window's events). In the
+  kernel, whichever waiting thread is receiving reads the next reply
+  and hands it to the request with that tag.
+- `msize` is **16384** (the client asks for it in `Tversion`; the
+  server may lower it).
+- When the server's end closes, every request waiting and every later
+  one fails with `EIO`. When the kernel drops its end (the last
+  reference to the mount is gone), the server reads end of file, by
+  which time the kernel has sent a `Tclunk` for every fid it held.
 
 ## Messages
 

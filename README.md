@@ -22,7 +22,8 @@ clone. It does not depend on the Linux kernel.
 | M9 — libc, versioned syscall ABI, coreutils, shell | Achieved ([notes](docs/milestones/M9-libc-shell.md)) |
 | M10 — networking (NE2000, IPv4/UDP), and ZRP (the resource protocol) over the network | Achieved ([notes](docs/milestones/M10-networking-zrp.md), [protocol](docs/zrp.md)) |
 | M11 — graphics: linear framebuffer (Bochs VBE, VGA 13h), 2D library, own font | Achieved ([notes](docs/milestones/M11-graphics.md)) |
-| M12 — desktop environment MVP: compositor, shell, launcher | Next |
+| M12 — desktop environment MVP: compositor, window system as files, panel, launcher, terminal | Achieved ([notes](docs/milestones/M12-desktop.md), [design](docs/desktop/DESIGN.md)) |
+| M13 — cluster roles: file server, CPU server, terminal | Next |
 
 The full architecture and roadmap are in
 [`docs/FOUNDING-PROPOSAL.md`](docs/FOUNDING-PROPOSAL.md).
@@ -60,6 +61,16 @@ authentication: use it only on trusted networks.
 `gfxdemo vga` for 320x200 on any VGA card) and returns to text on
 Enter.
 
+![The ManiOS desktop](docs/desktop/screenshot.png)
+
+`desktop` starts the ManiOS desktop (800x600; `desktop 640 480`). F1
+opens its menu — Terminal, Clock, About ManiOS, Exit desktop — and F2
+brings the bottom window up; the mouse focuses, raises, drags and
+closes windows. The window system is a file server: in a terminal,
+`ls /dev/wsys` lists the windows, and `cat /dev/wsys/1/ctl` describes
+one ([design](docs/desktop/DESIGN.md)). The shell does pipelines and
+redirection (`ls /bin | wc`, `cat < FILE`, `echo x > /dev/null`).
+
 ## Repository layout
 
 ```
@@ -74,10 +85,10 @@ zkt/          ZygKernel Technology — the kernel
   net/        network stack and ZRP
   kernel/     init, panic, logging, processes, syscalls, ELF loader
   abi/        the system call ABI header shared with userspace
-libc/         ManiOS's own C library (stdio, malloc, strings, ...)
-desktop/      the desktop environment; libgfx/, the 2D graphics library
+libc/         ManiOS's own C library (stdio, malloc, strings, file servers, ...)
+desktop/      the desktop environment: libgfx/ (2D graphics), libwin/ (windows),
+              wm/ (the compositor), apps/ (terminal, clock, about)
 userland/     user programs (bin/), test programs (test/), boot files (etc/)
-desktop/      ManiOS Desktop Environment
 tools/        cross-toolchain build scripts, image builder, QEMU scripts
 third_party/  vendored BSD-derived source + license notices ledger
 docs/         architecture, roadmap, and ADRs

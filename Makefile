@@ -42,7 +42,8 @@ OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(C_SOURCES)) \
 # the file: the kernel copies segments rather than mapping file pages,
 # so the padding would only waste space in the kernel image.
 USER_CFLAGS := -std=gnu11 -ffreestanding -fno-asynchronous-unwind-tables -O2 -g \
-               -Wall -Wextra -MMD -MP $(ARCHFLAGS) -Ilibc/include -Izkt/abi -Idesktop/libgfx
+               -Wall -Wextra -MMD -MP $(ARCHFLAGS) -Ilibc/include -Izkt/abi -Idesktop/libgfx \
+               -Idesktop/libwin
 USER_LDFLAGS := -nostdlib -static -T userland/user.ld -Wl,-n
 
 LIBC := $(BUILD)/libc/libc.a
@@ -52,10 +53,20 @@ LIBC_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard libc/*.c))
 # takes what it uses.
 LIBGFX := $(BUILD)/desktop/libgfx/libgfx.a
 LIBGFX_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard desktop/libgfx/*.c))
+# The desktop (M12, docs/desktop/DESIGN.md): the window library, the
+# compositor (desktop/wm/, one program) and the applications
+# (desktop/apps/, one per file), all installed in /bin.
+LIBWIN := $(BUILD)/desktop/libwin/libwin.a
+LIBWIN_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard desktop/libwin/*.c))
+USER_LIBS := $(LIBWIN) $(LIBGFX) $(LIBC)
+WM_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard desktop/wm/*.c))
+DESKTOP_APPS := $(patsubst desktop/apps/%.c,%,$(wildcard desktop/apps/*.c))
+DESKTOP_BOOTFS := $(patsubst %,$(BUILD)/bootfs/bin/%,$(DESKTOP_APPS))
 USER_PROGRAMS := $(patsubst userland/%.c,%,$(wildcard userland/bin/*.c userland/test/*.c))
 USER_OBJECTS := $(patsubst %,$(BUILD)/userland/%.o,$(USER_PROGRAMS))
 BOOTFS_FILES := $(patsubst %,$(BUILD)/bootfs/%,$(USER_PROGRAMS)) \
-                $(patsubst userland/%,$(BUILD)/bootfs/%,$(wildcard userland/etc/*))
+                $(patsubst userland/%,$(BUILD)/bootfs/%,$(wildcard userland/etc/*)) \
+                $(BUILD)/bootfs/bin/desktop $(DESKTOP_BOOTFS)
 BOOTFS_OBJECT := $(BUILD)/bootfs.o
 
 .PHONY: all toolchain run test clean
@@ -98,12 +109,30 @@ $(LIBGFX): $(LIBGFX_OBJECTS)
 	@rm -f $@
 	$(AR) rcs $@ $^
 
+$(LIBWIN): $(LIBWIN_OBJECTS)
+	@rm -f $@
+	$(AR) rcs $@ $^
+
+$(BUILD)/desktop/wm/desktop.elf: $(WM_OBJECTS) $(CRT0) $(USER_LIBS) userland/user.ld
+	$(CC) $(USER_LDFLAGS) -o $@ $(CRT0) $(WM_OBJECTS) $(USER_LIBS)
+
+$(BUILD)/desktop/apps/%.elf: $(BUILD)/desktop/apps/%.o $(CRT0) $(USER_LIBS) userland/user.ld
+	$(CC) $(USER_LDFLAGS) -o $@ $(CRT0) $< $(USER_LIBS)
+
+$(BUILD)/bootfs/bin/desktop: $(BUILD)/desktop/wm/desktop.elf
+	@mkdir -p $(dir $@)
+	$(STRIP) -o $@ $<
+
+$(DESKTOP_BOOTFS): $(BUILD)/bootfs/bin/%: $(BUILD)/desktop/apps/%.elf
+	@mkdir -p $(dir $@)
+	$(STRIP) -o $@ $<
+
 $(BUILD)/userland/%.o: userland/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(USER_CFLAGS) -c $< -o $@
 
-$(BUILD)/userland/%.elf: $(BUILD)/userland/%.o $(CRT0) $(LIBGFX) $(LIBC) userland/user.ld
-	$(CC) $(USER_LDFLAGS) -o $@ $(CRT0) $< $(LIBGFX) $(LIBC)
+$(BUILD)/userland/%.elf: $(BUILD)/userland/%.o $(CRT0) $(USER_LIBS) userland/user.ld
+	$(CC) $(USER_LDFLAGS) -o $@ $(CRT0) $< $(USER_LIBS)
 
 $(BUILD)/bootfs/%: $(BUILD)/userland/%.elf
 	@mkdir -p $(dir $@)
@@ -137,12 +166,16 @@ test: $(KERNEL)
 	python3 tests/console_test.py $(KERNEL)
 	python3 tests/net_test.py $(KERNEL)
 	python3 tests/gfx_test.py $(KERNEL)
+	python3 tests/desktop_test.py $(KERNEL)
 
 clean:
 	rm -rf $(BUILD)
 
 # Keep the unstripped programs for debugging (addr2line, objdump).
-.SECONDARY: $(patsubst %,$(BUILD)/userland/%.elf,$(USER_PROGRAMS)) $(USER_OBJECTS) $(CRT0)
+.SECONDARY: $(patsubst %,$(BUILD)/userland/%.elf,$(USER_PROGRAMS)) $(USER_OBJECTS) $(CRT0) \
+            $(patsubst %,$(BUILD)/desktop/apps/%.elf,$(DESKTOP_APPS)) \
+            $(patsubst %,$(BUILD)/desktop/apps/%.o,$(DESKTOP_APPS)) $(BUILD)/desktop/wm/desktop.elf
 
 -include $(OBJECTS:.o=.d) $(LIBC_OBJECTS:.o=.d) $(CRT0:.o=.d) $(USER_OBJECTS:.o=.d) \
-         $(LIBGFX_OBJECTS:.o=.d)
+         $(LIBGFX_OBJECTS:.o=.d) $(LIBWIN_OBJECTS:.o=.d) $(WM_OBJECTS:.o=.d) \
+         $(patsubst %,$(BUILD)/desktop/apps/%.d,$(DESKTOP_APPS))

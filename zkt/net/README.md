@@ -12,7 +12,9 @@ The network stack and ZRP. Design and verification:
 - `udp.c` / `udp.h` — UDP endpoints for kernel code
 - `zrp.h`, `zrp_msg.c` — ZRP messages
 - `zrp_server.c` — serves a directory of a namespace (`export=`)
-- `zrp_client.c` — a remote tree as a filesystem (`mount`)
+- `zrp_client.c` — a remote tree as a filesystem: over UDP (`mount`),
+  or over a pipe to a server that is a program (`mountfd`, M12), with
+  many requests in flight
 - `net_selftest.c` — a ZRP server and client over loopback at every
   boot
 

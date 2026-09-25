@@ -1,6 +1,6 @@
 # ADR-0003: Plan 9-inspired per-process namespaces and a uniform resource protocol (ZRP), for cluster transparency
 
-**Status:** Accepted. Namespaces implemented at M7/M8; ZRP wire format v1 and `mount` at M10 ([docs/zrp.md](../zrp.md))
+**Status:** Accepted. Namespaces implemented at M7/M8; ZRP wire format v1 and `mount` at M10 ([docs/zrp.md](../zrp.md)); local channels and userspace servers at M12
 **Date:** 2026-09-25
 
 ## Context
@@ -146,6 +146,16 @@ ManiOS machines can now read each other's files and run each other's
 programs. Authentication, and the cluster roles themselves, remain for
 M13. Local IPC as a ZRP transport is not built yet: servers are kernel
 threads, reached over UDP even locally (loopback).
+
+## Implementation status (M12)
+
+Local IPC is now a ZRP transport, as this ADR intended: a program
+serves files over a pipe (`libc/zrpsrv.c`) and the kernel mounts the
+other end (`SYS_MOUNTFD`), with any number of requests in flight
+([docs/zrp.md](../zrp.md#local-channels-m12)). The desktop's window
+system is the first such server
+([ADR-0004](0004-window-system-as-a-file-server.md)), mounted into a
+union with `/dev` in the desktop's own namespace.
 
 ## Note: mounts keyed by path
 

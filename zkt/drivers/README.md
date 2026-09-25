@@ -11,7 +11,14 @@ userspace servers (ADR-0002).
 - `drivers.c` — starts the drivers and registers their devices at boot
 - `serial.c` — COM1: polled early/panic output; IRQ-driven RX and
   buffered TX; device `com1`
-- `ps2kbd.c` — PS/2 keyboard (US layout), feeding the console
+- `ps2kbd.c` — PS/2 keyboard (US layout, arrows and F-keys), feeding
+  the console, or `/dev/kbd` while a program has it open
+- `ps2mouse.c` — PS/2 mouse on the 8042's second port
+- `input.c` — devices `kbd` (raw keys) and `mouse` (text records) for
+  the desktop ([M12 notes](../../docs/milestones/M12-desktop.md))
+- `rtc.c` — the CMOS clock, read at boot; device `time` (seconds since
+  1970, UTC)
+- `null.c` — device `null`
 - `vga_text.c` — 80x25 text mode with hardware cursor (and a shadow
   copy while graphics own the display); device `vga`
 - `ata.c` — ATA disks over PIO, LBA28 with a CHS fallback; devices

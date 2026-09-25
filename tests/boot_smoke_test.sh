@@ -21,6 +21,7 @@ EXPECTED=(
 	"Milestone M9: libc, ABI v1 and shell online (self-test passed)."
 	"Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed)."
 	"Milestone M11: graphics online (framebuffer, 2D library; self-test passed)."
+	"Milestone M12: pipes, input devices and userspace file servers online (self-test passed)."
 )
 
 # "<RAM MiB> <QEMU CPU model> <why>". QEMU's oldest model is the 486;

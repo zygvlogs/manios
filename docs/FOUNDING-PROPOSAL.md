@@ -28,6 +28,13 @@ and the protocol, [docs/zrp.md](zrp.md).
 **M11 achieved**: graphics — a Bochs VBE linear framebuffer and VGA
 mode 13h behind `/dev/fb`, and a userspace 2D library with ManiOS's own
 font — see [docs/milestones/M11-graphics.md](milestones/M11-graphics.md).
+**M12 achieved**: the ManiOS desktop — a compositor serving its windows
+as files (`/dev/wsys`, over a pipe any program can serve files on), a
+panel with a launcher menu and clock, and terminal, clock and about
+applications — see [docs/desktop/DESIGN.md](desktop/DESIGN.md) (the
+design document §1.4 promised),
+[ADR-0004](adr/0004-window-system-as-a-file-server.md) and
+[docs/milestones/M12-desktop.md](milestones/M12-desktop.md).
 
 **Scope of this document:** Originally the response to the ManiOS
 founding prompt's "First Task" — architecture, strategy, and planning.
@@ -479,7 +486,7 @@ a concrete shape rather than only a diagram.
 | M9 | **Achieved** ([notes](milestones/M9-libc-shell.md)). libc + syscall ABI stabilization, coreutils, shell | M8 |
 | M10 | **Achieved** ([notes](milestones/M10-networking-zrp.md)). Networking + ZRP transport over the network (ADR-0003) | M8 |
 | M11 | **Achieved** ([notes](milestones/M11-graphics.md)). Graphics: linear framebuffer driver, basic 2D primitives | M8 |
-| M12 | ManiOS Desktop Environment MVP (compositor, shell, launcher) | M11 |
+| M12 | **Achieved** ([notes](milestones/M12-desktop.md), [design](desktop/DESIGN.md)). ManiOS Desktop Environment MVP (compositor, shell, launcher) | M11 |
 | M13 | Cluster roles: file server / CPU server / terminal (ADR-0003) | M8, M10 |
 
 Each milestone gets its own short design note under `docs/` when it

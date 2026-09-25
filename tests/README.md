@@ -31,12 +31,21 @@
   colours where `gfxdemo` draws them, in each mode, and text mode
   restored pixel for pixel afterwards.
 
+- `desktop_test.py` (also run by `make test`) — the desktop, driven
+  with `sendkey`, `mouse_move` and `mouse_button`, and checked through
+  `screendump`: text is read back off the screen by matching character
+  cells against `font.txt`. It opens the menu, runs commands in a
+  terminal window, runs `wintest` inside the desktop, drags, focuses and
+  closes windows, and exits back to the text console; and on a machine
+  without Bochs VBE, checks the desktop explains and exits.
+
 - `tools/mkfont.py --check` (in `make test`) — the generated font
   matches `desktop/libgfx/font.txt`.
 
 - `userland/test/` holds the test programs the kernel runs at every
-  boot (`utest` for system calls, `ctest` for libc) and that the
-  console test starts (`fault`); they are in the boot archive under
+  boot (`utest` for system calls, `ctest` for libc, `gtest` for libgfx,
+  `ztest` for userspace file servers) and those the tests start
+  (`fault`, `fbtest`, `wintest`); they are in the boot archive under
   `/boot/test`.
 
 Not yet wired into CI (GitHub Actions); see
