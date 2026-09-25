@@ -16,7 +16,8 @@ clone. It does not depend on the Linux kernel.
 | M3 — hardware IRQs, PIT timer | Achieved ([notes](docs/milestones/M3-interrupts-and-timer.md)) |
 | M4 — multitasking: kernel threads, cooperative + preemptive scheduling | Achieved ([notes](docs/milestones/M4-multitasking.md)) |
 | M5 — driver framework, keyboard, interactive `ZKT>` monitor | Achieved ([notes](docs/milestones/M5-driver-framework.md)) |
-| M6 — ATA storage | Next |
+| M6 — ATA storage (PIO, CHS fallback, MBR partitions) | Achieved ([notes](docs/milestones/M6-ata-storage.md)) |
+| M7 — VFS, per-thread namespaces, FAT | Next |
 
 The full architecture and roadmap are in
 [`docs/FOUNDING-PROPOSAL.md`](docs/FOUNDING-PROPOSAL.md).
@@ -30,7 +31,7 @@ make run         # boots it in QEMU (486 CPU model), serial on the terminal
 make test        # headless boot tests, plus interactive console tests
 ```
 
-Requires `qemu-system-i386` and Python 3 (for the console tests), plus
+Requires `qemu-system-i386`, Python 3 and mtools (for the tests), plus
 the usual GCC build dependencies (GMP, MPFR, MPC, texinfo, bison, flex)
 for `make toolchain`. At the `ZKT>` prompt, `help` lists the kernel
 monitor's commands.

@@ -4,6 +4,7 @@
 #include "device.h"
 #include "heap.h"
 #include "kconsole.h"
+#include "kerrno.h"
 #include "kprintf.h"
 #include "kstring.h"
 #include "panic.h"
@@ -74,6 +75,64 @@ static void cmd_devices(int argc, char **argv)
 	}
 }
 
+/* Decimal only; returns false on anything else or on overflow. */
+static bool parse_u32(const char *s, uint32_t *out)
+{
+	uint32_t v = 0;
+	if (!*s) {
+		return false;
+	}
+	for (; *s; s++) {
+		if (*s < '0' || *s > '9' || v > (0xFFFFFFFFu - (uint32_t)(*s - '0')) / 10) {
+			return false;
+		}
+		v = v * 10 + (uint32_t)(*s - '0');
+	}
+	*out = v;
+	return true;
+}
+
+static void hexdump(const uint8_t *data, size_t len)
+{
+	for (size_t off = 0; off < len; off += 16) {
+		char hex[16 * 3 + 1];
+		char text[17];
+		for (size_t i = 0; i < 16; i++) {
+			uint8_t b = data[off + i];
+			ksnprintf(hex + i * 3, 4, "%02x ", b);
+			text[i] = (b >= 0x20 && b < 0x7F) ? (char)b : '.';
+		}
+		text[16] = '\0';
+		kprintf("%04lx  %s %s\n", (uint32_t)off, hex, text);
+	}
+}
+
+static void cmd_read(int argc, char **argv)
+{
+	uint32_t lba;
+	struct device *d = argc == 3 ? device_find(argv[1]) : 0;
+	if (argc != 3 || !parse_u32(argv[2], &lba)) {
+		kprintf("usage: read DEVICE BLOCK\n");
+		return;
+	}
+	if (!d || d->class != DEVICE_BLOCK) {
+		kprintf("read: %s: not a block device\n", argv[1]);
+		return;
+	}
+	uint8_t *buf = kmalloc(d->block_size);
+	if (!buf) {
+		kprintf("read: %s\n", kstrerror(ENOMEM));
+		return;
+	}
+	int rc = device_read_blocks(d, lba, 1, buf);
+	if (rc == 0) {
+		hexdump(buf, d->block_size);
+	} else {
+		kprintf("read: %s block %lu: %s\n", d->name, lba, kstrerror(rc));
+	}
+	kfree(buf);
+}
+
 static const struct command COMMANDS[] = {
 	{ "help", "list commands", cmd_help },
 	{ "echo", "ARGS... - print the arguments", cmd_echo },
@@ -81,6 +140,7 @@ static const struct command COMMANDS[] = {
 	{ "mem", "physical memory and heap usage", cmd_mem },
 	{ "threads", "list kernel threads", cmd_threads },
 	{ "devices", "list registered devices", cmd_devices },
+	{ "read", "DEVICE BLOCK - hex dump one block", cmd_read },
 	{ 0, 0, 0 },
 };
 

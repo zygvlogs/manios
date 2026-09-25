@@ -13,6 +13,9 @@ userspace servers (ADR-0002).
   buffered TX; device `com1`
 - `ps2kbd.c` — PS/2 keyboard (US layout), feeding the console
 - `vga_text.c` — 80x25 text mode with hardware cursor; device `vga`
+- `ata.c` — ATA disks over PIO, LBA28 with a CHS fallback; devices
+  `ata0`–`ata3` ([M6 notes](../../docs/milestones/M6-ata-storage.md))
+- `mbr.c` — MBR primary partitions as block devices (`ata0p1`…)
 
 The console device `cons` lives in `zkt/kernel/kconsole.c`. See
 [`docs/FOUNDING-PROPOSAL.md` §2.7](../../docs/FOUNDING-PROPOSAL.md#27-driver-framework).

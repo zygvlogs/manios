@@ -66,6 +66,7 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	drivers_init();
 	kprintf("Milestone M5: driver framework online "
 	        "(keyboard + serial console input, mutex self-test passed).\n");
+	kprintf("Milestone M6: ATA storage driver online.\n");
 	kprintf("devices:");
 	for (struct device *d = device_next(0); d; d = device_next(d)) {
 		kprintf(" %s", d->name);

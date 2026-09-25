@@ -4,7 +4,8 @@
 Boots the kernel in QEMU and drives the ZKT monitor two ways: typing
 over the serial line (QEMU's stdio), and pressing keys on the emulated
 PS/2 keyboard (QEMU monitor `sendkey`). Checks echo, line editing and
-command output.
+command output, across several machine configurations (disk images are
+generated here; the partitionless-FAT one needs mtools).
 
 Usage: tests/console_test.py [path-to-kernel-elf]
 """
@@ -12,6 +13,7 @@ import os
 import select
 import shutil
 import socket
+import struct
 import subprocess
 import sys
 import tempfile
@@ -114,42 +116,131 @@ def run_command(m, how, command, expect_in_output):
     return out
 
 
+# --- disk images -------------------------------------------------------
+
+DISK_SECTORS = 16384                  # 8 MiB
+PART_START, PART_SECTORS = 2048, 14336
+
+
+def mbr_entry(status, ptype, start, count):
+    return struct.pack("<B3sB3sII", status, b"\0\0\0", ptype, b"\0\0\0", start, count)
+
+
+def write_patterned_disk(path):
+    """MBR with one FAT16-typed partition. Every sector in the gap before
+    it says which sector it is, so misaddressed reads (the CHS
+    cross-check, partition offsets) can't pass by comparing zeros."""
+    img = bytearray(DISK_SECTORS * 512)
+    for n in range(1, PART_START):
+        text = f"ZKT disk sector {n}".encode()
+        img[n * 512:n * 512 + len(text)] = text
+    for k in range(16):
+        text = f"ZKT part sector {k}".encode()
+        off = (PART_START + k) * 512
+        img[off:off + len(text)] = text
+    img[446:462] = mbr_entry(0x00, 0x06, PART_START, PART_SECTORS)
+    img[510:512] = b"\x55\xaa"
+    with open(path, "wb") as f:
+        f.write(img)
+
+
+def write_superfloppy(path):
+    """A partitionless FAT disk whose boot sector also holds bytes that
+    parse as a plausible partition entry: must not yield a partition."""
+    with open(path, "wb") as f:
+        f.write(bytes(DISK_SECTORS * 512))
+    subprocess.run(["mformat", "-i", path, "-T", str(DISK_SECTORS), "-h", "16",
+                    "-s", "63", "::"], check=True)
+    with open(path, "r+b") as f:
+        f.seek(446)
+        f.write(mbr_entry(0x80, 0x06, 100, 1000))
+
+
+# --- scenarios -----------------------------------------------------------
+
 # The serial line turns "\n" into "\r\n", so line ends are matched as that.
-CASES = [
-    ("serial", "help", ["commands:", "threads", "devices"]),
-    ("serial", "echo over serial", ["\r\nover serial\r\n"]),
-    ("serial", "devices", ["cons", "com1", "vga"]),
-    ("keyboard", "uptime", ["uptime: "]),
-    ("keyboard", "threads", ["monitor", "idle", "running"]),
-    ("keyboard", "echo Hello, World! (x_y)", ["\r\nHello, World! (x_y)\r\n"]),
-    # Backspace must erase on screen ("\b \b") and in the line buffer.
-    ("keyboard", "uptimx\be", ["uptimx\b \be", "uptime: "]),
-    ("serial", "nosuchcommand", ["unknown command: nosuchcommand"]),
+SCENARIOS = [
+    {
+        "name": "no disk",
+        "disk": None,
+        "boot": ["devices: cons com1 vga\r\n"],
+        "cases": [
+            ("serial", "help", ["commands:", "threads", "devices"]),
+            ("serial", "echo over serial", ["\r\nover serial\r\n"]),
+            ("serial", "devices", ["cons", "com1", "vga"]),
+            ("keyboard", "uptime", ["uptime: "]),
+            ("keyboard", "threads", ["monitor", "idle", "running"]),
+            ("keyboard", "echo Hello, World! (x_y)", ["\r\nHello, World! (x_y)\r\n"]),
+            # Backspace must erase on screen ("\b \b") and in the line buffer.
+            ("keyboard", "uptimx\be", ["uptimx\b \be", "uptime: "]),
+            ("serial", "nosuchcommand", ["unknown command: nosuchcommand"]),
+        ],
+    },
+    {
+        "name": "partitioned ATA disk",
+        "disk": write_patterned_disk,
+        "boot": ["ata0: QEMU HARDDISK, 8 MiB, LBA", "ata0: CHS cross-check passed",
+                 "ata0p1: type 0x06, sectors 2048-16383",
+                 "devices: cons com1 vga ata0 ata0p1\r\n"],
+        "cases": [
+            ("serial", "devices", ["ata0     block  16384 x 512 bytes (8 MiB)",
+                                   "ata0p1   block  14336 x 512 bytes (7 MiB)"]),
+            # 16 bytes per dump line: the digit after "sector " starts line 2.
+            ("serial", "read ata0 1", ["ZKT disk sector \r\n0010  31 00"]),
+            ("serial", "read ata0p1 5", ["ZKT part sector \r\n0010  35 00"]),
+            ("serial", "read ata0p1 14336", ["beyond end of device"]),
+            ("serial", "read ata0 x", ["usage: read DEVICE BLOCK"]),
+        ],
+    },
+    {
+        "name": "partitionless FAT disk",
+        "disk": write_superfloppy,
+        "boot": ["devices: cons com1 vga ata0\r\n"],
+        "cases": [],
+    },
 ]
 
 
-def main():
-    kernel = sys.argv[1] if len(sys.argv) > 1 else "build/manios-zkt.elf"
-    m = Machine(kernel)
-    failed = False
+def run_scenario(kernel, scenario, workdir):
+    extra = []
+    if scenario["disk"]:
+        path = os.path.join(workdir, "disk.img")
+        scenario["disk"](path)
+        extra = ["-drive", f"file={path},format=raw,if=ide"]
+    m = Machine(kernel, extra)
+    failures = 0
     try:
-        m.expect(PROMPT)
-        for how, command, needles in CASES:
+        boot = m.expect(PROMPT)
+        for needle in scenario["boot"]:
+            if needle not in boot:
+                raise TestFailure(f"boot output lacks {needle!r}:\n{boot}")
+        print(f"PASS: [{scenario['name']}] boot")
+        for how, command, needles in scenario["cases"]:
             try:
                 run_command(m, how, command, needles)
-                print(f"PASS: {how}: {command!r}")
+                print(f"PASS: [{scenario['name']}] {how}: {command!r}")
             except TestFailure as e:
-                print(f"FAIL: {e}")
-                failed = True
+                print(f"FAIL: [{scenario['name']}] {e}")
+                failures += 1
                 m.mark = len(m.output)
                 m.type_serial("\r")
                 m.expect(PROMPT)
     except TestFailure as e:
-        print(f"FAIL: {e}")
-        failed = True
+        print(f"FAIL: [{scenario['name']}] {e}")
+        failures += 1
     finally:
         m.close()
-    sys.exit(1 if failed else 0)
+    return failures
+
+
+def main():
+    kernel = sys.argv[1] if len(sys.argv) > 1 else "build/manios-zkt.elf"
+    workdir = tempfile.mkdtemp(prefix="zkt-disks-")
+    try:
+        failures = sum(run_scenario(kernel, sc, workdir) for sc in SCENARIOS)
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+    sys.exit(1 if failures else 0)
 
 
 if __name__ == "__main__":
