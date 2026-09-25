@@ -17,14 +17,16 @@ subdirectories together.
 - `syscall.c` — system call dispatch (the ABI is `zkt/abi/zkt_abi.h`)
 - `poll.c` — waiting on several files at once (`SYS_POLL`): one wait
   queue that pipes and input devices notify
+- `sha256.c` — SHA-256 and HMAC-SHA-256, for ZRP authentication (M13)
 - `usercopy.c` — copying to and from user memory, checked first
 - `elf.c` — the ELF32 loader
 - `user_selftest.c` — runs the boot archive's test programs at boot
 - `kconsole.c` — console output (VGA + COM1) and input (keyboard + COM1),
   and device `cons` with its line discipline (cooked input, as Plan 9's
   `/dev/cons`)
-- `monitor.c` — the console thread, which runs `/bin/sh`, and the `ZKT>`
-  kernel monitor (debugging console) it falls back to
+- `monitor.c` — the console thread, which runs the `rc=` script, then
+  `/bin/sh`, and the `ZKT>` kernel monitor (debugging console) it falls
+  back to
 - `kprintf.c` — printf subset (32-bit conversions)
 - `kerrno.c` / `kerrno.h` — kernel error codes and their messages
 - `ring.h` — byte ring buffer

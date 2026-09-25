@@ -4,6 +4,7 @@
 #include "input.h"
 #include "kconsole.h"
 #include "null.h"
+#include "sysname.h"
 #include "pci.h"
 #include "ps2kbd.h"
 #include "ps2mouse.h"
@@ -17,6 +18,7 @@ void drivers_init(void)
 	serial_start();
 	vga_register();
 	null_register();
+	sysname_register();
 	ps2kbd_init();
 	input_register(ps2mouse_init());
 	ata_init();

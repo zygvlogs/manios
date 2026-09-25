@@ -1,5 +1,6 @@
 /* Interfaces, the network thread, loopback, and stack start-up. */
 #include "net.h"
+#include "device.h"
 #include "cmdline.h"
 #include "cpu.h"
 #include "heap.h"
@@ -242,8 +243,44 @@ static void configure(struct netif *ifc)
 	}
 }
 
+/* Device "net" (M13): one line per interface --
+ * "NAME A.B.C.D/PREFIX gateway A.B.C.D [mac XX:XX:XX:XX:XX:XX]" -- so
+ * programs can learn this machine's address (cpu tells the CPU server
+ * where to find the terminal). */
+static long net_read(struct device *dev, uint32_t offset, void *buf, size_t len)
+{
+	(void)dev;
+	char text[256], a[16], g[16];
+	int n = 0;
+	for (struct netif *ifc = interfaces; ifc && n < (int)sizeof(text) - 80; ifc = ifc->next) {
+		int prefix = 0;
+		for (uint32_t m = ifc->netmask; m & 0x80000000u; m <<= 1) {
+			prefix++;
+		}
+		n += ksnprintf(text + n, sizeof(text) - (size_t)n, "%s %s/%d gateway %s", ifc->name,
+		               ip_format(ifc->ip, a), prefix, ip_format(ifc->gateway, g));
+		if (!ifc->loopback) {
+			n += ksnprintf(text + n, sizeof(text) - (size_t)n, " mac %02x:%02x:%02x:%02x:%02x:%02x",
+			               ifc->mac[0], ifc->mac[1], ifc->mac[2], ifc->mac[3], ifc->mac[4], ifc->mac[5]);
+		}
+		n += ksnprintf(text + n, sizeof(text) - (size_t)n, "\n");
+	}
+	if (offset >= (uint32_t)n) {
+		return 0;
+	}
+	if (len > (size_t)n - offset) {
+		len = (size_t)n - offset;
+	}
+	memcpy(buf, text + offset, len);
+	return (long)len;
+}
+
+static const struct char_device_ops net_ops = { .pread = net_read };
+static struct device net_device = { .name = "net", .class = DEVICE_CHAR, .char_ops = &net_ops };
+
 void net_init(void)
 {
+	device_register(&net_device);
 	loopback.ip = IP_LOOPBACK;
 	loopback.netmask = IP_ADDR(255, 0, 0, 0);
 	netif_register(&loopback);

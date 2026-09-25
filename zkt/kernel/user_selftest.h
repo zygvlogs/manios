@@ -16,4 +16,8 @@ void gfx_selftest(void);
  * files over a pipe mounted with SYS_MOUNTFD (M12). */
 void channel_selftest(void);
 
+/* The cluster test, /boot/test/cltest: exports and ZRP over the
+ * loopback network (M13). Needs the ZRP server (zrp_start_main). */
+void cluster_selftest(void);
+
 #endif

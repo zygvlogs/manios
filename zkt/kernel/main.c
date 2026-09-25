@@ -19,6 +19,8 @@
 #include "pmm.h"
 #include "sched.h"
 #include "sched_selftest.h"
+#include "sha256.h"
+#include "kstring.h"
 #include "timer.h"
 #include "user_selftest.h"
 #include "vfs_selftest.h"
@@ -28,17 +30,28 @@
 #define MAX_MEM_REGIONS 64
 
 /* export=PATH serves PATH (in the kernel namespace) over ZRP. */
-static void export_from_cmdline(void)
+/* ZRP at boot (M13): the cluster key (key=), the server on ZRP_PORT,
+ * and the default export (export=). */
+static void start_zrp(void)
 {
-	char path[VFS_PATH_MAX + 1];
-	if (!cmdline_get("export", path, sizeof(path))) {
-		return;
+	char text[VFS_PATH_MAX + 1];
+	if (cmdline_get("key", text, sizeof(text))) {
+		uint8_t key[ZRP_KEY];
+		zrp_key_derive(text, key);
+		zrp_key_set(key);
+		memset(key, 0, sizeof(key));
+		memset(text, 0, sizeof(text));
+		kprintf("zrp: cluster key set: sessions are authenticated\n");
 	}
-	int err;
-	if (zrp_serve(path, ZRP_PORT, &err)) {
-		kprintf("zrp: exporting %s on udp port %d\n", path, ZRP_PORT);
-	} else {
-		kprintf("zrp: cannot export %s: %s\n", path, kstrerror(err));
+	zrp_start_main();
+	struct zrp_server *srv = zrp_main_server();
+	if (srv && cmdline_get("export", text, sizeof(text))) {
+		int rc = zrp_export(srv, "", text, 0);
+		if (rc == 0) {
+			kprintf("zrp: exporting %s on udp port %d\n", text, ZRP_PORT);
+		} else {
+			kprintf("zrp: cannot export %s: %s\n", text, kstrerror(rc));
+		}
 	}
 }
 
@@ -111,10 +124,13 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	libc_selftest();
 	kprintf("Milestone M9: libc, ABI v%d and shell online (self-test passed).\n", ZKT_ABI_VERSION);
 
+	if (!sha256_selftest()) {
+		panic("selftest: SHA-256 or HMAC gave a wrong answer");
+	}
 	net_init();
 	net_selftest();
 	kprintf("Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed).\n");
-	export_from_cmdline();
+	start_zrp();
 
 	gfx_selftest();
 	kprintf("Milestone M11: graphics online (framebuffer, 2D library; self-test passed).\n");
@@ -122,6 +138,10 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	channel_selftest();
 	kprintf("Milestone M12: pipes, input devices and userspace file servers online "
 	        "(self-test passed).\n");
+
+	cluster_selftest();
+	kprintf("Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; "
+	        "self-test passed).\n");
 
 	if (!thread_create("console", console_main, 0)) {
 		panic("could not start the console thread");

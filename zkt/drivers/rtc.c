@@ -82,6 +82,11 @@ static long time_read(struct device *dev, uint32_t offset, void *buf, size_t len
 	return (long)k;
 }
 
+uint32_t rtc_time(void)
+{
+	return boot_time ? boot_time + (uint32_t)(timer_uptime_ms() / 1000) : 0;
+}
+
 static const struct char_device_ops time_ops = { .pread = time_read };
 static struct device time_device = { .name = "time", .class = DEVICE_CHAR, .char_ops = &time_ops };
 

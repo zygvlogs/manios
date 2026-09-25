@@ -2,6 +2,7 @@
 #include "namespace.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "cmdline.h"
 #include "device.h"
 #include "heap.h"
 #include "kconsole.h"
@@ -391,13 +392,17 @@ static void cmd_mount(int argc, char **argv)
 
 static void cmd_export(int argc, char **argv)
 {
-	int err;
-	if (argc != 2) {
-		kprintf("usage: export PATH  (serves PATH over ZRP, udp port %d)\n", ZRP_PORT);
-	} else if (!zrp_serve(argv[1], ZRP_PORT, &err)) {
-		kprintf("export: %s: %s\n", argv[1], kstrerror(err));
+	struct zrp_server *srv = zrp_main_server();
+	if (argc < 2 || argc > 3) {
+		kprintf("usage: export PATH [NAME]  (serves PATH over ZRP, udp port %d)\n", ZRP_PORT);
+		return;
+	}
+	const char *name = argc == 3 ? argv[2] : "";
+	int rc = srv ? zrp_export(srv, name, argv[1], 0) : -ENODEV;
+	if (rc) {
+		kprintf("export: %s: %s\n", argv[1], kstrerror(rc));
 	} else {
-		kprintf("exporting %s on udp port %d\n", argv[1], ZRP_PORT);
+		kprintf("exporting %s as \"%s\" on udp port %d\n", argv[1], name, ZRP_PORT);
 	}
 }
 
@@ -421,7 +426,7 @@ static const struct command COMMANDS[] = {
 	{ "arp", "the ARP cache", cmd_arp },
 	{ "ping", "A.B.C.D [COUNT] - ICMP echo", cmd_ping },
 	{ "mount", "DIAL OLD [ANAME] - mount a ZRP server", cmd_mount },
-	{ "export", "PATH - serve PATH over ZRP", cmd_export },
+	{ "export", "PATH [NAME] - serve PATH over ZRP", cmd_export },
 	{ 0, 0, 0 },
 };
 
@@ -472,8 +477,26 @@ static int split(char *line, char **argv)
 
 #define SHELL "/bin/sh"
 
+/* rc=PATH on the command line: a script the shell runs first, which
+ * sets a machine up for its role -- a CPU server starts cpud (M13). */
+static void run_rc(void)
+{
+	char path[VFS_PATH_MAX + 1];
+	if (!cmdline_get("rc", path, sizeof(path))) {
+		return;
+	}
+	char *argv[] = { SHELL, path, 0 };
+	int status, pid = process_spawn(SHELL, 2, argv, 0);
+	if (pid < 0) {
+		kprintf("console: rc: cannot start %s: %s\n", SHELL, kstrerror(pid));
+	} else if (process_wait(0, pid, &status) == pid && status != 0) {
+		kprintf("console: rc: %s: status %d\n", path, status);
+	}
+}
+
 void console_main(void *unused)
 {
+	run_rc();
 	char *argv[] = { SHELL, 0 };
 	int pid = process_spawn(SHELL, 1, argv, 0);
 	if (pid < 0) {

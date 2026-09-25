@@ -110,3 +110,8 @@ void channel_selftest(void)
 {
 	run_checked("/boot/test/ztest");
 }
+
+void cluster_selftest(void)
+{
+	run_checked("/boot/test/cltest");
+}

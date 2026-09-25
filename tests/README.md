@@ -39,12 +39,22 @@
   closes windows, and exits back to the text console; and on a machine
   without Bochs VBE, checks the desktop explains and exits.
 
+- `cluster_test.py` (also run by `make test`) — the cluster roles
+  (M13): a file server, a CPU server, a terminal and a machine with the
+  wrong key, connected through a hub the test runs, which is also a host
+  with its own implementation of ZRP2's authentication. It checks the
+  keys both ways, remote execution with the terminal's console and
+  namespace (and the file server through it), exit statuses, a remote
+  program's window on the terminal's desktop, and a CPU server dying
+  under a job.
+
 - `tools/mkfont.py --check` (in `make test`) — the generated font
   matches `desktop/libgfx/font.txt`.
 
 - `userland/test/` holds the test programs the kernel runs at every
   boot (`utest` for system calls, `ctest` for libc, `gtest` for libgfx,
-  `ztest` for userspace file servers) and those the tests start
+  `ztest` for userspace file servers, `cltest` for exports over the
+  network) and those the tests start
   (`fault`, `fbtest`, `wintest`); they are in the boot archive under
   `/boot/test`.
 

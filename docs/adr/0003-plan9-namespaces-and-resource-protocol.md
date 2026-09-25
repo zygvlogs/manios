@@ -1,6 +1,6 @@
 # ADR-0003: Plan 9-inspired per-process namespaces and a uniform resource protocol (ZRP), for cluster transparency
 
-**Status:** Accepted. Namespaces implemented at M7/M8; ZRP wire format v1 and `mount` at M10 ([docs/zrp.md](../zrp.md)); local channels and userspace servers at M12
+**Status:** Accepted. Namespaces implemented at M7/M8; ZRP wire format v1 and `mount` at M10 ([docs/zrp.md](../zrp.md)); local channels and userspace servers at M12; the cluster roles and authentication at M13 ([ADR-0005](0005-cluster-roles-and-authentication.md))
 **Date:** 2026-09-25
 
 ## Context
@@ -156,6 +156,16 @@ other end (`SYS_MOUNTFD`), with any number of requests in flight
 system is the first such server
 ([ADR-0004](0004-window-system-as-a-file-server.md)), mounted into a
 union with `/dev` in the desktop's own namespace.
+
+## Implementation status (M13)
+
+The roles exist ([M13 notes](../milestones/M13-cluster-roles.md),
+[ADR-0005](0005-cluster-roles-and-authentication.md)): one kernel serves
+as file server (`export=`), CPU server (`cpud`) or terminal (`cpu`), and
+a program run with `cpu` sees the terminal's namespace at `/mnt/term`
+and its console as its own. ZRP became `ZRP2`: mutual shared-key
+authentication, requests that may wait indefinitely (`Rpending`), and
+any number of requests in flight over UDP.
 
 ## Note: mounts keyed by path
 

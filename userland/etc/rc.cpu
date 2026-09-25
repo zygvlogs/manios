@@ -1,0 +1,3 @@
+# A CPU server (M13): serve the cpu service. Boot with
+#   rc=/boot/etc/rc.cpu key=SECRET ip=A.B.C.D/NN
+cpud

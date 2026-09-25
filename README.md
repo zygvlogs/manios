@@ -23,7 +23,7 @@ clone. It does not depend on the Linux kernel.
 | M10 — networking (NE2000, IPv4/UDP), and ZRP (the resource protocol) over the network | Achieved ([notes](docs/milestones/M10-networking-zrp.md), [protocol](docs/zrp.md)) |
 | M11 — graphics: linear framebuffer (Bochs VBE, VGA 13h), 2D library, own font | Achieved ([notes](docs/milestones/M11-graphics.md)) |
 | M12 — desktop environment MVP: compositor, window system as files, panel, launcher, terminal | Achieved ([notes](docs/milestones/M12-desktop.md), [design](docs/desktop/DESIGN.md)) |
-| M13 — cluster roles: file server, CPU server, terminal | Next |
+| M13 — cluster roles: file server, CPU server, terminal; authenticated ZRP2 | Achieved ([notes](docs/milestones/M13-cluster-roles.md), [ADR-0005](docs/adr/0005-cluster-roles-and-authentication.md)) |
 
 The full architecture and roadmap are in
 [`docs/FOUNDING-PROPOSAL.md`](docs/FOUNDING-PROPOSAL.md).
@@ -50,12 +50,25 @@ makes a union of two volumes. `newns` gives the shell a private
 namespace. `exit` leaves the shell for the `ZKT>` kernel monitor, a
 debugging console with its own `help`; `run /bin/sh` goes back.
 
-Machines share files over ZRP, ManiOS's 9P-style protocol. `make run`
-attaches an NE2000 to QEMU's user network. A machine booted with
-`-append "ip=10.0.0.1/24 export=/n/ata0p1"` serves that directory, and
-on another, `mount udp!10.0.0.1 /n` puts it at `/n`
-(`tests/net_test.py` connects two machines this way). ZRP v1 has no
-authentication: use it only on trusted networks.
+Machines share files over ZRP, ManiOS's 9P-style protocol, and take
+Plan 9's roles (M13). `make run` attaches an NE2000 to QEMU's user
+network. Give every machine of a cluster the same `key=SECRET` on its
+boot line; then:
+
+- a **file server** booted with `ip=10.0.0.1/24 export=/n/ata0p1`
+  serves that directory, and on another machine `mount udp!10.0.0.1 /n`
+  puts it at `/n`;
+- a **CPU server** booted with `ip=10.0.0.2/24 rc=/boot/etc/rc.cpu`
+  runs `cpud`;
+- on a **terminal**, `cpu udp!10.0.0.2` gives a shell on the CPU server
+  that sees the terminal's console and files (at `/mnt/term`), and
+  `cpu udp!10.0.0.2 clock`, typed in the desktop's terminal, opens a
+  window drawn by the CPU server.
+
+With a key, both ends of every mount prove they know it; messages are
+not encrypted, so use ZRP on networks you trust
+([protocol](docs/zrp.md)). `tests/cluster_test.py` runs four machines
+this way.
 
 `gfxdemo` shows the graphics (640x480; `gfxdemo 800 600`, or
 `gfxdemo vga` for 320x200 on any VGA card) and returns to text on

@@ -35,6 +35,12 @@ applications — see [docs/desktop/DESIGN.md](desktop/DESIGN.md) (the
 design document §1.4 promised),
 [ADR-0004](adr/0004-window-system-as-a-file-server.md) and
 [docs/milestones/M12-desktop.md](milestones/M12-desktop.md).
+**M13 achieved**: cluster roles — file servers, CPU servers and
+terminals from one kernel; `cpu` runs a program on another machine in
+the terminal's namespace (console, files, even windows); the protocol
+became ZRP2, with mutual shared-key authentication and long-waiting
+requests — see [ADR-0005](adr/0005-cluster-roles-and-authentication.md)
+and [docs/milestones/M13-cluster-roles.md](milestones/M13-cluster-roles.md).
 
 **Scope of this document:** Originally the response to the ManiOS
 founding prompt's "First Task" — architecture, strategy, and planning.
@@ -487,7 +493,7 @@ a concrete shape rather than only a diagram.
 | M10 | **Achieved** ([notes](milestones/M10-networking-zrp.md)). Networking + ZRP transport over the network (ADR-0003) | M8 |
 | M11 | **Achieved** ([notes](milestones/M11-graphics.md)). Graphics: linear framebuffer driver, basic 2D primitives | M8 |
 | M12 | **Achieved** ([notes](milestones/M12-desktop.md), [design](desktop/DESIGN.md)). ManiOS Desktop Environment MVP (compositor, shell, launcher) | M11 |
-| M13 | Cluster roles: file server / CPU server / terminal (ADR-0003) | M8, M10 |
+| M13 | **Achieved** ([notes](milestones/M13-cluster-roles.md)). Cluster roles: file server / CPU server / terminal (ADR-0003) | M8, M10 |
 
 Each milestone gets its own short design note under `docs/` when it
 starts (not written speculatively now), following the ADR practice

@@ -231,6 +231,7 @@ char *strerror(int err)
 	case EBADF:        return "bad file descriptor";
 	case ECHILD:       return "no such child process";
 	case ENOMEM:       return "out of memory";
+	case EACCES:       return "permission denied";
 	case EFAULT:       return "bad address";
 	case EBUSY:        return "device or resource busy";
 	case EEXIST:       return "file exists";

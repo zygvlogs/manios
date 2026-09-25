@@ -70,6 +70,9 @@ int mountfd(int fd, const char *old_path, int flag, const char *aname)
 	                              (uint32_t)aname, 0));
 }
 
+int export(const char *path, const char *name) { return (int)SC2(SYS_EXPORT, path, name); }
+int unexport(const char *name)                 { return (int)SC2(SYS_EXPORT, 0, name); }
+
 int mount(const char *dial, const char *old_path, int flag, const char *aname)
 {
 	return (int)check(zkt_syscall(SYS_MOUNT, (uint32_t)dial, (uint32_t)old_path, (uint32_t)flag,

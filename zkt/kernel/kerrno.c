@@ -10,6 +10,7 @@ const char *kstrerror(int err)
 	case ENXIO:        return "beyond end of device";
 	case EBADF:        return "bad file handle";
 	case ENOMEM:       return "out of memory";
+	case EACCES:       return "permission denied";
 	case EBUSY:        return "busy";
 	case EEXIST:       return "already exists";
 	case ENODEV:       return "operation not supported by device";

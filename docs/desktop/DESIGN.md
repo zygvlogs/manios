@@ -176,6 +176,7 @@ at the title bar's right; new windows cascade from (60, 50) in steps of
 In rough order: resizable windows and a resize event; a `/dev/draw`-style
 protocol (images held by the server, draw operations sent instead of
 pixels); a settings application and theme files; notifications; a file
-manager; and — with M13 — running applications on another node whose
-windows appear here, because the window system is just files in the
-namespace a remote CPU server imports.
+manager. Running applications on another node whose windows appear
+here came with M13 without any change to the window system: `cpu`,
+typed in a terminal window, exports the desktop's namespace, and the
+program on the CPU server finds `/dev/wsys` in it.

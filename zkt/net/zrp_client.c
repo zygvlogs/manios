@@ -3,16 +3,19 @@
  * onto requests (walk -> Twalk, read -> Tread, readdir -> Tread on a
  * directory, release -> Tclunk).
  *
- * Two transports:
- *  - UDP (M10) may lose or reorder datagrams, so a session keeps one
- *    request in flight and retransmits it, with the same tag, until the
- *    reply comes; the server recognises the repeat (zrp_server.c).
+ * Any number of requests may be in flight on a session, so a read the
+ * server answers only later (a console waiting for a line, a window
+ * waiting for input) doesn't hold up anyone else. Whichever waiting
+ * thread is receiving reads the next reply and hands it to the request
+ * with its tag; the others sleep. Two transports:
+ *  - UDP (M10) may lose or reorder datagrams, so each request is sent
+ *    again, with the same tag, until its reply comes; the server
+ *    recognises the repeat (zrp_server.c), and answers Rpending while
+ *    it is still working on it (M13).
  *  - A channel (M12) is a pipe end whose other end a userspace server
- *    reads (SYS_MOUNTFD). Nothing is lost, so any number of requests
- *    may be in flight -- a read the server answers only later (a window
- *    waiting for input) doesn't hold up anyone else. Whichever waiting
- *    thread is receiving hands each reply to the request with its tag.
- */
+ *    reads (SYS_MOUNTFD). Nothing is lost: nothing is sent twice.
+ *
+ * With a key, attaching over UDP authenticates both ways (M13). */
 #include "zrp.h"
 #include <stdbool.h>
 #include "cpu.h"
@@ -22,6 +25,7 @@
 #include "kstring.h"
 #include "mutex.h"
 #include "net.h"
+#include "sha256.h"
 #include "pipe.h"
 #include "sched.h"
 #include "timer.h"
@@ -30,18 +34,20 @@
 
 #define TRIES 6
 #define FIRST_TIMEOUT_MS 150 /* then doubling: 0.15 + 0.3 + ... + 4.8 s = 9.45 s */
+#define PENDING_POLL_MS 1000 /* after Rpending: asking again, TRIES times at most */
 #define DIR_CACHE 32
 #define ROOT_FID 1
 
 enum transport { UDP, CHANNEL };
 
-/* A request in flight on a channel. */
+/* A request in flight. */
 struct call {
 	uint16_t tag;
 	uint8_t *rx;
 	size_t cap;
-	long len; /* the reply's length once done, or a negated error */
+	long len;     /* the reply's length once done, or a negated error */
 	bool done;
+	bool pending; /* UDP: the server said Rpending since we last sent */
 	struct call *next;
 };
 
@@ -52,14 +58,15 @@ struct session {
 	uint32_t next_fid;
 	uint16_t tag;
 	/* UDP */
-	struct mutex lock; /* one request at a time */
 	struct udp_endpoint *ep;
 	uint32_t ip;
 	uint16_t port;
-	/* channel; interrupts off guards the fields below */
+	/* a channel */
 	struct vnode *chan;
+	/* interrupts off guards the fields below */
 	struct call *calls;
-	bool receiving, dead;
+	bool receiving;
+	bool dead; /* the server is gone (a channel at end of file; UDP timed out) */
 	struct waitq changed;
 	uint8_t *inbox; /* the receiving thread's buffer */
 };
@@ -102,8 +109,8 @@ static void session_unref(struct session *s)
 		udp_close(s->ep);
 	} else {
 		vnode_unref(s->chan); /* the server reads end of file */
-		kfree(s->inbox);
 	}
+	kfree(s->inbox);
 	kfree(s);
 }
 
@@ -135,47 +142,34 @@ static long check_reply(const uint8_t *msg, long n, uint8_t expect)
 	return msg[4] == expect ? n : -EPROTO;
 }
 
-static long rpc_udp(struct session *s, const uint8_t *tx, size_t len, uint8_t *rx, uint8_t expect)
+/* Converts milliseconds to timer ticks, rounding up (32-bit only). */
+static uint32_t ticks_for(uint32_t ms)
 {
-	uint16_t tag = (uint16_t)(tx[5] | tx[6] << 8);
-	uint32_t timeout = FIRST_TIMEOUT_MS;
-	for (int attempt = 0; attempt < TRIES; attempt++, timeout *= 2) {
-		if (attempt) {
-			retransmits++;
-		}
-		int rc = udp_send(s->ep, s->ip, s->port, tx, len);
-		if (rc) {
-			return rc;
-		}
-		uint64_t give_up = timer_uptime_ms() + timeout;
-		for (;;) {
-			uint64_t now = timer_uptime_ms();
-			if (now >= give_up) {
-				break;
-			}
-			uint32_t from;
-			uint16_t from_port, got_tag;
-			long n = udp_recv(s->ep, rx, s->msize, &from, &from_port, (uint32_t)(give_up - now));
-			if (n == -ETIMEDOUT) {
-				break;
-			}
-			if (from != s->ip || from_port != s->port || !reply_tag(rx, n, &got_tag)
-			    || got_tag != tag) {
-				continue; /* a stray, or a late reply to an earlier try */
-			}
-			return check_reply(rx, n, expect);
-		}
-	}
-	return -ETIMEDOUT;
+	return (ms * TIMER_HZ + 999) / 1000;
 }
 
-static long rpc_channel(struct session *s, struct call *c, const uint8_t *tx, size_t len,
-                        uint8_t expect)
+/* Sends a request and waits for its reply, which the receiving thread
+ * (see the top of this file) hands over. Over UDP the request is sent
+ * again at each deadline until the reply comes: TRIES times, waiting
+ * twice as long each time. Once the server has said Rpending -- it is
+ * working on the request -- the client keeps asking every
+ * PENDING_POLL_MS for as long as the server keeps saying so, so a read
+ * that waits for minutes (a console, a window) doesn't time out, but a
+ * server that goes away is noticed. */
+static long rpc(struct session *s, struct call *c, const uint8_t *tx, size_t len, uint8_t expect)
 {
-	long sent = pipe_send(s->chan, tx, len);
+	bool udp = s->transport == UDP;
+	uint32_t timeout = FIRST_TIMEOUT_MS;
+	int tries = 1;
+	bool polling = false;
+	if (s->dead) {
+		return -EIO;
+	}
+	long sent = udp ? udp_send(s->ep, s->ip, s->port, tx, len) : pipe_send(s->chan, tx, len);
+	uint64_t deadline = timer_ticks() + ticks_for(timeout);
 	uint32_t flags = cpu_irq_save();
 	if (sent < 0) {
-		c->len = -EIO;
+		c->len = udp ? sent : -EIO;
 		c->done = true;
 	}
 	while (!c->done) {
@@ -183,25 +177,68 @@ static long rpc_channel(struct session *s, struct call *c, const uint8_t *tx, si
 			c->len = -EIO;
 			break;
 		}
+		if (udp && timer_ticks() >= deadline) {
+			if (c->pending) {
+				polling = true;
+				tries = 0;
+			} else if (tries == TRIES) {
+				/* The server is gone: what else is waiting, and what
+				 * comes later (the clunks as files close), fails at once. */
+				c->len = -ETIMEDOUT;
+				s->dead = true;
+				waitq_wake_all(&s->changed);
+				break;
+			}
+			c->pending = false;
+			timeout = polling ? PENDING_POLL_MS : timeout * 2;
+			tries++;
+			cpu_irq_restore(flags);
+			if (!polling) {
+				retransmits++;
+			}
+			udp_send(s->ep, s->ip, s->port, tx, len);
+			flags = cpu_irq_save();
+			deadline = timer_ticks() + ticks_for(timeout);
+			continue;
+		}
 		if (s->receiving) {
-			waitq_sleep(&s->changed);
+			if (udp) {
+				waitq_sleep_until(&s->changed, deadline);
+			} else {
+				waitq_sleep(&s->changed);
+			}
 			continue;
 		}
 		/* Our turn to receive, for everyone. */
 		s->receiving = true;
 		cpu_irq_restore(flags);
-		long n = pipe_recv(s->chan, s->inbox, s->msize, 0);
-		uint16_t tag;
-		bool ok = n > 0 && reply_tag(s->inbox, n, &tag);
+		long n;
+		uint16_t tag = 0;
+		bool ok;
+		if (udp) {
+			uint64_t now = timer_ticks();
+			uint32_t wait = deadline > now ? (uint32_t)(deadline - now) * (1000 / TIMER_HZ) : 1;
+			uint32_t from;
+			uint16_t from_port;
+			n = udp_recv(s->ep, s->inbox, s->msize, &from, &from_port, wait);
+			ok = n > 0 && from == s->ip && from_port == s->port && reply_tag(s->inbox, n, &tag);
+		} else {
+			n = pipe_recv(s->chan, s->inbox, s->msize, 0);
+			ok = n > 0 && reply_tag(s->inbox, n, &tag);
+		}
 		flags = cpu_irq_save();
 		struct call *owner = 0;
 		if (!ok) {
-			s->dead = n <= 0; /* the server is gone; a malformed reply is just dropped */
+			/* A channel at end of file: the server is gone. Over UDP,
+			 * a timeout or a stray; a malformed reply is just dropped. */
+			s->dead = !udp && n <= 0;
 		} else {
 			for (owner = s->calls; owner && owner->tag != tag; owner = owner->next) {
 			}
 		}
-		if (owner) {
+		if (owner && s->inbox[4] == ZRP_RPENDING) {
+			owner->pending = true;
+		} else if (owner && !owner->done) {
 			/* The owner waits until done, so its buffer stays put. */
 			cpu_irq_restore(flags);
 			size_t k = (size_t)n < owner->cap ? (size_t)n : owner->cap;
@@ -225,7 +262,7 @@ struct request {
 	struct call call;
 };
 
-/* A tag no request in flight uses (only channels have several). */
+/* A tag no request in flight uses. */
 static uint16_t next_tag(struct session *s)
 {
 	for (;;) {
@@ -250,21 +287,16 @@ static int begin(struct session *s, struct request *r, uint8_t type)
 		kfree(r->rx);
 		return -ENOMEM;
 	}
-	if (s->transport == UDP) {
-		mutex_lock(&s->lock);
-	}
 	memset(&r->call, 0, sizeof(r->call));
 	r->call.rx = r->rx;
 	r->call.cap = s->msize;
-	/* The tag is taken, and on a channel the call listed for its reply,
-	 * in one step: no other request can pick the same tag meanwhile. */
+	/* The tag is taken, and the call listed for its reply, in one step:
+	 * no other request can pick the same tag meanwhile. */
 	uint32_t flags = cpu_irq_save();
 	uint16_t tag = type == ZRP_TVERSION ? ZRP_NOTAG : next_tag(s);
 	r->call.tag = tag;
-	if (s->transport == CHANNEL) {
-		r->call.next = s->calls;
-		s->calls = &r->call;
-	}
+	r->call.next = s->calls;
+	s->calls = &r->call;
 	cpu_irq_restore(flags);
 	zmsg_start(&r->m, r->tx, s->msize, type, tag);
 	return 0;
@@ -277,25 +309,19 @@ static long send(struct request *r, uint8_t expect)
 	if (!len) {
 		return -EINVAL; /* too long for a message */
 	}
-	struct session *s = r->s;
-	return s->transport == UDP ? rpc_udp(s, r->tx, len, r->rx, expect)
-	                           : rpc_channel(s, &r->call, r->tx, len, expect);
+	return rpc(r->s, &r->call, r->tx, len, expect);
 }
 
 static void end(struct request *r)
 {
 	struct session *s = r->s;
-	if (s->transport == UDP) {
-		mutex_unlock(&s->lock);
-	} else {
-		uint32_t flags = cpu_irq_save();
-		struct call **link = &s->calls;
-		while (*link != &r->call) {
-			link = &(*link)->next;
-		}
-		*link = r->call.next;
-		cpu_irq_restore(flags);
+	uint32_t flags = cpu_irq_save();
+	struct call **link = &s->calls;
+	while (*link != &r->call) {
+		link = &(*link)->next;
 	}
+	*link = r->call.next;
+	cpu_irq_restore(flags);
 	kfree(r->tx);
 	kfree(r->rx);
 }
@@ -542,9 +568,41 @@ static bool parse_dial(const char *dial, uint32_t *ip, uint16_t *port)
 	return ip_parse(host, ip, 0);
 }
 
-/* Version and attach on a new session (which holds one reference, ours,
- * dropped here); stores the root. */
-static int attach(struct session *s, const char *aname, struct vnode **root)
+/* Tauth: proves the server knows the key; fills in the nonces. */
+static int authenticate(struct session *s, const uint8_t *key, uint8_t cnonce[ZRP_NONCE],
+                        uint8_t snonce[ZRP_NONCE])
+{
+	struct request r;
+	long n = begin(s, &r, ZRP_TAUTH);
+	if (n) {
+		return (int)n;
+	}
+	zrp_nonce(cnonce);
+	zmsg_putbytes(&r.m, cnonce, ZRP_NONCE);
+	n = send(&r, ZRP_RAUTH);
+	int rc = n < 0 ? (n == -ETIMEDOUT || n == -ENOMEM ? (int)n : -EACCES) : 0;
+	if (rc == 0) {
+		struct zmsg m;
+		reply(&r, n, &m);
+		const uint8_t *nonce = zmsg_getbytes(&m, ZRP_NONCE);
+		const uint8_t *mac = zmsg_getbytes(&m, ZRP_MAC);
+		uint8_t want[ZRP_MAC];
+		if (m.bad || m.pos != (size_t)n) {
+			rc = -EPROTO;
+		} else {
+			memcpy(snonce, nonce, ZRP_NONCE);
+			zrp_auth_mac(key, "server", cnonce, snonce, want);
+			rc = equal_secret(mac, want, ZRP_MAC) ? 0 : -EACCES;
+		}
+	}
+	end(&r);
+	return rc;
+}
+
+/* Version (and, with a key, authentication) and attach on a new
+ * session, which holds one reference, ours, dropped here; stores the
+ * root. */
+static int attach(struct session *s, const char *aname, const uint8_t *key, struct vnode **root)
 {
 	struct request r;
 	long n = begin(s, &r, ZRP_TVERSION);
@@ -567,10 +625,19 @@ static int attach(struct session *s, const char *aname, struct vnode **root)
 		}
 		end(&r);
 	}
+	uint8_t cnonce[ZRP_NONCE], snonce[ZRP_NONCE];
+	if (n >= 0 && key) {
+		n = authenticate(s, key, cnonce, snonce);
+	}
 	struct znode *z = 0;
 	if (n >= 0 && (n = begin(s, &r, ZRP_TATTACH)) == 0) {
 		zmsg_put32(&r.m, ROOT_FID);
 		zmsg_putstr(&r.m, aname ? aname : "");
+		if (key) {
+			uint8_t mac[ZRP_MAC];
+			zrp_auth_mac(key, "client", cnonce, snonce, mac);
+			zmsg_putbytes(&r.m, mac, ZRP_MAC);
+		}
 		n = send(&r, ZRP_RATTACH);
 		z = n < 0 ? 0 : node_from_reply(&r, n, ROOT_FID);
 		end(&r);
@@ -599,13 +666,18 @@ static struct session *new_session(enum transport transport, uint32_t msize)
 		s->transport = transport;
 		s->msize = msize;
 		s->next_fid = ROOT_FID + 1;
-		s->lock = (struct mutex)MUTEX_INIT;
 		s->changed = (struct waitq)WAITQ_INIT;
+		s->inbox = kmalloc(msize);
+		if (!s->inbox) {
+			kfree(s);
+			s = 0;
+		}
 	}
 	return s;
 }
 
-int zrp_mount(const char *dial, const char *aname, struct vnode **root, char *label, size_t size)
+int zrp_mount_key(const char *dial, const char *aname, const uint8_t *key, struct vnode **root,
+                  char *label, size_t size)
 {
 	uint32_t ip;
 	uint16_t port;
@@ -621,12 +693,18 @@ int zrp_mount(const char *dial, const char *aname, struct vnode **root, char *la
 	int rc;
 	s->ep = udp_open(0, &rc);
 	if (!s->ep) {
+		kfree(s->inbox);
 		kfree(s);
 		return rc;
 	}
 	char host[16];
 	ksnprintf(label, size, "zrp:%s!%u", ip_format(ip, host), (unsigned)port);
-	return attach(s, aname, root);
+	return attach(s, aname, key, root);
+}
+
+int zrp_mount(const char *dial, const char *aname, struct vnode **root, char *label, size_t size)
+{
+	return zrp_mount_key(dial, aname, zrp_key(), root, label, size);
 }
 
 int zrp_mount_channel(struct vnode *chan, const char *aname, struct vnode **root, char *label,
@@ -639,13 +717,8 @@ int zrp_mount_channel(struct vnode *chan, const char *aname, struct vnode **root
 	if (!s) {
 		return -ENOMEM;
 	}
-	s->inbox = kmalloc(ZRP_CHANNEL_MSIZE);
-	if (!s->inbox) {
-		kfree(s);
-		return -ENOMEM;
-	}
 	vnode_ref(chan);
 	s->chan = chan;
 	ksnprintf(label, size, "zrp:channel");
-	return attach(s, aname, root);
+	return attach(s, aname, 0, root); /* local: no authentication */
 }

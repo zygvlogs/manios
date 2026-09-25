@@ -1,4 +1,5 @@
 #include "process.h"
+#include "zrp.h"
 #include <stdbool.h>
 #include "context.h"
 #include "cpu.h"
@@ -330,6 +331,8 @@ __attribute__((noreturn)) void process_exit(int status)
 {
 	struct process *p = process_current();
 
+	/* What it exported goes with it (SYS_EXPORT). */
+	zrp_unexport_owner(zrp_main_server(), p);
 	for (int fd = 0; fd < PROC_FD_MAX; fd++) {
 		if (p->fds[fd]) {
 			vfs_close(p->fds[fd]);

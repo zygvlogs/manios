@@ -332,6 +332,13 @@ void thread_sleep_until(uint64_t tick)
 
 __attribute__((noreturn)) void thread_exit(void)
 {
+	/* Let go of the namespace here, where waiting is allowed: the last
+	 * reference to one with a remote mount in it tells the server
+	 * (Tclunk) and waits for the answer, which can't be done from the
+	 * switch that frees a dead thread (finish_switch). */
+	struct namespace *ns = current->ns;
+	current->ns = 0;
+	ns_unref(ns);
 	cpu_irq_save();
 	current->state = THREAD_DEAD;
 	schedule();

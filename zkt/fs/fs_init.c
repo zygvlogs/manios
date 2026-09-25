@@ -13,7 +13,7 @@ void fs_init(void)
 {
 	struct vnode *root = ramfs_create();
 	if (!root || ramfs_mkdir(root, "dev") || ramfs_mkdir(root, "n")
-	    || ramfs_mkdir(root, "boot") || ramfs_mkdir(root, "bin")) {
+	    || ramfs_mkdir(root, "boot") || ramfs_mkdir(root, "bin") || ramfs_mkdir(root, "mnt/term")) {
 		panic("fs_init: cannot build the root directory");
 	}
 	struct namespace *ns = ns_create(root);

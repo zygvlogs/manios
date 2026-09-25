@@ -61,6 +61,11 @@ int mount(const char *dial, const char *old_path, int flag, const char *aname);
 /* The same, with the ZRP server on the other end of pipe `fd`: how a
  * program serves files to others (zrpsrv.h does the serving). */
 int mountfd(int fd, const char *old_path, int flag, const char *aname);
+/* Serves the directory `path`, as this process sees it, to other
+ * machines over ZRP as attach name `name` (mount DIAL OLD with that
+ * aname reaches it), until the process exits or unexport(name). */
+int export(const char *path, const char *name);
+int unexport(const char *name);
 
 /* A raw system call: returns the kernel's result (a negated error
  * number on failure) and leaves errno alone. */

@@ -19,6 +19,7 @@ userspace servers (ADR-0002).
 - `rtc.c` — the CMOS clock, read at boot; device `time` (seconds since
   1970, UTC)
 - `null.c` — device `null`
+- `sysname.c` — device `sysname`: this machine's name (`sysname=`)
 - `vga_text.c` — 80x25 text mode with hardware cursor (and a shadow
   copy while graphics own the display); device `vga`
 - `ata.c` — ATA disks over PIO, LBA28 with a CHS fallback; devices

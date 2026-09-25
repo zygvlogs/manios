@@ -53,6 +53,10 @@
 #define SYS_MOUNTFD 24 /* (int fd, const char *old, int flag, const char *aname): as
                         * SYS_MOUNT, with a ZRP server on the other end of pipe fd --
                         * how a userspace program serves files (M12) */
+#define SYS_EXPORT  25 /* (const char *path, const char *name): serves the directory
+                        * path, in this process's namespace, over ZRP as attach name
+                        * `name` until the process exits; a NULL path takes the
+                        * export back (M13) */
 
 /* Paths may be relative to the process's current directory ("/" for a
  * program the kernel starts; a child inherits its parent's). They are
@@ -136,6 +140,7 @@ struct zkt_pollfd {
 #define EIO           5
 #define ENXIO         6
 #define ENOMEM       12
+#define EACCES       13  /* authentication failed (ZRP) */
 #define EFAULT       14
 #define EBUSY        16
 #define EEXIST       17

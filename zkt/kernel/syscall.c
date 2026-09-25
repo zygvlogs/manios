@@ -385,6 +385,26 @@ static long sys_mountfd(struct process *p, int fd, const char *uold, int flag, c
 	return rc;
 }
 
+static long sys_export(struct process *p, const char *upath, const char *uname)
+{
+	char name[VFS_NAME_MAX + 1], path[VFS_PATH_MAX + 1];
+	long rc = copy_string_from_user(name, uname, sizeof(name));
+	if (rc >= 0 && upath) {
+		rc = copy_path(p, path, upath);
+	}
+	if (rc < 0) {
+		return rc;
+	}
+	struct zrp_server *srv = zrp_main_server();
+	if (!srv) {
+		return -ENODEV;
+	}
+	if (!name[0]) {
+		return -EINVAL; /* the default export is the kernel's (export=) */
+	}
+	return upath ? zrp_export(srv, name, path, p) : zrp_unexport(srv, name, p);
+}
+
 static long sys_chdir(struct process *p, const char *upath)
 {
 	char path[VFS_PATH_MAX + 1];
@@ -474,6 +494,7 @@ long syscall_dispatch(uint32_t num, uint32_t a0, uint32_t a1, uint32_t a2,
 		return f ? vfs_seek(f, (int32_t)a1, (int)a2) : -EBADF;
 	}
 	case SYS_MOUNTFD: return sys_mountfd(p, (int)a0, (const char *)a1, (int)a2, (const char *)a3);
+	case SYS_EXPORT: return sys_export(p, (const char *)a0, (const char *)a1);
 	case SYS_MOUNT:  return sys_mount(p, (const char *)a0, (const char *)a1, (int)a2,
 	                                  (const char *)a3);
 	default:         return -ENOSYS;

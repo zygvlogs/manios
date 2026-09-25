@@ -9,7 +9,8 @@ ManiOS's own C library, built against the ZKT system call ABI
 - `crt0.S` — process entry (`main(argc, argv)`, then `exit`), and the
   ELF note naming the ABI version, which the kernel requires
 - `syscalls.c` — one wrapper per system call (`-1` and `errno` on
-  failure), and `zkt_syscall()` for raw access
+  failure), and `zkt_syscall()` for raw access; `export()` and
+  `unexport()` (M13) serve a directory of the caller's namespace over ZRP
 - `stdio.c`, `format.c` — buffered streams (with `fseek`/`ftell`), and
   the printf family
   (no floating point; 64-bit integers without libgcc)

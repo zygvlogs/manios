@@ -1,4 +1,5 @@
 #include "clock.h"
+#include "cpu.h"
 #include "io.h"
 #include "panic.h"
 
@@ -23,4 +24,14 @@ void clock_start_periodic(uint32_t hz, irq_handler_t tick)
 	outb(PIT_CHANNEL0, (uint8_t)(divisor >> 8));
 
 	irq_install_handler(PIT_IRQ, tick);
+}
+
+uint32_t clock_fine(void)
+{
+	uint32_t flags = cpu_irq_save();
+	outb(PIT_COMMAND, 0x00); /* latch channel 0's count */
+	uint32_t lo = inb(PIT_CHANNEL0);
+	uint32_t hi = inb(PIT_CHANNEL0);
+	cpu_irq_restore(flags);
+	return hi << 8 | lo;
 }

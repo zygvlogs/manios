@@ -10,4 +10,8 @@
  * the hardware cannot produce that rate. */
 void clock_start_periodic(uint32_t hz, irq_handler_t tick);
 
+/* Where the clock is within the current tick: a count that runs down
+ * (the PIT's channel 0). For mixing into nonces, not for timing. */
+uint32_t clock_fine(void);
+
 #endif

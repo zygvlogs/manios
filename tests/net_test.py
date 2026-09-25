@@ -34,11 +34,12 @@ HOST_IP, GUEST_IP = "10.0.0.1", "10.0.0.2"
 ZRP_PORT = 5640
 BROADCAST = b"\xff" * 6
 
-ENOENT, EBADF, EINVAL, EROFS, EPROTO = 2, 9, 22, 30, 71
+ENOENT, EBADF, EINVAL, EROFS, ENOSYS, EPROTO = 2, 9, 22, 30, 38, 71
 ZKT_DIR, ZKT_FILE = 0, 1
 (TVERSION, RVERSION, TATTACH, RATTACH, TWALK, RWALK, TREAD, RREAD, TWRITE, RWRITE,
- TCLUNK, RCLUNK, TSTAT, RSTAT) = range(1, 15)
-RERROR = 64
+ TCLUNK, RCLUNK, TSTAT, RSTAT, TAUTH, RAUTH) = range(1, 17)
+RERROR, RPENDING = 64, 65
+VERSION = "ZRP2"
 
 
 def ip_bytes(ip):
@@ -306,6 +307,8 @@ class HostZrpServer:
                 reply = zmsg(RVERSION, tag, struct.pack("<I", min(msize, 1472)) + zstr(version))
             elif s is None:
                 raise OSError(EPROTO)
+            elif mtype == TAUTH:
+                raise OSError(ENOSYS)  # this server has no key
             elif mtype == TATTACH:
                 fid, aname = r.u32(), r.str()
                 s["fids"][fid] = []
@@ -521,8 +524,11 @@ def test_guest_server(peer, bootfs):
     c = HostZrpClient(peer, 7000)
     rtype, r = c.rpc(TATTACH, struct.pack("<I", 1) + zstr(""))
     check(rtype == RERROR and r.u16() == EPROTO, "a request before Tversion must be EPROTO")
-    rtype, r = c.rpc(TVERSION, struct.pack("<I", 8192) + zstr("ZRP1"), tag=0xFFFF)
-    check(rtype == RVERSION and r.u32() == 1472 and r.str() == "ZRP1", "Tversion")
+    rtype, r = c.rpc(TVERSION, struct.pack("<I", 8192) + zstr(VERSION), tag=0xFFFF)
+    check(rtype == RVERSION and r.u32() == 1472 and r.str() == VERSION, "Tversion")
+    c.expect_error(TAUTH, bytes(16), ENOSYS, "Tauth on a server without a key")
+    c.expect_error(TATTACH, struct.pack("<I", 1) + zstr("") + b"short", EPROTO,
+                   "a Tattach with a malformed proof")
     rtype, r = c.rpc(TATTACH, struct.pack("<I", 1) + zstr(""))
     check(rtype == RATTACH and r.stat()[0] == ZKT_DIR, "Tattach")
     rtype, r = c.rpc(TWALK, struct.pack("<II", 1, 2) + zstr("etc"))
@@ -584,7 +590,7 @@ def test_guest_server(peer, bootfs):
     c.expect_error(TCLUNK, struct.pack("<I", 10), EBADF, "clunking a clunked fid")
 
     # A smaller msize bounds the reads.
-    rtype, r = c.rpc(TVERSION, struct.pack("<I", 300) + zstr("ZRP1"), tag=0xFFFF)
+    rtype, r = c.rpc(TVERSION, struct.pack("<I", 300) + zstr(VERSION), tag=0xFFFF)
     check(r.u32() == 300, "msize negotiation")
     c.rpc(TATTACH, struct.pack("<I", 1) + zstr(""))
     c.rpc(TWALK, struct.pack("<II", 1, 2) + zstr("bin"))
@@ -592,6 +598,35 @@ def test_guest_server(peer, bootfs):
     rtype, r = c.rpc(TREAD, struct.pack("<III", 3, 0, 1000))
     check(r.u32() == 300 - 11, "a read larger than msize allows")
     print("PASS: [guest server] protocol checks")
+
+
+def test_pending(m, peer):
+    """A read that waits (for the mouse to move): a repeat of it is
+    answered Rpending, other requests are answered meanwhile, and the
+    reply comes when the mouse moves."""
+    run_command(m, "serial", "export /dev dev", ['exporting /dev as "dev"'])
+    c = HostZrpClient(peer, 7001)
+    c.rpc(TVERSION, struct.pack("<I", 1472) + zstr(VERSION), tag=0xFFFF)
+    rtype, r = c.rpc(TATTACH, struct.pack("<I", 1) + zstr("dev"))
+    check(rtype == RATTACH, "attaching a named export")
+    rtype, r = c.rpc(TWALK, struct.pack("<II", 1, 2) + zstr("mouse"))
+    check(rtype == RWALK, "walking to the mouse")
+    read = zmsg(TREAD, 500, struct.pack("<III", 2, 0, 100))
+    check(c.raw(read, timeout=0.5) is None, "the mouse was read before it moved")
+    pending = c.raw(read, timeout=2)
+    check(pending == zmsg(RPENDING, 500), f"a repeat of a waiting read got {pending!r}, not Rpending")
+    rtype, r = c.rpc(TSTAT, struct.pack("<I", 1))
+    check(rtype == RSTAT, "another request answered while the read waits")
+    m.monitor.sendall(b"mouse_move 7 4\n")
+    try:
+        reply = c.replies.get(timeout=5)
+    except queue.Empty:
+        raise TestFailure("the waiting read was never answered")
+    r = Reader(reply)
+    size, rtype, tag = r.u32(), r.u8(), r.u16()
+    check(rtype == RREAD and tag == 500 and r.take(r.u32()).startswith(b"m 7 4 "),
+          f"the mouse's record: {reply!r}")
+    check(c.raw(read) == reply, "a repeat after the reply got something else")
 
 
 def single_machine(kernel, workdir):
@@ -623,6 +658,8 @@ def single_machine(kernel, workdir):
               f"malformed packets were not counted: {out}")
         run_command(m, "serial", "ping 10.0.0.1 2", ["seq 1: reply in", "seq 2: reply in"])
         print("PASS: [single] monitor net counters and ping")
+        test_pending(m, peer)
+        print("PASS: [single] a waiting request: Rpending, and others answered meanwhile")
     except TestFailure as e:
         print(f"FAIL: [single] {e}")
         failures += 1

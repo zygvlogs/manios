@@ -13,8 +13,9 @@
 #include "zkt_abi.h"
 #include "zrp.h"
 
-#define TEST_PORT 5641 /* not ZRP_PORT: an export= server may want that one */
+#define TEST_PORT 5641 /* not ZRP_PORT: the main server has that one */
 #define TEST_DIAL "udp!127.0.0.1!5641"
+#define KEYED_DIAL "udp!127.0.0.1!5642"
 
 static const char *failure;
 
@@ -95,6 +96,84 @@ static int resolve(const char *path)
 	return rc;
 }
 
+/* Named exports (M13): names, owners, taking them back. */
+static void exports_test(struct zrp_server *srv)
+{
+	static const char owner;
+	struct vnode *root;
+	char label[40];
+	check(zrp_export(srv, "etc", "/boot/etc", &owner) == 0, "selftest: net: a named export failed");
+	check(zrp_export(srv, "etc", "/boot", &owner) == -EEXIST,
+	      "selftest: net: an export name used twice is not EEXIST");
+	check(zrp_export(srv, "bad/name", "/boot", &owner) == -EINVAL,
+	      "selftest: net: a bad export name is not EINVAL");
+	check(zrp_export(srv, "file", "/boot/etc/motd", &owner) == -ENOTDIR,
+	      "selftest: net: exporting a file is not ENOTDIR");
+	int rc = zrp_mount_key(TEST_DIAL, "etc", 0, &root, label, sizeof(label));
+	check(rc == 0, "selftest: net: mounting a named export failed");
+	if (rc == 0) {
+		struct vnode *motd;
+		check(root->ops->walk(root, "motd", &motd) == 0, "selftest: net: walking a named export");
+		vnode_unref(motd);
+	}
+	check(zrp_unexport(srv, "etc", 0) == -EPERM,
+	      "selftest: net: someone else took an export back");
+	check(zrp_unexport(srv, "etc", &owner) == 0, "selftest: net: taking an export back failed");
+	check(zrp_unexport(srv, "etc", &owner) == -ENOENT,
+	      "selftest: net: taking back a missing export is not ENOENT");
+	if (rc == 0) {
+		/* Fids on it keep working after it goes. */
+		struct vnode *motd;
+		check(root->ops->walk(root, "motd", &motd) == 0,
+		      "selftest: net: a fid on a taken-back export stopped working");
+		vnode_unref(motd);
+		vnode_unref(root);
+	}
+	check(zrp_mount_key(TEST_DIAL, "etc", 0, &root, label, sizeof(label)) == -ENOENT,
+	      "selftest: net: a taken-back export can still be attached");
+	check(zrp_export(srv, "mine", "/boot", &owner) == 0 && zrp_export(srv, "also", "/boot", &owner) == 0,
+	      "selftest: net: exports for an owner");
+	zrp_unexport_owner(srv, &owner);
+	check(zrp_mount_key(TEST_DIAL, "mine", 0, &root, label, sizeof(label)) == -ENOENT
+	      && zrp_mount_key(TEST_DIAL, "also", 0, &root, label, sizeof(label)) == -ENOENT,
+	      "selftest: net: an owner's exports outlived it");
+}
+
+/* Authentication (M13): a server with a key admits only clients that
+ * prove they know it, and a client with a key only servers that do. */
+static void auth_test(void)
+{
+	uint8_t k1[ZRP_KEY], k2[ZRP_KEY];
+	zrp_key_derive("selftest one", k1);
+	zrp_key_derive("selftest two", k2);
+	int err;
+	struct zrp_server *keyed = zrp_serve(TEST_PORT + 1, k1, &err);
+	if (!keyed || zrp_export(keyed, "", "/boot/etc", 0) != 0) {
+		failure = "selftest: net: cannot start a server with a key";
+		if (keyed) {
+			zrp_server_stop(keyed);
+		}
+		return;
+	}
+	struct vnode *root;
+	char label[40];
+	int rc = zrp_mount_key(KEYED_DIAL, "", k1, &root, label, sizeof(label));
+	check(rc == 0, "selftest: net: the right key was refused");
+	if (rc == 0) {
+		struct vnode *motd;
+		check(root->ops->walk(root, "motd", &motd) == 0, "selftest: net: walking after authenticating");
+		vnode_unref(motd);
+		vnode_unref(root);
+	}
+	check(zrp_mount_key(KEYED_DIAL, "", k2, &root, label, sizeof(label)) == -EACCES,
+	      "selftest: net: a wrong key is not EACCES");
+	check(zrp_mount_key(KEYED_DIAL, "", 0, &root, label, sizeof(label)) == -EACCES,
+	      "selftest: net: no key is not EACCES");
+	check(zrp_mount_key(TEST_DIAL, "", k1, &root, label, sizeof(label)) == -EACCES,
+	      "selftest: net: a server that can't prove the key was trusted");
+	zrp_server_stop(keyed);
+}
+
 static void loopback_test(void *unused)
 {
 	(void)unused;
@@ -109,14 +188,17 @@ static void loopback_test(void *unused)
 	check(icmp_ping(IP_LOOPBACK, 1, 1000) >= 0, "selftest: net: ping 127.0.0.1 got no reply");
 
 	int err;
-	struct zrp_server *srv = zrp_serve("/boot", TEST_PORT, &err);
-	if (!srv) {
+	struct zrp_server *srv = zrp_serve(TEST_PORT, 0, &err);
+	if (!srv || zrp_export(srv, "", "/boot", 0) != 0) {
 		failure = "selftest: net: cannot start a ZRP server";
+		if (srv) {
+			zrp_server_stop(srv);
+		}
 		return;
 	}
 	struct vnode *root;
 	char label[40];
-	int rc = zrp_mount(TEST_DIAL, "", &root, label, sizeof(label));
+	int rc = zrp_mount_key(TEST_DIAL, "", 0, &root, label, sizeof(label));
 	check(rc == 0, "selftest: net: mounting over loopback failed");
 	if (rc == 0) {
 		check(vfs_mount(root, label, "/n", BIND_REPLACE) == 0, "selftest: net: binding the mount");
@@ -126,7 +208,7 @@ static void loopback_test(void *unused)
 		check(same_file("/n/bin/sh", "/boot/bin/sh"), "selftest: net: a multi-message file differs");
 		check(same_listing("/n/bin", "/boot/bin"), "selftest: net: a directory listing differs");
 		check(resolve("/n/no/such") == -ENOENT, "selftest: net: a missing name is not ENOENT");
-		check(zrp_mount("udp!127.0.0.1!5641", "other", &root, label, sizeof(label)) == -ENOENT,
+		check(zrp_mount_key("udp!127.0.0.1!5641", "other", 0, &root, label, sizeof(label)) == -ENOENT,
 		      "selftest: net: an unknown export name is not ENOENT");
 
 		struct file *f;
@@ -148,6 +230,8 @@ static void loopback_test(void *unused)
 		zrp_server_stats(srv, &st);
 		check(st.fids == 0, "selftest: net: fids were not clunked when the mount went away");
 	}
+	exports_test(srv);
+	auth_test();
 	zrp_server_stop(srv);
 }
 

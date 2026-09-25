@@ -167,6 +167,7 @@ test: $(KERNEL)
 	python3 tests/net_test.py $(KERNEL)
 	python3 tests/gfx_test.py $(KERNEL)
 	python3 tests/desktop_test.py $(KERNEL)
+	python3 tests/cluster_test.py $(KERNEL)
 
 clean:
 	rm -rf $(BUILD)

@@ -355,7 +355,7 @@ static int perform(struct zsrv *s, uint8_t type, uint16_t tag, struct msg *in)
 	if (type == TVERSION) {
 		uint32_t msize = get(in, 4);
 		get_str(in, name, sizeof(name));
-		if (in->bad || strcmp(name, "ZRP1") || msize < 256) {
+		if (in->bad || strcmp(name, "ZRP2") || msize < 256) {
 			return -EPROTO;
 		}
 		while (s->fids) {
@@ -364,7 +364,7 @@ static int perform(struct zsrv *s, uint8_t type, uint16_t tag, struct msg *in)
 		s->msize = msize < ZSRV_MSIZE ? msize : ZSRV_MSIZE;
 		start(s, &m, type + 1, tag);
 		put(&m, s->msize, 4);
-		put_str(&m, "ZRP1");
+		put_str(&m, "ZRP2");
 		finish(s, &m);
 		return 0;
 	}
