@@ -155,7 +155,12 @@ class Install:
             m.close()
 
     def installs(self):
-        disk, small = blank(self.path("disk.img"), 16), blank(self.path("small.img"), 1)
+        disk, small = blank(self.path("disk.img"), 16), self.path("small.img")
+        # The small disk has a pattern, to see that writes of part of a
+        # block keep the rest of it.
+        pattern = bytes(i % 251 for i in range(1024 * 1024))
+        with open(small, "wb") as f:
+            f.write(pattern)
         m = boot(disks=[disk, small], cdrom=self.iso, order="d")
         try:
             m.expect(SHELL_PROMPT, timeout=120)
@@ -179,9 +184,13 @@ class Install:
             m.type_serial("yes\r")
             m.expect(f"ManiOS {self.version} is installed on ata0.", timeout=120)
             m.expect(SHELL_PROMPT)
-            # dd, on the other disk: the MOTD at block 3.
+            # dd, on the other disk: the MOTD at block 3; and 200 bytes of
+            # the boot area (from byte 10000) at byte 1000, across a block
+            # boundary.
             run_command(m, "serial", "dd if=/boot/etc/motd of=/dev/ata1 seek=3",
                         ["0+1 records in\r\n0+1 records out"], SHELL_PROMPT)
+            run_command(m, "serial", "dd if=/dev/bootarea of=/dev/ata1 bs=100 skip=100 seek=10 count=2",
+                        ["2+0 records in\r\n2+0 records out"], SHELL_PROMPT)
         finally:
             m.close()
         # What the installer wrote, read here.
@@ -202,6 +211,11 @@ class Install:
         motd = open(os.path.join(self.build, "bootfs", "etc", "motd"), "rb").read()
         other = open(small, "rb").read()
         check(other[3 * 512:3 * 512 + len(motd)] == motd, "dd didn't write the MOTD at block 3")
+        check(other[3 * 512 + len(motd):4 * 512] == pattern[3 * 512 + len(motd):4 * 512],
+              "writing the start of block 3 changed the rest of it")
+        check(other[1000:1200] == self.area[10000:10200], "dd didn't write 200 bytes at byte 1000")
+        check(other[:1000] == pattern[:1000] and other[1200:3 * 512] == pattern[1200:3 * 512],
+              "writing bytes 1000-1199 changed the bytes around them")
 
     def disk_boots_and_clones(self):
         disk, clone = self.path("disk.img"), blank(self.path("clone.img"), 8)
