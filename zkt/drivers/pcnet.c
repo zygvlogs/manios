@@ -237,6 +237,19 @@ static void pcnet_poll(struct netif *ifc)
 			break;
 		}
 		barrier();
+		/* The card can hand a descriptor back before it is done with
+		 * it: QEMU's writes it twice, the start of the frame (STP)
+		 * first, then its end (ENP) and length. While the descriptor
+		 * lacks them and the card still owns the next one, it is being
+		 * written: the interrupt that ends the frame will bring us
+		 * back. (Once the next one is ours too, the card has moved on,
+		 * and a frame too big for one buffer is dropped below.) */
+		if (!(flags & DESC_ERR) && (!(flags & DESC_ENP) || !(d->misc & 0x0FFF))
+		    && (card.rx[(card.rx_next + 1) % RX_COUNT].flags & DESC_OWN)) {
+			break;
+		}
+		barrier();
+		flags = d->flags;
 		size_t len = d->misc & 0x0FFF; /* with the 4-byte FCS */
 		if ((flags & (DESC_ERR | DESC_STP | DESC_ENP)) == (DESC_STP | DESC_ENP) && len > 4
 		    && len - 4 <= ETH_FRAME_MAX) {

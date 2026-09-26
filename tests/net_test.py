@@ -451,6 +451,10 @@ def test_malformed(m, peer):
         eth(GUEST_MAC, HOST_MAC, 0x86DD, b"\x60" + b"\0" * 50),                       # IPv6
         eth(GUEST_MAC, HOST_MAC, 0x0806, b"\x00\x01"),                               # runt ARP
         b"\x00" * 10,                                                                # runt frame
+        # Too big for one receive buffer: the PCnet spreads these over
+        # several descriptors, which must go without stalling the ring.
+        eth(GUEST_MAC, HOST_MAC, 0x0800, b"\x45" + b"\0" * 1985),
+        eth(GUEST_MAC, HOST_MAC, 0x0800, b"\x45" + b"\0" * 2985),
     ]
     for frame in bad:
         peer.send(frame)
