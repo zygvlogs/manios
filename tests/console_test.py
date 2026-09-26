@@ -485,6 +485,23 @@ def run_cases(m, name, cases, prompt):
     return failures
 
 
+def screen_text(m):
+    """The VGA text screen, 25 lines (QEMU's pmemsave of 0xB8000)."""
+    path = os.path.join(m.tmpdir, "screen.bin")
+    if os.path.exists(path):
+        os.remove(path)
+    m.monitor.sendall(f'pmemsave 0xb8000 4000 "{path}"\n'.encode())
+    deadline = time.time() + 10
+    while not (os.path.exists(path) and os.path.getsize(path) == 4000):
+        if time.time() > deadline:
+            raise TestFailure("pmemsave wrote no screen")
+        time.sleep(0.1)
+    time.sleep(0.1)
+    data = open(path, "rb").read()
+    return "\n".join(bytes(data[r * 160 + c * 2] for c in range(80)).decode("latin-1").rstrip()
+                     for r in range(25))
+
+
 def run_scenario(kernel, scenario, workdir):
     """Boot ends at the shell: its cases run first, then `exit` drops to
     the kernel monitor for the monitor cases. Generated cases (which
@@ -517,6 +534,28 @@ def run_scenario(kernel, scenario, workdir):
     return failures
 
 
+def failed_boot_on_screen(kernel):
+    """The boot screen is quiet (0.14.1), but not about failures: 3 MiB is
+    too little for the programs of the user self-test, and the panic must
+    be on the screen, after the checks that passed."""
+    m = Machine(kernel, memory=3)
+    try:
+        m.expect("*** ZKT PANIC: selftest: user", timeout=60)
+        m.expect("System halted.")
+        screen = screen_text(m)
+        for needle in ["Self-tests: memory, interrupts, threads, devices, disks, files",
+                       "*** ZKT PANIC: selftest: user", "System halted."]:
+            if needle not in screen:
+                raise TestFailure(f"the screen lacks {needle!r}:\n{screen}")
+        print("PASS: [3 MiB] a failed self-test stops the quiet boot, on the screen")
+        return 0
+    except TestFailure as e:
+        print(f"FAIL: [3 MiB] {e}")
+        return 1
+    finally:
+        m.close()
+
+
 def main():
     global BOOTFS_DIR
     kernel = sys.argv[1] if len(sys.argv) > 1 else "build/manios-zkt.elf"
@@ -524,6 +563,7 @@ def main():
     workdir = tempfile.mkdtemp(prefix="zkt-disks-")
     try:
         failures = sum(run_scenario(kernel, sc, workdir) for sc in SCENARIOS)
+        failures += failed_boot_on_screen(kernel)
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
     sys.exit(1 if failures else 0)

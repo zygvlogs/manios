@@ -25,7 +25,7 @@ import tempfile
 import time
 import zlib
 
-from console_test import SHELL_PROMPT, Machine, TestFailure, fnv1a, run_command
+from console_test import SHELL_PROMPT, Machine, TestFailure, fnv1a, run_command, screen_text
 
 SECTOR = 512
 LOADER = "ManiOS boot loader "
@@ -43,23 +43,6 @@ def boot(disks=(), cdrom=None, order="c", memory=32):
     for d in disks:
         args += ["-drive", f"file={d},format=raw,if=ide"]
     return Machine(None, args, memory)
-
-
-def screen_text(m):
-    """The VGA text screen, 25 lines (QEMU's pmemsave of 0xB8000)."""
-    path = os.path.join(m.tmpdir, "screen.bin")
-    if os.path.exists(path):
-        os.remove(path)
-    m.monitor.sendall(f'pmemsave 0xb8000 4000 "{path}"\n'.encode())
-    deadline = time.time() + 10
-    while not (os.path.exists(path) and os.path.getsize(path) == 4000):
-        if time.time() > deadline:
-            raise TestFailure("pmemsave wrote no screen")
-        time.sleep(0.1)
-    time.sleep(0.1)
-    data = open(path, "rb").read()
-    return "\n".join(bytes(data[r * 160 + c * 2] for c in range(80)).decode("latin-1").rstrip()
-                     for r in range(25))
 
 
 def blank(path, mib):
