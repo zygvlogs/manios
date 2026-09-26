@@ -7,10 +7,12 @@ its place, and a desktop environment that is genuinely its own.
 ManiOS is **not** a Linux distribution and **not** a BSD or AmigaOS
 clone. It does not depend on the Linux kernel.
 
-ZKT (ZygKernel Technology) was also a [ZygOS](https://github.com/zygvlogs/zygos)
-project; [ZygHosting.online](https://zyghosting.online/) and
+ZKT (ZygKernel Technology) is ZygOS as a kernel: it was also a
+[ZygOS](https://github.com/zygvlogs/zygos) project.
+[ZygHosting.online](https://zyghosting.online/) and
 [Manikineko.nl](https://manikineko.nl/) decided to make ManiOS, a separate
-project from ZygOS.
+project from ZygOS; its code is written for ManiOS, not carried over from
+ZygOS.
 
 ## Status
 
