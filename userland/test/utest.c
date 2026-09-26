@@ -329,6 +329,7 @@ static void test_pipes(void)
 	check(poll(pf, 1, 0) == 1, "a pipe whose other end is gone polls readable", 0);
 	check(read(fds[1], buf, sizeof(buf)) == 0, "the other end closed: end of file", 0);
 	check_err(write(fds[1], "x", 1), EPIPE, "writing with no reader is EPIPE");
+	check_err(lseek(fds[1], 0, SEEK_CUR), ESPIPE, "seeking a pipe is ESPIPE");
 	close(fds[1]);
 
 	struct zkt_dirent st;

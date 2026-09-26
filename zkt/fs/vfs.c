@@ -191,6 +191,9 @@ int vfs_readdir(struct file *f, struct dirent *out)
 
 long vfs_seek(struct file *f, int32_t offset, int whence)
 {
+	if (f->loc.v[0]->type == VNODE_PIPE) {
+		return -ESPIPE; /* a stream: its reads take no offset */
+	}
 	if (f->loc.v[0]->type == VNODE_DIR) {
 		if (offset != 0 || whence != SEEK_SET) {
 			return -EINVAL;

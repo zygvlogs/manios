@@ -27,6 +27,7 @@ const char *kstrerror(int err)
 	case EMFILE:       return "too many open files";
 	case ENOSYS:       return "no such system call";
 	case EPIPE:        return "broken pipe";
+	case ESPIPE:       return "illegal seek";
 	case EPROTO:       return "protocol error";
 	case EADDRINUSE:   return "address in use";
 	case ENETUNREACH:  return "network unreachable";
