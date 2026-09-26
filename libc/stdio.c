@@ -33,13 +33,26 @@ FILE *stdin = &std_in, *stdout = &std_out, *stderr = &std_err;
 /* Streams fopen() made, for fflush(NULL). */
 static struct manios_file *opened;
 
+/* No signals: a stream whose reader is gone (EPIPE) ends the program
+ * quietly, with the status a shell would show for SIGPIPE, as Unix's
+ * SIGPIPE and Plan 9's "write on closed pipe" do by default. So a filter
+ * such as yes(1) stops once the rest of its pipeline has finished.
+ * write() itself still returns EPIPE, for programs that outlive a reader. */
+static void write_failed(FILE *f, long n)
+{
+	if (n < 0 && errno == EPIPE) {
+		_exit(141);
+	}
+	f->flags |= F_ERR;
+}
+
 static int flush_out(FILE *f)
 {
 	size_t done = 0;
 	while (done < f->wlen) {
 		long n = write(f->fd, f->buf + done, f->wlen - done);
 		if (n <= 0) {
-			f->flags |= F_ERR;
+			write_failed(f, n);
 			f->wlen = 0;
 			return EOF;
 		}
@@ -111,6 +124,34 @@ FILE *fopen(const char *path, const char *mode)
 	if (!f) {
 		close(fd);
 	}
+	return f;
+}
+
+/* The new file takes the stream's descriptor number (dup2), as POSIX
+ * has it: freopen(path, "r", stdin) makes it standard input. */
+FILE *freopen(const char *path, const char *mode, FILE *f)
+{
+	unsigned flags;
+	int omode = parse_mode(mode, &flags);
+	fflush(f);
+	if (omode < 0 || !path) {
+		errno = EINVAL;
+		return NULL;
+	}
+	int fd = open(path, omode);
+	if (fd < 0) {
+		return NULL;
+	}
+	if (fd != f->fd) {
+		if (dup2(fd, f->fd) < 0) {
+			close(fd);
+			return NULL;
+		}
+		close(fd);
+	}
+	f->flags = flags | (f->flags & (F_ALLOC | F_UNBUF));
+	f->rpos = f->rlen = f->wlen = 0;
+	f->unget = EOF;
 	return f;
 }
 
@@ -286,7 +327,7 @@ static int out(FILE *f, const char *s, size_t n)
 		while (n) {
 			long w = write(f->fd, s, n);
 			if (w <= 0) {
-				f->flags |= F_ERR;
+				write_failed(f, w);
 				return EOF;
 			}
 			s += w;

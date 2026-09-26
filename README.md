@@ -32,6 +32,7 @@ is written anew for it.
 | M13 — cluster roles: file server, CPU server, terminal; authenticated ZRP2 | Achieved ([notes](docs/milestones/M13-cluster-roles.md), [ADR-0005](docs/adr/0005-cluster-roles-and-authentication.md)) |
 | M14 — own boot loader, bootable hybrid ISO, installer, releases | Achieved ([notes](docs/milestones/M14-installer-release.md), [ADR-0006](docs/adr/0006-native-boot-loader-and-installer.md)) |
 | M15 — network cards for VirtualBox (AMD PCnet, Intel PRO/1000), DHCP | Achieved ([notes](docs/milestones/M15-network-cards-dhcp.md)) |
+| M16 — first BSD imports: OpenBSD's text tools on ManiOS's libc | Achieved ([notes](docs/milestones/M16-openbsd-tools.md), [imports](third_party/openbsd/README.md)) |
 
 ## Download and install
 
@@ -40,7 +41,7 @@ page has a bootable ISO, `manios-VERSION.iso`. It boots from a CD, from
 a USB stick it is written to, or in QEMU or VirtualBox:
 
 ```
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.15.0.iso -boot d
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.16.0.iso -boot d
 ```
 
 and `install ata0` puts ManiOS on a hard disk. ManiOS boots with its own
@@ -118,6 +119,12 @@ closes windows. The window system is a file server: in a terminal,
 one ([design](docs/desktop/DESIGN.md)). The shell does pipelines and
 redirection (`ls /bin | wc`, `cat < FILE`, `echo x > /dev/null`).
 
+Besides ManiOS's own programs, `/bin` has text tools from OpenBSD,
+built from OpenBSD's source unmodified: `head`, `cut`, `paste`, `comm`,
+`uniq`, `rev`, `fold`, `expand`, `basename`, `dirname` and `yes`
+(`ls /bin | head -n 5`; [third_party/openbsd](third_party/openbsd/README.md)).
+Their licenses are in `/boot/etc/notices`.
+
 ## Repository layout
 
 ```
@@ -138,7 +145,8 @@ desktop/      the desktop environment: libgfx/ (2D graphics), libwin/ (windows),
 userland/     user programs (bin/), test programs (test/), boot files (etc/)
 tools/        cross-toolchain build script, boot area / ISO / disk image builders,
               QEMU script
-third_party/  vendored BSD-derived source + license notices ledger
+third_party/  BSD-derived source (openbsd/: tools and libc functions) + the
+              license notices ledger
 docs/         architecture, roadmap, and ADRs
 tests/        boot smoke tests, console, network, graphics, desktop, cluster
               and install tests

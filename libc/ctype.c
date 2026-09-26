@@ -7,6 +7,7 @@ int isalpha(int c)  { return islower(c) || isupper(c); }
 int isalnum(int c)  { return isalpha(c) || isdigit(c); }
 int isxdigit(int c) { return isdigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'); }
 int isspace(int c)  { return c == ' ' || (c >= '\t' && c <= '\r'); }
+int isblank(int c)  { return c == ' ' || c == '\t'; }
 int isprint(int c)  { return c >= 0x20 && c < 0x7F; }
 int iscntrl(int c)  { return (c >= 0 && c < 0x20) || c == 0x7F; }
 int ispunct(int c)  { return isprint(c) && c != ' ' && !isalnum(c); }

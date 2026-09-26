@@ -21,6 +21,8 @@ extern FILE *stdin, *stdout, *stderr;
  * "w" opens an existing file or device for writing). */
 FILE *fopen(const char *path, const char *mode);
 FILE *fdopen(int fd, const char *mode);
+/* The stream, now on `path` (the old file closed). NULL on failure. */
+FILE *freopen(const char *path, const char *mode, FILE *f);
 int fclose(FILE *f);
 int fflush(FILE *f); /* NULL: every stream */
 int fileno(FILE *f);
@@ -38,6 +40,14 @@ int getc(FILE *f);
 int getchar(void);
 int ungetc(int c, FILE *f); /* one character */
 char *fgets(char *s, int size, FILE *f);
+#ifndef MANIOS_SSIZE_T
+#define MANIOS_SSIZE_T
+typedef long ssize_t;
+#endif
+/* A whole line (or up to `delim`), however long, into *line (malloc()ed,
+ * grown as needed; *size its capacity): its length, or -1 at the end. */
+ssize_t getdelim(char **line, size_t *size, int delim, FILE *f);
+ssize_t getline(char **line, size_t *size, FILE *f);
 size_t fread(void *buf, size_t size, size_t count, FILE *f);
 
 int fputc(int c, FILE *f);

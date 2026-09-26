@@ -1,6 +1,7 @@
 /* Process entry. The kernel leaves ESP pointing at argc, then argv
  * (zkt_abi.h) -- a cdecl frame without a return address -- so _start
- * calls main(argc, argv) and hands its result to exit(). */
+ * calls __libc_init(argc, argv), then main(argc, argv), and hands its
+ * result to exit(). */
 #include <zkt_abi.h>
 
 .section .text
@@ -8,12 +9,16 @@
 .type _start, @function
 _start:
 	xor %ebp, %ebp          /* marks the outermost frame for debuggers */
-	pop %eax                /* argc */
-	pop %ecx                /* argv */
+	pop %esi                /* argc (esi and edi survive the calls) */
+	pop %edi                /* argv */
 	and $-16, %esp
 	sub $8, %esp            /* 16-byte aligned at the call, after two pushes */
-	push %ecx
-	push %eax
+	push %edi
+	push %esi
+	call __libc_init        /* the program's name, from argv[0] (progname.c) */
+	add $8, %esp
+	push %edi
+	push %esi
 	call main
 	add $16, %esp
 	push %eax

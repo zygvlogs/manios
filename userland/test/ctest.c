@@ -3,12 +3,14 @@
  * exits 0 only if every check passed. */
 #include <ctype.h>
 #include <errno.h>
+#include <libgen.h>
 #include <limits.h>
 #include <manios.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 static int checks, failures;
 static char *heap_start; /* sbrk(0) before the first malloc */
@@ -74,6 +76,26 @@ static void test_strtol(void)
 	check(strtoul("4294967295", NULL, 10) == ULONG_MAX && errno == 0, "strtoul ULONG_MAX");
 	check(strtoul("4294967296", NULL, 10) == ULONG_MAX && errno == ERANGE, "strtoul overflow");
 	check(atoi("  -17") == -17 && abs(-5) == 5, "atoi, abs");
+
+	errno = 0;
+	check(strtoll("9223372036854775807", NULL, 10) == LLONG_MAX && errno == 0
+	      && strtoll("-9223372036854775808", NULL, 10) == LLONG_MIN && errno == 0,
+	      "strtoll limits");
+	check(strtoll("9223372036854775808", NULL, 10) == LLONG_MAX && errno == ERANGE,
+	      "strtoll overflow");
+	errno = 0;
+	check(strtoull("18446744073709551615", NULL, 10) == ULLONG_MAX && errno == 0
+	      && strtoull("0x123456789abcdef0", NULL, 0) == 0x123456789abcdef0ULL,
+	      "strtoull");
+	check(strtoull("18446744073709551616", NULL, 10) == ULLONG_MAX && errno == ERANGE,
+	      "strtoull overflow");
+
+	const char *why;
+	check(strtonum("42", 1, 100, &why) == 42 && why == NULL, "strtonum");
+	check(strtonum("0", 1, 100, &why) == 0 && !strcmp(why, "too small")
+	      && strtonum("101", 1, 100, &why) == 0 && !strcmp(why, "too large")
+	      && strtonum("4x", 1, 100, &why) == 0 && !strcmp(why, "invalid"),
+	      "strtonum rejects what is out of range or not a number");
 }
 
 static void test_strings(void)
@@ -107,7 +129,56 @@ static void test_strings(void)
 	free(d);
 	check(!strcmp(strerror(ENOENT), "no such file or directory"), "strerror");
 	check(isdigit('7') && !isdigit('a') && isspace('\t') && toupper('q') == 'Q'
-	      && tolower('Q') == 'q' && isxdigit('F') && !isalpha('1') && ispunct('!'), "ctype");
+	      && tolower('Q') == 'q' && isxdigit('F') && !isalpha('1') && ispunct('!')
+	      && isblank('\t') && !isblank('\n'), "ctype");
+
+	strcpy(buf, "a,,b");
+	char *rest = buf, *f1 = strsep(&rest, ","), *f2 = strsep(&rest, ",");
+	char *f3 = strsep(&rest, ",");
+	check(!strcmp(f1, "a") && !strcmp(f2, "") && !strcmp(f3, "b") && rest == NULL
+	      && strsep(&rest, ",") == NULL, "strsep keeps empty fields");
+	check(!strcasecmp("ManiOS", "MANIOS") && strcasecmp("a", "B") < 0
+	      && !strncasecmp("abcX", "ABCy", 3) && strncasecmp("abcX", "ABCy", 4) < 0,
+	      "strcasecmp, strncasecmp");
+	strcpy(buf, "/a/b/c.txt");
+	check(!strcmp(basename(buf), "c.txt") && !strcmp(dirname(buf), "/a/b")
+	      && !strcmp(basename("/"), "/") && !strcmp(dirname("file"), "."),
+	      "basename, dirname (OpenBSD's)");
+	check(reallocarray(NULL, 0x10000, 0x10000) == NULL && errno == ENOMEM,
+	      "reallocarray catches overflow");
+}
+
+static void test_getopt(void)
+{
+	char *args[] = { "prog", "-ab", "-c", "one", "-dtwo", "-x", "--", "-file", 0 };
+	int argc = 8, got[8], n = 0, c;
+	char *c_arg = 0, *d_arg = 0;
+	optind = 0;
+	opterr = 0;
+	while ((c = getopt(argc, args, "abc:d:")) != -1 && n < 8) {
+		got[n++] = c;
+		if (c == 'c') {
+			c_arg = optarg;
+		} else if (c == 'd') {
+			d_arg = optarg;
+		}
+	}
+	check(n == 5 && got[0] == 'a' && got[1] == 'b' && got[2] == 'c' && got[3] == 'd'
+	      && got[4] == '?' && optopt == 'x' && c_arg && !strcmp(c_arg, "one")
+	      && d_arg && !strcmp(d_arg, "two") && optind == 7,
+	      "getopt: grouped flags, joined and separate arguments, --");
+
+	char *missing[] = { "prog", "-v", "-n", 0 };
+	optind = 0;
+	int first = getopt(3, missing, ":vn:"), second = getopt(3, missing, ":vn:");
+	check(first == 'v' && second == ':' && optopt == 'n' && getopt(3, missing, ":vn:") == -1,
+	      "getopt: a missing argument, with a leading ':'");
+	char *operand[] = { "prog", "file", "-v", 0 };
+	optind = 0;
+	check(getopt(3, operand, "v") == -1 && optind == 1, "getopt stops at the first operand");
+	opterr = 1;
+	optind = 1;
+	check(!strcmp(getprogname(), "ctest"), "getprogname");
 }
 
 static int cmp_int(const void *a, const void *b)
@@ -226,6 +297,41 @@ static void test_stdio(void)
 	f = fopen("/dev/cons", "w");
 	check(f && fprintf(f, "%s", "") == 0 && fclose(f) == 0, "a device opened for writing");
 
+	f = fopen("/boot/etc/motd", "r");
+	char *text = NULL;
+	size_t size = 0;
+	check(f && getline(&text, &size, f) == 19 && !strcmp(text, "Welcome to ManiOS.\n")
+	      && size >= 20, "getline");
+	if (f) {
+		while (getline(&text, &size, f) > 0) {
+		}
+		check(getline(&text, &size, f) == -1 && feof(f), "getline at end of file");
+		fclose(f);
+	}
+	free(text);
+
+	check(freopen("/boot/etc/motd", "r", stdin) == stdin && fgets(line, sizeof(line), stdin)
+	      && !strcmp(line, "Welcome to ManiOS.\n"), "freopen");
+
+	/* No SIGPIPE: stdio ends a program whose reader is gone, with the
+	 * status a shell shows for SIGPIPE. OpenBSD's yes(1) relies on it;
+	 * basename(1) prints one line, so a regression fails, not hangs. */
+	int ends[2], saved = dup(1);
+	fflush(stdout);
+	if (saved >= 0 && pipe(ends) == 0) {
+		dup2(ends[0], 1);
+		close(ends[0]);
+		close(ends[1]);
+		int st = run("/bin/basename", "/a/b");
+		dup2(saved, 1);
+		check(st == 141, "writing to a pipe with no reader ends the program");
+	} else {
+		check(0, "pipe for the broken pipe check");
+	}
+	if (saved >= 0) {
+		close(saved);
+	}
+
 	check(run("/boot/test/fault", "doublefree") == 134, "a double free aborts");
 	check(run("/boot/test/fault", "assert") == 134, "a failed assert aborts");
 }
@@ -236,6 +342,7 @@ int main(void)
 	test_printf();
 	test_strtol();
 	test_strings();
+	test_getopt();
 	test_sort();
 	test_malloc();
 	test_stdio();

@@ -19,5 +19,8 @@ Development tooling that is not part of the shipped OS:
 - `mkdisk.py` — a raw hard disk image laid out as `install` lays one out
   (for tests, and to try an installed system without installing).
 - `mkfont.py` — generates the desktop's font from `font.txt`.
+- `mknotices.py` — collects the license header of every file under
+  `third_party/` into `/boot/etc/notices` (and the release's
+  `NOTICES.txt`); fails if an imported file lacks ManiOS's note.
 - ADR-0006 and [`docs/install.md`](../docs/install.md) describe the
   boot path these build.

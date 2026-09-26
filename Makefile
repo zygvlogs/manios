@@ -64,7 +64,14 @@ USER_LDFLAGS := -nostdlib -static -T userland/user.ld -Wl,-n
 
 LIBC := $(BUILD)/libc/libc.a
 CRT0 := $(BUILD)/libc/crt0.o
-LIBC_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard libc/*.c))
+# Programs and C library parts from OpenBSD (third_party/openbsd/README.md,
+# third_party/THIRD_PARTY_NOTICES.md), built unmodified against ManiOS's
+# libc. Upstream builds them without -Wextra's style warnings.
+OBSD := third_party/openbsd
+OBSD_TOOLS := basename comm cut dirname expand fold head paste rev uniq yes
+OBSD_CFLAGS = $(USER_CFLAGS) -I$(OBSD)/sys -Wno-sign-compare -Wno-unused-parameter \
+              -Wno-maybe-uninitialized '-DDEF_WEAK(x)='
+LIBC_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard libc/*.c $(OBSD)/lib/libc/*/*.c))
 # The 2D graphics library (M11); linked into every program, which only
 # takes what it uses.
 LIBGFX := $(BUILD)/desktop/libgfx/libgfx.a
@@ -78,11 +85,14 @@ USER_LIBS := $(LIBWIN) $(LIBGFX) $(LIBC)
 WM_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard desktop/wm/*.c))
 DESKTOP_APPS := $(patsubst desktop/apps/%.c,%,$(wildcard desktop/apps/*.c))
 DESKTOP_BOOTFS := $(patsubst %,$(BUILD)/bootfs/bin/%,$(DESKTOP_APPS))
-USER_PROGRAMS := $(patsubst userland/%.c,%,$(wildcard userland/bin/*.c userland/test/*.c))
+USER_PROGRAMS := $(patsubst userland/%.c,%,$(wildcard userland/bin/*.c userland/test/*.c)) \
+                 $(patsubst %,bin/%,$(OBSD_TOOLS))
 USER_OBJECTS := $(patsubst %,$(BUILD)/userland/%.o,$(USER_PROGRAMS))
+# The licenses of the code from BSD go with the programs built from it.
+NOTICES := $(BUILD)/bootfs/etc/notices
 BOOTFS_FILES := $(patsubst %,$(BUILD)/bootfs/%,$(USER_PROGRAMS)) \
                 $(patsubst userland/%,$(BUILD)/bootfs/%,$(wildcard userland/etc/*)) \
-                $(BUILD)/bootfs/bin/desktop $(DESKTOP_BOOTFS)
+                $(BUILD)/bootfs/bin/desktop $(DESKTOP_BOOTFS) $(NOTICES)
 BOOTFS_OBJECT := $(BUILD)/bootfs.o
 
 .PHONY: all toolchain run test clean iso release test-images
@@ -116,6 +126,19 @@ $(BUILD)/libc/%.o: libc/%.c
 $(BUILD)/libc/%.o: libc/%.S
 	@mkdir -p $(dir $@)
 	$(CC) $(USER_CFLAGS) -c $< -o $@
+
+$(BUILD)/$(OBSD)/%.o: $(OBSD)/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(OBSD_CFLAGS) -c $< -o $@
+
+# An OpenBSD tool's object goes where a userland/bin/ program's would, so
+# the usual rules link it and install it in /bin.
+define OBSD_TOOL_RULE
+$(BUILD)/userland/bin/$(1).o: $(OBSD)/usr.bin/$(1)/$(1).c
+	@mkdir -p $$(dir $$@)
+	$$(CC) $$(OBSD_CFLAGS) -c $$< -o $$@
+endef
+$(foreach t,$(OBSD_TOOLS),$(eval $(call OBSD_TOOL_RULE,$(t))))
 
 $(LIBC): $(LIBC_OBJECTS)
 	@rm -f $@
@@ -161,6 +184,10 @@ $(BUILD)/bootfs/%: $(BUILD)/userland/%.elf
 $(BUILD)/bootfs/etc/%: userland/etc/%
 	@mkdir -p $(dir $@)
 	cp $< $@
+
+$(NOTICES): tools/mknotices.py $(shell find third_party -name '*.[ch]')
+	@mkdir -p $(dir $@)
+	python3 tools/mknotices.py $@
 
 # Sorted names, fixed owner and timestamps: the same inputs give the
 # same archive. objcopy runs inside build/ so the symbols it defines are
@@ -233,7 +260,8 @@ release: $(ISO) $(KERNEL)
 	@mkdir -p $(DIST)
 	cp $(ISO) $(DIST)/manios-$(VERSION).iso
 	cp $(KERNEL) $(DIST)/manios-$(VERSION)-kernel.elf
-	cd $(DIST) && sha256sum manios-$(VERSION).iso manios-$(VERSION)-kernel.elf > SHA256SUMS
+	cp $(NOTICES) $(DIST)/NOTICES.txt
+	cd $(DIST) && sha256sum manios-$(VERSION).iso manios-$(VERSION)-kernel.elf NOTICES.txt > SHA256SUMS
 
 run: $(KERNEL)
 	tools/qemu-run.sh $(KERNEL)
@@ -243,6 +271,7 @@ test: $(KERNEL) test-images
 	tests/boot_smoke_test.sh $(KERNEL)
 	python3 tests/install_test.py $(BUILD)
 	python3 tests/console_test.py $(KERNEL)
+	python3 tests/openbsd_test.py $(KERNEL)
 	python3 tests/net_test.py $(KERNEL)
 	python3 tests/gfx_test.py $(KERNEL)
 	python3 tests/desktop_test.py $(KERNEL)

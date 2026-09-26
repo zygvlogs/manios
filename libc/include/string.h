@@ -29,6 +29,11 @@ char *strndup(const char *s, size_t n);
 
 /* The message for an error number (zkt_abi.h). */
 char *strerror(int err);
+int strcoll(const char *a, const char *b); /* strcmp(): the "C" locale */
+/* The next token of *s, up to any byte in delim (made a NUL); *s moves
+ * past it, or becomes NULL after the last. (BSD) */
+char *strsep(char **s, const char *delim);
+#include <strings.h> /* strcasecmp(): BSD programs expect it here too */
 
 /* Copies at most size-1 bytes and always NUL-terminates (when size > 0).
  * Returns strlen(src), so truncation is `result >= size`. */

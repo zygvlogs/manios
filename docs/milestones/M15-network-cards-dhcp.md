@@ -92,6 +92,11 @@ dhcp: pcn0: 10.0.2.15/24, gateway 10.0.2.2 (from 10.0.2.2, for 86400 s)
   polling, transmit, CSR0) found nothing the driver does wrong. The
   receive ring was doubled anyway, which the flood figures above show
   was worth it; if it comes back, the counters will say more.
+  *(It came back in 0.16's first full run, and was found: QEMU writes a
+  PCnet receive descriptor twice -- handing it back with only the start
+  of the frame marked, then adding the end and the length -- and the
+  driver, reading in between, dropped the frame as malformed. Fixed in
+  0.16; see the [M16 notes](M16-openbsd-tools.md#verification).)*
 - Found on the way: the drivers counted each frame they sent, and so
   did the stack (ARP, IP) -- `tx` read twice the truth. Only the stack
   counts now.

@@ -16,4 +16,11 @@ No GPL/LGPL/AGPL code, and no Linux-derived code, is ever placed here or
 anywhere else in this repository — see
 [§3.4](../docs/FOUNDING-PROPOSAL.md#34-what-legally-compatible-rules-out).
 
-Empty; nothing has been imported yet.
+- [`openbsd/`](openbsd/README.md) — from OpenBSD (M16, 0.16): text
+  tools (`head`, `cut`, `paste`, `comm`, `uniq`, `rev`, `fold`,
+  `expand`, `basename`, `dirname`, `yes`), four libc functions and
+  `<sys/queue.h>`, all unmodified.
+
+The build collects the license header of every file here into
+`/boot/etc/notices` (`tools/mknotices.py`): the licenses require the
+notices to go with the programs built from this code.

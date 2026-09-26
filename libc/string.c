@@ -1,4 +1,5 @@
 #include <string.h>
+#include <strings.h>
 #include <errno.h>
 #include <stdint.h>
 
@@ -252,4 +253,50 @@ char *strerror(int err)
 	case EHOSTUNREACH: return "host unreachable";
 	default:           return "unknown error";
 	}
+}
+
+int strcoll(const char *a, const char *b)
+{
+	return strcmp(a, b); /* the "C" locale: byte order */
+}
+
+static int lower(int c)
+{
+	return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c;
+}
+
+int strcasecmp(const char *a, const char *b)
+{
+	while (*a && lower((unsigned char)*a) == lower((unsigned char)*b)) {
+		a++;
+		b++;
+	}
+	return lower((unsigned char)*a) - lower((unsigned char)*b);
+}
+
+int strncasecmp(const char *a, const char *b, size_t n)
+{
+	for (; n; n--, a++, b++) {
+		int d = lower((unsigned char)*a) - lower((unsigned char)*b);
+		if (d || !*a) {
+			return d;
+		}
+	}
+	return 0;
+}
+
+char *strsep(char **s, const char *delim)
+{
+	char *token = *s;
+	if (!token) {
+		return NULL;
+	}
+	char *end = token + strcspn(token, delim);
+	if (*end) {
+		*end = '\0';
+		*s = end + 1;
+	} else {
+		*s = NULL;
+	}
+	return token;
 }

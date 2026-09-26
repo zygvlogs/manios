@@ -27,6 +27,21 @@ long atol(const char *s);
  * ULONG_MAX and errno ERANGE. */
 long strtol(const char *s, char **end, int base);
 unsigned long strtoul(const char *s, char **end, int base);
+long long strtoll(const char *s, char **end, int base);
+unsigned long long strtoull(const char *s, char **end, int base);
+
+/* From OpenBSD (third_party/openbsd/lib/libc/stdlib). */
+long long strtonum(const char *s, long long min, long long max, const char **errstr);
+void *reallocarray(void *ptr, size_t count, size_t size);
+
+/* This program's name: the last part of argv[0] (err() prints it). */
+const char *getprogname(void);
+
+/* Multibyte characters, in the "C" locale: one byte each (<locale.h>). */
+#define MB_CUR_MAX 1
+int mblen(const char *s, size_t n);
+int mbtowc(wchar_t *wc, const char *s, size_t n);
+int wctomb(char *s, wchar_t wc);
 
 void qsort(void *base, size_t count, size_t size, int (*cmp)(const void *, const void *));
 void *bsearch(const void *key, const void *base, size_t count, size_t size,

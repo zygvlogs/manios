@@ -39,8 +39,8 @@
   stack and ZRP, on the wire. QEMU's socket netdev delivers the guest's
   Ethernet frames to the test, which speaks ARP/IPv4/ICMP/UDP and ZRP
   itself. Over each card -- NE2000, AMD PCnet, Intel e1000 -- it checks
-  the guest's replies and checksums, sends it malformed packets and
-  floods, and runs its own ZRP server (on a lossy link) and client
+  the guest's replies and checksums, sends it malformed packets
+  (among them frames too big for one receive buffer) and floods, and runs its own ZRP server (on a lossy link) and client
   against the guest's. It connects two ManiOS machines, one serving a
   FAT volume to the other. And DHCP: against the test's own server (a
   lost DISCOVER, a stray and a malformed OFFER, a NAK), and against
@@ -69,6 +69,15 @@
   namespace (and the file server through it), exit statuses, jobs that
   cannot start (their reason reaches the terminal), a remote program's
   window on the terminal's desktop, and a CPU server dying under a job.
+
+- `openbsd_test.py` (also run by `make test`) — the programs imported
+  from OpenBSD (0.16, [third_party/openbsd](../third_party/openbsd/README.md)),
+  on a FAT disk of small text files it generates: each program's whole
+  output, including pipes, standard input (`-`), `yes | head` ending,
+  and error messages from `getopt`, `err`/`warn` and `strtonum`; exit
+  statuses through the monitor's `run`. The expected outputs are
+  OpenBSD's (GNU's tools agree, but for `uniq -c`'s column width).
+  Needs mtools.
 
 - `tools/mkfont.py --check` (in `make test`) — the generated font
   matches `desktop/libgfx/font.txt`.

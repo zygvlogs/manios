@@ -506,6 +506,7 @@ a concrete shape rather than only a diagram.
 | M13 | **Achieved** ([notes](milestones/M13-cluster-roles.md)). Cluster roles: file server / CPU server / terminal (ADR-0003) | M8, M10 |
 | M14 | **Achieved** ([notes](milestones/M14-installer-release.md)). Native boot loader, bootable ISO, installer, published releases (ADR-0006) | M6, M9 |
 | M15 | **Achieved** ([notes](milestones/M15-network-cards-dhcp.md)). Network cards for VirtualBox (AMD PCnet, Intel 8254x), DHCP | M10 |
+| M16 | **Achieved** ([notes](milestones/M16-openbsd-tools.md)). The first BSD-derived imports (§3.3): OpenBSD's text tools, unmodified, on a POSIX/BSD layer in ManiOS's libc | M9 |
 
 Each milestone gets its own short design note under `docs/` when it
 starts (not written speculatively now), following the ADR practice
@@ -610,6 +611,11 @@ publishes a brand-usage policy for downstream forks.
 `third_party/THIRD_PARTY_NOTICES.md` is created now (empty, with the
 required structure) so the very first BSD-derived import has nowhere to
 go but into it.
+
+*(M16 made the first imports, from OpenBSD, and recorded them there; the
+build also puts every imported file's notice in the boot archive, as
+`/boot/etc/notices`, since the licenses ask for the notices to go with
+the binaries.)*
 
 ---
 

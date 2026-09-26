@@ -61,8 +61,21 @@ static int digit_value(int c)
 	return 36;
 }
 
-/* The shared part of strtol/strtoul: magnitude, sign and overflow. */
-static unsigned long parse(const char *s, char **end, int base, bool *negative, bool *overflow)
+/* v = v * base + d, unless that overflows 64 bits: 32x32-bit multiplies
+ * only, which the 386 does itself (no libgcc for 64-bit division). */
+static bool mul_add(uint64_t *v, unsigned base, unsigned d)
+{
+	uint64_t lo = (uint64_t)(uint32_t)*v * base + d;
+	uint64_t hi = (uint64_t)(uint32_t)(*v >> 32) * base + (lo >> 32);
+	if (hi >> 32) {
+		return false;
+	}
+	*v = hi << 32 | (uint32_t)lo;
+	return true;
+}
+
+/* The shared part of the strto* family: magnitude, sign and overflow. */
+static uint64_t parse(const char *s, char **end, int base, bool *negative, bool *overflow)
 {
 	const char *p = s;
 	*negative = *overflow = false;
@@ -87,12 +100,11 @@ static unsigned long parse(const char *s, char **end, int base, bool *negative, 
 		return 0;
 	}
 	const char *digits = p;
-	unsigned long v = 0;
+	uint64_t v = 0;
 	for (int d; (d = digit_value((unsigned char)*p)) < base; p++) {
-		if (v > (ULONG_MAX - (unsigned long)d) / (unsigned long)base) {
+		if (!mul_add(&v, (unsigned)base, (unsigned)d)) {
 			*overflow = true;
 		}
-		v = v * (unsigned long)base + (unsigned long)d;
 	}
 	if (end) {
 		*end = (char *)(p == digits ? s : p);
@@ -103,8 +115,8 @@ static unsigned long parse(const char *s, char **end, int base, bool *negative, 
 long strtol(const char *s, char **end, int base)
 {
 	bool negative, overflow;
-	unsigned long v = parse(s, end, base, &negative, &overflow);
-	unsigned long limit = negative ? (unsigned long)LONG_MAX + 1 : LONG_MAX;
+	uint64_t v = parse(s, end, base, &negative, &overflow);
+	uint64_t limit = negative ? (uint64_t)LONG_MAX + 1 : LONG_MAX;
 	if (overflow || v > limit) {
 		errno = ERANGE;
 		return negative ? LONG_MIN : LONG_MAX;
@@ -115,10 +127,33 @@ long strtol(const char *s, char **end, int base)
 unsigned long strtoul(const char *s, char **end, int base)
 {
 	bool negative, overflow;
-	unsigned long v = parse(s, end, base, &negative, &overflow);
-	if (overflow) {
+	uint64_t v = parse(s, end, base, &negative, &overflow);
+	if (overflow || v > ULONG_MAX) {
 		errno = ERANGE;
 		return ULONG_MAX;
+	}
+	return negative ? 0 - (unsigned long)v : (unsigned long)v;
+}
+
+long long strtoll(const char *s, char **end, int base)
+{
+	bool negative, overflow;
+	uint64_t v = parse(s, end, base, &negative, &overflow);
+	uint64_t limit = negative ? (uint64_t)LLONG_MAX + 1 : LLONG_MAX;
+	if (overflow || v > limit) {
+		errno = ERANGE;
+		return negative ? LLONG_MIN : LLONG_MAX;
+	}
+	return negative ? (long long)(0 - v) : (long long)v;
+}
+
+unsigned long long strtoull(const char *s, char **end, int base)
+{
+	bool negative, overflow;
+	uint64_t v = parse(s, end, base, &negative, &overflow);
+	if (overflow) {
+		errno = ERANGE;
+		return ULLONG_MAX;
 	}
 	return negative ? 0 - v : v;
 }

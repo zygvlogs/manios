@@ -5,6 +5,8 @@
 *.bin
 *.img
 *.iso
+# ... but not OpenBSD's usr.bin/ directory (third_party/openbsd).
+!usr.bin/
 
 # Cross-toolchain (built by tools/toolchain scripts, not vendored)
 /tools/toolchain/i686-elf/
