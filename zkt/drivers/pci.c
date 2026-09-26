@@ -105,3 +105,19 @@ const struct pci_device *pci_find(uint16_t vendor, uint16_t device)
 	}
 	return 0;
 }
+
+void pci_enable(const struct pci_device *d)
+{
+	uint32_t command = pci_read32(d, 0x04) & 0xFFFF; /* not the status bits */
+	pci_write32(d, 0x04, command | 0x7);
+}
+
+uint32_t pci_bar_io(const struct pci_device *d, int i)
+{
+	return (d->bar[i] & 1) ? d->bar[i] & 0xFFFFFFFCu : 0;
+}
+
+uint32_t pci_bar_mem(const struct pci_device *d, int i)
+{
+	return (d->bar[i] & 1) ? 0 : d->bar[i] & PCI_BAR_MEM_MASK;
+}

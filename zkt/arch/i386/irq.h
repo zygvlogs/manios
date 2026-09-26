@@ -5,8 +5,10 @@
 
 typedef void (*irq_handler_t)(void);
 
-/* Installs the handler for IRQ line `irq` and unmasks the line. Panics
- * if the line doesn't exist or already has a handler. Handlers run with
+/* Installs a handler for IRQ line `irq` and unmasks the line. A line
+ * can have a few handlers (PCI cards share lines); all of them run on
+ * each interrupt, and each must check whether its device asked. Panics
+ * if the line doesn't exist or has too many handlers. Handlers run with
  * interrupts disabled, after the PIC has been acknowledged, and must not
  * sleep, yield or exit: that would suspend whichever thread happened to
  * be interrupted. */

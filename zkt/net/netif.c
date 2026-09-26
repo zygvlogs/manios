@@ -7,7 +7,9 @@
 #include "kerrno.h"
 #include "kprintf.h"
 #include "kstring.h"
+#include "e1000.h"
 #include "ne2000.h"
+#include "pcnet.h"
 #include "panic.h"
 #include "sched.h"
 
@@ -286,6 +288,8 @@ void net_init(void)
 	netif_register(&loopback);
 
 	ne2000_probe();
+	pcnet_probe();
+	e1000_probe();
 	for (struct netif *ifc = interfaces; ifc; ifc = ifc->next) {
 		if (!ifc->loopback) {
 			configure(ifc);

@@ -22,6 +22,8 @@
 #define PTE_PRESENT  0x001u
 #define PTE_WRITABLE 0x002u
 #define PTE_USER     0x004u
+#define PTE_PWT      0x008u
+#define PTE_PCD      0x010u
 #define PTE_ADDR_MASK 0xFFFFF000u
 
 extern char kernel_stack_guard[]; /* boot.S */
@@ -100,7 +102,7 @@ static int map_page_locked(uintptr_t virt, uintptr_t phys, unsigned flags)
 		return -1;
 	}
 	pt[pti] = phys | PTE_PRESENT | ((flags & VMM_WRITABLE) ? PTE_WRITABLE : 0)
-	          | (user ? PTE_USER : 0);
+	          | (user ? PTE_USER : 0) | ((flags & VMM_UNCACHED) ? PTE_PCD | PTE_PWT : 0);
 	cpu_flush_tlb();
 	return 0;
 }

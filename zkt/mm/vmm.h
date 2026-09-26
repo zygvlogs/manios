@@ -9,6 +9,7 @@
 
 #define VMM_WRITABLE (1u << 0)
 #define VMM_USER     (1u << 1) /* user-accessible; exactly for user-space addresses */
+#define VMM_UNCACHED (1u << 2) /* device registers: no caching (486 and later) */
 
 /* Takes over the boot page directory. Requires pmm_init() first, since
  * new page tables are allocated from the PMM. */
