@@ -31,8 +31,8 @@ subdirectories together.
   and device `cons` with its line discipline (cooked input, as Plan 9's
   `/dev/cons`)
 - `monitor.c` — the console thread, which runs the `rc=` script, then
-  `/bin/sh`, and the `ZKT>` kernel monitor (debugging console) it falls
-  back to
+  `/bin/sh` (or `shell=`'s program: `shell=dos` is ManiDOS), and the
+  `ZKT>` kernel monitor (debugging console) it falls back to
 - `kprintf.c` — printf subset (32-bit conversions)
 - `kerrno.c` / `kerrno.h` — kernel error codes and their messages
 - `ring.h` — byte ring buffer

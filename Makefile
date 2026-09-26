@@ -93,6 +93,9 @@ LIBWIN := $(BUILD)/desktop/libwin/libwin.a
 LIBWIN_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard desktop/libwin/*.c))
 USER_LIBS := $(LIBWIN) $(LIBGFX) $(LIBC)
 MANIDE_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard desktop/manide/*.c))
+# ManiDOS (docs/dos.md): one program from userland/dos/, and its
+# AUTOEXEC.BAT at the root of the boot disk (A:, /boot).
+DOS_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard userland/dos/*.c))
 DESKTOP_APPS := $(patsubst desktop/apps/%.c,%,$(wildcard desktop/apps/*.c))
 DESKTOP_BOOTFS := $(patsubst %,$(BUILD)/bootfs/bin/%,$(DESKTOP_APPS))
 USER_PROGRAMS := $(patsubst userland/%.c,%,$(wildcard userland/bin/*.c userland/test/*.c)) \
@@ -103,6 +106,7 @@ NOTICES := $(BUILD)/bootfs/etc/notices
 BOOTFS_FILES := $(patsubst %,$(BUILD)/bootfs/%,$(USER_PROGRAMS)) \
                 $(patsubst userland/%,$(BUILD)/bootfs/%,$(wildcard userland/etc/*)) \
                 $(BUILD)/bootfs/bin/manide $(DESKTOP_BOOTFS) $(NOTICES) \
+                $(BUILD)/bootfs/bin/dos $(BUILD)/bootfs/autoexec.bat \
                 $(BUILD)/bootfs/test/pipeseek1
 BOOTFS_OBJECT := $(BUILD)/bootfs.o
 
@@ -181,6 +185,17 @@ $(BUILD)/desktop/apps/%.elf: $(BUILD)/desktop/apps/%.o $(CRT0) $(USER_LIBS) user
 $(BUILD)/bootfs/bin/manide: $(BUILD)/desktop/manide/manide.elf
 	@mkdir -p $(dir $@)
 	$(STRIP) -o $@ $<
+
+$(BUILD)/bootfs/bin/dos: $(BUILD)/userland/dos/dos.elf
+	@mkdir -p $(dir $@)
+	$(STRIP) -o $@ $<
+
+$(BUILD)/userland/dos/dos.elf: $(DOS_OBJECTS) $(CRT0) $(USER_LIBS) userland/user.ld
+	$(CC) $(USER_LDFLAGS) -o $@ $(CRT0) $(DOS_OBJECTS) $(USER_LIBS)
+
+$(BUILD)/bootfs/autoexec.bat: userland/dos/autoexec.bat
+	@mkdir -p $(dir $@)
+	cp $< $@
 
 $(DESKTOP_BOOTFS): $(BUILD)/bootfs/bin/%: $(BUILD)/desktop/apps/%.elf
 	@mkdir -p $(dir $@)
@@ -331,6 +346,7 @@ test: $(KERNEL) test-images
 	python3 tests/net_test.py $(KERNEL)
 	python3 tests/gfx_test.py $(KERNEL)
 	python3 tests/desktop_test.py $(KERNEL)
+	python3 tests/dos_test.py $(KERNEL)
 	python3 tests/cluster_test.py $(KERNEL)
 
 clean:
@@ -339,8 +355,9 @@ clean:
 # Keep the unstripped programs for debugging (addr2line, objdump).
 .SECONDARY: $(patsubst %,$(BUILD)/userland/%.elf,$(USER_PROGRAMS)) $(USER_OBJECTS) $(CRT0) \
             $(patsubst %,$(BUILD)/desktop/apps/%.elf,$(DESKTOP_APPS)) \
-            $(patsubst %,$(BUILD)/desktop/apps/%.o,$(DESKTOP_APPS)) $(BUILD)/desktop/manide/manide.elf
+            $(patsubst %,$(BUILD)/desktop/apps/%.o,$(DESKTOP_APPS)) $(BUILD)/desktop/manide/manide.elf \
+            $(BUILD)/userland/dos/dos.elf
 
 -include $(OBJECTS:.o=.d) $(LIBC_OBJECTS:.o=.d) $(CRT0:.o=.d) $(USER_OBJECTS:.o=.d) \
-         $(LIBGFX_OBJECTS:.o=.d) $(LIBWIN_OBJECTS:.o=.d) $(MANIDE_OBJECTS:.o=.d) \
+         $(LIBGFX_OBJECTS:.o=.d) $(LIBWIN_OBJECTS:.o=.d) $(MANIDE_OBJECTS:.o=.d) $(DOS_OBJECTS:.o=.d) \
          $(patsubst %,$(BUILD)/desktop/apps/%.d,$(DESKTOP_APPS))

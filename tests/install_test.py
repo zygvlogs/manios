@@ -10,7 +10,7 @@ on QEMU's BIOS (SeaBIOS) -- no -kernel anywhere.
   - The installed disk boots on its own with the chosen command line,
     and can install itself on another disk.
   - The ISO written to a disk (a USB stick) boots; so does a disk read
-    with CHS calls (an old BIOS), and a 6 MiB machine.
+    with CHS calls (an old BIOS), and a 7 MiB machine (and a 6 MiB one refused).
   - A much bigger build (a 5 MiB file in its boot archive: a 7 MiB
     kernel) boots, with the file whole: the loader puts the boot area
     wherever the kernel ends (0.17.1).
@@ -23,6 +23,7 @@ Usage: tests/install_test.py [build-directory]
 """
 import os
 import random
+import re
 import shutil
 import struct
 import subprocess
@@ -280,10 +281,23 @@ class Install:
             m.close()
 
     def small_machine(self):
-        m = boot(cdrom=self.iso, order="d", memory=6)
+        # The smallest machine ManiOS fits: 7 MiB since 0.19 (6 MiB until
+        # then). One MiB less, the loader says what it needs, and what
+        # the machine has (QEMU's BIOS keeps some of the top for itself).
+        m = boot(cdrom=self.iso, order="d", memory=7)
         try:
             out = m.expect(SHELL_PROMPT, timeout=120)
             check("Milestone M13" in out, out[-800:])
+        finally:
+            m.close()
+        m = boot(cdrom=self.iso, order="d", memory=6)
+        try:
+            said = m.expect(" KiB\r\n", timeout=60)
+            has = re.search(r"not enough memory: ManiOS needs (\d+) MiB; this machine has (\d+)$", said)
+            load, total = struct.unpack_from("<I", self.area, 64)[0], struct.unpack_from("<I", self.area, 12)[0]
+            need_kib = -(-(load + total + 2 * 1024 * 1024) // 1024)
+            check(has and int(has.group(2)) < need_kib <= int(has.group(1)) * 1024,
+                  f"the loader's words: {said[-120:]!r} (ManiOS needs {need_kib} KiB)")
         finally:
             m.close()
 
@@ -367,7 +381,7 @@ def main():
             ("the installed disk boots with its command line, and installs a clone", t.disk_boots_and_clones),
             ("the ISO written to a disk (a USB stick) boots", t.usb_boots),
             ("a disk read with CHS calls, as on an old BIOS", t.chs_boots),
-            ("a 6 MiB machine boots the CD", t.small_machine),
+            ("a 7 MiB machine boots the CD; a 6 MiB one is told why not", t.small_machine),
             ("a much bigger ManiOS (a 7 MiB kernel) boots, and the loader says what it needs",
              t.big_boots),
             ("the loader explains: too little memory, damage, a bad header, a bad load address, "

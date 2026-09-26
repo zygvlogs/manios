@@ -356,6 +356,13 @@ load_area:
 	call print_decimal
 	movw $msg_mib, %si
 	call print
+	/* And what the machine has, so that "needs 6 MiB" on a 6 MiB
+	 * machine explains itself: the BIOS keeps some of the top. */
+	movl mem_upper, %eax
+	addl $1024, %eax
+	call print_decimal
+	movw $msg_kib, %si
+	call print
 	jmp halt
 9:	movw $msg_header, %si
 	jmp fail
@@ -604,7 +611,8 @@ msg_disk:     .asciz "disk error\r\n"
 msg_copy:     .asciz "cannot copy above 1 MiB (INT 15h AH=87h)\r\n"
 msg_a20:      .asciz "cannot enable the A20 line\r\n"
 msg_memory:   .asciz "not enough memory: ManiOS needs "
-msg_mib:      .asciz " MiB\r\n"
+msg_mib:      .asciz " MiB; this machine has "
+msg_kib:      .asciz " KiB\r\n"
 msg_header:   .asciz "the boot area's header is damaged\r\n"
 
 	.balign 8

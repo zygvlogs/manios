@@ -17,7 +17,7 @@
   from the keyboard; runs `install` (its refusals, the question, the
   write) and checks the disk from outside; boots the installed disk
   with its command line and installs a clone from it; boots the ISO as
-  a hard disk, a CHS-only build, and a 6 MiB machine; boots a much
+  a hard disk, a CHS-only build, and a 7 MiB machine (a 6 MiB one is refused, the loader saying what it needs and what the machine has); boots a much
   bigger build (`build/big/`: a 5 MiB file in its boot archive, a 7 MiB
   kernel) and reads the file back; and makes the loader explain too
   little memory (with the figure it works out), a damaged boot area, a
@@ -69,6 +69,19 @@
   terminal's scroll-back and how it follows its pane's size, and exiting
   back to the text console; and on a machine without Bochs VBE, that
   ManiDE explains and exits.
+
+- `dos_test.py` (also run by `make test`) — ManiDOS, at its own prompt
+  over the serial line, on a disk made for it with mtools: C: (FAT16,
+  labelled in its root directory) with text files, batch files and a DOS
+  program to refuse, and D: (FAT12) with faults put in on purpose -- a
+  lost chain, a cross-linked file, a file longer than its chain, FAT
+  copies that differ. It checks DIR (label, serial number and free space
+  against the image and against mtools), CD, TYPE, COPY, the read-only
+  refusals, drive letters, VOL, CHKDSK on both (every fault found, the
+  figures right), TREE, FIND, SORT, MORE, pipelines, redirection, ManiOS
+  programs with DOS paths, errorlevels, SET, PROMPT, a batch file using
+  parameters, IF, GOTO, SHIFT, FOR and CALL, and a machine booted with
+  `shell=dos`.
 
 - `cluster_test.py` (also run by `make test`) — the cluster roles
   (M13): a file server, a CPU server, a terminal and a machine with the

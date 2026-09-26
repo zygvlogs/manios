@@ -28,6 +28,7 @@ const struct menu_item MENU[] = {
 	{ "Terminal", "term" },
 	{ "System info", "term fetch" },
 	{ "Processes", "term top" },
+	{ "ManiDOS", "term dos" },
 	{ "Welcome", "welcome" },
 	{ "Clock", "clock" },
 	{ "About ManiOS", "about" },

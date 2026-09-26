@@ -23,6 +23,12 @@ program:
   `lam`, `expand`, `unexpand`, `rev`, `tee`, `tsort`, `vis`, `unvis`,
   `basename`, `dirname` and `yes`, from
   [`third_party/openbsd/`](../third_party/openbsd/README.md).
+- `dos/` — ManiDOS (`/bin/dos`), a disk operating system of ManiOS's
+  own ([docs/dos.md](../docs/dos.md)): `main.c` the command line,
+  pipelines and running programs, `drives.c` drive letters and DOS
+  paths, `commands.c` the internal commands, `batch.c` batch files,
+  `fat.c` FAT disks read raw (VOL, CHKDSK); and `autoexec.bat`,
+  installed at the boot disk's root (`/boot/autoexec.bat`, A:\AUTOEXEC.BAT)
 - `test/` — test programs, installed in `/boot/test`: `utest` (system
   calls), `ctest` (libc), `gtest` (libgfx), `ztest` (a program
   serving files over a pipe, M12) and `cltest` (exports and ZRP over

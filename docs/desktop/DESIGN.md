@@ -189,7 +189,7 @@ focused window:
 | Alt+Space | the next layout |
 | Alt+q | close the focused window (it is sent `c`) |
 | Alt+Shift+Q | exit ManiDE |
-| F1 | the menu: Terminal, System info (`term fetch`), Processes (`term top`), Welcome, Clock, About ManiOS, Exit ManiDE |
+| F1 | the menu: Terminal, System info (`term fetch`), Processes (`term top`), ManiDOS (`term dos`), Welcome, Clock, About ManiOS, Exit ManiDE |
 
 **The session**, `/boot/etc/manide` unless `-s` names another file:
 one command a line, each started once the one before has its window (or

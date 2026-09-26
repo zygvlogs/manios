@@ -494,18 +494,34 @@ static void run_rc(void)
 	}
 }
 
+/* shell=PROGRAM on the command line: what the console runs instead of
+ * /bin/sh -- a name in /bin (shell=dos boots into ManiDOS) or a path. */
+static void console_shell(char *path, size_t size)
+{
+	char name[VFS_PATH_MAX + 1];
+	if (!cmdline_get("shell", name, sizeof(name)) || !name[0]) {
+		strlcpy(path, SHELL, size);
+	} else if (name[0] == '/') {
+		strlcpy(path, name, size);
+	} else {
+		ksnprintf(path, size, "/bin/%s", name);
+	}
+}
+
 void console_main(void *unused)
 {
 	run_rc();
-	char *argv[] = { SHELL, 0 };
-	int pid = process_spawn(SHELL, 1, argv, 0);
+	char shell[VFS_PATH_MAX + 1];
+	console_shell(shell, sizeof(shell));
+	char *argv[] = { shell, 0 };
+	int pid = process_spawn(shell, 1, argv, 0);
 	if (pid < 0) {
-		kprintf("console: cannot start %s: %s\n", SHELL, kstrerror(pid));
+		kprintf("console: cannot start %s: %s\n", shell, kstrerror(pid));
 	} else {
 		int status;
 		process_wait(0, pid, &status);
 		kprintf("console: the shell has exited; this is the kernel monitor "
-		        "(run %s to go back)\n", SHELL);
+		        "(run %s to go back)\n", shell);
 	}
 	monitor_main(unused);
 }

@@ -35,6 +35,7 @@ is written anew for it.
 | M16 — first BSD imports: OpenBSD's text tools on ManiOS's libc | Achieved ([notes](docs/milestones/M16-openbsd-tools.md), [imports](third_party/openbsd/README.md)) |
 | M17 — grep, sed and more from OpenBSD: regular expressions, a POSIX file layer in libc | Achieved ([notes](docs/milestones/M17-grep-sed-posix.md)) |
 | M18 — ManiDE: a tiling desktop with workspaces and a status bar; fetch, top; ANSI colours | Achieved ([notes](docs/milestones/M18-manide.md), [design](docs/desktop/DESIGN.md), [ADR-0007](docs/adr/0007-manide-tiling-desktop.md)) |
+| M19 — ManiDOS: a disk operating system of ManiOS's own (`dos`): drive letters, DOS commands, batch files, CHKDSK | Achieved ([notes](docs/milestones/M19-manidos.md), [guide](docs/dos.md), [ADR-0008](docs/adr/0008-manidos.md)) |
 
 ## Download and install
 
@@ -43,7 +44,7 @@ page has a bootable ISO, `manios-VERSION.iso`. It boots from a CD, from
 a USB stick it is written to, or in QEMU or VirtualBox:
 
 ```
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.18.0.iso -boot d
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.19.0.iso -boot d
 ```
 
 and `install ata0` puts ManiOS on a hard disk. ManiOS boots with its own
@@ -126,6 +127,15 @@ windows, and `cat /dev/wsys/4/ctl` describes one
 ([design](docs/desktop/DESIGN.md)). `desktop` still works, as another
 name for it.
 
+`dos` starts **ManiDOS**, a disk operating system of ManiOS's own -- not
+MS-DOS, and no MS-DOS code: a `C:\>` prompt with drive letters (A: the
+boot disk, C: and on the FAT disks, Z: all of ManiOS), `DIR`, `CD`,
+`TYPE`, `FIND`, `SORT`, `MORE`, `TREE`, `VOL`, a `CHKDSK` that checks a
+FAT disk's chains cluster by cluster, batch files with `AUTOEXEC.BAT`,
+`GOTO`, `IF`, `FOR` and `CALL`, pipes and redirection, and ManiOS's
+programs on its PATH. `shell=dos` on the boot command line starts
+ManiOS in it ([guide](docs/dos.md)).
+
 `fetch` shows the system at a glance and `top` the processes, busiest
 first; both work in any terminal, the text console included, which
 shows ANSI colours since 0.18. The shell does pipelines and redirection
@@ -156,14 +166,15 @@ libc/         ManiOS's own C library (stdio, malloc, strings, file servers, ...)
 desktop/      the desktop environment: libgfx/ (2D graphics), libwin/ (windows),
               manide/ (ManiDE, the window manager), apps/ (terminal, welcome,
               clock, about)
-userland/     user programs (bin/), test programs (test/), boot files (etc/)
+userland/     user programs (bin/), ManiDOS (dos/), test programs (test/), boot
+              files (etc/)
 tools/        cross-toolchain build script, boot area / ISO / disk image builders,
               QEMU script
 third_party/  BSD-derived source (openbsd/: tools and libc functions) + the
               license notices ledger
 docs/         architecture, roadmap, and ADRs
-tests/        boot smoke tests, console, network, graphics, desktop, cluster
-              and install tests
+tests/        boot smoke tests, console, network, graphics, desktop, ManiDOS,
+              cluster and install tests
 .github/      the release workflow
 build/        build output (git-ignored); dist/: release files (git-ignored)
 ```

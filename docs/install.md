@@ -12,7 +12,7 @@ not been tried on real hardware yet (see "What to expect", below).
 - An i386-compatible PC with a BIOS (not UEFI-only machines; on UEFI
   machines, turn on "legacy" or "CSM" boot). ZKT is built for the 386
   instruction set with no FPU instructions.
-- At least **6 MiB of memory** today (tested). What ManiOS needs grows
+- At least **7 MiB of memory** today (tested; 6 MiB until 0.18). What ManiOS needs grows
   as ManiOS grows: the loader works it out -- its programs, up to where
   they end in memory, and 2 MiB to run in -- and says so if the machine
   has less.
@@ -40,7 +40,7 @@ fixed date), so the same boot area always gives the same ISO.
 ## Trying it in QEMU
 
 ```
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.18.0.iso -boot d
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.19.0.iso -boot d
 ```
 
 Add `-serial stdio` to use the serial console from your terminal. QEMU
@@ -52,7 +52,7 @@ the right one. To try the installer, give it an empty disk:
 
 ```
 qemu-img create -f raw disk.img 64M
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.18.0.iso -boot d -hda disk.img
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.19.0.iso -boot d -hda disk.img
 ```
 
 and after `install ata0`, boot the disk alone with `-hda disk.img -boot c`.
@@ -89,7 +89,7 @@ The loader prints its version and the boot options -- the kernel's
 command line -- then waits 3 seconds:
 
 ```
-ManiOS boot loader 0.18.0
+ManiOS boot loader 0.19.0
 Boot options: (none)
 Press any key within 3 seconds to change them.
 ```
@@ -114,6 +114,7 @@ The options are words of the form `KEY=VALUE`:
 | `key=SECRET` | the cluster key: every machine of a cluster needs the same one ([ADR-0005](adr/0005-cluster-roles-and-authentication.md)) |
 | `export=PATH` | serve PATH to other machines over ZRP (a file server) |
 | `rc=PATH` | a boot script to run before the shell, e.g. `rc=/boot/etc/rc.cpu` for a CPU server |
+| `shell=PROGRAM` | what the console runs instead of ManiOS's shell (`sh`): `shell=dos` starts ManiOS in ManiDOS ([docs/dos.md](dos.md)) |
 | `verbose=1` | show the whole boot log on the screen (see below) |
 
 ## Starting up
@@ -121,10 +122,10 @@ The options are words of the form `KEY=VALUE`:
 ManiOS tests itself at every boot, and the screen shows what it checks:
 
 ```
-ManiOS 0.18.0 / ZKT (ZygKernel Technology)
+ManiOS 0.19.0 / ZKT (ZygKernel Technology)
 Self-tests: memory, interrupts, threads, devices, disks, files, programs,
             C library, network, graphics, windows, cluster. All passed.
-ManiOS 0.18.0 is ready. Try ls /bin (programs), help (the shell), fetch, manide (the desktop).
+ManiOS 0.19.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
 manios%
 ```
 
@@ -139,7 +140,7 @@ and stops:
 
 | Message | Meaning |
 |---|---|
-| `not enough memory: ManiOS needs 6 MiB` | as it says (the figure grows with ManiOS) |
+| `not enough memory: ManiOS needs 6 MiB; this machine has 6016 KiB` | as it says: the figure grows with ManiOS, and a machine's BIOS keeps some of its memory (QEMU's 6 MiB machine has 6016 KiB free) |
 | `the boot area is damaged (its checksum is wrong)` | the CD, stick or disk has bad data: write it again |
 | `the boot area's header is damaged` | likewise |
 | `disk error` | the BIOS could not read the disk |
@@ -161,7 +162,7 @@ hard disk. **This destroys everything on the stick.** On Linux, with the
 stick at `/dev/sdX`:
 
 ```
-sudo dd if=manios-0.18.0.iso of=/dev/sdX bs=1M conv=fsync
+sudo dd if=manios-0.19.0.iso of=/dev/sdX bs=1M conv=fsync
 ```
 
 ## Installing on a hard disk
@@ -170,13 +171,13 @@ Boot the CD (or stick) on the machine, then, at the `manios% ` prompt:
 
 ```
 manios% install ata0 sysname=box ip=10.0.0.5/24
-ManiOS 0.18.0 will be installed on ata0 (512 MiB).
+ManiOS 0.19.0 will be installed on ata0 (512 MiB).
 EVERYTHING ON ata0 WILL BE LOST.
 The installed system's command line: "sysname=box ip=10.0.0.5/24"
 Type yes to go on: yes
-writing the boot area (1298 KiB)...
+writing the boot area (1350 KiB)...
 checking what was written...
-ManiOS 0.18.0 is installed on ata0. Remove the CD and restart the machine.
+ManiOS 0.19.0 is installed on ata0. Remove the CD and restart the machine.
 ```
 
 - `ata0` is the first IDE disk (primary master), `ata1` the second, and

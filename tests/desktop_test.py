@@ -46,8 +46,8 @@ TERM_FG = (0xD8, 0xDE, 0xE9)
 TERM_BG = (0x0F, 0x13, 0x19)
 WELCOME_CYAN = (0x3F, 0xC8, 0xD8)
 TERM_MARGIN = 4
-MENU_ITEMS = ["Terminal", "System info", "Processes", "Welcome", "Clock", "About ManiOS",
-              None, "Exit ManiDE"]
+MENU_ITEMS = ["Terminal", "System info", "Processes", "ManiDOS", "Welcome", "Clock",
+              "About ManiOS", None, "Exit ManiDE"]
 
 
 def load_glyphs():
