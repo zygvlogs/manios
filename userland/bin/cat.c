@@ -11,6 +11,9 @@ static int copy(int fd, const char *name)
 	while ((n = read(fd, buf, sizeof(buf))) > 0) {
 		for (long done = 0; done < n;) {
 			long w = write(1, buf + done, (size_t)(n - done));
+			if (w < 0 && errno == EPIPE) {
+				_exit(141); /* the reader has gone: quietly, as stdio ends a program */
+			}
 			if (w <= 0) {
 				perror("cat: write");
 				return 1;

@@ -2,11 +2,13 @@
  *
  *   /dev/wsys/new       clone: write "W H TITLE", read the number; the
  *                       window closes when this file does
- *   /dev/wsys/N/ctl     read the state; write "title T", "top", "move X Y"
- *   /dev/wsys/N/image   pixels, 4 bytes each, row-major
+ *   /dev/wsys/N/ctl     read the state; write "title T", "top", "size W H",
+ *                       "ws N"
+ *   /dev/wsys/N/image   pixels, 4 bytes each, row-major, at the size the
+ *                       program chose
  *   /dev/wsys/N/event   text lines, read blocking; end of file when gone
  */
-#include "desktop.h"
+#include "manide.h"
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -108,42 +110,61 @@ void post_event(struct window *w, const char *fmt, ...)
 
 /* --- windows --- */
 
+static void clean_title(char *dst, const char *src)
+{
+	strlcpy(dst, *src ? src : "untitled", TITLE_MAX + 1);
+	for (char *c = dst; *c; c++) {
+		if (*c < ' ' || *c > '~') {
+			*c = ' ';
+		}
+	}
+}
+
+/* Parses "W H" at the start of spec: 0, or -1 unless both are sizes a
+ * window can have. */
+static int parse_size(const char *spec, int *width, int *height, char **rest)
+{
+	char *p, *q;
+	long w = strtol(spec, &p, 10);
+	long h = strtol(p, &q, 10);
+	if (p == spec || q == p || w < MIN_SIZE || h < MIN_SIZE || w > D.width || h > D.height) {
+		return -1;
+	}
+	*width = (int)w;
+	*height = (int)h;
+	*rest = q;
+	return 0;
+}
+
 static struct window *create(struct zsrv_fid *owner, const char *spec)
 {
+	int width, height;
 	char *p;
-	long width = strtol(spec, &p, 10);
-	long height = strtol(p, &p, 10);
-	while (*p == ' ') {
-		p++;
-	}
-	int max_w = D.width - 2 * BORDER, max_h = D.height - PANEL_H - TITLE_H - 2 * BORDER;
-	if (width < MIN_SIZE || height < MIN_SIZE || width > max_w || height > max_h) {
+	if (parse_size(spec, &width, &height, &p) < 0) {
 		errno = EINVAL;
 		return NULL;
+	}
+	while (*p == ' ') {
+		p++;
 	}
 	if (D.count == MAX_WINDOWS) {
 		errno = EBUSY;
 		return NULL;
 	}
 	struct window *w = calloc(1, sizeof(*w));
-	if (!w || !(w->image = gfx_canvas_new((int)width, (int)height))) {
+	if (!w || !(w->image = gfx_canvas_new(width, height))) {
 		free(w);
 		errno = ENOMEM;
 		return NULL;
 	}
 	w->id = D.next_id++;
-	strlcpy(w->title, *p ? p : "untitled", sizeof(w->title));
-	for (char *c = w->title; *c; c++) {
-		if (*c < ' ' || *c > '~') {
-			*c = ' ';
-		}
-	}
+	clean_title(w->title, p);
 	char name[16];
 	snprintf(name, sizeof(name), "%d", w->id);
 	w->dir = zsrv_add(wsys_dir, name, ZKT_TYPE_DIR, w);
 	struct zsrv_node *ctl = w->dir ? zsrv_add(w->dir, "ctl", ZKT_TYPE_FILE, w) : NULL;
-	struct zsrv_node *image = ctl ? zsrv_add(w->dir, "image", ZKT_TYPE_FILE, w) : NULL;
-	w->event_node = image ? zsrv_add(w->dir, "event", ZKT_TYPE_FILE, w) : NULL;
+	w->image_node = ctl ? zsrv_add(w->dir, "image", ZKT_TYPE_FILE, w) : NULL;
+	w->event_node = w->image_node ? zsrv_add(w->dir, "event", ZKT_TYPE_FILE, w) : NULL;
 	if (!w->event_node) {
 		if (w->dir) {
 			zsrv_remove(D.srv, w->dir);
@@ -153,50 +174,21 @@ static struct window *create(struct zsrv_fid *owner, const char *spec)
 		errno = ENOMEM;
 		return NULL;
 	}
-	image->length = (uint32_t)(width * height * 4);
+	w->image_node->length = (uint32_t)(width * height * 4);
 	w->owner = owner;
-
-	/* Cascade from (60, 50), keeping the whole frame on screen. */
-	int step = D.placed++ % 8;
-	int x = 60 + 26 * step, y = 50 + 26 * step;
-	if (x + width + BORDER > D.width) {
-		x = D.width - (int)width - BORDER;
-	}
-	if (y + height + BORDER > D.height) {
-		y = D.height - (int)height - BORDER;
-	}
-	if (y < PANEL_H + TITLE_H + BORDER) {
-		y = PANEL_H + TITLE_H + BORDER;
-	}
-	w->content = (struct gfx_rect){ x, y, (int)width, (int)height };
-	D.stack[D.count++] = w;
-	damage(frame_rect(w));
-	damage((struct gfx_rect){ 0, 0, D.width, PANEL_H });
-	say("window %d \"%s\" %ldx%ld at %d,%d", w->id, w->title, width, height, x, y);
-	set_focus(w);
+	w->told_w = width;
+	w->told_h = height;
+	add_window(w);
+	say("window %d \"%s\" %dx%d on workspace %d", w->id, w->title, width, height, w->ws + 1);
 	return w;
 }
 
 void window_destroy(struct window *w)
 {
-	int i = 0;
-	while (D.stack[i] != w) {
-		i++;
-	}
-	memmove(&D.stack[i], &D.stack[i + 1], (size_t)(D.count - i - 1) * sizeof(D.stack[0]));
-	D.count--;
-	if (D.drag == w) {
-		D.drag = NULL;
-	}
 	if (D.grab == w) {
 		D.grab = NULL;
 	}
-	if (D.focus == w) {
-		D.focus = NULL;
-		set_focus(D.count ? D.stack[D.count - 1] : NULL);
-	}
-	damage(frame_rect(w));
-	damage((struct gfx_rect){ 0, 0, D.width, PANEL_H });
+	remove_window(w);
 	/* Readers of its events see end of file; then the files go. */
 	for (struct zsrv_req *r = D.srv->deferred, *next; r; r = next) {
 		next = r->next;
@@ -213,64 +205,27 @@ void window_destroy(struct window *w)
 	free(w);
 }
 
-void set_focus(struct window *w)
+/* The program's image has a new size: what fits of the old stays. */
+static long resize_image(struct window *w, const char *spec)
 {
-	if (D.focus == w) {
-		return;
+	int width, height;
+	char *rest;
+	if (parse_size(spec, &width, &height, &rest) < 0 || *rest) {
+		return -EINVAL;
 	}
-	if (D.focus) {
-		post_event(D.focus, "f 0");
-		damage(title_rect(D.focus));
+	if (width == w->image->width && height == w->image->height) {
+		return 0;
 	}
-	D.focus = w;
-	if (w) {
-		post_event(w, "f 1");
-		damage(title_rect(w));
+	struct gfx_canvas *c = gfx_canvas_new(width, height);
+	if (!c) {
+		return -ENOMEM;
 	}
-	damage((struct gfx_rect){ 0, 0, D.width, PANEL_H });
-}
-
-void raise_window(struct window *w)
-{
-	int i = 0;
-	while (D.stack[i] != w) {
-		i++;
-	}
-	if (i != D.count - 1) {
-		memmove(&D.stack[i], &D.stack[i + 1], (size_t)(D.count - i - 1) * sizeof(D.stack[0]));
-		D.stack[D.count - 1] = w;
-		damage(frame_rect(w));
-	}
-	set_focus(w);
-}
-
-void move_window(struct window *w, int x, int y)
-{
-	/* Keep a grip on the title bar: at least 40 pixels of it on screen,
-	 * and never under the panel. */
-	struct gfx_rect f = frame_rect(w);
-	int left = x - (w->content.x - f.x), top = y - (w->content.y - f.y);
-	if (left < 40 - f.w) {
-		left = 40 - f.w;
-	}
-	if (left > D.width - 40) {
-		left = D.width - 40;
-	}
-	if (top < PANEL_H) {
-		top = PANEL_H;
-	}
-	if (top > D.height - TITLE_H) {
-		top = D.height - TITLE_H;
-	}
-	x = left + (w->content.x - f.x);
-	y = top + (w->content.y - f.y);
-	if (x == w->content.x && y == w->content.y) {
-		return;
-	}
-	damage(f);
-	w->content.x = x;
-	w->content.y = y;
-	damage(frame_rect(w));
+	gfx_blit(c, 0, 0, w->image, (struct gfx_rect){ 0, 0, w->image->width, w->image->height });
+	gfx_canvas_free(w->image);
+	w->image = c;
+	w->image_node->length = (uint32_t)(width * height * 4);
+	damage(w->content);
+	return 0;
 }
 
 /* --- the file server's callbacks --- */
@@ -291,11 +246,11 @@ static long wsys_read(struct zsrv *s, struct zsrv_req *req, void *buf)
 	}
 	if (is(n, "ctl")) {
 		snprintf(line, sizeof(line), "%d %d %d %d %d %d %s\n", w->id, w->content.x, w->content.y,
-		         w->content.w, w->content.h, D.focus == w, w->title);
+		         w->image->width, w->image->height, D.focus == w, w->title);
 		return text(req, buf, line);
 	}
 	if (is(n, "image")) {
-		uint32_t size = (uint32_t)(w->content.w * w->content.h * 4);
+		uint32_t size = w->image_node->length;
 		if (req->offset >= size) {
 			return 0;
 		}
@@ -316,23 +271,28 @@ static long wsys_read(struct zsrv *s, struct zsrv_req *req, void *buf)
 static long ctl_write(struct window *w, const char *cmd)
 {
 	if (!strncmp(cmd, "title ", 6)) {
-		strlcpy(w->title, cmd + 6, sizeof(w->title));
-		damage(title_rect(w));
-		damage((struct gfx_rect){ 0, 0, D.width, PANEL_H });
+		clean_title(w->title, cmd + 6);
+		if (w->shown) {
+			damage(strip_rect(w));
+		}
 		return 0;
 	}
 	if (!strcmp(cmd, "top")) {
-		raise_window(w);
+		/* The window comes into view, with the focus. */
+		show_workspace(w->ws);
+		set_focus(w);
 		return 0;
 	}
-	if (!strncmp(cmd, "move ", 5)) {
-		char *p, *q;
-		long x = strtol(cmd + 5, &p, 10);
-		long y = strtol(p, &q, 10);
-		if (p == cmd + 5 || q == p || *q) {
-			return -EINVAL; /* two numbers, nothing else */
+	if (!strncmp(cmd, "size ", 5)) {
+		return resize_image(w, cmd + 5);
+	}
+	if (!strncmp(cmd, "ws ", 3)) {
+		char *end;
+		long ws = strtol(cmd + 3, &end, 10);
+		if (end == cmd + 3 || *end || ws < 1 || ws > WORKSPACES) {
+			return -EINVAL;
 		}
-		move_window(w, (int)x, (int)y);
+		send_to_workspace(w, (int)ws - 1);
 		return 0;
 	}
 	return -EINVAL;
@@ -365,7 +325,7 @@ static long wsys_write(struct zsrv *s, struct zsrv_fid *f, uint32_t offset, cons
 	}
 	if (is(n, "image")) {
 		struct window *w = n->aux;
-		uint32_t size = (uint32_t)(w->content.w * w->content.h * 4);
+		uint32_t size = w->image_node->length;
 		if (offset >= size) {
 			return -EINVAL;
 		}
@@ -373,10 +333,13 @@ static long wsys_write(struct zsrv *s, struct zsrv_fid *f, uint32_t offset, cons
 			count = size - offset;
 		}
 		memcpy((uint8_t *)w->image->pixels + offset, buf, count);
-		int row_bytes = w->content.w * 4;
-		int first = (int)(offset / (uint32_t)row_bytes);
-		int last = (int)((offset + count - 1) / (uint32_t)row_bytes);
-		damage((struct gfx_rect){ w->content.x, w->content.y + first, w->content.w, last - first + 1 });
+		if (w->shown) {
+			int row_bytes = w->image->width * 4;
+			int first = (int)(offset / (uint32_t)row_bytes);
+			int last = (int)((offset + count - 1) / (uint32_t)row_bytes);
+			damage(gfx_intersect(w->content, (struct gfx_rect){ w->content.x, w->content.y + first,
+			                                                    w->image->width, last - first + 1 }));
+		}
 		return count;
 	}
 	return -EINVAL; /* event */

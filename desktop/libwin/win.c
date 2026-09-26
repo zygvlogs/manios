@@ -37,7 +37,7 @@ struct win *win_open(const char *title, int width, int height)
 	if (!w) {
 		return NULL;
 	}
-	w->ctl = w->image = w->events = -1;
+	w->ctl = w->image = w->events = w->ctlfile = -1;
 	w->width = width;
 	w->height = height;
 	w->canvas = gfx_canvas_new(width, height);
@@ -112,7 +112,45 @@ int win_flush(struct win *w, int y, int h)
 	return 0;
 }
 
-/* Parses one line ("k 97", "m 10 20 1", "f 1", "c"); 0 if unknown. */
+/* Writes a command to the window's ctl file. */
+static int ctl(struct win *w, const char *cmd)
+{
+	if (w->ctlfile < 0) {
+		char path[64];
+		snprintf(path, sizeof(path), "/dev/wsys/%d/ctl", w->id);
+		w->ctlfile = open(path, OWRITE);
+		if (w->ctlfile < 0) {
+			return -1;
+		}
+	}
+	long n = (long)strlen(cmd);
+	return write(w->ctlfile, cmd, (size_t)n) == n ? 0 : -1;
+}
+
+int win_resize(struct win *w, int width, int height)
+{
+	if (width == w->width && height == w->height) {
+		return 0;
+	}
+	struct gfx_canvas *c = gfx_canvas_new(width, height);
+	if (!c) {
+		return -1;
+	}
+	char cmd[32];
+	snprintf(cmd, sizeof(cmd), "size %d %d", width, height);
+	if (ctl(w, cmd) < 0) {
+		gfx_canvas_free(c);
+		return -1;
+	}
+	gfx_canvas_free(w->canvas);
+	w->canvas = c;
+	w->width = width;
+	w->height = height;
+	return 0;
+}
+
+/* Parses one line ("k 97", "k 97 a", "m 10 20 1", "f 1", "c", "r 300
+ * 200"); 0 if unknown. */
 static int parse(const char *line, struct win_event *e)
 {
 	memset(e, 0, sizeof(*e));
@@ -120,6 +158,11 @@ static int parse(const char *line, struct win_event *e)
 	switch (line[0]) {
 	case 'k':
 		e->key = (int)strtol(p, &p, 10);
+		e->alt = !strcmp(p, " a");
+		break;
+	case 'r':
+		e->width = (int)strtol(p, &p, 10);
+		e->height = (int)strtol(p, &p, 10);
 		break;
 	case 'm':
 		e->x = (int)strtol(p, &p, 10);
@@ -149,6 +192,11 @@ int win_next(struct win *w, struct win_event *e, int timeout_ms)
 			int used = (int)(nl + 1 - w->buf);
 			memmove(w->buf, nl + 1, (size_t)(w->len - used));
 			w->len -= used;
+			if (ok && e->type == WIN_RESIZE) {
+				/* A size it can't have (no memory): it keeps its own,
+				 * and the desktop shows what fits. */
+				ok = win_resize(w, e->width, e->height) == 0;
+			}
 			if (ok) {
 				return 1;
 			}
@@ -186,16 +234,9 @@ int win_fd(const struct win *w)
 
 int win_set_title(struct win *w, const char *title)
 {
-	char path[64], msg[80];
-	snprintf(path, sizeof(path), "/dev/wsys/%d/ctl", w->id);
-	int fd = open(path, OWRITE);
-	if (fd < 0) {
-		return -1;
-	}
-	int n = snprintf(msg, sizeof(msg), "title %s", title);
-	long rc = write(fd, msg, (size_t)n);
-	close(fd);
-	return rc == n ? 0 : -1;
+	char msg[80];
+	snprintf(msg, sizeof(msg), "title %s", title);
+	return ctl(w, msg);
 }
 
 void win_close(struct win *w)
@@ -203,6 +244,9 @@ void win_close(struct win *w)
 	/* The window goes with the clone file; the helper then reads end of
 	 * file and exits, before its pipe is closed under it. */
 	close(w->image);
+	if (w->ctlfile >= 0) {
+		close(w->ctlfile);
+	}
 	close(w->ctl);
 	int status;
 	wait(w->pump, &status);

@@ -1,6 +1,6 @@
 # ADR-0004: The window system is a file server reached over ZRP
 
-**Status:** Accepted; implemented at M12 ([design](../desktop/DESIGN.md), [notes](../milestones/M12-desktop.md))
+**Status:** Accepted; implemented at M12 ([design](../desktop/DESIGN.md), [notes](../milestones/M12-desktop.md)); windows sized by the desktop since M18 ([ADR-0007](0007-manide-tiling-desktop.md))
 **Date:** 2026-09-25
 
 ## Context

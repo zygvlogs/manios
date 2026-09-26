@@ -22,6 +22,7 @@ import time
 
 PROMPT = b"ZKT> "          # the kernel monitor
 SHELL_PROMPT = b"manios% "  # /bin/sh, where boot ends
+VERSION = open(os.path.join(os.path.dirname(__file__), "..", "VERSION")).read().strip()
 TIMEOUT = 15
 BOOTFS_DIR = "build/bootfs"  # the boot archive's contents; set from the kernel path
 
@@ -349,7 +350,7 @@ SCENARIOS = [
     {
         "name": "no disk",
         "disk": None,
-        "boot": ["devices: cons com1 vga null sysname kbd mouse fb fbctl time\r\n", "Milestone M9: libc, ABI v2 and shell online"],
+        "boot": ["devices: cons com1 vga null sysname sysstat ps kbd mouse fb fbctl time\r\n", "Milestone M9: libc, ABI v2 and shell online"],
         "shell": [
             ("serial", "ls /bin", ["cat", "echo", "ls", "sh", "wc"]),
             ("serial", "echo 'a;b' c\\;d; echo e", ["\r\na;b c;d\r\ne\r\n"]),
@@ -365,8 +366,25 @@ SCENARIOS = [
             ("serial", "newns; bind /boot /n; ls /n", ["bin/", "etc/"]),
             ("serial", "sh -c 'ls /n; exit 3'; echo done", ["bin/", "\r\ndone\r\n"]),
             ("serial", "uptime", ["up "]),
+            # What top, fetch and ManiDE's status bar read (M18).
+            ("serial", "cat /dev/sysstat", [f"\r\nversion {VERSION}\r\nuptime ", "\r\nidle ",
+                                            "\r\nmemory ", "\r\nprocesses ", "\r\ncpu "]),
+            ("serial", "cat /dev/ps", [" 0 blocked ", " sh\r\n", " running ", " cat\r\n"]),
+            # Oldest first: the shell, then its child.
+            ("serial", "head -n 1 /dev/ps", [" 0 blocked ", " sh\r\n", "!head\r\n"]),
+            ("serial", "fetch -p", [f"OS: ManiOS {VERSION} i386", f"Kernel: ZKT {VERSION}",
+                                    "Shell: sh", "Programs: ", "!DE:", "!\x1b["]),
+            ("serial", "fetch", ["\x1b[1;36mOS\x1b[0m: ManiOS", "\x1b[41m   "]),
+            ("serial", "top -b", ["  PID  PPID STATE", " running ", " top\r\n", "!\x1b["]),
+            ("serial", "top -b -n 2 -d 1 | grep -c PPID", ["\r\n2\r\n"]),
+            # Full screen: it asks the terminal's size (no answer here: 80x24).
+            ("serial", "top -n 1", ["\x1b[18t", "\x1b[H\x1b[2J", "\x1b[30;46m", " top"]),
+            ("serial", "top -x", ["usage: top [-b] [-n COUNT] [-d SECONDS]"]),
             # Pipelines and redirection (M12); the shell is still in /boot.
             ("serial", "echo a b c | wc", ["\r\n      1       3       6\r\n"]),
+            # A reader that stops early: the writers end quietly, as on Unix.
+            ("serial", "yes | cat | head -n 2", ["\r\ny\r\ny\r\n", "!broken pipe"]),
+            ("serial", "yes | dd | head -n 2", ["\r\ny\r\ny\r\n", "!broken pipe", "!records"]),
             ("keyboard", "cat < etc/motd | cat | wc", ["\r\n      1       3      19\r\n"]),
             ("serial", "echo hidden > /dev/null; echo shown", ["\r\nshown\r\n", "!\r\nhidden\r\n"]),
             ("serial", "echo x > /boot/nosuch", ["sh: /boot/nosuch: no such file or directory"]),
@@ -418,7 +436,7 @@ SCENARIOS = [
         "disk": write_patterned_disk,
         "boot": ["ata0: QEMU HARDDISK, 8 MiB, LBA", "ata0: CHS cross-check passed",
                  "ata0p1: type 0x06, sectors 2048-16383",
-                 "devices: cons com1 vga null sysname kbd mouse ata0 ata0p1 fb fbctl time\r\n"],
+                 "devices: cons com1 vga null sysname sysstat ps kbd mouse ata0 ata0p1 fb fbctl time\r\n"],
         "cases": [
             ("serial", "devices", ["ata0     block  16384 x 512 bytes (8 MiB)",
                                    "ata0p1   block  14336 x 512 bytes (7 MiB)"]),
@@ -468,7 +486,7 @@ SCENARIOS = [
     {
         "name": "partitionless FAT disk",
         "disk": write_superfloppy,
-        "boot": ["devices: cons com1 vga null sysname kbd mouse ata0 fb fbctl time\r\n"],
+        "boot": ["devices: cons com1 vga null sysname sysstat ps kbd mouse ata0 fb fbctl time\r\n"],
         "cases": [],
     },
 ]
@@ -560,6 +578,44 @@ def failed_boot_on_screen(kernel):
         m.close()
 
 
+def colours_on_screen(kernel):
+    """The text console understands ANSI colours (M18): fetch's escapes
+    become VGA attributes, not text."""
+    m = Machine(kernel)
+    try:
+        m.expect(SHELL_PROMPT, timeout=60)
+        run_command(m, "serial", "fetch", ["Kernel"], SHELL_PROMPT)
+        path = os.path.join(m.tmpdir, "colours.bin")
+        m.monitor.sendall(f'pmemsave 0xb8000 4000 "{path}"\n'.encode())
+        deadline = time.time() + 10
+        while not (os.path.exists(path) and os.path.getsize(path) == 4000):
+            if time.time() > deadline:
+                raise TestFailure("pmemsave wrote no screen")
+            time.sleep(0.1)
+        time.sleep(0.1)
+        data = open(path, "rb").read()
+        rows = [bytes(data[r * 160 + c * 2] for c in range(80)).decode("latin-1") for r in range(25)]
+        attrs = [[data[r * 160 + c * 2 + 1] for c in range(80)] for r in range(25)]
+        text = "\n".join(rows)
+        if "[1;36m" in text or "\x1b" in text:
+            raise TestFailure(f"escapes shown as text:\n{text}")
+        r = next((i for i, row in enumerate(rows) if f"OS: ManiOS {VERSION}" in row), None)
+        if r is None:
+            raise TestFailure(f"no OS line on the screen:\n{text}")
+        c = rows[r].index("OS:")
+        # Bright cyan (0x0B) for the label, light grey (0x07) for its value;
+        # the logo beside it bright yellow (0x0E).
+        if attrs[r][c] != 0x0B or attrs[r][c + 4] != 0x07 or attrs[r][rows[r].index("M")] != 0x0E:
+            raise TestFailure(f"colours {attrs[r][c]:#x} {attrs[r][c + 4]:#x} on: {rows[r]!r}")
+        print("PASS: [colours] fetch's ANSI colours on the text console")
+        return 0
+    except TestFailure as e:
+        print(f"FAIL: [colours] {e}")
+        return 1
+    finally:
+        m.close()
+
+
 def main():
     global BOOTFS_DIR
     kernel = sys.argv[1] if len(sys.argv) > 1 else "build/manios-zkt.elf"
@@ -568,6 +624,7 @@ def main():
     try:
         failures = sum(run_scenario(kernel, sc, workdir) for sc in SCENARIOS)
         failures += failed_boot_on_screen(kernel)
+        failures += colours_on_screen(kernel)
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
     sys.exit(1 if failures else 0)

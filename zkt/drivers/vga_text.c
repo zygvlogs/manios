@@ -1,4 +1,5 @@
 #include "vga_text.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include "cpu.h"
 #include "device.h"
@@ -23,6 +24,20 @@ static uint16_t shadow[VGA_WIDTH * VGA_HEIGHT];
 static uint16_t *vga_memory = P2V(VGA_TEXT_PHYS);
 static size_t vga_row = 0;
 static size_t vga_col = 0;
+static uint8_t vga_color = VGA_DEFAULT_COLOR;
+
+/* A subset of ANSI (ECMA-48) escape sequences, so programs that colour
+ * their output (fetch, top) read well here too: SGR colours, cursor
+ * position and movement, erasing the screen or a line. Others are
+ * swallowed. */
+#define CSI_PARAMS 8
+static enum { TEXT, ESCAPE, CSI } esc_state;
+static unsigned esc_params[CSI_PARAMS], esc_count;
+static bool esc_private; /* "ESC [ ?": DEC modes, ignored */
+
+/* ANSI's colour order (black red green yellow blue magenta cyan white)
+ * in the VGA palette's. */
+static const uint8_t ANSI_TO_VGA[8] = { 0, 4, 2, 6, 1, 5, 3, 7 };
 
 static inline uint16_t vga_entry(char c, uint8_t color)
 {
@@ -41,13 +56,20 @@ static void update_cursor(void)
 	outb(CRTC_DATA, (uint8_t)(pos >> 8));
 }
 
-void vga_clear(void)
+static void erase(size_t from, size_t to)
 {
-	for (size_t i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++) {
+	for (size_t i = from; i < to; i++) {
 		vga_memory[i] = vga_entry(' ', VGA_DEFAULT_COLOR);
 	}
+}
+
+void vga_clear(void)
+{
+	erase(0, VGA_WIDTH * VGA_HEIGHT);
 	vga_row = 0;
 	vga_col = 0;
+	vga_color = VGA_DEFAULT_COLOR;
+	esc_state = TEXT;
 	update_cursor();
 }
 
@@ -70,8 +92,123 @@ static void newline(void)
 	}
 }
 
+static void select_graphic_rendition(void)
+{
+	if (esc_count == 0) {
+		esc_params[esc_count++] = 0; /* ESC [ m: reset */
+	}
+	for (unsigned i = 0; i < esc_count; i++) {
+		unsigned p = esc_params[i];
+		if (p == 0) {
+			vga_color = VGA_DEFAULT_COLOR;
+		} else if (p == 1) {
+			vga_color |= 0x08; /* bold: the bright colours */
+		} else if (p == 22) {
+			vga_color &= (uint8_t)~0x08;
+		} else if (p >= 30 && p <= 37) {
+			vga_color = (uint8_t)((vga_color & 0xF8) | ANSI_TO_VGA[p - 30]);
+		} else if (p == 39) {
+			vga_color = (uint8_t)((vga_color & 0xF8) | (VGA_DEFAULT_COLOR & 0x07));
+		} else if (p >= 90 && p <= 97) {
+			vga_color = (uint8_t)((vga_color & 0xF0) | 0x08 | ANSI_TO_VGA[p - 90]);
+		} else if ((p >= 40 && p <= 47) || (p >= 100 && p <= 107)) {
+			/* Bit 7 blinks rather than brightens: bright backgrounds
+			 * come out plain. */
+			vga_color = (uint8_t)((vga_color & 0x0F) | ANSI_TO_VGA[p % 10] << 4);
+		} else if (p == 49) {
+			vga_color &= 0x0F;
+		}
+	}
+}
+
+static unsigned param(unsigned i, unsigned fallback)
+{
+	return i < esc_count && esc_params[i] ? esc_params[i] : fallback;
+}
+
+static void control_sequence(char final)
+{
+	size_t here = vga_row * VGA_WIDTH + vga_col;
+	unsigned n = param(0, 1);
+	switch (final) {
+	case 'm':
+		select_graphic_rendition();
+		break;
+	case 'H':
+	case 'f':
+		vga_row = param(0, 1) > VGA_HEIGHT ? VGA_HEIGHT - 1 : param(0, 1) - 1;
+		vga_col = param(1, 1) > VGA_WIDTH ? VGA_WIDTH - 1 : param(1, 1) - 1;
+		break;
+	case 'A':
+		vga_row = n > vga_row ? 0 : vga_row - n;
+		break;
+	case 'B':
+		vga_row = vga_row + n >= VGA_HEIGHT ? VGA_HEIGHT - 1 : vga_row + n;
+		break;
+	case 'C':
+		vga_col = vga_col + n >= VGA_WIDTH ? VGA_WIDTH - 1 : vga_col + n;
+		break;
+	case 'D':
+		vga_col = n > vga_col ? 0 : vga_col - n;
+		break;
+	case 'J': /* 0: to the end, 1: from the start, 2: all */
+		erase(param(0, 0) == 0 ? here : 0,
+		      param(0, 0) == 1 ? here + 1 : VGA_WIDTH * VGA_HEIGHT);
+		break;
+	case 'K': /* the same, within the line */
+		erase(param(0, 0) == 0 ? here : vga_row * VGA_WIDTH,
+		      param(0, 0) == 1 ? here + 1 : (vga_row + 1) * VGA_WIDTH);
+		break;
+	}
+}
+
+/* Returns whether c belonged to an escape sequence. */
+static bool escape(char c)
+{
+	if (esc_state == TEXT) {
+		if (c != '\033') {
+			return false;
+		}
+		esc_state = ESCAPE;
+		return true;
+	}
+	if (esc_state == ESCAPE) {
+		esc_state = c == '[' ? CSI : TEXT; /* other escapes: dropped */
+		esc_count = 0;
+		esc_private = false;
+		return true;
+	}
+	if (c >= '0' && c <= '9') {
+		if (esc_count == 0) {
+			esc_params[esc_count++] = 0;
+		}
+		unsigned *p = &esc_params[esc_count - 1];
+		*p = *p < 10000 ? *p * 10 + (unsigned)(c - '0') : *p;
+	} else if (c == ';') {
+		if (esc_count == 0) {
+			esc_params[esc_count++] = 0;
+		}
+		if (esc_count < CSI_PARAMS) {
+			esc_params[esc_count++] = 0;
+		}
+	} else if (c == '?') {
+		esc_private = true;
+	} else if (c >= 0x40 && c <= 0x7E) {
+		if (!esc_private) {
+			control_sequence(c);
+		}
+		esc_state = TEXT;
+	} else if ((unsigned char)c < 0x20 || (unsigned char)c > 0x3F) {
+		esc_state = TEXT; /* not a sequence after all */
+	}
+	return true;
+}
+
 static void vga_putc(char c)
 {
+	if (escape(c)) {
+		return;
+	}
 	switch (c) {
 	case '\n':
 		newline();
@@ -91,7 +228,7 @@ static void vga_putc(char c)
 		return;
 	}
 
-	vga_memory[vga_row * VGA_WIDTH + vga_col] = vga_entry(c, VGA_DEFAULT_COLOR);
+	vga_memory[vga_row * VGA_WIDTH + vga_col] = vga_entry(c, vga_color);
 	if (++vga_col == VGA_WIDTH) {
 		newline();
 	}

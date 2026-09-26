@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Desktop test (M12): the ManiOS desktop driven like a user would --
-keys through QEMU's `sendkey`, the pointer through `mouse_move` and
-`mouse_button` -- and checked on the screen itself (`screendump`) and on
-the serial line, where the desktop logs what it does.
+"""Desktop test (M12, M18): ManiDE driven like a user would -- keys
+through QEMU's `sendkey` (Alt bindings included), the pointer through
+`mouse_move` and `mouse_button` -- and checked on the screen itself
+(`screendump`) and on the serial line, where ManiDE logs what it does.
 
 Text is read back off the screen by matching every character cell
 against the glyphs of desktop/libgfx/font.txt, so a check like "the
-terminal's second row says 'hello, desktop'" is exact.
+terminal's second row says 'hello, ManiDE'" is exact. Where panes are
+comes from the same arithmetic as desktop/manide/tile.c.
 
 Usage: tests/desktop_test.py [path-to-kernel-elf]
 """
@@ -22,21 +23,31 @@ from gfx_test import screendump
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import mkfont  # noqa: E402
 
-FONT = os.path.join(os.path.dirname(__file__), "..", "desktop", "libgfx", "font.txt")
+ROOT = os.path.join(os.path.dirname(__file__), "..")
+FONT = os.path.join(ROOT, "desktop", "libgfx", "font.txt")
+VERSION = open(os.path.join(ROOT, "VERSION")).read().strip()
 CELL_W, CELL_H = 6, 11
 
-# desktop/wm/desktop.h and the applications' colours.
-PANEL = (0x1E, 0x24, 0x30)
+# desktop/manide/manide.h, draw.c and the applications' colours.
+BAR_H, HEAD_H, GAP = 18, 15, 4
+TEXT_Y = 4
+WS_X, WS_STEP = 84, 14
+LAYOUT_X = WS_X + 9 * WS_STEP + 2
+FACTS_X = LAYOUT_X + 9 * CELL_W
+DESK = (0x0A, 0x0D, 0x12)
+BAR = (0x12, 0x16, 0x1E)
+EDGE = (0x2A, 0x31, 0x3C)
+FOCUS = (0x3F, 0xC8, 0xD8)
 ACCENT = (0xE0, 0x7A, 0x2E)
-INACTIVE = (0x5A, 0x62, 0x70)
-LIGHT = (0xE8, 0xE8, 0xE8)
-DARK = (0x1A, 0x1A, 0x1A)
+TEXT = (0xD8, 0xDE, 0xE9)
+DIM = (0x6B, 0x74, 0x83)
+DARK = (0x10, 0x12, 0x16)
 TERM_FG = (0xD8, 0xDE, 0xE9)
-TERM_BG = (0x10, 0x15, 0x1C)
-CLOCK_DATE = (0xC8, 0xCE, 0xD8)
-
+TERM_BG = (0x0F, 0x13, 0x19)
+WELCOME_CYAN = (0x3F, 0xC8, 0xD8)
 TERM_MARGIN = 4
-TITLE_H = 18
+MENU_ITEMS = ["Terminal", "System info", "Processes", "Welcome", "Clock", "About ManiOS",
+              None, "Exit ManiDE"]
 
 
 def load_glyphs():
@@ -69,6 +80,87 @@ def read_text(screen, x, y, cells, color, scale=1):
     return "".join(out).rstrip()
 
 
+# --- where ManiDE puts things (tile.c) ---
+
+def area(w=800, h=600):
+    return (GAP, BAR_H + GAP, w - 2 * GAP, h - BAR_H - 2 * GAP)
+
+
+def share(start, length, n, i):
+    each = (length - (n - 1) * GAP) // n
+    at = start + i * (each + GAP)
+    return at, (start + length - at if i == n - 1 else each)
+
+
+def grid(n, w=800, h=600):
+    ax, ay, aw, ah = area(w, h)
+    cols = 1
+    while cols * cols < n:
+        cols += 1
+    panes = []
+    for c in range(cols):
+        rows = n // cols + (1 if c >= cols - n % cols else 0)
+        x, pw = share(ax, aw, cols, c)
+        for r in range(rows):
+            y, ph = share(ay, ah, rows, r)
+            panes.append((x, y, pw, ph))
+    return panes
+
+
+def tall(n, master=55, w=800, h=600):
+    ax, ay, aw, ah = area(w, h)
+    mw = (aw - GAP) * master // 100
+    panes = [(ax, ay, mw, ah)]
+    for i in range(1, n):
+        y, ph = share(ay, ah, n - 1, i - 1)
+        panes.append((ax + mw + GAP, y, aw - mw - GAP, ph))
+    return panes
+
+
+def content(pane):
+    x, y, w, h = pane
+    return (x + 1, y + HEAD_H, w - 2, h - HEAD_H - 1)
+
+
+def term_size(pane):
+    _, _, w, h = content(pane)
+    return (w - 2 * TERM_MARGIN) // CELL_W, (h - 2 * TERM_MARGIN) // CELL_H
+
+
+def term_rows(s, pane, color=TERM_FG):
+    """The text rows of a terminal in `pane`."""
+    x, y, _, _ = content(pane)
+    cols, rows = term_size(pane)
+    return [read_text(s, x + TERM_MARGIN, y + TERM_MARGIN + r * CELL_H, cols, color)
+            for r in range(rows)]
+
+
+def clock_face(pane):
+    """Where the clock (desktop/apps/clock.c) draws the time in a pane:
+    x, y and scale."""
+    x, y, w, h = content(pane)
+    scale = 1
+    while 48 * (scale + 1) + 20 <= w and CELL_H * (scale + 1) + 30 <= h and scale < 12:
+        scale += 1
+    small = 2 if scale >= 6 else 1
+    block = CELL_H * scale + 8 + CELL_H * small
+    return x + (w - 48 * scale) // 2, y + (h - block) // 2, scale
+
+
+def title(s, pane, color, cells=12):
+    return read_text(s, pane[0] + 6, pane[1] + 3, cells, color)
+
+
+def edge(s, pane):
+    """The colour of a pane's left edge, halfway down."""
+    return s.pixel(pane[0], pane[1] + pane[3] // 2)
+
+
+def check(ok, what):
+    if not ok:
+        raise TestFailure(what)
+
+
 class Desktop:
     def __init__(self, m, tmpdir):
         self.m, self.tmpdir, self.shots = m, tmpdir, 0
@@ -77,7 +169,7 @@ class Desktop:
         self.shots += 1
         return screendump(self.m, self.tmpdir, f"shot{self.shots}")
 
-    def wait(self, predicate, what, timeout=8):
+    def wait(self, predicate, what, timeout=10):
         """Screendumps until predicate(screen) holds."""
         deadline = time.time() + timeout
         while True:
@@ -90,7 +182,7 @@ class Desktop:
 
     def key(self, name):
         self.m.monitor.sendall(f"sendkey {name} 10\n".encode())
-        time.sleep(0.08)
+        time.sleep(0.1)
 
     def move(self, dx, dy):
         self.m.monitor.sendall(f"mouse_move {dx} {dy}\n".encode())
@@ -104,41 +196,15 @@ class Desktop:
         self.m.type_keyboard(text)
 
 
-def term_rows(s, x, y, count=24):
-    """The rows of a terminal whose content is at (x, y)."""
-    return [read_text(s, x + TERM_MARGIN, y + TERM_MARGIN + r * CELL_H, 80, TERM_FG)
-            for r in range(count)]
-
-
-def title(s, x, y, width_cells, color):
-    """A window's title, for content at (x, y)."""
-    return read_text(s, x + 6, y - TITLE_H + 4, width_cells, color)
-
-
-def check(ok, what):
-    if not ok:
-        raise TestFailure(what)
-
-
 class Scenario:
-    """One desktop session; `pointer` tracks where the desktop's pointer
-    is (it starts at the centre and moves exactly as told)."""
+    """One ManiDE session; `pointer` tracks where ManiDE's pointer is (it
+    starts at the centre and moves exactly as told). The session file
+    opens fetch, welcome, top and a terminal, in a 2x2 grid."""
 
     def __init__(self, m, tmpdir):
         self.m = m
         self.d = Desktop(m, tmpdir)
         self.pointer = (400, 300)
-        self.term = (60, 50)
-
-    def opened(self, name, size):
-        """Waits for the desktop to log a new window; its number and
-        content position (they depend on what came before)."""
-        before = self.m.expect(f' "{name}" {size} at ')
-        where = self.m.expect("\r\n")
-        number = re.search(r"window (\d+)$", before)
-        pos = re.fullmatch(r"(-?\d+),(-?\d+)", where)
-        check(number and pos, f"window log line: {before[-40:]!r} {where!r}")
-        return int(number.group(1)), int(pos.group(1)), int(pos.group(2))
 
     def point(self, x, y):
         px, py = self.pointer
@@ -151,175 +217,251 @@ class Scenario:
         self.d.button(0)
 
     def start(self):
-        self.m.type_serial("desktop\r")
-        self.m.expect("800x600, serving /dev/wsys; F1 opens the menu")
-        s = self.d.wait(lambda s: s.w == 800 and read_text(s, 22, 5, 6, LIGHT) == "ManiOS",
-                        "the panel")
-        check(s.pixel(400, 10) == PANEL and s.pixel(400, 21) == ACCENT, "panel colours")
-        clock = read_text(s, 800 - 8 - 48, 5, 8, LIGHT)
-        check(re.fullmatch(r"\d\d:\d\d:\d\d", clock), f"the panel's clock reads {clock!r}")
+        self.m.type_serial("manide\r")
+        self.m.expect("800x600, serving /dev/wsys; Alt+Enter: terminal, F1: menu")
+        for n, name in enumerate(["fetch", "Welcome", "top", "Terminal"], 1):
+            self.m.expect(f'window {n} "{name}"')
+        s = self.d.wait(lambda s: s.w == 800 and read_text(s, 6, TEXT_Y, 6, ACCENT) == "ManiDE",
+                        "the status bar")
+        check(s.pixel(400, 8) == BAR and s.pixel(400, BAR_H - 1) == EDGE, "the bar's colours")
+        check(s.pixel(WS_X + 1, 3) == ACCENT and read_text(s, WS_X + 3, TEXT_Y, 1, DARK) == "1"
+              and read_text(s, WS_X + WS_STEP + 3, TEXT_Y, 1, DIM) == "2",
+              "workspace 1 is shown, 2 is empty")
+        check(read_text(s, LAYOUT_X, TEXT_Y, 6, DIM) == "[grid]", "the layout: grid")
+        stamp = read_text(s, 800 - 6 - 19 * CELL_W, TEXT_Y, 19, TEXT)
+        check(re.fullmatch(r"20\d\d-\d\d-\d\d \d\d:\d\d:\d\d", stamp), f"the date and time: {stamp!r}")
+        # (The | between the facts are dimmer: they read as spaces here.)
+        facts = read_text(s, FACTS_X, TEXT_Y, (800 - 6 - 19 * CELL_W - 12 - FACTS_X) // CELL_W, TEXT)
+        check(re.fullmatch(rf"manios +ZKT {re.escape(VERSION)} +up \d+[smhd]( \d+[mh])? +cpu \d+% +mem \d+%"
+                           r" +no network",
+                           facts), f"host, kernel, uptime, cpu, memory, network: {facts!r}")
         check(s.pixel(400, 300) == (0, 0, 0) and s.pixel(401, 302) == (255, 255, 255),
               "the pointer is drawn at the centre")
-        top, bottom = s.pixel(5, 30), s.pixel(5, 590)
-        check(top != bottom and top[2] > bottom[2], f"the background is a gradient: {top} {bottom}")
 
-    def menu(self):
-        self.d.key("f1")
-        s = self.d.wait(lambda s: read_text(s, 11, 29, 8, DARK) == "Terminal", "the menu")
-        items = [read_text(s, 11, 49, 12, LIGHT), read_text(s, 11, 69, 12, LIGHT),
-                 read_text(s, 11, 96, 12, LIGHT)]
-        check(items == ["Clock", "About ManiOS", "Exit desktop"], f"menu items: {items}")
-        check(s.pixel(3, 30) == ACCENT, "the first item is highlighted")
-        self.d.key("esc")
-        self.d.wait(lambda s: read_text(s, 11, 29, 8, DARK) != "Terminal", "the menu closing")
+    def panes(self):
+        fetch, welcome, top, term = grid(4)
+        self.term = term
+        self.point(799, 599)  # the corner: out of the way of what is read
+        s = self.d.wait(lambda s: any(f"ManiOS {VERSION} i386" in r for r in term_rows(s, fetch))
+                        and term_rows(s, top)[0].startswith("top - up ")
+                        and term_rows(s, term)[0] == "manios%",
+                        "fetch, top and a shell in their panes")
+        check([title(s, p, DIM) for p in (fetch, welcome, top)] == ["fetch", "Welcome", "top"]
+              and title(s, term, FOCUS) == "Terminal", "the panes' titles; the terminal has the focus")
+        check(edge(s, term) == FOCUS and edge(s, fetch) == EDGE, "the focused pane's edge is cyan")
+        # top asked the terminal its size: its table fits the pane, the
+        # first process (row 5) right under the header (row 4, black on
+        # cyan) -- at 80 columns its lines would wrap onto those rows. (A screendump can
+        # catch a frame half drawn: wait for a whole one.)
+        s = self.d.wait(lambda s: re.match(r"\s*\d+\s+\d+\s+[a-z]+\s", term_rows(s, top)[5])
+                        and any(r.endswith(" manide") for r in term_rows(s, top)),
+                        "top fitting its pane, ManiDE among its processes")
+        x, y, w, h = content(welcome)
+        colours = {s.pixel(px, py) for px in range(x, x + w, 2) for py in range(y, y + h, 2)}
+        check(ACCENT in colours and WELCOME_CYAN in colours, "the welcome pane's amber and cyan")
+        check(s.pixel(GAP + 792 // 2, 100) == DESK, "the desk shows between the panes")
 
     def terminal(self):
-        self.d.key("f1")
-        self.d.key("ret")
-        self.m.expect('window 1 "Terminal" 488x272 at 60,50')
-        x, y = self.term
-        self.d.wait(lambda s: term_rows(s, x, y, 1)[0] == "manios%", "the shell's prompt")
-        self.d.type("echo hello, desktop\n")
-        s = self.d.wait(lambda s: term_rows(s, x, y, 3)[1:] == ["hello, desktop", "manios%"],
-                        "echo's output")
-        check(s.pixel(x + 100, y - 10) == ACCENT and title(s, x, y, 8, DARK) == "Terminal",
-              "the terminal's title bar shows it has the focus")
+        self.d.type("echo hello, ManiDE\n")
+        self.d.wait(lambda s: term_rows(s, self.term)[1:3] == ["hello, ManiDE", "manios%"],
+                    "echo's output")
         # The window system is files: listed, counted and read from the shell.
-        self.d.type("ls /dev/wsys | wc; cat /dev/wsys/1/ctl\n")
-        self.d.wait(lambda s: term_rows(s, x, y, 6)[3:5]
-                    == ["      2       2       7", "1 60 50 488 272 1 Terminal"],
-                    "ls and cat of /dev/wsys")
+        x, y, w, h = content(self.term)
+        self.d.type("ls /dev/wsys | wc; cat /dev/wsys/4/ctl\n")
+        self.d.wait(lambda s: term_rows(s, self.term)[3:5]
+                    == ["      5       5      16", f"4 {x} {y} {w} {h} 1 Terminal"],
+                    "ls and cat of /dev/wsys: the window has the size of its pane")
+
+    def layouts(self):
+        self.d.key("alt-spc")
+        self.m.expect("layout tall")
+        panes = tall(4)
+        s = self.d.wait(lambda s: read_text(s, LAYOUT_X, TEXT_Y, 6, DIM) == "[tall]"
+                        and edge(s, panes[3]) == FOCUS and term_rows(s, panes[3])[1] == "hello, ManiDE",
+                        "the tall layout: fetch on the left, the rest stacked")
+        check(s.pixel(panes[0][0], 590) == EDGE, "the first pane is the whole height")
+        self.d.key("alt-l")
+        wider = tall(4, 60)
+        self.d.wait(lambda s: edge(s, wider[3]) == FOCUS, "Alt+l widening the first pane")
+        self.d.key("alt-spc")
+        self.m.expect("layout mono")
+        whole = area()
+        self.d.wait(lambda s: read_text(s, LAYOUT_X, TEXT_Y, 6, DIM) == "[mono]"
+                    and term_rows(s, whole)[1] == "hello, ManiDE" and edge(s, whole) == FOCUS,
+                    "the mono layout: the focused terminal alone, as large as the screen")
+        self.d.key("alt-spc")
+        self.m.expect("layout grid")
+        self.d.wait(lambda s: term_rows(s, self.term)[1] == "hello, ManiDE" and edge(s, self.term) == FOCUS,
+                    "back to the grid")
+
+    def focus(self):
+        fetch, welcome, top, term = grid(4)
+        self.d.key("alt-k")
+        self.d.wait(lambda s: edge(s, top) == FOCUS and edge(s, term) == EDGE, "Alt+k: the pane before")
+        self.d.key("alt-j")
+        self.d.wait(lambda s: edge(s, term) == FOCUS, "Alt+j: the next pane")
+        # The mouse: a click in a pane focuses it.
+        self.click(fetch[0] + 100, fetch[1] + 150)
+        self.d.wait(lambda s: edge(s, fetch) == FOCUS and title(s, fetch, FOCUS) == "fetch",
+                    "a click focusing a pane")
+        self.click(term[0] + 100, term[1] + 150)
+        self.d.wait(lambda s: edge(s, term) == FOCUS, "a click focusing the terminal again")
+        self.d.type("echo focus\n")
+        self.d.wait(lambda s: "focus" in term_rows(s, term), "keys reaching the focused terminal")
+
+    def workspaces(self):
+        self.d.key("alt-2")
+        self.m.expect("workspace 2")
+        s = self.d.wait(lambda s: s.pixel(WS_X + WS_STEP + 1, 3) == ACCENT and s.pixel(200, 200) == DESK,
+                        "workspace 2, empty")
+        check(read_text(s, WS_X + 3, TEXT_Y, 1, TEXT) == "1", "workspace 1 shows as in use")
+        self.d.key("alt-ret")
+        self.m.expect('window 5 "Terminal"')
+        whole = area()
+        self.d.wait(lambda s: term_rows(s, whole)[0] == "manios%", "Alt+Enter: a terminal filling workspace 2")
+        self.d.type("echo two\n")
+        self.d.wait(lambda s: term_rows(s, whole)[1] == "two", "typing on workspace 2")
+        self.d.key("alt-shift-1")
+        self.m.expect("window 5 to workspace 1")
+        self.d.wait(lambda s: s.pixel(200, 200) == DESK, "Alt+Shift+1 sending it to workspace 1")
+        # The bar's numbers pick workspaces too.
+        self.click(WS_X + 6, 9)
+        self.m.expect("workspace 1")
+        five = grid(5)
+        self.d.wait(lambda s: term_rows(s, five[4])[1] == "two" and edge(s, five[3]) == FOCUS,
+                    "five panes on workspace 1; the focus where it was")
+        self.d.key("alt-j")
+        self.d.wait(lambda s: edge(s, five[4]) == FOCUS, "Alt+j to the new pane")
+        self.d.key("alt-q")
+        self.m.expect("window 5 closed")
+        self.m.expect("exited (status 0)")
+        self.d.wait(lambda s: edge(s, self.term) == FOCUS, "Alt+q closing it; four panes again")
+
+    def prompt(self):
+        self.d.key("alt-d")
+        self.d.wait(lambda s: read_text(s, FACTS_X, TEXT_Y, 5, ACCENT) == "run:", "Alt+d: the run prompt")
+        self.d.type("clo")
+        self.d.wait(lambda s: read_text(s, FACTS_X, TEXT_Y, 8, ACCENT) == "run: clo"
+                    and read_text(s, FACTS_X + 8 * CELL_W + 8, TEXT_Y, 5, DIM) == "clock",
+                    "what Tab would complete")
+        self.d.key("tab")
+        self.d.wait(lambda s: read_text(s, FACTS_X, TEXT_Y, 11, ACCENT) == "run: clock", "Tab completing")
+        self.d.key("ret")
+        self.m.expect("started clock (pid")
+        self.m.expect('window 6 "Clock"')
+        five = grid(5)
+        self.d.wait(lambda s: title(s, five[4], FOCUS) == "Clock"
+                    and read_text(s, FACTS_X, TEXT_Y, 6, TEXT) == "manios", "the clock in a fifth pane")
+        self.d.key("alt-q")
+        self.m.expect("window 6 closed")
+        self.m.expect("exited (status 0)")
+        # Escape leaves the prompt without running anything.
+        self.d.key("alt-d")
+        self.d.type("x")
+        self.d.wait(lambda s: read_text(s, FACTS_X, TEXT_Y, 6, ACCENT) == "run: x", "the prompt again")
+        self.d.key("esc")
+        self.d.wait(lambda s: read_text(s, FACTS_X, TEXT_Y, 6, TEXT) == "manios", "Escape closing it")
+
+    def menu(self):
+        def item_y(i):
+            return BAR_H + 2 + sum(20 if label else 7 for label in MENU_ITEMS[:i])
+
+        self.d.key("f1")
+        s = self.d.wait(lambda s: read_text(s, 11, item_y(0) + 5, 8, DARK) == "Terminal", "the menu")
+        items = [read_text(s, 11, item_y(i) + 5, 12, TEXT) for i, label in enumerate(MENU_ITEMS)
+                 if label and i]
+        check(items == [label for label in MENU_ITEMS[1:] if label], f"the menu's items: {items}")
+        check(s.pixel(3, item_y(0) + 1) == FOCUS, "the first item is highlighted")
+        self.d.key("esc")
+        self.d.wait(lambda s: read_text(s, 11, item_y(0) + 5, 8, DARK) != "Terminal",
+                    "Escape closing the menu")
+
+    def close_box(self):
+        welcome = grid(4)[1]
+        sx, sy, sw = welcome[0] + 1, welcome[1] + 1, welcome[2] - 2
+        self.click(sx + sw - 8, sy + 7)
+        self.m.expect("window 2 closed")
+        self.m.expect("exited (status 0)")
+        fetch, top, term = grid(3)
+        check(term == self.term, "the terminal keeps its place")
+        self.d.wait(lambda s: s.pixel(fetch[0], 500) in (EDGE, FOCUS), "fetch taking the whole left side")
+        self.click(term[0] + 100, term[1] + 150)
+        self.d.wait(lambda s: edge(s, term) == FOCUS, "the terminal focused again")
 
     def wintest(self):
         self.d.type("/boot/test/wintest\n")
         # Its summary also goes to /dev/cons: "all N checks passed" or
         # "F of N checks failed" (the details are in the terminal).
-        before = self.m.expect(" checks ", timeout=60)
+        before = self.m.expect(" checks ", timeout=90)
         verdict = self.m.expect("\r\n")
         check(verdict == "passed" and "wintest: all " in before, f"{before[-60:]} checks {verdict}")
 
-    def drag(self):
-        x, y = self.term
-        self.point(x + 140, y - 10)
-        self.d.button(1)
-        self.point(x + 240, y + 70)
-        self.d.button(0)
-        self.m.expect("window 1 moved to 160,130")
-        self.term = (160, 130)
-        x, y = self.term
-        s = self.d.wait(lambda s: title(s, x, y, 8, DARK) == "Terminal", "the terminal moved")
-        check(s.pixel(60 + 20, 50 - 10) != ACCENT, "nothing is left where the title bar was")
-
-    def clock(self):
-        self.d.key("f1")
-        self.d.key("down")
-        self.d.key("ret")
-        self.clock_id, cx, cy = self.opened("Clock", "200x70")
-        self.clock_at = (cx, cy)
-
-        def reading(s):
-            return read_text(s, cx + 28, cy + 10, 8, ACCENT, 3)
-
-        s = self.d.wait(lambda s: re.fullmatch(r"\d\d:\d\d:\d\d", reading(s)), "the clock's time")
-        first = reading(s)
-        # The first frame can still be arriving below the time (a window's
-        # pixels come in several writes): wait for the date line too.
-        self.d.wait(lambda s: re.fullmatch(r"20\d\d-\d\d-\d\d UTC",
-                                           read_text(s, cx + 58, cy + 50, 14, CLOCK_DATE)),
-                    "the clock's date, YYYY-MM-DD UTC")
-        self.d.wait(lambda s: re.fullmatch(r"\d\d:\d\d:\d\d", reading(s)) and reading(s) != first,
-                    "the clock ticking")
-        tx, ty = self.term
-        s = self.screen_now()
-        # (The clock may cover the terminal's title text: look at its right end.)
-        check(title(s, cx, cy, 5, DARK) == "Clock" and s.pixel(tx + 400, ty - 10) == INACTIVE,
-              "the new window has the focus; the terminal's title bar is grey")
-
-    def screen_now(self):
-        return self.d.screen()
-
-    def focus(self):
-        # F2 brings the bottom window (the terminal) up; keys follow it.
-        tx, ty = self.term
-        self.d.key("f2")
-        self.d.wait(lambda s: title(s, tx, ty, 8, DARK) == "Terminal", "F2 focusing the terminal")
-        self.d.type("echo focus\n")
-        self.d.wait(lambda s: "focus" in term_rows(s, tx, ty), "keys reaching the terminal")
-        # And back to the clock, which quits on q -- the terminal gets no q.
-        self.d.key("f2")
-        cx, cy = self.clock_at
-        self.d.wait(lambda s: title(s, cx, cy, 5, DARK) == "Clock", "F2 focusing the clock")
-        self.d.key("q")
-        self.m.expect(f"window {self.clock_id} closed")
-        self.m.expect("exited (status 0)")
-        s = self.screen_now()
-        rows = term_rows(s, tx, ty)
-        last = max(i for i, r in enumerate(rows) if r)
-        check(rows[last] == "manios%", f"the terminal's line is untouched: {rows[last]!r}")
-
-    def about_close_box(self):
-        self.d.key("f1")
-        self.d.key("down")
-        self.d.key("down")
-        self.d.key("ret")
-        number, ax, ay = self.opened("About ManiOS", "340x170")
-        self.d.wait(lambda s: read_text(s, ax + 48, ay + 16, 6, LIGHT, 2) == "ManiOS",
-                    "the About window")
-        # The close box: 12x12 at the title bar's right, 3 pixels in.
-        self.click(ax + 340 - 15 + 6, ay - 18 + 3 + 6)
-        self.m.expect(f"window {number} closed")
-        self.m.expect("exited (status 0)")
-
-    def nested(self):
-        tx, ty = self.term
-        self.d.type("desktop\n")
-        self.d.wait(lambda s: any(r.startswith("desktop: already running") for r in term_rows(s, tx, ty)),
-                    "a second desktop refusing to start")
-
     def scrollback(self):
-        tx, ty = self.term
-        # Over two screens of distinct lines, however many programs /bin
-        # holds (the terminal draws about five lines a second in QEMU).
+        term = self.term
+        cols, rows = term_size(term)
+        # Over two screens of distinct lines, however many programs /bin holds.
         self.d.type("ls /bin | head -n 30; ls /bin | head -n 30; echo last line\n")
-        live = self.d.wait(lambda s: term_rows(s, tx, ty)[-2:] == ["last line", "manios%"],
+        live = self.d.wait(lambda s: term_rows(s, term)[-2:] == ["last line", "manios%"],
                            "two listings of /bin", timeout=30)
-        live = term_rows(live, tx, ty)
+        live = term_rows(live, term)
+        half = rows // 2
         # PgUp: half a screen back, and a note saying so on the top row.
         self.d.key("pgup")
-        note = " 12 lines back (PgDn) "
-        nx = tx + 488 - TERM_MARGIN - len(note) * CELL_W
-        # (A screendump can catch the window half redrawn: wait for all of it.)
-        s = self.d.wait(lambda s: read_text(s, nx, ty + TERM_MARGIN, len(note), TERM_BG)
-                        == note.rstrip() and term_rows(s, tx, ty)[12:] == live[:12],
-                        "12 lines back, and a note saying so")
-        rows = term_rows(s, tx, ty)
-        check(rows[11] and rows[11] != live[0], "a line from before the screen shows")
+        note = f" {half} lines back (PgDn) "
+        x, y, w, _ = content(term)
+        nx = x + w - TERM_MARGIN - len(note) * CELL_W
+        s = self.d.wait(lambda s: read_text(s, nx, y + TERM_MARGIN, len(note), TERM_BG) == note.rstrip()
+                        and term_rows(s, term)[half:] == live[:rows - half],
+                        f"{half} lines back, and a note saying so")
+        first = term_rows(s, term)
+        check(first[half - 1] and first[half - 1] != live[0], "a line from before the screen shows")
+        # Again: the lines that were at the top move down by as many.
+        # (Row 0 carries the note, so it is left out.)
         self.d.key("pgup")
-        # 24 back: the bottom row is the line just above the screen, the
-        # one that was row 11 at 12 back.
-        self.d.wait(lambda s: term_rows(s, tx, ty)[23] == rows[11], "PgUp again: 24 lines back")
+        self.d.wait(lambda s: term_rows(s, term)[half + 1:2 * half] == first[1:half],
+                    "PgUp again: further back")
         self.d.key("pgdn")
         self.d.key("pgdn")
-        self.d.wait(lambda s: term_rows(s, tx, ty) == live, "PgDn back to the live screen")
-        # Typing comes back to it too.
+        self.d.wait(lambda s: term_rows(s, term) == live, "PgDn back to the live screen")
         self.d.key("pgup")
-        self.d.wait(lambda s: term_rows(s, tx, ty)[12:] == live[:12], "PgUp")
+        self.d.wait(lambda s: term_rows(s, term)[half:] == live[:rows - half], "PgUp")
         self.d.type("echo back\n")
-        self.d.wait(lambda s: term_rows(s, tx, ty)[-2:] == ["back", "manios%"], "typing returning to the screen")
+        self.d.wait(lambda s: term_rows(s, term)[-2:] == ["back", "manios%"],
+                    "typing returning to the screen")
 
-    def terminal_close_box(self):
-        tx, ty = self.term
-        self.click(tx + 488 - 15 + 6, ty - 18 + 3 + 6)
-        self.m.expect("window 1 closed")
+    def resize(self):
+        # A smaller pane keeps the lines around the cursor; the rest go
+        # into the history. A bigger one leaves the text where it was.
+        self.d.key("alt-ret")
+        self.m.expect(' "Terminal" ')
+        self.d.key("alt-spc")
+        self.m.expect("layout tall")
+        small = tall(4, 60)[2]  # (Alt+l widened the first pane to 60%)
+        rows = term_size(small)[1]
+        check(rows < term_size(self.term)[1], "the stacked pane is shorter")
+        self.d.wait(lambda s: term_rows(s, small)[rows - 2:] == ["back", "manios%"],
+                    f"the terminal in a pane of {rows} rows, its last lines kept")
+        for _ in range(2):
+            self.d.key("alt-spc")
+        self.m.expect("layout grid")
+        bigger = grid(4)[2]
+        self.d.wait(lambda s: term_rows(s, bigger)[rows - 2:rows] == ["back", "manios%"]
+                    and not any(term_rows(s, bigger)[rows:]),
+                    "the grid again: the text where it was, the rows below it empty")
+        self.d.key("alt-q")
         self.m.expect("exited (status 0)")
-        self.d.wait(lambda s: s.pixel(tx + 100, ty - 10) not in (ACCENT, INACTIVE),
-                    "the terminal gone from the screen")
+        self.d.wait(lambda s: edge(s, self.term) == FOCUS and term_rows(s, self.term)[rows - 1] == "manios%",
+                    "the new terminal closed; the old one focused, where it was")
 
-    def exit(self):
-        self.d.key("f1")
-        self.d.key("up")  # wraps round to the last item
-        self.d.key("ret")
-        self.m.expect("desktop: bye")
+    def nested(self):
+        self.d.type("manide\n")
+        self.d.wait(lambda s: any(r.startswith("manide: already running") for r in term_rows(s, self.term)),
+                    "a second ManiDE refusing to start")
+
+    def exit(self, keys=("alt-shift-q",)):
+        for k in keys:
+            self.d.key(k)
+        self.m.expect("manide: bye")
         self.m.expect(SHELL_PROMPT)
         s = self.d.wait(lambda s: s.w == 720, "text mode")
         check(s.w == 720 and s.h == 400, f"text mode is back: {s.w}x{s.h}")
@@ -345,46 +487,50 @@ def main():
     try:
         m.expect(SHELL_PROMPT)
         step("a screen below 640x480 is refused",
-             lambda: run_command(m, "serial", "desktop 320 200",
-                                 ["desktop: the screen must be at least 640x480"], SHELL_PROMPT))
+             lambda: run_command(m, "serial", "manide 320 200",
+                                 ["manide: the screen must be at least 640x480"], SHELL_PROMPT))
         sc = Scenario(m, tmpdir)
         # Each step builds on the one before, so the first failure ends the run.
         for name, fn in [
-            ("the desktop starts: panel, clock, background, pointer", sc.start),
-            ("F1 opens the launcher menu; Escape closes it", sc.menu),
-            ("the menu starts a terminal running sh; keys reach it", sc.terminal),
-            ("wintest: the window system's files, from inside the desktop", sc.wintest),
-            ("dragging a window by its title bar", sc.drag),
-            ("the menu starts the clock, which ticks and takes the focus", sc.clock),
-            ("F2 moves the focus; keys go to the focused window only", sc.focus),
-            ("About ManiOS, closed with its close box", sc.about_close_box),
-            ("a desktop inside the desktop is refused", sc.nested),
+            ("ManiDE starts its session: the status bar, four panes", sc.start),
+            ("fetch, welcome, top and a terminal tile a 2x2 grid", sc.panes),
+            ("keys reach the terminal; /dev/wsys from its shell", sc.terminal),
+            ("Alt+Space: tall and mono layouts, and back to the grid", sc.layouts),
+            ("Alt+j/k and the mouse move the focus", sc.focus),
+            ("workspaces: Alt+2, Alt+Enter, Alt+Shift+1, the bar, Alt+q", sc.workspaces),
+            ("Alt+d: the run prompt completes and starts the clock", sc.prompt),
+            ("F1 opens the menu; Escape closes it", sc.menu),
+            ("a pane's close mark closes it; the others fill the room", sc.close_box),
+            ("wintest: the window system's files, from inside ManiDE", sc.wintest),
             ("the terminal scrolls back with PgUp and PgDn", sc.scrollback),
-            ("the terminal's close box ends it and its shell", sc.terminal_close_box),
-            ("Exit desktop restores the text console", sc.exit),
+            ("the terminal follows its pane's size", sc.resize),
+            ("ManiDE inside ManiDE is refused", sc.nested),
+            ("Alt+Shift+Q exits, restoring the text console", sc.exit),
         ]:
             if not step(name, fn):
                 break
         else:
             step("the keyboard is the console's again",
                  lambda: run_command(m, "keyboard", "echo back", ["\r\nback\r\n"], SHELL_PROMPT))
-            step("the desktop's namespace was its own: no /dev/wsys here",
+            step("ManiDE's namespace was its own: no /dev/wsys here",
                  lambda: run_command(m, "serial", "ls /dev", ["cons", "!wsys"], SHELL_PROMPT))
-            step("the desktop starts again (640x480) and exits from the keyboard",
-                 lambda: (m.type_serial("desktop 640 480\r"),
+            step("`desktop -n 640 480` starts ManiDE without a session; the menu exits",
+                 lambda: (m.type_serial("desktop -n 640 480\r"),
                           m.expect("640x480, serving /dev/wsys"),
-                          sc.exit()))
+                          sc.d.wait(lambda s: s.w == 640 and s.pixel(320, 240) != DESK
+                                    and read_text(s, 6, TEXT_Y, 6, ACCENT) == "ManiDE", "ManiDE at 640x480"),
+                          sc.exit(("f1", "up", "ret"))))
     finally:
         m.close()
 
-    # Without Bochs VBE (a Cirrus card), the desktop says so and the
-    # console carries on.
+    # Without Bochs VBE (a Cirrus card), ManiDE says so and the console
+    # carries on.
     m = Machine(kernel, ["-vga", "cirrus"])
     try:
         m.expect(SHELL_PROMPT)
-        step("without a linear framebuffer the desktop explains and exits",
-             lambda: run_command(m, "serial", "desktop",
-                                 ["desktop: cannot set a 800x600 mode", "Bochs VBE display is needed"],
+        step("without a linear framebuffer ManiDE explains and exits",
+             lambda: run_command(m, "serial", "manide",
+                                 ["manide: cannot set a 800x600 mode", "Bochs VBE display is needed"],
                                  SHELL_PROMPT))
         step("... and the console still works",
              lambda: run_command(m, "serial", "echo still here", ["\r\nstill here\r\n"], SHELL_PROMPT))

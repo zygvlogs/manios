@@ -90,6 +90,9 @@ int main(int argc, char **argv)
 		while (put < got && (n = write(out, buf + put, (size_t)(got - put))) > 0) {
 			put += n;
 		}
+		if (put < got && n < 0 && errno == EPIPE) {
+			_exit(141); /* the reader has gone: quietly, as stdio ends a program */
+		}
 		if (put < got) {
 			fprintf(stderr, "dd: write: %s\n", put ? "short write" : strerror(errno));
 			rc = 1;

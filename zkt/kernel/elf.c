@@ -117,8 +117,8 @@ static bool writable_segment_covers(const struct elf_header *h, const struct elf
 	return false;
 }
 
-int elf_load(const uint8_t *image, size_t size, uintptr_t *entry, uintptr_t *image_end,
-             uint32_t *abi)
+int elf_load(const uint8_t *image, size_t size, uintptr_t *entry, uintptr_t *image_start,
+             uintptr_t *image_end, uint32_t *abi)
 {
 	const struct elf_header *h = (const void *)image;
 	if (!valid_header(h, size)) {
@@ -132,7 +132,7 @@ int elf_load(const uint8_t *image, size_t size, uintptr_t *entry, uintptr_t *ima
 	*abi = version;
 
 	bool entry_loaded = false;
-	uintptr_t end = USER_IMAGE_MIN;
+	uintptr_t start = USER_IMAGE_TOP, end = USER_IMAGE_MIN;
 	for (uint16_t i = 0; i < h->phnum; i++) {
 		if (ph[i].type != PT_LOAD || ph[i].memsz == 0) {
 			continue;
@@ -147,6 +147,9 @@ int elf_load(const uint8_t *image, size_t size, uintptr_t *entry, uintptr_t *ima
 		memcpy((void *)ph[i].vaddr, image + ph[i].offset, ph[i].filesz);
 		if (h->entry >= ph[i].vaddr && h->entry - ph[i].vaddr < ph[i].memsz) {
 			entry_loaded = true;
+		}
+		if ((ph[i].vaddr & ~(uintptr_t)(PAGE_SIZE - 1)) < start) {
+			start = ph[i].vaddr & ~(uintptr_t)(PAGE_SIZE - 1);
 		}
 		if (ph[i].vaddr + ph[i].memsz > end) {
 			end = ph[i].vaddr + ph[i].memsz;
@@ -170,6 +173,7 @@ int elf_load(const uint8_t *image, size_t size, uintptr_t *entry, uintptr_t *ima
 		}
 	}
 	*entry = h->entry;
+	*image_start = start;
 	*image_end = end;
 	return 0;
 }

@@ -1,0 +1,7 @@
+# ManiDE's session: the programs it starts, one a line, each in a pane
+# of its own, in this order. "workspace N" sends those after it to
+# workspace N. See docs/desktop/DESIGN.md.
+term fetch
+welcome
+term top
+term

@@ -13,8 +13,14 @@ subdirectories together.
 - `cmdline.c` — the kernel command line (`KEY=VALUE` words)
 - `process.c` — user processes: spawn, exit, wait, descriptor tables,
   ending a process on a CPU exception
-  ([M8 notes](../../docs/milestones/M8-userspace.md))
-- `syscall.c` — system call dispatch (the ABI is `zkt/abi/zkt_abi.h`)
+  ([M8 notes](../../docs/milestones/M8-userspace.md)); CPU time and a
+  snapshot of them all, for `/dev/ps` (M18)
+- `sysstat.c` — devices `sysstat` (version, uptime, idle time, memory,
+  processes, the CPU) and `ps` (one line per process), read by `top`,
+  `fetch` and ManiDE's status bar
+  ([M18 notes](../../docs/milestones/M18-manide.md))
+- `syscall.c` — system call dispatch (the ABI is `zkt/abi/zkt_abi.h`);
+  reads and writes move through a 16 KiB buffer when they are big
 - `poll.c` — waiting on several files at once (`SYS_POLL`): one wait
   queue that pipes and input devices notify
 - `sha256.c` — SHA-256 and HMAC-SHA-256, for ZRP authentication (M13)

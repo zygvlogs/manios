@@ -67,6 +67,13 @@ void gfx_present(struct gfx_screen *s, const struct gfx_canvas *c, struct gfx_re
 	static uint8_t row8[ROW_MAX];
 	r = gfx_intersect(r, (struct gfx_rect){ 0, 0, c->width, c->height });
 	r = gfx_intersect(r, (struct gfx_rect){ 0, 0, s->width, s->height });
+	if (!s->rgb332 && r.x == 0 && r.w == c->width && c->width == s->width
+	    && s->pitch == s->width * 4) {
+		/* Whole rows, laid out alike in both: one write. */
+		lseek(s->fb, (long)r.y * s->pitch, SEEK_SET);
+		write(s->fb, &c->pixels[r.y * c->width], (size_t)r.h * s->pitch);
+		return;
+	}
 	for (int y = r.y; y < r.y + r.h; y++) {
 		const uint32_t *in = &c->pixels[y * c->width + r.x];
 		if (s->rgb332) {

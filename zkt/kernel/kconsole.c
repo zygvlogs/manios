@@ -4,6 +4,7 @@
 #include "device.h"
 #include "kstring.h"
 #include "mutex.h"
+#include "poll.h"
 #include "ring.h"
 #include "sched.h"
 #include "serial.h"
@@ -101,6 +102,7 @@ void console_input(char c)
 		ring_push(&input, (uint8_t)c);
 	}
 	waitq_wake_all(&input_ready);
+	poll_notify();
 }
 
 static char raw_getc(void)
@@ -128,9 +130,10 @@ static size_t line_len, line_pos; /* a finished line, handed out from line_pos *
  * ends the line, but a '\n' right after a '\r' is swallowed rather than
  * taken as an empty line. Returns false for end of file: ^D on an empty
  * line. ^D after some input ends the line without a newline. */
+static bool after_cr;
+
 static bool edit_line(void)
 {
-	static bool after_cr;
 	line_len = 0;
 	for (;;) {
 		char c = raw_getc();
@@ -187,6 +190,30 @@ static long cons_read(struct device *dev, void *buf, size_t len)
 	return (long)n;
 }
 
+/* Called with interrupts off. A read would not block once a line is
+ * waiting: the rest of one already edited, or the end of one (or ^D)
+ * in the input not yet edited. */
+static int cons_poll(struct device *dev)
+{
+	(void)dev;
+	if (line_pos < line_len) {
+		return 1;
+	}
+	bool cr = after_cr;
+	for (uint32_t i = input.tail; i != input.head; i++) {
+		uint8_t c = input.buf[i & (input.size - 1)];
+		if (c == '\n' && cr) {
+			cr = false; /* swallowed, as edit_line does */
+			continue;
+		}
+		if (c == '\r' || c == '\n' || c == CTRL_D) {
+			return 1;
+		}
+		cr = false;
+	}
+	return 0;
+}
+
 static long cons_write(struct device *dev, const void *buf, size_t len)
 {
 	(void)dev;
@@ -194,7 +221,8 @@ static long cons_write(struct device *dev, const void *buf, size_t len)
 	return (long)len;
 }
 
-static const struct char_device_ops cons_ops = { .read = cons_read, .write = cons_write };
+static const struct char_device_ops cons_ops = { .read = cons_read, .write = cons_write,
+	                                              .poll = cons_poll };
 static struct device cons_device = { .name = "cons", .class = DEVICE_CHAR, .char_ops = &cons_ops };
 
 void console_register(void)

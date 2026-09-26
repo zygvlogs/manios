@@ -34,6 +34,7 @@ is written anew for it.
 | M15 — network cards for VirtualBox (AMD PCnet, Intel PRO/1000), DHCP | Achieved ([notes](docs/milestones/M15-network-cards-dhcp.md)) |
 | M16 — first BSD imports: OpenBSD's text tools on ManiOS's libc | Achieved ([notes](docs/milestones/M16-openbsd-tools.md), [imports](third_party/openbsd/README.md)) |
 | M17 — grep, sed and more from OpenBSD: regular expressions, a POSIX file layer in libc | Achieved ([notes](docs/milestones/M17-grep-sed-posix.md)) |
+| M18 — ManiDE: a tiling desktop with workspaces and a status bar; fetch, top; ANSI colours | Achieved ([notes](docs/milestones/M18-manide.md), [design](docs/desktop/DESIGN.md), [ADR-0007](docs/adr/0007-manide-tiling-desktop.md)) |
 
 ## Download and install
 
@@ -42,7 +43,7 @@ page has a bootable ISO, `manios-VERSION.iso`. It boots from a CD, from
 a USB stick it is written to, or in QEMU or VirtualBox:
 
 ```
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.17.1.iso -boot d
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.18.0.iso -boot d
 ```
 
 and `install ata0` puts ManiOS on a hard disk. ManiOS boots with its own
@@ -98,7 +99,7 @@ boot line; then:
   runs `cpud`;
 - on a **terminal**, `cpu udp!10.0.0.2` gives a shell on the CPU server
   that sees the terminal's console and files (at `/mnt/term`), and
-  `cpu udp!10.0.0.2 clock`, typed in the desktop's terminal, opens a
+  `cpu udp!10.0.0.2 clock`, typed in a ManiDE terminal, opens a
   window drawn by the CPU server.
 
 With a key, both ends of every mount prove they know it; messages are
@@ -110,15 +111,25 @@ this way.
 `gfxdemo vga` for 320x200 on any VGA card) and returns to text on
 Enter.
 
-![The ManiOS desktop](docs/desktop/screenshot.png)
+![ManiDE: fetch, the welcome, top and a terminal](docs/desktop/screenshot.png)
 
-`desktop` starts the ManiOS desktop (800x600; `desktop 640 480`). F1
-opens its menu — Terminal, Clock, About ManiOS, Exit desktop — and F2
-brings the bottom window up; the mouse focuses, raises, drags and
-closes windows. The window system is a file server: in a terminal,
-`ls /dev/wsys` lists the windows, and `cat /dev/wsys/1/ctl` describes
-one ([design](docs/desktop/DESIGN.md)). The shell does pipelines and
-redirection (`ls /bin | wc`, `cat < FILE`, `echo x > /dev/null`).
+`manide` starts **ManiDE**, the ManiOS desktop (800x600; `manide 1024
+768`): a tiling window manager whose panes share the screen, nine
+workspaces, and a status bar with the host, kernel, uptime, CPU, memory,
+network and time. It opens `fetch`, a welcome, `top` and a terminal.
+Keys: Alt+Enter a terminal, Alt+d run a program (Tab completes), Alt+1–9
+workspaces (Alt+Shift+1–9 moves a window), Alt+j/k focus, Alt+Space the
+layout (grid, tall, mono), Alt+q close, Alt+Shift+Q exit, F1 the menu;
+the mouse focuses and closes panes and picks workspaces. The window
+system is a file server: in a terminal, `ls /dev/wsys` lists the
+windows, and `cat /dev/wsys/4/ctl` describes one
+([design](docs/desktop/DESIGN.md)). `desktop` still works, as another
+name for it.
+
+`fetch` shows the system at a glance and `top` the processes, busiest
+first; both work in any terminal, the text console included, which
+shows ANSI colours since 0.18. The shell does pipelines and redirection
+(`ls /bin | wc`, `cat < FILE`, `echo x > /dev/null`).
 
 Besides ManiOS's own programs, `/bin` has 30 tools from OpenBSD, built
 from OpenBSD's source unmodified: `grep`, `sed`, `expr`, `test`, `head`,
@@ -143,7 +154,8 @@ zkt/          ZygKernel Technology — the kernel
   abi/        the system call ABI header shared with userspace
 libc/         ManiOS's own C library (stdio, malloc, strings, file servers, ...)
 desktop/      the desktop environment: libgfx/ (2D graphics), libwin/ (windows),
-              wm/ (the compositor), apps/ (terminal, clock, about)
+              manide/ (ManiDE, the window manager), apps/ (terminal, welcome,
+              clock, about)
 userland/     user programs (bin/), test programs (test/), boot files (etc/)
 tools/        cross-toolchain build script, boot area / ISO / disk image builders,
               QEMU script

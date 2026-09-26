@@ -28,6 +28,7 @@
 #define SC_RELEASE    0x80
 #define SC_EXTENDED   0xE0
 #define SC_LCTRL      0x1D
+#define SC_LALT       0x38
 #define SC_LSHIFT     0x2A
 #define SC_RSHIFT     0x36
 #define SC_CAPSLOCK   0x3A
@@ -57,7 +58,7 @@ static const char SHIFTED[0x3A] =
 	"ASDFGHJKL:\"~" "\0|"
 	"ZXCVBNM<>?" "\0*\0 ";
 
-static bool shift, ctrl, caps_lock, extended;
+static bool shift, ctrl, alt, caps_lock, extended;
 
 static bool wait_status(uint8_t mask, bool set)
 {
@@ -95,16 +96,20 @@ static void kbd_irq(void)
 		ctrl = !released;
 		return;
 	}
+	if (code == SC_LALT) { /* and right Alt (AltGr) */
+		alt = !released;
+		return;
+	}
 	if (was_extended) {
 		if (released) {
 			return;
 		}
 		if (code == SC_ENTER) { /* keypad Enter */
-			input_key('\n');
+			input_key('\n', alt);
 		}
 		for (unsigned i = 0; i < sizeof(EXTENDED_KEYS) / sizeof(EXTENDED_KEYS[0]); i++) {
 			if (EXTENDED_KEYS[i].code == code) {
-				input_key(EXTENDED_KEYS[i].key);
+				input_key(EXTENDED_KEYS[i].key, alt);
 			}
 		}
 		return;
@@ -114,7 +119,7 @@ static void kbd_irq(void)
 		return;
 	}
 	if (!released && code >= SC_F1 && code <= SC_F10) {
-		input_key((uint8_t)(ZKT_KEY_F1 + code - SC_F1));
+		input_key((uint8_t)(ZKT_KEY_F1 + code - SC_F1), alt);
 		return;
 	}
 	if (released || code >= sizeof(NORMAL)) {
@@ -133,7 +138,7 @@ static void kbd_irq(void)
 		c &= 0x1F;
 	}
 	if (c) {
-		input_key((uint8_t)c);
+		input_key((uint8_t)c, alt);
 	}
 }
 

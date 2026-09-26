@@ -35,8 +35,10 @@
   files and a program on a FAT disk). It runs several machine
   configurations with disk images it generates (partitioned,
   partitionless FAT, none), and a 3 MiB machine whose failed self-test
-  must show on the quiet boot screen. Needs Python 3 and mtools, and the build's
-  `build/bootfs/` programs.
+  must show on the quiet boot screen. Since M18 also `/dev/sysstat`,
+  `/dev/ps`, `fetch` and `top`, and `fetch`'s ANSI colours on the text
+  console (read from VGA text memory: attributes, not escapes). Needs
+  Python 3 and mtools, and the build's `build/bootfs/` programs.
 
 - `net_test.py` (also run by `make test`) — the network cards, the IPv4
   stack and ZRP, on the wire. QEMU's socket netdev delivers the guest's
@@ -56,13 +58,17 @@
   its VMware SVGA II (VirtualBox's VMSVGA), whose video memory is in
   another BAR.
 
-- `desktop_test.py` (also run by `make test`) — the desktop, driven
-  with `sendkey`, `mouse_move` and `mouse_button`, and checked through
-  `screendump`: text is read back off the screen by matching character
-  cells against `font.txt`. It opens the menu, runs commands in a
-  terminal window, runs `wintest` inside the desktop, drags, focuses and
-  closes windows, scrolls the terminal back with PgUp/PgDn, and exits back to the text console; and on a machine
-  without Bochs VBE, checks the desktop explains and exits.
+- `desktop_test.py` (also run by `make test`) — ManiDE, driven with
+  `sendkey` (Alt bindings included), `mouse_move` and `mouse_button`,
+  and checked through `screendump`: text is read back off the screen by
+  matching character cells against `font.txt`, and where panes are is
+  worked out as `tile.c` does. It checks the status bar and the session's
+  four panes (`fetch`, the welcome, `top`, a terminal), the layouts,
+  focus by key and by mouse, workspaces, the run prompt and its
+  completion, the menu, closing panes, `wintest` inside ManiDE, the
+  terminal's scroll-back and how it follows its pane's size, and exiting
+  back to the text console; and on a machine without Bochs VBE, that
+  ManiDE explains and exits.
 
 - `cluster_test.py` (also run by `make test`) — the cluster roles
   (M13): a file server, a CPU server, a terminal and a machine with the
@@ -71,7 +77,7 @@
   keys both ways, remote execution with the terminal's console and
   namespace (and the file server through it), exit statuses, jobs that
   cannot start (their reason reaches the terminal), a remote program's
-  window on the terminal's desktop, and a CPU server dying under a job.
+  window on the terminal's ManiDE, and a CPU server dying under a job.
 
 - `openbsd_test.py` (also run by `make test`) — the programs imported
   from OpenBSD (0.16, 0.17, [third_party/openbsd](../third_party/openbsd/README.md)),

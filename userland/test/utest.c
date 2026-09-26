@@ -4,6 +4,7 @@
  * only if every check passed. */
 #include <errno.h>
 #include <manios.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define KERNEL_ADDR 0xC0100000u /* inside the kernel image */
@@ -398,6 +399,145 @@ static void test_namespaces(void)
 	check_err(bind("/nowhere", "/n", BIND_FLAG_REPLACE), ENOENT, "binding a missing path is ENOENT");
 }
 
+/* Reads a whole text device, `chunk` bytes a read. */
+static long read_all(const char *path, char *buf, size_t size, size_t chunk)
+{
+	int fd = open(path, OREAD);
+	if (fd < 0) {
+		return -1;
+	}
+	size_t got = 0;
+	for (;;) {
+		size_t want = size - 1 - got < chunk ? size - 1 - got : chunk;
+		long n = want ? read(fd, buf + got, want) : 0;
+		if (n <= 0) {
+			break;
+		}
+		got += (size_t)n;
+	}
+	close(fd);
+	buf[got] = '\0';
+	return (long)got;
+}
+
+/* The number after "NAME " at the start of a line of /dev/sysstat, or -1. */
+static long stat_value(const char *text, const char *name, int field)
+{
+	size_t len = strlen(name);
+	for (const char *line = text; *line; line = strchr(line, '\n') + 1) {
+		if (!strncmp(line, name, len) && line[len] == ' ') {
+			char *p = (char *)line + len;
+			long v = -1;
+			for (int i = 0; i <= field; i++) {
+				v = (long)strtoul(p, &p, 10);
+			}
+			return v;
+		}
+		if (!strchr(line, '\n')) {
+			break;
+		}
+	}
+	return -1;
+}
+
+struct ps_line {
+	long pid, ppid, cpu_ms, mem_kib;
+	char state[16], name[32];
+};
+
+/* Finds process `pid` in /dev/ps: 1 if found, 0 if not, -1 if a line
+ * is malformed. */
+static int ps_find(long pid, struct ps_line *out)
+{
+	static char text[4096];
+	if (read_all("/dev/ps", text, sizeof(text), 5) <= 0) {
+		return -1;
+	}
+	int found = 0;
+	for (char *line = text; *line;) {
+		char *end = strchr(line, '\n');
+		if (!end) {
+			return -1;
+		}
+		*end = '\0';
+		struct ps_line l;
+		char *p = line;
+		l.pid = (long)strtoul(p, &p, 10);
+		l.ppid = (long)strtoul(p, &p, 10);
+		char *state = ++p, *sp = strchr(state, ' ');
+		if (*p == ' ' || !sp || sp - state >= (long)sizeof(l.state)) {
+			return -1;
+		}
+		memcpy(l.state, state, (size_t)(sp - state));
+		l.state[sp - state] = '\0';
+		p = sp;
+		l.cpu_ms = (long)strtoul(p, &p, 10);
+		l.mem_kib = (long)strtoul(p, &p, 10);
+		if (*p != ' ' || strlen(p + 1) >= sizeof(l.name)) {
+			return -1;
+		}
+		strcpy(l.name, p + 1);
+		if (l.pid == pid) {
+			*out = l;
+			found = 1;
+		}
+		line = end + 1;
+	}
+	return found;
+}
+
+/* /dev/sysstat and /dev/ps (M18): what top, fetch and ManiDE show. */
+static void test_sysstat(void)
+{
+	char text[512];
+	check(read_all("/dev/sysstat", text, sizeof(text), 3) > 0, "/dev/sysstat reads", 0);
+	long total = stat_value(text, "memory", 0), free_kib = stat_value(text, "memory", 1);
+	check(total >= 4096 && free_kib > 0 && free_kib < total, "sysstat: memory TOTAL FREE", total);
+	long up = stat_value(text, "uptime", 0), idle = stat_value(text, "idle", 0);
+	check(up > 0 && idle >= 0 && idle <= up, "sysstat: idle time within uptime", idle);
+	check(stat_value(text, "processes", 0) >= 1, "sysstat: processes", 0);
+	char *version = strstr(text, "version ");
+	check(version == text && !strncmp(version + 8, MANIOS_VERSION "\n", strlen(MANIOS_VERSION) + 1),
+	      "sysstat: the version comes first", 0);
+	check(strstr(text, "\ncpu ") && text[strlen(text) - 1] == '\n', "sysstat: a cpu line", 0);
+
+	struct ps_line me;
+	check(ps_find(getpid(), &me) == 1 && !strcmp(me.state, "running") && !strcmp(me.name, "utest")
+	      && me.mem_kib >= 64, "/dev/ps: the reader is running", me.mem_kib);
+
+	/* A CPU-bound child: its time counts, and the CPU is busy meanwhile. */
+	char *spin[] = { FAULT, "spin", 0 };
+	int spinner = spawn(FAULT, spin);
+	sleep_ms(150);
+	read_all("/dev/sysstat", text, sizeof(text), 64);
+	long up1 = stat_value(text, "uptime", 0), idle1 = stat_value(text, "idle", 0);
+	struct ps_line child;
+	check(ps_find(spinner, &child) == 1 && child.ppid == getpid() && !strcmp(child.name, "fault")
+	      && !strcmp(child.state, "ready") && child.cpu_ms >= 50, "/dev/ps: a busy child's CPU time",
+	      child.cpu_ms);
+	sleep_ms(100);
+	read_all("/dev/sysstat", text, sizeof(text), 64);
+	long busy_up = stat_value(text, "uptime", 0) - up1, busy_idle = stat_value(text, "idle", 0) - idle1;
+	check(busy_up >= 90 && busy_idle * 4 < busy_up, "sysstat: no idle time while a process spins",
+	      busy_idle);
+
+	/* Once it has finished, and until it is waited for: exited. */
+	sleep_ms(300);
+	check(ps_find(spinner, &child) == 1 && !strcmp(child.state, "exited") && child.mem_kib == 0
+	      && child.cpu_ms >= 200, "/dev/ps: an exited child not yet waited for", child.cpu_ms);
+	int status;
+	check(wait(spinner, &status) == spinner && status == 0 && ps_find(spinner, &child) == 0,
+	      "/dev/ps: a child waited for is gone", 0);
+
+	read_all("/dev/sysstat", text, sizeof(text), 64);
+	up1 = stat_value(text, "uptime", 0);
+	idle1 = stat_value(text, "idle", 0);
+	sleep_ms(100);
+	read_all("/dev/sysstat", text, sizeof(text), 64);
+	long quiet_up = stat_value(text, "uptime", 0) - up1, quiet_idle = stat_value(text, "idle", 0) - idle1;
+	check(quiet_up >= 90 && quiet_idle * 2 > quiet_up, "sysstat: idle time while all sleep", quiet_idle);
+}
+
 int main(void)
 {
 	/* A private namespace: nothing below leaks into the kernel's. */
@@ -410,6 +550,7 @@ int main(void)
 	test_sbrk();
 	test_pipes();
 	test_namespaces();
+	test_sysstat();
 
 	if (failures) {
 		put("utest: ");

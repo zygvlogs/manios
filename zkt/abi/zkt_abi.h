@@ -76,7 +76,9 @@
 #define ZKT_PATH_MAX   255  /* bytes in a path, without the NUL */
 
 /* /dev/kbd bytes (zkt/drivers/input.c): ASCII, with Ctrl+letter as a
- * control character, or one of these for keys ASCII has no code for. */
+ * control character, or one of these for keys ASCII has no code for.
+ * A key pressed while Alt is held comes as two bytes, ZKT_KEY_ALT and
+ * then the key's own (Alt+Shift+1: ZKT_KEY_ALT, '!'). */
 #define ZKT_KEY_UP     0x80
 #define ZKT_KEY_DOWN   0x81
 #define ZKT_KEY_LEFT   0x82
@@ -88,6 +90,7 @@
 #define ZKT_KEY_INSERT 0x88
 #define ZKT_KEY_DELETE 0x89
 #define ZKT_KEY_F1     0x90 /* F1-F10: 0x90-0x99 */
+#define ZKT_KEY_ALT    0xA0
 
 /* SYS_SEEK whence. */
 #define SEEK_SET 0

@@ -4,6 +4,7 @@
 #ifndef ZKT_KERNEL_PROCESS_H
 #define ZKT_KERNEL_PROCESS_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include "vfs.h"
 #include "zkt_abi.h"
@@ -59,6 +60,19 @@ int process_fd_install(struct process *p, struct file *f);
 int process_fd_close(struct process *p, int fd);
 /* Puts f at descriptor fd, closing what was there. */
 int process_fd_install_at(struct process *p, int fd, struct file *f);
+
+/* A snapshot of the processes, for /dev/ps. `state` is the thread's
+ * ("running", "ready", "sleeping", "blocked"), "new" before its thread
+ * exists, or "exited" until its parent collects it. Memory is what it has
+ * mapped: program image, heap and stack. */
+struct process_info {
+	uint32_t pid, ppid; /* ppid 0: started by the kernel */
+	char name[32];
+	const char *state;
+	uint32_t cpu_ms;
+	uint32_t mem_kib;
+};
+size_t process_list(struct process_info *out, size_t max);
 
 /* Collects any exited child without waiting: its pid (and status), 0
  * if the children are all still running, -ECHILD if there are none. */

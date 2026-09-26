@@ -1,8 +1,9 @@
 /* The window system's conformance test (M12, docs/desktop/DESIGN.md §4).
- * Run it inside the desktop -- from a terminal window -- and it checks
+ * Run it inside ManiDE -- from a terminal window -- and it checks
  * /dev/wsys through plain file operations: making windows, ctl, image
- * (read back from the screen itself, /dev/fb), events, errors, limits,
- * and that a window goes when its program dies. The summary goes to
+ * (read back from the screen itself, /dev/fb), events (the focus, the
+ * size ManiDE offers), workspaces, errors, limits, and that a window
+ * goes when its program dies. The summary goes to
  * standard output and to /dev/cons (the serial line, for tests).
  *
  *   wintest          the test
@@ -185,13 +186,17 @@ static void test_ctl(int a)
 	struct state s;
 	check(ctl(a, "title renamed") > 0 && state(a, &s) == 0 && !strcmp(s.title, "renamed"),
 	      "ctl: title");
-	check(ctl(a, "move 300 200") > 0 && state(a, &s) == 0 && s.x == 300 && s.y == 200, "ctl: move");
-	/* Some of the title bar always stays on screen, below the panel. */
-	check(ctl(a, "move -1000 -1000") > 0 && state(a, &s) == 0 && s.x == -1 && s.y == 41,
-	      "ctl: a move off screen is limited");
-	ctl(a, "move 300 200");
-	check_err(ctl(a, "move 1"), EINVAL, "ctl: move needs two numbers");
-	check_err(ctl(a, "move 1 2 3"), EINVAL, "ctl: move takes two numbers");
+	/* ManiDE places the windows; their sizes are the programs'. */
+	check_err(ctl(a, "move 300 200"), EINVAL, "ctl: no moving windows in a tiling desktop");
+	check(ctl(a, "size 50 40") > 0 && state(a, &s) == 0 && s.w == 50 && s.h == 40, "ctl: size");
+	check_err(ctl(a, "size 5 5"), EINVAL, "ctl: a size too small");
+	check_err(ctl(a, "size 5000 40"), EINVAL, "ctl: a size wider than the screen");
+	check_err(ctl(a, "size 50"), EINVAL, "ctl: size needs two numbers");
+	check_err(ctl(a, "size 50 40 3"), EINVAL, "ctl: size takes two numbers");
+	check(ctl(a, "size 40 30") > 0 && state(a, &s) == 0 && s.w == W && s.h == H, "ctl: size back");
+	check_err(ctl(a, "ws 0"), EINVAL, "ctl: workspaces start at 1");
+	check_err(ctl(a, "ws 10"), EINVAL, "ctl: there are nine workspaces");
+	check_err(ctl(a, "ws x"), EINVAL, "ctl: ws needs a number");
 	check_err(ctl(a, "jump"), EINVAL, "ctl: an unknown command");
 }
 
@@ -207,14 +212,16 @@ static void test_image(int a)
 	check(fd >= 0 && write(fd, pixels, sizeof(pixels)) == sizeof(pixels), "writing the image");
 	check(lseek(fd, 0, SEEK_SET) == 0 && read(fd, back, sizeof(back)) == sizeof(back)
 	      && !memcmp(pixels, back, sizeof(back)), "the image reads back");
-	check(screen_shows(305, 205, TOP) && screen_shows(305, 225, BOTTOM),
+	struct state s;
+	state(a, &s);
+	check(screen_shows(s.x + 5, s.y + 5, TOP) && screen_shows(s.x + 5, s.y + 25, BOTTOM),
 	      "the screen shows the image where the window is");
 	uint32_t edge[W];
 	for (int i = 0; i < W; i++) {
 		edge[i] = EDGE;
 	}
 	check(lseek(fd, (H - 1) * W * 4, SEEK_SET) >= 0 && write(fd, edge, sizeof(edge)) == sizeof(edge)
-	      && screen_shows(339, 229, EDGE), "a partial write shows at once");
+	      && screen_shows(s.x + W - 1, s.y + H - 1, EDGE), "a partial write shows at once");
 	check(lseek(fd, W * H * 4 - 4, SEEK_SET) >= 0 && write(fd, edge, 8) == 4,
 	      "a write past the end is cut short");
 	check_err(lseek(fd, W * H * 4, SEEK_SET) >= 0 ? write(fd, edge, 4) : 0, EINVAL,
@@ -222,24 +229,73 @@ static void test_image(int a)
 	close(fd);
 }
 
+/* Reads what the event file has (whole lines). */
+static long events(int ev, char *buf, long size)
+{
+	long n = read(ev, buf, (size_t)size - 1);
+	buf[n > 0 ? n : 0] = '\0';
+	return n;
+}
+
+/* The size an "r W H" line in buf offers, if there is one. */
+static int offered(const char *buf, int *w, int *h)
+{
+	const char *r = !strncmp(buf, "r ", 2) ? buf : strstr(buf, "\nr ");
+	if (!r) {
+		return 0;
+	}
+	char *p = (char *)r + (r == buf ? 2 : 3);
+	*w = (int)strtol(p, &p, 10);
+	*h = (int)strtol(p, &p, 10);
+	return *p == '\n';
+}
+
 static void test_events(int a, int *b, int *b_ctl)
 {
-	char path[48], buf[64];
+	char path[48], buf[256];
+	int w, h;
 	snprintf(path, sizeof(path), "/dev/wsys/%d/event", a);
 	int ev = open(path, ORDWR);
-	check(ev >= 0 && read(ev, buf, sizeof(buf)) == 4 && !memcmp(buf, "f 1\n", 4),
+	check(ev >= 0 && events(ev, buf, sizeof(buf)) > 0 && !strncmp(buf, "f 1\n", 4),
 	      "events: a new window is told it has the focus");
+	check(offered(buf, &w, &h) && w >= 16 && h >= 16 && w <= 800 && h <= 600,
+	      "events: and the size of its pane (r W H)");
+
+	/* Taking the size offered: the image grows to it. */
+	struct state s;
+	uint32_t edge[16];
+	for (int i = 0; i < 16; i++) {
+		edge[i] = EDGE;
+	}
+	char cmd[32];
+	snprintf(cmd, sizeof(cmd), "size %d %d", w, h);
+	snprintf(path, sizeof(path), "/dev/wsys/%d/image", a);
+	int image = open(path, OWRITE);
+	check(ctl(a, cmd) > 0 && state(a, &s) == 0 && s.w == w && s.h == h
+	      && lseek(image, ((long)h * w - 16) * 4, SEEK_SET) >= 0
+	      && write(image, edge, sizeof(edge)) == sizeof(edge)
+	      && screen_shows(s.x + w - 1, s.y + h - 1, EDGE), "ctl: taking the size offered");
+	close(image);
+
 	*b = make("30 20 second", b_ctl);
 	check(*b > a, "a second window gets a new number");
-	struct state s;
 	check(state(a, &s) == 0 && !s.focused && state(*b, &s) == 0 && s.focused,
 	      "the newest window has the focus");
 	check_err(read(ev, buf, 2), EINVAL, "events: a buffer too small for a line");
-	check(read(ev, buf, sizeof(buf)) == 4 && !memcmp(buf, "f 0\n", 4),
-	      "events: losing the focus");
+	int w2, h2;
+	check(events(ev, buf, sizeof(buf)) > 0 && !strncmp(buf, "f 0\n", 4)
+	      && offered(buf, &w2, &h2) && (w2 != w || h2 != h),
+	      "events: losing the focus, and a smaller pane to share the screen");
 	check_err(write(ev, "k 1\n", 4), EINVAL, "events can't be written");
-	check(ctl(a, "top") > 0 && read(ev, buf, sizeof(buf)) == 4 && !memcmp(buf, "f 1\n", 4),
+	check(ctl(a, "top") > 0 && events(ev, buf, sizeof(buf)) > 0 && !strncmp(buf, "f 1\n", 4),
 	      "ctl: top gives the focus back");
+
+	/* Another workspace: out of view, it loses the focus. */
+	check(ctl(a, "ws 2") > 0 && events(ev, buf, sizeof(buf)) > 0 && !strncmp(buf, "f 0\n", 4)
+	      && state(a, &s) == 0 && !s.focused, "ctl: ws sends it to another workspace");
+	check(ctl(a, "ws 1") > 0 && ctl(a, "top") > 0 && state(a, &s) == 0 && s.focused,
+	      "ctl: ws 1 brings it back, top focuses it");
+	events(ev, buf, sizeof(buf));
 	close(ev);
 }
 
@@ -354,7 +410,7 @@ int main(int argc, char **argv)
 		return 2;
 	}
 	if (!exists("/dev/wsys/new")) {
-		printf("wintest: no /dev/wsys: run it inside the desktop\n");
+		printf("wintest: no /dev/wsys: run it inside ManiDE\n");
 		return 1;
 	}
 	int a, a_ctl, b, b_ctl;

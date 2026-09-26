@@ -1,7 +1,8 @@
 /* Input devices for programs that want raw input (the desktop, M12):
  *
  *  /dev/kbd    keys as bytes: ASCII (control characters for Ctrl+letter),
- *              or ZKT_KEY_* (zkt_abi.h) for keys without one. While any
+ *              or ZKT_KEY_* (zkt_abi.h) for keys without one; a key
+ *              pressed with Alt held comes after a ZKT_KEY_ALT byte. While any
  *              program holds it open, the PS/2 keyboard feeds it instead
  *              of the console; the serial line always feeds the console.
  *  /dev/mouse  one text record per mouse report: "m DX DY BUTTONS\n",
@@ -20,6 +21,7 @@
 #include "poll.h"
 #include "ring.h"
 #include "sched.h"
+#include "zkt_abi.h"
 
 #define MOUSE_RECORD_MAX 32
 #define MOUSE_QUEUE 64
@@ -37,16 +39,20 @@ static struct mouse_event mouse_queue[MOUSE_QUEUE];
 static unsigned mouse_head, mouse_count;
 static struct waitq mouse_ready = WAITQ_INIT;
 
-void input_key(uint8_t key)
+void input_key(uint8_t key, bool alt)
 {
 	if (kbd_opens) {
-		if (!ring_full(&kbd_queue)) {
+		/* Both bytes or neither: a reader never sees half of Alt+key. */
+		if (kbd_queue.size - (kbd_queue.head - kbd_queue.tail) >= (alt ? 2u : 1u)) {
+			if (alt) {
+				ring_push(&kbd_queue, ZKT_KEY_ALT);
+			}
 			ring_push(&kbd_queue, key);
 		}
 		waitq_wake_all(&kbd_ready);
 		poll_notify();
 	} else if (key < 0x80) {
-		console_input((char)key);
+		console_input((char)key); /* the console has no use for Alt */
 	}
 }
 

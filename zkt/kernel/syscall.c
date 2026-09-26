@@ -16,6 +16,7 @@
 #include "zrp.h"
 
 #define IO_CHUNK 512
+#define IO_BIG 16384 /* ZRP_CHANNEL_MSIZE: a big write to a user file server is one message */
 
 #define MESSAGE_MAX (256 * 1024)
 
@@ -50,6 +51,23 @@ static long write_message(struct file *f, const uint8_t *ubuf, uint32_t len)
 	long rc = copy_from_user(buf, ubuf, len) ? -EFAULT : vfs_write(f, buf, len);
 	kfree(buf);
 	return rc;
+}
+
+/* The kernel's copy of a transfer's bytes: the caller's IO_CHUNK stack
+ * buffer for a small one, a heap buffer of IO_BIG for a bigger one (if
+ * there is memory), so a big transfer to a file server -- a window's
+ * image -- goes as a few big messages rather than many small ones.
+ * Returns the buffer's size; the caller frees *buf unless it is small. */
+static uint32_t io_buffer(uint32_t len, uint8_t *small, uint8_t **buf)
+{
+	if (len > IO_CHUNK) {
+		*buf = kmalloc(IO_BIG);
+		if (*buf) {
+			return IO_BIG;
+		}
+	}
+	*buf = small;
+	return IO_CHUNK;
 }
 
 static long sys_read(struct process *p, int fd, uint8_t *ubuf, uint32_t len)
@@ -90,28 +108,36 @@ static long sys_read(struct process *p, int fd, uint8_t *ubuf, uint32_t len)
 	if (!vmm_user_range_ok((uintptr_t)ubuf, len, true)) {
 		return -EFAULT;
 	}
-	uint8_t chunk[IO_CHUNK];
+	uint8_t small[IO_CHUNK], *chunk;
+	uint32_t size = io_buffer(len, small, &chunk);
+	long rc = 0;
 	uint32_t done = 0;
 	while (done < len) {
-		uint32_t want = len - done < IO_CHUNK ? len - done : IO_CHUNK;
+		uint32_t want = len - done < size ? len - done : size;
 		long n = vfs_read(f, chunk, want);
 		if (n < 0) {
-			return done ? (long)done : n;
+			rc = done ? (long)done : n;
+			break;
 		}
 		if (n == 0) {
 			break;
 		}
 		if (copy_to_user(ubuf + done, chunk, (size_t)n)) {
-			return -EFAULT;
+			rc = -EFAULT;
+			break;
 		}
 		done += (uint32_t)n;
+		rc = (long)done;
 		/* A device returns what it has (a console: one line's worth);
 		 * don't block for more. */
 		if ((uint32_t)n < want || vfs_type(f) == VNODE_DEVICE) {
 			break;
 		}
 	}
-	return (long)done;
+	if (chunk != small) {
+		kfree(chunk);
+	}
+	return rc;
 }
 
 static long sys_write(struct process *p, int fd, const uint8_t *ubuf, uint32_t len)
@@ -123,23 +149,31 @@ static long sys_write(struct process *p, int fd, const uint8_t *ubuf, uint32_t l
 	if (vfs_type(f) == VNODE_PIPE) {
 		return write_message(f, ubuf, len);
 	}
-	uint8_t chunk[IO_CHUNK];
+	uint8_t small[IO_CHUNK], *chunk;
+	uint32_t size = io_buffer(len, small, &chunk);
+	long rc = 0;
 	uint32_t done = 0;
 	while (done < len) {
-		uint32_t n = len - done < IO_CHUNK ? len - done : IO_CHUNK;
+		uint32_t n = len - done < size ? len - done : size;
 		if (copy_from_user(chunk, ubuf + done, n)) {
-			return done ? (long)done : -EFAULT;
+			rc = done ? (long)done : -EFAULT;
+			break;
 		}
 		long w = vfs_write(f, chunk, n);
 		if (w < 0) {
-			return done ? (long)done : w;
+			rc = done ? (long)done : w;
+			break;
 		}
 		done += (uint32_t)w;
+		rc = (long)done;
 		if ((uint32_t)w < n) {
 			break;
 		}
 	}
-	return (long)done;
+	if (chunk != small) {
+		kfree(chunk);
+	}
+	return rc;
 }
 
 _Static_assert(VFS_PATH_MAX == ZKT_PATH_MAX, "the ABI's path limit is the VFS's");

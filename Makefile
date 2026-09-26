@@ -86,13 +86,13 @@ LIBC_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard libc/*.c) \
 # takes what it uses.
 LIBGFX := $(BUILD)/desktop/libgfx/libgfx.a
 LIBGFX_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard desktop/libgfx/*.c))
-# The desktop (M12, docs/desktop/DESIGN.md): the window library, the
-# compositor (desktop/wm/, one program) and the applications
+# The desktop (M12, M18, docs/desktop/DESIGN.md): the window library,
+# ManiDE (desktop/manide/, one program) and the applications
 # (desktop/apps/, one per file), all installed in /bin.
 LIBWIN := $(BUILD)/desktop/libwin/libwin.a
 LIBWIN_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard desktop/libwin/*.c))
 USER_LIBS := $(LIBWIN) $(LIBGFX) $(LIBC)
-WM_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard desktop/wm/*.c))
+MANIDE_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard desktop/manide/*.c))
 DESKTOP_APPS := $(patsubst desktop/apps/%.c,%,$(wildcard desktop/apps/*.c))
 DESKTOP_BOOTFS := $(patsubst %,$(BUILD)/bootfs/bin/%,$(DESKTOP_APPS))
 USER_PROGRAMS := $(patsubst userland/%.c,%,$(wildcard userland/bin/*.c userland/test/*.c)) \
@@ -102,7 +102,7 @@ USER_OBJECTS := $(patsubst %,$(BUILD)/userland/%.o,$(USER_PROGRAMS))
 NOTICES := $(BUILD)/bootfs/etc/notices
 BOOTFS_FILES := $(patsubst %,$(BUILD)/bootfs/%,$(USER_PROGRAMS)) \
                 $(patsubst userland/%,$(BUILD)/bootfs/%,$(wildcard userland/etc/*)) \
-                $(BUILD)/bootfs/bin/desktop $(DESKTOP_BOOTFS) $(NOTICES) \
+                $(BUILD)/bootfs/bin/manide $(DESKTOP_BOOTFS) $(NOTICES) \
                 $(BUILD)/bootfs/test/pipeseek1
 BOOTFS_OBJECT := $(BUILD)/bootfs.o
 
@@ -129,8 +129,8 @@ $(BUILD)/%.o: %.S
 $(BUILD)/libc/string.o: USER_CFLAGS += -fno-tree-loop-distribute-patterns
 
 # The version is compiled in where it is shown.
-$(BUILD)/zkt/kernel/main.o $(BUILD)/desktop/apps/about.o $(BUILD)/boot/stage2_entry.o \
-    $(BUILD)/boot/stage2.o: VERSION
+$(BUILD)/zkt/kernel/main.o $(BUILD)/zkt/kernel/sysstat.o $(BUILD)/desktop/apps/about.o \
+    $(BUILD)/userland/test/utest.o $(BUILD)/boot/stage2_entry.o $(BUILD)/boot/stage2.o: VERSION
 
 $(BUILD)/libc/%.o: libc/%.c
 	@mkdir -p $(dir $@)
@@ -172,13 +172,13 @@ $(LIBWIN): $(LIBWIN_OBJECTS)
 	@rm -f $@
 	$(AR) rcs $@ $^
 
-$(BUILD)/desktop/wm/desktop.elf: $(WM_OBJECTS) $(CRT0) $(USER_LIBS) userland/user.ld
-	$(CC) $(USER_LDFLAGS) -o $@ $(CRT0) $(WM_OBJECTS) $(USER_LIBS)
+$(BUILD)/desktop/manide/manide.elf: $(MANIDE_OBJECTS) $(CRT0) $(USER_LIBS) userland/user.ld
+	$(CC) $(USER_LDFLAGS) -o $@ $(CRT0) $(MANIDE_OBJECTS) $(USER_LIBS)
 
 $(BUILD)/desktop/apps/%.elf: $(BUILD)/desktop/apps/%.o $(CRT0) $(USER_LIBS) userland/user.ld
 	$(CC) $(USER_LDFLAGS) -o $@ $(CRT0) $< $(USER_LIBS)
 
-$(BUILD)/bootfs/bin/desktop: $(BUILD)/desktop/wm/desktop.elf
+$(BUILD)/bootfs/bin/manide: $(BUILD)/desktop/manide/manide.elf
 	@mkdir -p $(dir $@)
 	$(STRIP) -o $@ $<
 
@@ -339,8 +339,8 @@ clean:
 # Keep the unstripped programs for debugging (addr2line, objdump).
 .SECONDARY: $(patsubst %,$(BUILD)/userland/%.elf,$(USER_PROGRAMS)) $(USER_OBJECTS) $(CRT0) \
             $(patsubst %,$(BUILD)/desktop/apps/%.elf,$(DESKTOP_APPS)) \
-            $(patsubst %,$(BUILD)/desktop/apps/%.o,$(DESKTOP_APPS)) $(BUILD)/desktop/wm/desktop.elf
+            $(patsubst %,$(BUILD)/desktop/apps/%.o,$(DESKTOP_APPS)) $(BUILD)/desktop/manide/manide.elf
 
 -include $(OBJECTS:.o=.d) $(LIBC_OBJECTS:.o=.d) $(CRT0:.o=.d) $(USER_OBJECTS:.o=.d) \
-         $(LIBGFX_OBJECTS:.o=.d) $(LIBWIN_OBJECTS:.o=.d) $(WM_OBJECTS:.o=.d) \
+         $(LIBGFX_OBJECTS:.o=.d) $(LIBWIN_OBJECTS:.o=.d) $(MANIDE_OBJECTS:.o=.d) \
          $(patsubst %,$(BUILD)/desktop/apps/%.d,$(DESKTOP_APPS))

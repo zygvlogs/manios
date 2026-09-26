@@ -1,7 +1,9 @@
-/* clock -- the time (UTC) and date, from /dev/time, in a window. Closes
- * from its close box or with Escape or q. */
+/* clock -- the time (UTC) and date, from /dev/time, in a window: as
+ * large as its pane allows. Closes when asked (Alt+q, the close box) or
+ * with Escape or q. */
 #include <errno.h>
 #include <manios.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <win.h>
@@ -40,11 +42,14 @@ static void civil(long days, int *year, int *month, int *day)
 	*year = (int)(yoe + era * 400 + (*month <= 2));
 }
 
-static void draw(struct win *w, long t)
+/* Draws the time; sends the whole window when `all`, else only the
+ * rows the time and date are on (the rest stays as it was). */
+static void draw(struct win *w, long t, bool all)
 {
 	char time_text[16], date_text[24];
 	struct gfx_canvas *c = w->canvas;
-	gfx_fill(c, (struct gfx_rect){ 0, 0, WIDTH, HEIGHT }, BG);
+	int width = w->width, height = w->height;
+	gfx_fill(c, (struct gfx_rect){ 0, 0, width, height }, BG);
 	if (t < 0) {
 		gfx_text(c, 10, 10, "no /dev/time", LIGHT, 1);
 	} else {
@@ -53,10 +58,24 @@ static void draw(struct win *w, long t)
 		civil(t / 86400, &year, &month, &day);
 		snprintf(time_text, sizeof(time_text), "%02ld:%02ld:%02ld", s / 3600, s / 60 % 60, s % 60);
 		snprintf(date_text, sizeof(date_text), "%04d-%02d-%02d UTC", year, month, day);
-		gfx_text(c, (WIDTH - gfx_text_width(time_text, 3)) / 2, 10, time_text, AMBER, 3);
-		gfx_text(c, (WIDTH - gfx_text_width(date_text, 1)) / 2, 50, date_text, LIGHT, 1);
+		/* The largest time that fits, with the date under it. */
+		int scale = 1;
+		while (gfx_text_width(time_text, scale + 1) + 20 <= width
+		       && GFX_CELL_H * (scale + 1) + 30 <= height && scale < 12) {
+			scale++;
+		}
+		int small = scale >= 6 ? 2 : 1;
+		int block = GFX_CELL_H * scale + 8 + GFX_CELL_H * small;
+		int y = (height - block) / 2;
+		gfx_text(c, (width - gfx_text_width(time_text, scale)) / 2, y, time_text, AMBER, scale);
+		gfx_text(c, (width - gfx_text_width(date_text, small)) / 2, y + GFX_CELL_H * scale + 8,
+		         date_text, LIGHT, small);
+		if (!all) {
+			win_flush(w, y, block);
+			return;
+		}
 	}
-	win_flush(w, 0, HEIGHT);
+	win_flush(w, 0, height);
 }
 
 int main(void)
@@ -71,14 +90,17 @@ int main(void)
 	for (;;) {
 		long t = fd >= 0 ? now(fd) : -1;
 		if (t != shown) {
-			draw(w, t);
+			draw(w, t, shown == -2);
 			shown = t;
 		}
 		struct win_event e;
 		int got = win_next(w, &e, 200);
 		if (got < 0 || (got && (e.type == WIN_CLOSE
-		                        || (e.type == WIN_KEY && (e.key == 0x1B || e.key == 'q'))))) {
+		                        || (e.type == WIN_KEY && !e.alt && (e.key == 0x1B || e.key == 'q'))))) {
 			break;
+		}
+		if (got && e.type == WIN_RESIZE) {
+			shown = -2; /* draw again */
 		}
 	}
 	win_close(w);

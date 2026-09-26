@@ -21,3 +21,5 @@ The first ManiOS target architecture. Code generation is pinned to the
 - `pic.c` — 8259 PIC remap, mask/unmask, EOI
 - `pit.c` / `clock.h` — PIT as the periodic clock behind `zkt/kernel/timer.c`
 - `paging.c` — two-level paging behind `zkt/mm/vmm.h`
+- `cpuinfo.c` — what CPU this is (CPUID's brand string, or vendor,
+  family and model; 386 or 486 without CPUID), for `/dev/sysstat`

@@ -58,6 +58,7 @@ static struct thread *sleepers;            /* sorted by wake_tick */
 static struct thread *switched_from;       /* for finish_switch() */
 static struct thread *all_threads;
 static bool preemptive;
+static uint64_t idle_ticks; /* timer ticks the idle thread had: the CPU's idle time */
 static unsigned slice_left;
 static uint32_t next_id;
 static size_t thread_count;
@@ -305,6 +306,11 @@ void *thread_process(void)
 	return current ? current->process : NULL;
 }
 
+void thread_leave_process(void)
+{
+	current->process = NULL; /* a store: a timer tick sees before or after */
+}
+
 void thread_set_address_space(struct address_space *as)
 {
 	uint32_t flags = cpu_irq_save();
@@ -361,6 +367,19 @@ void thread_set_namespace(struct namespace *ns)
 	ns_ref(ns);
 	current->ns = ns;
 	ns_unref(old);
+}
+
+uint64_t sched_idle_ticks(void)
+{
+	uint32_t flags = cpu_irq_save();
+	uint64_t t = idle_ticks;
+	cpu_irq_restore(flags);
+	return t;
+}
+
+const char *thread_state_name(const struct thread *t)
+{
+	return STATE_NAMES[t->state];
 }
 
 const char *thread_current_name(void)
@@ -464,6 +483,13 @@ void sched_tick(uint64_t now)
 {
 	if (!current) {
 		return;
+	}
+	/* The tick goes to whoever it interrupted: CPU time for /dev/ps and
+	 * /dev/sysstat (sampled, as on Unix: a tick at a time). */
+	if (current == idle) {
+		idle_ticks++;
+	} else if (current->process) {
+		process_account_tick(current->process);
 	}
 
 	while (sleepers && sleepers->wake_tick <= now) {

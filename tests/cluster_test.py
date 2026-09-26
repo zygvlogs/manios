@@ -17,7 +17,7 @@ Then the roles: the terminal mounts the file server; runs commands on
 the CPU server, which see the terminal's console and namespace (and
 through it the file server: three machines); a remote shell that waits
 longer than UDP's timeout; exit statuses; a program on the CPU server
-opening a window on the terminal's desktop; and the CPU server dying
+opening a window on the terminal's ManiDE; and the CPU server dying
 under a job.
 
 Usage: tests/cluster_test.py [path-to-kernel-elf]
@@ -38,7 +38,7 @@ import time
 
 import console_test
 from console_test import PROMPT, SHELL_PROMPT, Machine, TestFailure, fnv1a, run_command
-from desktop_test import ACCENT, DARK, Desktop, read_text, title
+from desktop_test import ACCENT, FOCUS, Desktop, clock_face, grid, read_text, title
 from net_test import (EBADF, ENOENT, ENOSYS, EPROTO, RATTACH, RAUTH, RCLUNK, RERROR, RPENDING,
                       RREAD, RVERSION, RWALK, RWRITE, TATTACH, TAUTH, TCLUNK, TREAD, TVERSION,
                       TWALK, TWRITE, VERSION, ZKT_DIR, ZKT_FILE, Reader, checksum, eth, ip_bytes,
@@ -509,37 +509,36 @@ class Cluster:
     def remote_window(self, tmpdir):
         t = self.term
         d = Desktop(t, tmpdir)
-        t.type_serial("desktop\r")
-        t.expect("F1 opens the menu", timeout=30)
+        t.type_serial("manide -n\r")
+        t.expect("Alt+Enter: terminal, F1: menu", timeout=30)
         d.key("f1")
         d.key("ret")
         t.expect('window 1 "Terminal"', timeout=30)
         time.sleep(1.5)
         d.type("cpu udp!10.0.0.2 clock\n")
-        # The clock runs on the CPU server; its window is on this screen.
-        before = t.expect(' "Clock" 200x70 at ', timeout=60)
-        where = t.expect("\r\n")
+        # The clock runs on the CPU server; its window is on this screen,
+        # in the right half, and draws at the size ManiDE gives it.
+        before = t.expect(' "Clock" 200x70 on workspace 1', timeout=60)
         number = re.search(r"window (\d+)$", before)
-        x, y = (int(v) for v in where.split(","))
         job = self.job_started("/bin/clock")
+        pane = grid(2)[1]
+        x, y, scale = clock_face(pane)
 
         def reading(s):
-            return read_text(s, x + 28, y + 10, 8, ACCENT, 3)
+            return read_text(s, x, y, 8, ACCENT, scale)
 
         s = d.wait(lambda s: re.fullmatch(r"\d\d:\d\d:\d\d", reading(s)), "the remote clock's time",
-                   timeout=30)
+                   timeout=60)
         first = reading(s)
         d.wait(lambda s: re.fullmatch(r"\d\d:\d\d:\d\d", reading(s)) and reading(s) != first,
                "the remote clock ticking", timeout=30)
-        check(title(s, x, y, 5, DARK) == "Clock", "the remote window has the focus")
+        check(title(s, pane, FOCUS) == "Clock", "the remote window has the focus")
         # A key reaches it across the network: q quits it.
         d.key("q")
         t.expect(f"window {number.group(1)} closed", timeout=30)
         self.cpu.expect(f"cpud: job {job}: exit 0", timeout=30)
-        d.key("f1")
-        d.key("up")
-        d.key("ret")
-        t.expect("desktop: bye", timeout=30)
+        d.key("alt-shift-q")
+        t.expect("manide: bye", timeout=30)
         t.expect(SHELL_PROMPT)
 
     def cpu_server_dies(self):
@@ -574,7 +573,7 @@ def main():
              cluster.remote_shell),
             ("exit statuses come back: failure, a fault, a missing program", cluster.statuses),
             ("a job that can't start: why comes back to the terminal", cluster.jobs_that_cannot_start),
-            ("a program on the CPU server opens a window on the terminal's desktop",
+            ("a program on the CPU server opens a window on the terminal's ManiDE",
              lambda: cluster.remote_window(workdir)),
             ("the CPU server dies under a job: the terminal notices and carries on",
              cluster.cpu_server_dies),

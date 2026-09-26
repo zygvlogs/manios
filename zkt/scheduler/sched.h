@@ -55,6 +55,9 @@ struct address_space *thread_address_space(void);
 
 /* The calling thread's user process, or NULL for a kernel thread. */
 void *thread_process(void);
+/* The calling thread stops belonging to its process (which is exiting
+ * and may be freed before the thread is): nothing is charged to it. */
+void thread_leave_process(void);
 
 /* Moves the calling thread into another address space (NULL: the
  * kernel's). It stays there across preemption, which is what lets the
@@ -82,6 +85,13 @@ const char *thread_current_name(void);
 
 /* Copies up to `max` entries describing live threads; returns how many. */
 size_t sched_snapshot(struct thread_info *out, size_t max);
+
+/* Timer ticks spent in the idle thread since boot (TIMER_HZ a second). */
+uint64_t sched_idle_ticks(void);
+/* "running", "ready", "sleeping", "blocked" or "dead". */
+const char *thread_state_name(const struct thread *t);
+/* Charged a timer tick while one of its threads ran (process.c). */
+void process_account_tick(void *process);
 
 /* Blocks the calling thread on wq. Interrupts must be disabled (panics
  * otherwise); they are disabled again when it returns. */

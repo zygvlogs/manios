@@ -12,6 +12,7 @@
 #include "namespace.h"
 #include "pmm.h"
 #include "sched.h"
+#include "timer.h"
 #include "vmm.h"
 #include "zkt_abi.h"
 
@@ -33,6 +34,9 @@ struct process {
 	uintptr_t brk_start, brk; /* the heap: [brk_start, brk), grown by sbrk */
 	char cwd[VFS_PATH_MAX + 1]; /* absolute and cleaned */
 	uint32_t abi;               /* the ABI version it was built for (zkt_abi.h) */
+	uintptr_t image_start;      /* the program image: [image_start, brk_start) */
+	uint32_t cpu_ticks;         /* timer ticks it was running for */
+	struct thread *thread;      /* its one thread; gone once it has exited */
 	struct process *next;
 };
 
@@ -233,7 +237,7 @@ int process_spawn(const char *path, int argc, char *const argv[], struct process
 	struct address_space *own = thread_address_space();
 	thread_set_address_space(p->as);
 	uintptr_t image_end;
-	rc = elf_load(image, size, &p->entry, &image_end, &p->abi);
+	rc = elf_load(image, size, &p->entry, &p->image_start, &image_end, &p->abi);
 	p->brk_start = p->brk = page_up(image_end);
 	if (rc == 0) {
 		rc = setup_stack(argc, argv, &p->user_sp);
@@ -266,7 +270,9 @@ int process_spawn(const char *path, int argc, char *const argv[], struct process
 	processes = p;
 	cpu_irq_restore(flags);
 
-	if (!thread_create_in(p->name, user_thread_start, p, p->as, p)) {
+	/* Until the store, /dev/ps (process_list) shows it as "new". */
+	p->thread = thread_create_in(p->name, user_thread_start, p, p->as, p);
+	if (!p->thread) {
 		flags = cpu_irq_save();
 		unlink_process(p);
 		cpu_irq_restore(flags);
@@ -367,6 +373,8 @@ __attribute__((noreturn)) void process_exit(int status)
 	}
 	p->status = status;
 	p->exited = true;
+	p->thread = 0;       /* it is about to go (thread_exit) */
+	thread_leave_process(); /* and its ticks from now on are nobody's */
 	if (p->orphaned) {
 		unlink_process(p);
 		kfree(p); /* nothing reads it after this: the thread only exits */
@@ -375,6 +383,31 @@ __attribute__((noreturn)) void process_exit(int status)
 	}
 	cpu_irq_restore(flags);
 	thread_exit();
+}
+
+void process_account_tick(void *process)
+{
+	((struct process *)process)->cpu_ticks++;
+}
+
+size_t process_list(struct process_info *out, size_t max)
+{
+	size_t n = 0;
+	uint32_t flags = cpu_irq_save();
+	for (struct process *p = processes; p && n < max; p = p->next, n++) {
+		struct process_info *i = &out[n];
+		i->pid = p->pid;
+		i->ppid = p->parent ? p->parent->pid : 0;
+		strlcpy(i->name, p->name, sizeof(i->name));
+		i->state = p->exited ? "exited" : p->thread ? thread_state_name(p->thread) : "new";
+		i->cpu_ms = p->cpu_ticks * (1000 / TIMER_HZ);
+		/* What it has mapped: image and heap, and the stack. */
+		i->mem_kib = p->exited ? 0
+		           : (uint32_t)((page_up(p->brk) - p->image_start) / 1024
+		                        + USER_STACK_PAGES * PAGE_SIZE / 1024);
+	}
+	cpu_irq_restore(flags);
+	return n;
 }
 
 const char *process_cwd(const struct process *p)
