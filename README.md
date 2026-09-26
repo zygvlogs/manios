@@ -33,7 +33,7 @@ page has a bootable ISO, `manios-VERSION.iso`. It boots from a CD, from
 a USB stick it is written to, or in QEMU or VirtualBox:
 
 ```
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.14.1.iso -boot d
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.14.2.iso -boot d
 ```
 
 and `install ata0` puts ManiOS on a hard disk. ManiOS boots with its own

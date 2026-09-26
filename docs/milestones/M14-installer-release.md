@@ -223,3 +223,27 @@ CD boot's screen check), a panic that leaves the screen quiet (the
 3 MiB check), and the framebuffer taken from BAR 0 as before (the SVGA II
 machine draws nothing).
 
+## 0.14.2: VirtualBox repaints
+
+Next, a VirtualBox screenshot of `gfxdemo` (run after the desktop):
+the demo in only one row in five, with a staircase of leftovers from
+the desktop in between. Rendering the correct frame in QEMU and
+comparing it with the screenshot pixel by pixel showed what happened:
+the demo was in the right place (so the mode, framebuffer address and
+line length were right), but only the pixels whose offset modulo 3200
+is below 640 had been repainted -- 93% of those match the demo, against
+43% elsewhere, and other rules (4 KiB pages, the new line length) fit
+far worse. 3200 bytes is the desktop's 800-pixel line: VirtualBox
+repainted the new frame with the previous mode's geometry, and nothing
+drew those areas again.
+
+The kernel now sets the mode registers in the order VirtualBox's VGA
+BIOS uses (BPP, XRES, YRES, BANK, VIRT_WIDTH, VIRT_HEIGHT, offsets,
+ENABLE), and after each mode change a short-lived kernel thread writes
+every page of the frame again, unchanged, at 50, 200, 600 and 1500 ms,
+so the emulator repaints it all once it has taken the new mode (the
+thread stops early if the mode changes again). QEMU doesn't have the
+problem, so its tests show only that this is harmless (gfx_test,
+desktop_test, all of `make test`); the fix itself awaits a VirtualBox
+run.
+

@@ -34,7 +34,7 @@ fixed date), so the same boot area always gives the same ISO.
 ## Trying it in QEMU
 
 ```
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.14.1.iso -boot d
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.14.2.iso -boot d
 ```
 
 Add `-serial stdio` to use the serial console from your terminal, and
@@ -44,7 +44,7 @@ right one. To try the installer, give it an empty disk:
 
 ```
 qemu-img create -f raw disk.img 64M
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.14.1.iso -boot d -hda disk.img
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.14.2.iso -boot d -hda disk.img
 ```
 
 and after `install ata0`, boot the disk alone with `-hda disk.img -boot c`.
@@ -56,7 +56,9 @@ Make a new virtual machine of type "Other" / "Other/Unknown", give it
 the ISO in its CD drive. ManiOS knows VirtualBox's three graphics
 controllers for the desktop: VMSVGA is VMware's SVGA II, which the tests
 cover through QEMU's copy of it; VBoxVGA and VBoxSVGA are untested so
-far -- if `desktop` says there is no framebuffer, try VMSVGA. VirtualBox
+far -- if `desktop` says there is no framebuffer, try VMSVGA. (0.14.1
+could show a garbled, striped picture after a change of graphics mode
+in VirtualBox; 0.14.2 should fix that; reports welcome.) VirtualBox
 has no NE2000 network card, so there is no network there yet.
 
 ## The boot loader
@@ -65,7 +67,7 @@ The loader prints its version and the boot options -- the kernel's
 command line -- then waits 3 seconds:
 
 ```
-ManiOS boot loader 0.14.1
+ManiOS boot loader 0.14.2
 Boot options: (none)
 Press any key within 3 seconds to change them.
 ```
@@ -97,10 +99,10 @@ The options are words of the form `KEY=VALUE`:
 ManiOS tests itself at every boot, and the screen shows what it checks:
 
 ```
-ManiOS 0.14.1 / ZKT (ZygKernel Technology)
+ManiOS 0.14.2 / ZKT (ZygKernel Technology)
 Self-tests: memory, interrupts, threads, devices, disks, files, programs,
             C library, network, graphics, windows, cluster. All passed.
-ManiOS 0.14.1 is ready. Try ls /bin (programs), help (the shell), desktop.
+ManiOS 0.14.2 is ready. Try ls /bin (programs), help (the shell), desktop.
 manios%
 ```
 
@@ -137,7 +139,7 @@ hard disk. **This destroys everything on the stick.** On Linux, with the
 stick at `/dev/sdX`:
 
 ```
-sudo dd if=manios-0.14.1.iso of=/dev/sdX bs=1M conv=fsync
+sudo dd if=manios-0.14.2.iso of=/dev/sdX bs=1M conv=fsync
 ```
 
 ## Installing on a hard disk
@@ -146,13 +148,13 @@ Boot the CD (or stick) on the machine, then, at the `manios% ` prompt:
 
 ```
 manios% install ata0 sysname=box ip=10.0.0.5/24
-ManiOS 0.14.1 will be installed on ata0 (512 MiB).
+ManiOS 0.14.2 will be installed on ata0 (512 MiB).
 EVERYTHING ON ata0 WILL BE LOST.
 The installed system's command line: "sysname=box ip=10.0.0.5/24"
 Type yes to go on: yes
 writing the boot area (678 KiB)...
 checking what was written...
-ManiOS 0.14.1 is installed on ata0. Remove the CD and restart the machine.
+ManiOS 0.14.2 is installed on ata0. Remove the CD and restart the machine.
 ```
 
 - `ata0` is the first IDE disk (primary master), `ata1` the second, and
