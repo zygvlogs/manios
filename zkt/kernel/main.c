@@ -56,13 +56,21 @@ static void start_zrp(void)
 	}
 }
 
+/* verbose=1 on the command line: the whole boot log on the screen too.
+ * Otherwise the screen shows what is being checked, and the log goes
+ * only to COM1 (where the tests read it). */
+static bool verbose_boot(void)
+{
+	char value[8];
+	return cmdline_get("verbose", value, sizeof(value)) && strcmp(value, "0") != 0;
+}
+
 void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 {
 	arch_early_init();
 	kconsole_init();
 
 	kconsole_write("ManiOS " MANIOS_VERSION " / ZKT (ZygKernel Technology)\n");
-	kconsole_write("Milestone M1: kernel console reached.\n");
 
 	if (multiboot_magic != MULTIBOOT_BOOTLOADER_MAGIC) {
 		panic("not booted by a Multiboot loader; no memory map available");
@@ -71,6 +79,11 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	char line[CMDLINE_MAX];
 	multiboot_cmdline(multiboot_info_phys, line, sizeof(line));
 	cmdline_set(line);
+	if (!verbose_boot()) {
+		kconsole_set_quiet(true);
+		kconsole_progress("Self-tests:");
+	}
+	kconsole_write("Milestone M1: kernel console reached.\n");
 
 	struct mem_region regions[MAX_MEM_REGIONS + BOOT_MODULES_MAX];
 	size_t region_count = multiboot_memory_regions(multiboot_info_phys, regions,
@@ -96,6 +109,7 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 
 	mm_selftest();
 	kconsole_write("Milestone M2: memory manager online (self-test passed).\n");
+	kconsole_progress(" memory");
 
 	sched_init(); /* from here on, this is thread "main" */
 	timer_init();
@@ -106,18 +120,21 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	kconsole_write("Milestone M3: interrupts online (PIT timer at ");
 	kconsole_write_dec(TIMER_HZ);
 	kconsole_write(" Hz).\n");
+	kconsole_progress(", interrupts");
 
 	sched_selftest_cooperative();
 	sched_enable_preemption();
 	sched_selftest_preemptive();
 	kconsole_write("Milestone M4: kernel threads online "
 	               "(cooperative + preemptive scheduling, self-test passed).\n");
+	kconsole_progress(", threads");
 
 	sched_selftest_sync();
 	drivers_init();
 	kprintf("Milestone M5: driver framework online "
 	        "(keyboard + serial console input, mutex self-test passed).\n");
 	kprintf("Milestone M6: ATA storage driver online.\n");
+	kconsole_progress(", devices, disks");
 	kprintf("devices:");
 	for (struct device *d = device_next(0); d; d = device_next(d)) {
 		kprintf(" %s", d->name);
@@ -127,12 +144,15 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	fs_init();
 	vfs_selftest();
 	kprintf("Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed).\n");
+	kconsole_progress(", files");
 
 	user_selftest();
 	kprintf("Milestone M8: userspace online (ring 3 processes, system calls; self-test passed).\n");
+	kconsole_progress(", programs");
 
 	libc_selftest();
 	kprintf("Milestone M9: libc, ABI v%d and shell online (self-test passed).\n", ZKT_ABI_VERSION);
+	kconsole_progress(",\n            C library"); /* under "memory", not across the edge */
 
 	if (!sha256_selftest()) {
 		panic("selftest: SHA-256 or HMAC gave a wrong answer");
@@ -140,18 +160,24 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	net_init();
 	net_selftest();
 	kprintf("Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed).\n");
+	kconsole_progress(", network");
 	start_zrp();
 
 	gfx_selftest();
 	kprintf("Milestone M11: graphics online (framebuffer, 2D library; self-test passed).\n");
+	kconsole_progress(", graphics");
 
 	channel_selftest();
 	kprintf("Milestone M12: pipes, input devices and userspace file servers online "
 	        "(self-test passed).\n");
+	kconsole_progress(", windows");
 
 	cluster_selftest();
 	kprintf("Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; "
 	        "self-test passed).\n");
+	kconsole_progress(", cluster. All passed.\n");
+	kconsole_set_quiet(false);
+	kprintf("ManiOS " MANIOS_VERSION " is ready. Try ls /bin (programs), help (the shell), desktop.\n");
 
 	if (!thread_create("console", console_main, 0)) {
 		panic("could not start the console thread");

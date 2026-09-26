@@ -12,6 +12,7 @@
 static const char HEX_DIGITS[] = "0123456789abcdef";
 
 static struct mutex output_lock = MUTEX_INIT;
+static volatile bool quiet;   /* the screen is left out */
 
 static uint8_t input_storage[256];
 static struct ring input = RING_INIT(input_storage);
@@ -33,12 +34,30 @@ void kconsole_write_n(const char *s, size_t len)
 	if (serial_buffered() && thread_current() && cpu_interrupts_enabled()) {
 		mutex_lock(&output_lock);
 		serial_write_buffered(s, len);
-		vga_write(s, len);
+		if (!quiet) {
+			vga_write(s, len);
+		}
 		mutex_unlock(&output_lock);
 	} else {
 		uint32_t flags = cpu_irq_save();
 		serial_write_polled(s, len);
-		vga_write(s, len);
+		if (!quiet) {
+			vga_write(s, len);
+		}
+		cpu_irq_restore(flags);
+	}
+}
+
+void kconsole_set_quiet(bool q)
+{
+	quiet = q;
+}
+
+void kconsole_progress(const char *s)
+{
+	if (quiet) {
+		uint32_t flags = cpu_irq_save();
+		vga_write(s, strlen(s));
 		cpu_irq_restore(flags);
 	}
 }

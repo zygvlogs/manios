@@ -9,6 +9,7 @@ static void panic_header(const char *msg)
 {
 	cpu_irq_save();
 	fb_emergency_text(); /* a graphics mode would hide the message */
+	kconsole_set_quiet(false); /* and so would a quiet boot */
 	kconsole_write("\n*** ZKT PANIC: ");
 	kconsole_write(msg);
 	kconsole_write(" ***\n");

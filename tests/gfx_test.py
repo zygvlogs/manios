@@ -135,7 +135,9 @@ def run_demo(m, tmpdir, args, name, expect_size, width, scale, tolerance, refere
 def main():
     kernel = sys.argv[1] if len(sys.argv) > 1 else "build/manios-zkt.elf"
     tmpdir = tempfile.mkdtemp(prefix="zkt-gfx-")
-    m = Machine(kernel)
+    # verbose=1: the boot log fills the text screen, so echoed lines land
+    # on its last rows (text_line).
+    m = Machine(kernel, ["-append", "verbose=1"])
     failures = 0
 
     def step(name, fn):
@@ -184,7 +186,7 @@ def main():
 
     # VMware's SVGA II, which is also VirtualBox's VMSVGA: the Bochs VBE
     # registers, but the video memory in BAR 1, after its I/O ports.
-    m = Machine(kernel, ["-vga", "vmware"])
+    m = Machine(kernel, ["-vga", "vmware", "-append", "verbose=1"])
     try:
         boot = m.expect(SHELL_PROMPT)
         step("SVGA II (VirtualBox's VMSVGA): found, with its video memory BAR",

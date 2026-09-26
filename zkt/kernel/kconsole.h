@@ -1,6 +1,7 @@
 #ifndef ZKT_KERNEL_KCONSOLE_H
 #define ZKT_KERNEL_KCONSOLE_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -14,6 +15,12 @@ void kconsole_write(const char *s);
 void kconsole_write_n(const char *s, size_t len);
 void kconsole_write_hex32(uint32_t value);
 void kconsole_write_dec(uint32_t value);
+
+/* A quiet console (the boot, unless verbose=1) writes only to COM1: the
+ * screen shows kconsole_progress() instead. Panics always reach the
+ * screen. */
+void kconsole_set_quiet(bool quiet);
+void kconsole_progress(const char *s);
 
 /* Queues one input byte for readers of device "cons". Called by the
  * keyboard and serial IRQ handlers; the byte is dropped if the queue

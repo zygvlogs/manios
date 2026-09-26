@@ -22,6 +22,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import time
 import zlib
 
 from console_test import SHELL_PROMPT, Machine, TestFailure, fnv1a, run_command
@@ -42,6 +43,23 @@ def boot(disks=(), cdrom=None, order="c", memory=32):
     for d in disks:
         args += ["-drive", f"file={d},format=raw,if=ide"]
     return Machine(None, args, memory)
+
+
+def screen_text(m):
+    """The VGA text screen, 25 lines (QEMU's pmemsave of 0xB8000)."""
+    path = os.path.join(m.tmpdir, "screen.bin")
+    if os.path.exists(path):
+        os.remove(path)
+    m.monitor.sendall(f'pmemsave 0xb8000 4000 "{path}"\n'.encode())
+    deadline = time.time() + 10
+    while not (os.path.exists(path) and os.path.getsize(path) == 4000):
+        if time.time() > deadline:
+            raise TestFailure("pmemsave wrote no screen")
+        time.sleep(0.1)
+    time.sleep(0.1)
+    data = open(path, "rb").read()
+    return "\n".join(bytes(data[r * 160 + c * 2] for c in range(80)).decode("latin-1").rstrip()
+                     for r in range(25))
 
 
 def blank(path, mib):
@@ -118,9 +136,17 @@ class Install:
         m = boot(cdrom=self.iso, order="d")
         try:
             out = m.expect(SHELL_PROMPT, timeout=120)
-            for needle in [LOADER + self.version, "command line: \r\n", "loading", "starting the kernel",
-                           f"ManiOS {self.version} / ZKT", "bootmod: /dev/bootarea", "Milestone M13"]:
+            for needle in [LOADER + self.version, "Boot options: (none)\r\n", "Loading ManiOS",
+                           "Starting ManiOS", f"ManiOS {self.version} / ZKT", "bootmod: /dev/bootarea",
+                           "Milestone M13", f"ManiOS {self.version} is ready."]:
                 check(needle in out, f"CD boot output lacks {needle!r}:\n{out[-1500:]}")
+            # The screen is quiet: what is checked, not the log (COM1 has that).
+            screen = screen_text(m)
+            for needle in [f"ManiOS {self.version} / ZKT", "Self-tests: memory, interrupts",
+                           "cluster. All passed.", f"ManiOS {self.version} is ready.", "manios%"]:
+                check(needle in screen, f"the screen lacks {needle!r}:\n{screen}")
+            for needle in ["Milestone", "killed", "assertion", "utest"]:
+                check(needle not in screen, f"the quiet screen shows {needle!r}:\n{screen}")
             run_command(m, "serial", "sum /dev/bootarea",
                         [f"{len(self.area)} bytes, fnv1a {fnv1a(self.area):08x}"], SHELL_PROMPT)
             run_command(m, "serial", "cat /dev/sysname", ["\r\nmanios\r\n"], SHELL_PROMPT)
@@ -130,18 +156,22 @@ class Install:
     def prompt_edits(self):
         m = boot(cdrom=self.iso, order="d")
         try:
-            m.expect("press a key to edit", timeout=60)
+            m.expect("Press any key within 3 seconds", timeout=60)
             m.type_serial(" ")
             m.expect("boot: ")
-            m.type_serial("sysname=typxx\b\bed\r")
+            m.type_serial("sysname=typxx\b\bed verbose=1\r")
             m.expect(SHELL_PROMPT, timeout=120)
             run_command(m, "serial", "cat /dev/sysname", ["\r\ntyped\r\n"], SHELL_PROMPT)
+            # verbose=1: the boot log is on the screen too.
+            screen = screen_text(m)
+            check("Milestone M13" in screen and "cltest: all" in screen,
+                  f"verbose=1 didn't show the log on the screen:\n{screen}")
         finally:
             m.close()
         # The keyboard works too, and Escape clears the line first.
         m = boot(cdrom=self.iso, order="d")
         try:
-            m.expect("press a key to edit", timeout=60)
+            m.expect("Press any key within 3 seconds", timeout=60)
             m.type_keyboard("x")
             m.expect("boot: ")
             m.type_serial("junk")
@@ -222,7 +252,7 @@ class Install:
         m = boot(disks=[disk, clone], order="c")
         try:
             out = m.expect(SHELL_PROMPT, timeout=120)
-            check("command line: sysname=installed rc=/boot/etc/rc.cpu" in out,
+            check("Boot options: sysname=installed rc=/boot/etc/rc.cpu" in out,
                   f"the installed command line wasn't used:\n{out[-1500:]}")
             # rc.cpu ran: cpud refuses, as the machine has no key.
             check("cpud: this machine has no cluster key" in out, "the rc= script didn't run")

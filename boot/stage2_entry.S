@@ -260,7 +260,10 @@ boot_prompt:
 	movw $msg_cmdline, %si
 	call print
 	movw $CMDLINE_ADDR, %si
-	call print
+	cmpb $0, (%si)
+	jne 3f
+	movw $msg_none, %si
+3:	call print
 	movw $msg_prompt, %si
 	call print
 
@@ -539,12 +542,14 @@ protected:
 msg_banner:   .ascii "\r\nManiOS boot loader "
               .ascii MANIOS_VERSION
               .asciz "\r\n"
-msg_cmdline:  .asciz "command line: "
-msg_prompt:   .asciz "\r\nBooting in 3 s; press a key to edit the command line.\r\n"
-msg_edit:     .asciz "\r\nEdit, then Enter (Backspace deletes, Escape clears):\r\nboot: "
+msg_cmdline:  .asciz "Boot options: "
+msg_none:     .asciz "(none)"
+msg_prompt:   .asciz "\r\nPress any key within 3 seconds to change them.\r\n"
+msg_edit:     .ascii "\r\nType the boot options, then press Enter to start ManiOS.\r\n"
+              .asciz "Backspace deletes a character; Escape clears the line.\r\nboot: "
 msg_rubout:   .asciz "\b \b"
-msg_loading:  .asciz "loading"
-msg_starting: .asciz "starting the kernel\r\n"
+msg_loading:  .asciz "Loading ManiOS"
+msg_starting: .asciz "Starting ManiOS...\r\n"
 msg_newline:  .asciz "\r\n"
 msg_error:    .asciz "\r\nManiOS boot loader: "
 msg_disk:     .asciz "disk error\r\n"
