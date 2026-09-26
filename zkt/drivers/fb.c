@@ -2,8 +2,11 @@
  * docs/milestones/M11-graphics.md.
  *
  * Two kinds of graphics mode:
- *  - Bochs VBE ("BGA", QEMU's -vga std and Bochs/VirtualBox): any size,
- *    32-bit pixels (0x00RRGGBB), a linear framebuffer at the PCI BAR;
+ *  - Bochs VBE ("BGA"): any size, 32-bit pixels (0x00RRGGBB), a linear
+ *    framebuffer in a PCI BAR. QEMU's and Bochs's standard adapter have
+ *    it, and so do the adapters that grew out of it or kept it for their
+ *    BIOS: VirtualBox's (VBoxVGA, VBoxSVGA) and VMware's SVGA II (which
+ *    is also VirtualBox's VMSVGA and QEMU's -vga vmware);
  *  - VGA mode 13h, on any VGA card: 320x200, one RGB 3-3-2 byte per pixel.
  * Text mode's state is saved on the way into graphics and restored on
  * the way out (vga_hw.c, vga_text.c).
@@ -39,8 +42,22 @@
 #define VBE_ENABLED 0x01
 #define VBE_LFB     0x40
 
-#define BGA_VENDOR 0x1234
-#define BGA_DEVICE 0x1111
+#define PCI_COMMAND 0x04
+#define PCI_COMMAND_MEMORY 0x2
+#define PCI_BAR0 0x10
+#define PCI_BAR_IO 0x1
+#define PCI_BAR_64BIT 0x4
+#define PCI_BAR_PREFETCH 0x8
+
+/* Display adapters with the Bochs VBE registers (VBE_INDEX/VBE_DATA). */
+static const struct {
+	uint16_t vendor, device;
+	const char *name;
+} ADAPTERS[] = {
+	{ 0x1234, 0x1111, "Bochs VBE" },
+	{ 0x80EE, 0xBEEF, "VirtualBox VGA" },
+	{ 0x15AD, 0x0405, "VMware SVGA II" },
+};
 
 enum kind { TEXT, BGA, VGA13 };
 
@@ -54,6 +71,7 @@ static uint32_t mapped_pages;
 static bool bga_present;
 static uintptr_t bga_phys;
 static uint32_t bga_memory;
+static const char *bga_name;
 
 static uint16_t dispi_read(uint16_t index)
 {
@@ -282,19 +300,76 @@ static const struct char_device_ops ctl_ops = { .pread = ctl_pread, .pwrite = ct
 static struct device fb_device = { .name = "fb", .class = DEVICE_CHAR, .char_ops = &fb_ops };
 static struct device ctl_device = { .name = "fbctl", .class = DEVICE_CHAR, .char_ops = &ctl_ops };
 
+/* The size of memory BAR `i` (the standard probe: write all ones, read
+ * back which address bits stick), with memory decoding off meanwhile. */
+static uint32_t bar_size(const struct pci_device *d, int i)
+{
+	uint8_t reg = (uint8_t)(PCI_BAR0 + 4 * i);
+	uint32_t command = pci_read32(d, PCI_COMMAND) & 0xFFFF; /* not the status bits */
+	pci_write32(d, PCI_COMMAND, command & ~(uint32_t)PCI_COMMAND_MEMORY);
+	pci_write32(d, reg, 0xFFFFFFFFu);
+	uint32_t mask = pci_read32(d, reg) & PCI_BAR_MEM_MASK;
+	pci_write32(d, reg, d->bar[i]);
+	pci_write32(d, PCI_COMMAND, command);
+	return mask ? ~mask + 1 : 0;
+}
+
+/* The adapter's video memory: its first prefetchable memory BAR (BAR 0 on
+ * the Bochs and VirtualBox VGA adapters, BAR 1 after the I/O ports on
+ * SVGA II), or failing that its first memory BAR. -1 if none. */
+static int vram_bar(const struct pci_device *d)
+{
+	int first = -1;
+	for (int i = 0; i < 6; i++) {
+		uint32_t bar = d->bar[i];
+		if (bar & PCI_BAR_IO || (bar & PCI_BAR_MEM_MASK) == 0) {
+			continue;
+		}
+		if (bar & PCI_BAR_PREFETCH) {
+			return i;
+		}
+		if (first < 0) {
+			first = i;
+		}
+		if (bar & PCI_BAR_64BIT) {
+			i++; /* the high half; ManiOS can't reach it anyway */
+		}
+	}
+	return first;
+}
+
 void fb_init(void)
 {
-	const struct pci_device *pci = pci_find(BGA_VENDOR, BGA_DEVICE);
+	const struct pci_device *pci = 0;
+	for (size_t i = 0; !pci && i < sizeof(ADAPTERS) / sizeof(ADAPTERS[0]); i++) {
+		pci = pci_find(ADAPTERS[i].vendor, ADAPTERS[i].device);
+		bga_name = ADAPTERS[i].name;
+	}
 	uint16_t id = dispi_read(VBE_ID);
-	if (pci && id >= 0xB0C0 && id <= 0xB0C5) {
+	int bar = pci ? vram_bar(pci) : -1;
+	if (pci && bar >= 0 && id >= 0xB0C0 && id <= 0xB0C5) {
 		bga_present = true;
-		bga_phys = pci->bar[0] & PCI_BAR_MEM_MASK;
-		bga_memory = id >= 0xB0C5 ? (uint32_t)dispi_read(VBE_MEMORY_64K) * 65536 : 4u << 20;
+		bga_phys = pci->bar[bar] & PCI_BAR_MEM_MASK;
+		/* The BAR's size is the video memory; version 5 of the registers
+		 * can say how much of it there is too. */
+		bga_memory = bar_size(pci, bar);
+		if (id >= 0xB0C5) {
+			uint32_t said = (uint32_t)dispi_read(VBE_MEMORY_64K) * 65536;
+			if (said && (said < bga_memory || !bga_memory)) {
+				bga_memory = said;
+			}
+		}
+		if (!bga_memory) {
+			bga_memory = 4u << 20;
+		}
 		if (bga_memory > KERNEL_FB_SIZE) {
 			bga_memory = KERNEL_FB_SIZE;
 		}
-		kprintf("fb: Bochs VBE at pci %02x:%02x.%x, framebuffer 0x%08lx, %lu KiB\n", pci->bus,
+		kprintf("fb: %s at pci %02x:%02x.%x, framebuffer 0x%08lx, %lu KiB\n", bga_name, pci->bus,
 		        pci->dev, pci->fn, (unsigned long)bga_phys, (unsigned long)(bga_memory / 1024));
+	} else if (pci) {
+		kprintf("fb: %s at pci %02x:%02x.%x lacks the Bochs VBE registers (id 0x%04x)\n", bga_name,
+		        pci->bus, pci->dev, pci->fn, id);
 	}
 	device_register(&fb_device);
 	device_register(&ctl_device);

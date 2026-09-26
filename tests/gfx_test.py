@@ -11,6 +11,7 @@ lives in video memory that graphics overwrite).
 Usage: tests/gfx_test.py [path-to-kernel-elf]
 """
 import os
+import re
 import sys
 import tempfile
 import time
@@ -175,6 +176,26 @@ def main():
                                  SHELL_PROMPT))
         step("a mode change back and forth leaves text intact",
              lambda: check(text_line(m, tmpdir, "after") == reference, "text differs at the end"))
+    except TestFailure as e:
+        print(f"FAIL: {e}")
+        failures += 1
+    finally:
+        m.close()
+
+    # VMware's SVGA II, which is also VirtualBox's VMSVGA: the Bochs VBE
+    # registers, but the video memory in BAR 1, after its I/O ports.
+    m = Machine(kernel, ["-vga", "vmware"])
+    try:
+        boot = m.expect(SHELL_PROMPT)
+        step("SVGA II (VirtualBox's VMSVGA): found, with its video memory BAR",
+             lambda: check(re.search(r"fb: VMware SVGA II at pci 00:02\.0, framebuffer 0x[0-9a-f]{8}, \d+ KiB",
+                                     boot), boot[-600:]))
+        reference = text_line(m, tmpdir, "svga-before")
+        step("SVGA II 800x600: swatches, then text restored",
+             lambda: run_demo(m, tmpdir, "800 600", "svga800", (800, 600), 800, 1, 0, reference))
+        step("SVGA II: the fb device",
+             lambda: run_command(m, "serial", "/boot/test/fbtest", ["fbtest: all ", "!FAIL"],
+                                 SHELL_PROMPT))
     except TestFailure as e:
         print(f"FAIL: {e}")
         failures += 1
