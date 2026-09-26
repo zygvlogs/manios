@@ -35,13 +35,16 @@
   must show on the quiet boot screen. Needs Python 3 and mtools, and the build's
   `build/bootfs/` programs.
 
-- `net_test.py` (also run by `make test`) — the NE2000, the IPv4 stack
-  and ZRP, on the wire. QEMU's socket netdev delivers the guest's
+- `net_test.py` (also run by `make test`) — the network cards, the IPv4
+  stack and ZRP, on the wire. QEMU's socket netdev delivers the guest's
   Ethernet frames to the test, which speaks ARP/IPv4/ICMP/UDP and ZRP
-  itself. It checks the guest's replies and checksums, sends it
-  malformed packets and floods, and runs its own ZRP server (on a lossy
-  link) and client against the guest's. Then it connects two ManiOS
-  machines, one serving a FAT volume to the other.
+  itself. Over each card -- NE2000, AMD PCnet, Intel e1000 -- it checks
+  the guest's replies and checksums, sends it malformed packets and
+  floods, and runs its own ZRP server (on a lossy link) and client
+  against the guest's. It connects two ManiOS machines, one serving a
+  FAT volume to the other. And DHCP: against the test's own server (a
+  lost DISCOVER, a stray and a malformed OFFER, a NAK), and against
+  QEMU's, whose gateway must then answer pings.
 
 - `gfx_test.py` (also run by `make test`) — the framebuffer and
   libgfx, checked on the screen itself through QEMU's `screendump`:

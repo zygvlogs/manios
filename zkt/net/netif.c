@@ -12,6 +12,7 @@
 #include "pcnet.h"
 #include "panic.h"
 #include "sched.h"
+#include "timer.h"
 
 #define ETHERTYPE_IP  0x0800
 #define ETHERTYPE_ARP 0x0806
@@ -216,15 +217,22 @@ static void network_main(void *unused)
 	}
 }
 
+/* The interface DHCP is to configure, if any (net_start_dhcp). */
+static struct netif *dhcp_interface;
+
 /* ip=A.B.C.D/N and gw=A.B.C.D configure the first Ethernet interface.
- * Without ip=, it gets QEMU's user-networking defaults (10.0.2.15/24,
- * gateway 10.0.2.2); with ip= and no gw=, it has no gateway. */
+ * Without ip= (or with ip=dhcp), it gets QEMU's and VirtualBox's NAT
+ * addresses (10.0.2.15/24, gateway 10.0.2.2) until DHCP gives it its
+ * own; with ip= and no gw=, it has no gateway. */
 static void configure(struct netif *ifc)
 {
 	char value[32], a[16], g[16];
 	uint32_t ip = IP_ADDR(10, 0, 2, 15), gw = IP_ADDR(10, 0, 2, 2);
 	int prefix = 24;
-	if (cmdline_get("ip", value, sizeof(value))) {
+	bool have_ip = cmdline_get("ip", value, sizeof(value));
+	if (!have_ip || !strcmp(value, "dhcp")) {
+		dhcp_interface = ifc;
+	} else {
 		gw = 0;
 		if (!ip_parse(value, &ip, &prefix)) {
 			kprintf("net: ignoring malformed ip=%s\n", value);
@@ -242,6 +250,22 @@ static void configure(struct netif *ifc)
 		kprintf("%s: %s/%d, gateway %s\n", ifc->name, ip_format(ip, a), prefix, ip_format(gw, g));
 	} else {
 		kprintf("%s: %s/%d, no gateway\n", ifc->name, ip_format(ip, a), prefix);
+	}
+}
+
+void net_start_dhcp(uint32_t wait_ms)
+{
+	if (!dhcp_interface) {
+		return;
+	}
+	dhcp_start(dhcp_interface);
+	for (uint32_t waited = 0; !dhcp_leased() && waited < wait_ms; waited += 50) {
+		timer_sleep_ms(50);
+	}
+	if (!dhcp_leased()) {
+		char a[16];
+		kprintf("dhcp: %s: no answer yet; using %s meanwhile, and still asking\n",
+		        dhcp_interface->name, ip_format(dhcp_interface->ip, a));
 	}
 }
 

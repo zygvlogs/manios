@@ -73,6 +73,18 @@ void netif_input(struct netif *ifc, const uint8_t *frame, size_t len);
  * gw=A.B.C.D). */
 void net_init(void);
 
+/* DHCP (dhcp.c). Without ip= on the command line, or with ip=dhcp, the
+ * first Ethernet interface starts with 10.0.2.15/24 via 10.0.2.2 (the
+ * addresses of QEMU's and VirtualBox's NAT) and asks a DHCP server for
+ * its own; net_start_dhcp() starts asking -- after the boot self-tests,
+ * which count threads and memory -- and waits up to wait_ms for the
+ * first answer. The asking goes on in the background. */
+#define DHCP_CLIENT_PORT 68
+#define DHCP_SERVER_PORT 67
+void net_start_dhcp(uint32_t wait_ms);
+void dhcp_start(struct netif *ifc);
+bool dhcp_leased(void);
+
 /* "A.B.C.D" (with optional "/N") to an address; false if malformed. */
 bool ip_parse(const char *s, uint32_t *ip, int *prefix);
 /* Formats into buf (at least 16 bytes); returns buf. */

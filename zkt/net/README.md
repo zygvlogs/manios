@@ -7,6 +7,9 @@ The network stack and ZRP. Design and verification:
 - `netif.c` — interfaces, the network thread that processes every
   received packet, loopback, the Internet checksum, and configuration
   from the kernel command line (`ip=`, `gw=`)
+- `dhcp.c` — a DHCP client (RFC 2131) for the first Ethernet interface,
+  when there is no `ip=` or it says `ip=dhcp`; started after the boot
+  self-tests, renewing at half the lease (0.15)
 - `arp.c` — ARP cache, requests and replies
 - `ip.c` — IPv4 (no fragments) and ICMP echo (`icmp_ping`)
 - `udp.c` / `udp.h` — UDP endpoints for kernel code
@@ -24,5 +27,5 @@ The network stack and ZRP. Design and verification:
   boot: files, programs, named exports, authentication
 - `netif.c` also registers device `net` (each interface's address)
 
-Drivers live in `zkt/drivers/` (`ne2000.c`) and register a `struct
-netif`.
+Drivers live in `zkt/drivers/` (`ne2000.c`, `pcnet.c`, `e1000.c`) and
+register a `struct netif`.

@@ -255,8 +255,7 @@ static int e1000_transmit(struct netif *ifc, const uint8_t *frame, size_t len)
 	card.tx_next = (card.tx_next + 1) % TX_COUNT;
 	reg_write(REG_TDT, card.tx_next);
 	mutex_unlock(&card.tx_lock);
-	ifc->tx_frames++;
-	return 0;
+	return 0; /* the stack counts frames sent */
 }
 
 static const struct pci_device *find(void)

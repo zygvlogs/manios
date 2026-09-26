@@ -66,7 +66,7 @@
 #define DESC_ENP 0x01000000u
 #define DESC_ONES 0x0000F000u
 
-#define RX_COUNT 16 /* RLEN = 4 */
+#define RX_COUNT 32 /* RLEN = 5 */
 #define TX_COUNT 8  /* TLEN = 3 */
 #define BUF_SIZE 1536
 #define BUFS_PER_PAGE 2
@@ -187,11 +187,11 @@ static bool allocate(uint32_t *init_phys)
 		return false;
 	}
 	card.init = (struct init_block *)page;
-	card.rx = (volatile struct desc *)(page + 256);
-	card.tx = (volatile struct desc *)(page + 512);
+	card.rx = (volatile struct desc *)(page + 512);  /* 32 x 16 bytes */
+	card.tx = (volatile struct desc *)(page + 1024); /* 8 x 16 */
 	*init_phys = (uint32_t)phys;
-	card.init->rdra = (uint32_t)phys + 256;
-	card.init->tdra = (uint32_t)phys + 512;
+	card.init->rdra = (uint32_t)phys + 512;
+	card.init->tdra = (uint32_t)phys + 1024;
 	for (unsigned i = 0; i < RX_COUNT + TX_COUNT; i++) {
 		if (i % BUFS_PER_PAGE == 0 && !(buf_page = kpage_alloc(&buf_phys))) {
 			return false;
@@ -283,8 +283,7 @@ static int pcnet_transmit(struct netif *ifc, const uint8_t *frame, size_t len)
 	csr_write(0, CSR0_TDMD | CSR0_IENA);
 	card.tx_next = (card.tx_next + 1) % TX_COUNT;
 	mutex_unlock(&card.tx_lock);
-	ifc->tx_frames++;
-	return 0;
+	return 0; /* the stack counts frames sent */
 }
 
 void pcnet_probe(void)
@@ -314,7 +313,7 @@ void pcnet_probe(void)
 		card.ifc.mac[i] = inb(io + APROM + i);
 		card.init->padr[i] = card.ifc.mac[i];
 	}
-	card.init->mode_lengths = 4u << 20 | 3u << 28; /* normal mode; 16 RX, 8 TX */
+	card.init->mode_lengths = 5u << 20 | 3u << 28; /* normal mode; 32 RX, 8 TX */
 
 	bcr_write(20, BCR20_SWSTYLE2); /* 32-bit structures */
 	(void)bcr_read(20);

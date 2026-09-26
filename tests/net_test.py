@@ -34,6 +34,16 @@ HOST_IP, GUEST_IP = "10.0.0.1", "10.0.0.2"
 ZRP_PORT = 5640
 BROADCAST = b"\xff" * 6
 
+# The network cards the tests run over: QEMU's device, the interface
+# ManiOS makes of it, and what its driver says at boot.
+MAC = "52:54:00:12:34:56"
+NICS = {
+    "ne2k": (f"ne2k_isa,netdev=n0,iobase=0x300,irq=9,mac={MAC}", "ne0",
+             f"ne0: NE2000 at 0x300 irq 9, {MAC}"),
+    "pcnet": (f"pcnet,netdev=n0,mac={MAC}", "pcn0", "pcn0: AMD PCnet at pci "),
+    "e1000": (f"e1000,netdev=n0,mac={MAC}", "em0", "em0: Intel 8254x (100e) at pci "),
+}
+
 ENOENT, EBADF, EINVAL, EROFS, ENOSYS, EPROTO = 2, 9, 22, 30, 38, 71
 ZKT_DIR, ZKT_FILE = 0, 1
 (TVERSION, RVERSION, TATTACH, RATTACH, TWALK, RWALK, TREAD, RREAD, TWRITE, RWRITE,
@@ -116,9 +126,8 @@ class Peer:
     def error_note(self):
         return f" (the guest sent: {self.wire_errors[0]})" if self.wire_errors else ""
 
-    def netdev(self):
-        return ["-netdev", f"socket,id=n0,connect=127.0.0.1:{self.port}",
-                "-device", f"ne2k_isa,netdev=n0,iobase=0x300,irq=9,mac=52:54:00:12:34:56"]
+    def netdev(self, nic="ne2k"):
+        return ["-netdev", f"socket,id=n0,connect=127.0.0.1:{self.port}", "-device", NICS[nic][0]]
 
     def start(self):
         self.listener.settimeout(15)
@@ -629,44 +638,179 @@ def test_pending(m, peer):
     check(c.raw(read) == reply, "a repeat after the reply got something else")
 
 
-def single_machine(kernel, workdir):
+def single_machine(kernel, workdir, nic="ne2k"):
+    """The host against one guest, over each network card."""
     peer = Peer()
-    m = Machine(kernel, [*peer.netdev(), "-append", f"ip={GUEST_IP}/24 gw={HOST_IP} export=/boot"])
+    _, ifname, found = NICS[nic]
+    tag = f"single, {ifname}"
+    m = Machine(kernel, [*peer.netdev(nic), "-append", f"ip={GUEST_IP}/24 gw={HOST_IP} export=/boot"])
     failures = 0
     try:
         peer.start()
         boot = m.expect(SHELL_PROMPT)
-        for needle in ["ne0: NE2000 at 0x300 irq 9, 52:54:00:12:34:56", "ne0: 10.0.0.2/24, gateway 10.0.0.1",
+        for needle in [found, MAC, f"{ifname}: 10.0.0.2/24, gateway 10.0.0.1",
                        "zrp: exporting /boot on udp port 5640", "Milestone M10"]:
             check(needle in boot, f"boot output lacks {needle!r}:\n{boot}")
-        print("PASS: [single] boot with an NE2000")
+        check("dhcp" not in boot, "DHCP ran although ip= was given")
+        print(f"PASS: [{tag}] boot, the card found")
         for name, test in [("link", lambda: test_link(m, peer)),
                            ("malformed", lambda: test_malformed(m, peer)),
                            ("guest server", lambda: test_guest_server(peer, console_test.BOOTFS_DIR)),
                            ("guest client", lambda: test_guest_client(m, peer))]:
             try:
                 test()
-                print(f"PASS: [single] {name}")
+                print(f"PASS: [{tag}] {name}")
             except TestFailure as e:
-                print(f"FAIL: [single] {name}: {e}")
+                print(f"FAIL: [{tag}] {name}: {e}")
                 failures += 1
         run_command(m, "serial", "exit", ["console: the shell has exited"])
-        out = run_command(m, "serial", "net", ["ne0", "10.0.0.2"])
+        out = run_command(m, "serial", "net", [ifname, "10.0.0.2"])
         c = re.search(r"ip: (\d+) in, (\d+) bad, (\d+) fragments, (\d+) not ours; "
                       r"udp: (\d+) in, (\d+) bad", out)
         check(c and int(c[2]) >= 4 and int(c[3]) == 2 and int(c[4]) >= 1 and int(c[6]) >= 2,
               f"malformed packets were not counted: {out}")
         run_command(m, "serial", "ping 10.0.0.1 2", ["seq 1: reply in", "seq 2: reply in"])
-        print("PASS: [single] monitor net counters and ping")
+        print(f"PASS: [{tag}] monitor net counters and ping")
         test_pending(m, peer)
-        print("PASS: [single] a waiting request: Rpending, and others answered meanwhile")
+        print(f"PASS: [{tag}] a waiting request: Rpending, and others answered meanwhile")
     except TestFailure as e:
-        print(f"FAIL: [single] {e}")
+        print(f"FAIL: [{tag}] {e}")
         failures += 1
     finally:
         m.close()
         peer.close()
     return failures
+
+
+# --- DHCP -------------------------------------------------------------------
+
+DHCP_MAGIC = bytes([99, 130, 83, 99])
+
+
+def dhcp_options(data):
+    opts, i = {}, 0
+    while i < len(data) and data[i] != 255:
+        if data[i] == 0:
+            i += 1
+            continue
+        if i + 2 > len(data) or i + 2 + data[i + 1] > len(data):
+            raise TestFailure(f"a DHCP option runs past the end: {data!r}")
+        opts[data[i]] = data[i + 2:i + 2 + data[i + 1]]
+        i += 2 + data[i + 1]
+    return opts
+
+
+class DhcpServer:
+    """The host's DHCP server, awkward on purpose: it ignores the first
+    DISCOVER (the guest must ask again); before its real OFFER it sends
+    one for another transaction and one whose last option runs past the
+    end (the guest must ignore both); and it refuses the first REQUEST
+    (a NAK: the guest must start over)."""
+    OFFERED = "10.0.0.77"
+
+    def __init__(self, peer):
+        self.peer = peer
+        self.discovers, self.requests = [], []
+        peer.udp_handlers[67] = self.handle
+
+    def handle(self, src, sport, data):
+        if len(data) < 244 or data[0] != 1 or data[236:240] != DHCP_MAGIC:
+            self.peer.wire_errors.append(f"not a DHCP request: {data[:16]!r}")
+            return
+        for ok, what in [(src == "0.0.0.0", f"from {src}, not 0.0.0.0"), (sport == 68, f"from port {sport}"),
+                         (data[28:34] == GUEST_MAC, "the wrong client address"),
+                         (data[10:12] == b"\x80\x00", "no broadcast flag"),
+                         (len(data) >= 300, f"only {len(data)} bytes")]:
+            if not ok:
+                self.peer.wire_errors.append(f"a DHCP request {what}")
+        opts = dhcp_options(data[240:])
+        mtype, xid = opts.get(53, b"\0")[0], data[4:8]
+        if mtype == 1:  # DISCOVER
+            self.discovers.append(xid)
+            if len(self.discovers) == 1:
+                return
+            self.reply(bytes(a ^ 0xFF for a in xid), 2, "10.0.0.99")
+            self.reply(xid, 2, "10.0.0.98", truncated=True)
+            self.reply(xid, 2, self.OFFERED)
+        elif mtype == 3:  # REQUEST
+            self.requests.append(opts)
+            if opts.get(50) != ip_bytes(self.OFFERED) or opts.get(54) != ip_bytes(HOST_IP):
+                self.peer.wire_errors.append(f"a REQUEST for the wrong address or server: {opts}")
+            if len(self.requests) == 1:
+                self.reply(xid, 6, "0.0.0.0")  # NAK
+            else:
+                self.reply(xid, 5, self.OFFERED)
+        else:
+            self.peer.wire_errors.append(f"DHCP message type {mtype}")
+
+    def reply(self, xid, mtype, yiaddr, truncated=False):
+        b = bytearray(240)
+        b[0:3] = bytes([2, 1, 6])
+        b[4:8] = xid
+        b[10:12] = b"\x80\x00"
+        b[16:20] = ip_bytes(yiaddr)
+        b[20:24] = ip_bytes(HOST_IP)
+        b[28:34] = GUEST_MAC
+        b[236:240] = DHCP_MAGIC
+        opts = bytes([53, 1, mtype, 54, 4]) + ip_bytes(HOST_IP)
+        if mtype in (2, 5):
+            opts += (bytes([1, 4, 255, 255, 255, 0, 3, 4]) + ip_bytes(HOST_IP)
+                     + bytes([51, 4]) + struct.pack(">I", 3600))
+        opts += bytes([3, 40, 10, 0]) if truncated else b"\xff"
+        data = bytes(b) + opts
+        self.peer.send(eth(BROADCAST, HOST_MAC, 0x0800,
+                           ipv4(HOST_IP, "255.255.255.255", 17,
+                                udp(HOST_IP, "255.255.255.255", 67, 68, data))))
+
+
+def dhcp_host_server(kernel):
+    """No ip=: the guest asks the host's awkward server, and uses what it
+    is given (over a PCnet, VirtualBox's default card)."""
+    peer = Peer()
+    server = DhcpServer(peer)
+    m = Machine(kernel, peer.netdev("pcnet"))
+    try:
+        peer.start()
+        boot = m.expect(SHELL_PROMPT, timeout=90)
+        check("pcn0: 10.0.2.15/24, gateway 10.0.2.2" in boot, "the NAT defaults while asking")
+        check("dhcp: pcn0: no answer yet; using 10.0.2.15 meanwhile, and still asking" in boot,
+              f"the boot didn't say DHCP was still asking:\n{boot[-600:]}")
+        m.expect("dhcp: pcn0: 10.0.0.77/24, gateway 10.0.0.1 (from 10.0.0.1, for 3600 s)", timeout=60)
+        check(len(server.discovers) >= 3 and len(server.requests) == 2,
+              f"{len(server.discovers)} DISCOVERs and {len(server.requests)} REQUESTs")
+        check(not peer.wire_errors, f"on the wire: {peer.wire_errors}")
+        run_command(m, "serial", "cat /dev/net", ["pcn0 10.0.0.77/24 gateway 10.0.0.1"], SHELL_PROMPT)
+        run_command(m, "serial", "exit", ["console: the shell has exited"])
+        run_command(m, "serial", "ping 10.0.0.1 2", ["seq 1: reply in", "seq 2: reply in"])
+        print("PASS: [dhcp] the host's server: a lost DISCOVER, stray and malformed OFFERs, a NAK, "
+              "then a lease that works")
+        return 0
+    except TestFailure as e:
+        print(f"FAIL: [dhcp] the host's server: {e}{peer.error_note()}")
+        return 1
+    finally:
+        m.close()
+        peer.close()
+
+
+def dhcp_qemu(kernel, nic):
+    """QEMU's own DHCP server (its user network, on 192.168.76.0/24 so the
+    lease isn't the default), and its gateway answering pings."""
+    dev, ifname, _ = NICS[nic]
+    m = Machine(kernel, ["-netdev", "user,id=n0,net=192.168.76.0/24", "-device", dev])
+    try:
+        boot = m.expect(SHELL_PROMPT, timeout=90)
+        lease = f"dhcp: {ifname}: 192.168.76.15/24, gateway 192.168.76.2 (from 192.168.76.2, for 86400 s)"
+        check(lease in boot, f"no lease from QEMU:\n{boot[-600:]}")
+        run_command(m, "serial", "exit", ["console: the shell has exited"])
+        run_command(m, "serial", "ping 192.168.76.2 2", ["seq 1: reply in", "seq 2: reply in"])
+        print(f"PASS: [dhcp, {ifname}] QEMU's server: a lease, and its gateway answers")
+        return 0
+    except TestFailure as e:
+        print(f"FAIL: [dhcp, {ifname}] QEMU's server: {e}")
+        return 1
+    finally:
+        m.close()
 
 
 def two_machines(kernel, workdir):
@@ -722,7 +866,10 @@ def main():
     console_test.BOOTFS_DIR = os.path.join(os.path.dirname(kernel), "bootfs")
     workdir = tempfile.mkdtemp(prefix="zkt-net-")
     try:
-        failures = single_machine(kernel, workdir) + two_machines(kernel, workdir)
+        failures = sum(single_machine(kernel, workdir, nic) for nic in NICS)
+        failures += two_machines(kernel, workdir)
+        failures += dhcp_host_server(kernel)
+        failures += sum(dhcp_qemu(kernel, nic) for nic in ("pcnet", "e1000"))
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
     sys.exit(1 if failures else 0)

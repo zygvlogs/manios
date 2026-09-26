@@ -130,7 +130,11 @@ void ip_input(struct netif *ifc, const uint8_t *p, size_t len)
 		return;
 	}
 	uint32_t src = get_be32(p + 12), dst = get_be32(p + 16);
-	if (!ifc->loopback && dst != ifc->ip) {
+	/* Also taken: UDP for port 68, a DHCP client's, whatever the address
+	 * -- the replies come before we have one (dhcp.c checks them). */
+	bool dhcp_reply = p[9] == PROTO_UDP && total >= ihl + UDP_HEADER
+	                  && get_be16(p + ihl + 2) == DHCP_CLIENT_PORT;
+	if (!ifc->loopback && dst != ifc->ip && !dhcp_reply) {
 		net_stats.ip_not_ours++;
 		return;
 	}

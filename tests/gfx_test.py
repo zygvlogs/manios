@@ -153,7 +153,7 @@ def main():
         boot = m.expect(SHELL_PROMPT)
         step("boot finds the Bochs VBE adapter on PCI",
              lambda: check("fb: Bochs VBE at pci 00:02.0, framebuffer 0xfd000000" in boot
-                           and "pci: 6 devices" in boot, boot[-600:]))
+                           and "pci: 5 devices" in boot, boot[-600:]))
         step("fbctl reads 'text' in text mode",
              lambda: run_command(m, "serial", "cat /dev/fbctl", ["\r\ntext\r\n"], SHELL_PROMPT))
         step("the framebuffer can't be read in text mode",

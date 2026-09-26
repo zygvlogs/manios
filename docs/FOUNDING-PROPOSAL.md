@@ -505,6 +505,7 @@ a concrete shape rather than only a diagram.
 | M12 | **Achieved** ([notes](milestones/M12-desktop.md), [design](desktop/DESIGN.md)). ManiOS Desktop Environment MVP (compositor, shell, launcher) | M11 |
 | M13 | **Achieved** ([notes](milestones/M13-cluster-roles.md)). Cluster roles: file server / CPU server / terminal (ADR-0003) | M8, M10 |
 | M14 | **Achieved** ([notes](milestones/M14-installer-release.md)). Native boot loader, bootable ISO, installer, published releases (ADR-0006) | M6, M9 |
+| M15 | **Achieved** ([notes](milestones/M15-network-cards-dhcp.md)). Network cards for VirtualBox (AMD PCnet, Intel 8254x), DHCP | M10 |
 
 Each milestone gets its own short design note under `docs/` when it
 starts (not written speculatively now), following the ADR practice

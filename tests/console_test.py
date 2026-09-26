@@ -47,10 +47,14 @@ class Machine:
         self.tmpdir = tempfile.mkdtemp(prefix="zkt-console-")
         mon_path = os.path.join(self.tmpdir, "monitor.sock")
         boot = ["-kernel", kernel] if kernel else []
+        # No network card unless the test asks for one: otherwise QEMU
+        # adds an e1000 on its user network, which ManiOS drives (0.15).
+        wants_net = any(a in ("-netdev", "-nic", "-net") for a in extra_args)
+        nic = [] if wants_net else ["-nic", "none"]
         self.proc = subprocess.Popen(
             ["qemu-system-i386", *boot, "-cpu", "486", "-m", str(memory),
              "-display", "none", "-no-reboot", "-serial", "stdio",
-             "-monitor", f"unix:{mon_path},server,nowait", *extra_args],
+             "-monitor", f"unix:{mon_path},server,nowait", *nic, *extra_args],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.output = b""
         self.mark = 0

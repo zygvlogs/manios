@@ -177,6 +177,7 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	        "self-test passed).\n");
 	kconsole_progress(", cluster. All passed.\n");
 	kconsole_set_quiet(false);
+	net_start_dhcp(3000); /* after the self-tests: they count threads and memory */
 	kprintf("ManiOS " MANIOS_VERSION " is ready. Try ls /bin (programs), help (the shell), desktop.\n");
 
 	if (!thread_create("console", console_main, 0)) {

@@ -34,6 +34,12 @@ userspace servers (ADR-0002).
 - `ne2000.c` — NE2000-compatible ISA Ethernet (DP8390), registered with
   the network stack as interface `ne0`
   ([M10 notes](../../docs/milestones/M10-networking-zrp.md))
+- `pcnet.c` — AMD PCnet PCI Ethernet (PCnet-PCI II, PCnet-FAST III:
+  VirtualBox's default card), interface `pcn0`; bus-mastering, with
+  descriptor rings (M15)
+- `e1000.c` — Intel 8254x PRO/1000 (82540EM and relatives: VirtualBox's
+  other cards, QEMU's e1000), interface `em0`; registers in memory,
+  descriptor rings (M15)
 
 The console device `cons` lives in `zkt/kernel/kconsole.c`. See
 [`docs/FOUNDING-PROPOSAL.md` §2.7](../../docs/FOUNDING-PROPOSAL.md#27-driver-framework).

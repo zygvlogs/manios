@@ -25,6 +25,7 @@ clone. It does not depend on the Linux kernel.
 | M12 — desktop environment MVP: compositor, window system as files, panel, launcher, terminal | Achieved ([notes](docs/milestones/M12-desktop.md), [design](docs/desktop/DESIGN.md)) |
 | M13 — cluster roles: file server, CPU server, terminal; authenticated ZRP2 | Achieved ([notes](docs/milestones/M13-cluster-roles.md), [ADR-0005](docs/adr/0005-cluster-roles-and-authentication.md)) |
 | M14 — own boot loader, bootable hybrid ISO, installer, releases | Achieved ([notes](docs/milestones/M14-installer-release.md), [ADR-0006](docs/adr/0006-native-boot-loader-and-installer.md)) |
+| M15 — network cards for VirtualBox (AMD PCnet, Intel PRO/1000), DHCP | Achieved ([notes](docs/milestones/M15-network-cards-dhcp.md)) |
 
 ## Download and install
 
@@ -33,7 +34,7 @@ page has a bootable ISO, `manios-VERSION.iso`. It boots from a CD, from
 a USB stick it is written to, or in QEMU or VirtualBox:
 
 ```
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.14.2.iso -boot d
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.15.0.iso -boot d
 ```
 
 and `install ata0` puts ManiOS on a hard disk. ManiOS boots with its own
@@ -76,8 +77,10 @@ namespace. `exit` leaves the shell for the `ZKT>` kernel monitor, a
 debugging console with its own `help`; `run /bin/sh` goes back.
 
 Machines share files over ZRP, ManiOS's 9P-style protocol, and take
-Plan 9's roles (M13). `make run` attaches an NE2000 to QEMU's user
-network. Give every machine of a cluster the same `key=SECRET` on its
+Plan 9's roles (M13). ManiOS drives NE2000, AMD PCnet (VirtualBox's
+default) and Intel PRO/1000 (e1000) network cards, and without `ip=` on
+the boot line asks a DHCP server for its address; `make run` attaches
+an NE2000 to QEMU's user network. Give every machine of a cluster the same `key=SECRET` on its
 boot line; then:
 
 - a **file server** booted with `ip=10.0.0.1/24 export=/n/ata0p1`
