@@ -6,10 +6,11 @@
  *
  * ZKT is linked in the higher half (KERNEL_VIRT_BASE) but loaded at
  * 1 MiB physical. _start therefore lives in .multiboot.text, linked at
- * its physical address, and builds a boot page table mapping physical
- * [0, 4 MiB) both at 0 (so the instruction after enabling paging still
- * resolves) and at KERNEL_VIRT_BASE. Once running in the higher half,
- * the identity mapping is dropped so NULL dereferences fault.
+ * its physical address, and builds boot page tables mapping physical
+ * [0, BOOT_MAPPED_PHYS_LIMIT) -- 16 MiB, room for a big kernel image --
+ * both at 0 (so the instruction after enabling paging still resolves)
+ * and at KERNEL_VIRT_BASE. Once running in the higher half, the
+ * identity mapping is dropped so NULL dereferences fault.
  * See docs/milestones/M2-memory-management.md.
  */
 #include "memlayout.h"
@@ -39,10 +40,10 @@
 .global boot_page_directory
 boot_page_directory:
 .skip PAGE_SIZE
-boot_page_table0:
-.skip PAGE_SIZE
+boot_page_tables:
+.skip PAGE_SIZE * BOOT_PAGE_TABLES
 /* Unmapped by vmm_init(), so overflowing the stack below faults instead
- * of silently overwriting boot_page_table0. */
+ * of silently overwriting the boot page tables. */
 .global kernel_stack_guard
 kernel_stack_guard:
 .skip PAGE_SIZE
@@ -56,18 +57,25 @@ stack_top:
 _start:
 	/* EAX/EBX carry the Multiboot handoff; use only ECX/ESI/EDI here.
 	 * .bss is zeroed by the loader, so every other PDE is not-present. */
-	movl $(boot_page_table0 - KERNEL_VIRT_BASE), %edi
+	movl $(boot_page_tables - KERNEL_VIRT_BASE), %edi
 	movl $PTE_PRESENT_WRITABLE, %esi     /* physical 0, present, writable */
-	movl $1024, %ecx
+	movl $(1024 * BOOT_PAGE_TABLES), %ecx
 1:
 	movl %esi, (%edi)
 	addl $PAGE_SIZE, %esi
 	addl $4, %edi
 	loop 1b
 
-	movl $(boot_page_table0 - KERNEL_VIRT_BASE + PTE_PRESENT_WRITABLE), %ecx
-	movl %ecx, boot_page_directory - KERNEL_VIRT_BASE
-	movl %ecx, boot_page_directory - KERNEL_VIRT_BASE + KERNEL_PD_INDEX * 4
+	/* Directory entries 0.. and KERNEL_PD_INDEX.. point at the tables. */
+	movl $(boot_page_tables - KERNEL_VIRT_BASE + PTE_PRESENT_WRITABLE), %esi
+	movl $(boot_page_directory - KERNEL_VIRT_BASE), %edi
+	movl $BOOT_PAGE_TABLES, %ecx
+2:
+	movl %esi, (%edi)
+	movl %esi, KERNEL_PD_INDEX * 4(%edi)
+	addl $PAGE_SIZE, %esi
+	addl $4, %edi
+	loop 2b
 
 	movl $(boot_page_directory - KERNEL_VIRT_BASE), %ecx
 	movl %ecx, %cr3
@@ -83,7 +91,12 @@ _start:
 .section .text
 .type higher_half_entry, @function
 higher_half_entry:
-	movl $0, boot_page_directory        /* drop the identity mapping */
+	movl $boot_page_directory, %edi     /* drop the identity mapping */
+	movl $BOOT_PAGE_TABLES, %ecx
+3:
+	movl $0, (%edi)
+	addl $4, %edi
+	loop 3b
 	movl %cr3, %ecx
 	movl %ecx, %cr3                     /* flush it from the TLB */
 

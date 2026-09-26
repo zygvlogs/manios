@@ -12,10 +12,12 @@
 #define KERNEL_VIRT_BASE 0xC0000000
 
 /* boot.S maps physical [0, BOOT_MAPPED_PHYS_LIMIT) at KERNEL_VIRT_BASE
- * with a single page table; anything the kernel touches before the VMM
- * is up (the image itself, the PMM bitmap, Multiboot data) must lie
- * below this limit. */
-#define BOOT_MAPPED_PHYS_LIMIT 0x00400000
+ * with BOOT_PAGE_TABLES page tables; anything the kernel touches before
+ * the VMM is up (the image itself, the PMM bitmap, Multiboot data) must
+ * lie below this limit. 16 MiB since 0.17.1 (4 before): the kernel
+ * image, which holds the boot archive, can grow to nearly that. */
+#define BOOT_MAPPED_PHYS_LIMIT 0x01000000
+#define BOOT_PAGE_TABLES (BOOT_MAPPED_PHYS_LIMIT >> 22)
 
 #define KERNEL_HEAP_START 0xD0000000
 #define KERNEL_HEAP_MAX_SIZE 0x10000000

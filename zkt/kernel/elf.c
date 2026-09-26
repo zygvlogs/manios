@@ -117,7 +117,8 @@ static bool writable_segment_covers(const struct elf_header *h, const struct elf
 	return false;
 }
 
-int elf_load(const uint8_t *image, size_t size, uintptr_t *entry, uintptr_t *image_end)
+int elf_load(const uint8_t *image, size_t size, uintptr_t *entry, uintptr_t *image_end,
+             uint32_t *abi)
 {
 	const struct elf_header *h = (const void *)image;
 	if (!valid_header(h, size)) {
@@ -125,9 +126,10 @@ int elf_load(const uint8_t *image, size_t size, uintptr_t *entry, uintptr_t *ima
 	}
 	const struct elf_phdr *ph = (const void *)(image + h->phoff);
 	uint32_t version = abi_version(image, size, h, ph);
-	if (version == 0 || version > ZKT_ABI_VERSION) {
+	if (version < ZKT_ABI_VERSION_MIN || version > ZKT_ABI_VERSION) {
 		return -ENOEXEC;
 	}
+	*abi = version;
 
 	bool entry_loaded = false;
 	uintptr_t end = USER_IMAGE_MIN;

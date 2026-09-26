@@ -53,6 +53,10 @@ Further:
   32 KiB pieces through a buffer at 0x20000, with INT 15h AH=87h. The
   kernel is loaded from there to its physical addresses (1 MiB up), so
   the loader needs 6 MiB of memory at least, and says so otherwise.
+  *(Since 0.17.1 the boot area goes just past the kernel, wherever that
+  ends -- its header says where -- and the loader works out and says
+  what ManiOS needs: the 4 MiB spot had capped the kernel at 3 MiB. See
+  the [M17 notes](M17-grep-sed-posix.md#afterwards-0171-room-to-grow).)*
 - **The CRC covers everything but the header**, so the command line in
   the header can be changed (by `install`, or `mkdisk.py`) without
   recomputing it; stage 2 still checks the header's own fields.

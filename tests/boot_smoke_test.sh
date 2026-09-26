@@ -18,7 +18,7 @@ EXPECTED=(
 	"Milestone M6: ATA storage driver online."
 	"Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed)."
 	"Milestone M8: userspace online (ring 3 processes, system calls; self-test passed)."
-	"Milestone M9: libc, ABI v1 and shell online (self-test passed)."
+	"Milestone M9: libc, ABI v2 and shell online (self-test passed)."
 	"Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed)."
 	"Milestone M11: graphics online (framebuffer, 2D library; self-test passed)."
 	"Milestone M12: pipes, input devices and userspace file servers online (self-test passed)."

@@ -32,6 +32,7 @@ struct process {
 	uintptr_t user_sp;
 	uintptr_t brk_start, brk; /* the heap: [brk_start, brk), grown by sbrk */
 	char cwd[VFS_PATH_MAX + 1]; /* absolute and cleaned */
+	uint32_t abi;               /* the ABI version it was built for (zkt_abi.h) */
 	struct process *next;
 };
 
@@ -46,6 +47,11 @@ static uint32_t next_pid = 1;
 struct process *process_current(void)
 {
 	return thread_process();
+}
+
+uint32_t process_abi(const struct process *p)
+{
+	return p->abi;
 }
 
 uint32_t process_pid(const struct process *p)
@@ -227,7 +233,7 @@ int process_spawn(const char *path, int argc, char *const argv[], struct process
 	struct address_space *own = thread_address_space();
 	thread_set_address_space(p->as);
 	uintptr_t image_end;
-	rc = elf_load(image, size, &p->entry, &image_end);
+	rc = elf_load(image, size, &p->entry, &image_end, &p->abi);
 	p->brk_start = p->brk = page_up(image_end);
 	if (rc == 0) {
 		rc = setup_stack(argc, argv, &p->user_sp);

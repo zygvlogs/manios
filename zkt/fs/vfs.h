@@ -5,6 +5,7 @@
 #ifndef ZKT_FS_VFS_H
 #define ZKT_FS_VFS_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -71,6 +72,8 @@ long vfs_write(struct file *f, const void *buf, size_t len);
 /* Moves the file's offset (SEEK_SET/CUR/END, zkt_abi.h); returns it.
  * A directory can only be rewound. Shared by vfs_dup copies. */
 long vfs_seek(struct file *f, int32_t offset, int whence);
+/* Whether the file is a pipe end (SYS_SEEK answers per ABI version). */
+bool vfs_is_pipe(const struct file *f);
 /* At an explicit offset, leaving the file's own offset alone. */
 long vfs_pread(struct file *f, void *buf, size_t len, uint32_t offset);
 long vfs_pwrite(struct file *f, const void *buf, size_t len, uint32_t offset);

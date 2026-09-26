@@ -326,15 +326,38 @@ edit:
 
 /* --- loading ------------------------------------------------------------- */
 
-/* Reads the whole boot area, header[BA_TOTAL] bytes, to STAGE_ADDR. */
+/* Reads the whole boot area, header[BA_TOTAL] bytes, to header[BA_LOAD_ADDR]:
+ * just past the kernel's memory, however big the kernel is (bootarea.h). */
 load_area:
-	/* Enough memory? The boot area goes at STAGE_ADDR. */
-	movl HEADER_ADDR + BA_TOTAL, %eax
-	addl $STAGE_ADDR - 0x100000, %eax
+	movl HEADER_ADDR + BA_LOAD_ADDR, %eax
+	cmpl $AREA_MIN_ADDR, %eax
+	jb 9f
+	testl $0xFFF, %eax              /* page-aligned: a Multiboot module */
+	jnz 9f
+	movl %eax, area_addr
+	movl HEADER_ADDR + BA_TOTAL, %ecx
+	cmpl $AREA_MAX_SIZE, %ecx
+	ja 9f
+	/* Enough memory? Up to where the area ends, and room to run;
+	 * mem_upper counts KiB above 1 MiB. The message rounds up to MiB. */
+	addl %ecx, %eax
+	addl $RUN_MEMORY, %eax
+	movl %eax, %edx
+	addl $0xFFFFF, %edx
+	shrl $20, %edx
+	movl %edx, need_mib
+	subl $0x100000 - 1023, %eax
 	shrl $10, %eax
 	cmpl mem_upper, %eax
 	jbe 1f
 	movw $msg_memory, %si
+	call print_error
+	movl need_mib, %eax
+	call print_decimal
+	movw $msg_mib, %si
+	call print
+	jmp halt
+9:	movw $msg_header, %si
 	jmp fail
 1:	movw $msg_loading, %si
 	call print
@@ -349,7 +372,8 @@ load_area:
 	movl %eax, left                 /* sectors to read */
 	movl area_lba, %eax
 	movl %eax, next_lba
-	movl $STAGE_ADDR, dest
+	movl area_addr, %eax
+	movl %eax, dest
 
 1:	cmpl $0, left
 	je 3f
@@ -513,14 +537,38 @@ disk_error:
 	jmp fail
 copy_error:
 	movw $msg_copy, %si
-fail:
+/* Prints "ManiOS boot loader: " and the message at SI. */
+print_error:
 	pushw %si
 	movw $msg_error, %si
 	call print
 	popw %si
-	call print
+	jmp print                       /* which returns to our caller */
+
+fail:
+	call print_error
+halt:
 1:	hlt
 	jmp 1b
+
+/* Prints EAX in decimal. */
+print_decimal:
+	pushal
+	movl $10, %ecx
+	xorw %bx, %bx                   /* digits on the stack */
+1:	xorl %edx, %edx
+	divl %ecx
+	pushw %dx
+	incw %bx
+	testl %eax, %eax
+	jnz 1b
+2:	popw %ax
+	addb $'0', %al
+	call putc
+	decw %bx
+	jnz 2b
+	popal
+	ret
 
 /* --- protected mode --------------------------------------------------- */
 
@@ -555,7 +603,9 @@ msg_error:    .asciz "\r\nManiOS boot loader: "
 msg_disk:     .asciz "disk error\r\n"
 msg_copy:     .asciz "cannot copy above 1 MiB (INT 15h AH=87h)\r\n"
 msg_a20:      .asciz "cannot enable the A20 line\r\n"
-msg_memory:   .asciz "not enough memory: ManiOS needs 6 MiB\r\n"
+msg_memory:   .asciz "not enough memory: ManiOS needs "
+msg_mib:      .asciz " MiB\r\n"
+msg_header:   .asciz "the boot area's header is damaged\r\n"
 
 	.balign 8
 gdt:
@@ -590,11 +640,13 @@ mem_lower:   .long 0
 mem_upper:   .long 0
 area_size:   .long 0
 area_lba:    .long 0
+area_addr:   .long 0
 
 	.section .bss
 next_lba:    .long 0
 left:        .long 0
 dest:        .long 0
+need_mib:    .long 0
 cmdline_end: .word 0
 chunk:       .word 0
 sector_size: .word 0

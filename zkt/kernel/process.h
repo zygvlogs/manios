@@ -48,6 +48,9 @@ int process_chdir(struct process *p, const char *path);
 long process_sbrk(struct process *p, int32_t increment);
 
 struct process *process_current(void);
+/* The ABI version the process's program was built for (zkt_abi.h): the
+ * system calls answer as that version promised. */
+uint32_t process_abi(const struct process *p);
 uint32_t process_pid(const struct process *p);
 
 /* The descriptor table: fd_install returns the new fd or -EMFILE. */

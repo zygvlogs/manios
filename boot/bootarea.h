@@ -15,7 +15,7 @@
 #define MANIOS_BOOTAREA_H
 
 #define BOOTAREA_MAGIC "ZKTBOOT1"
-#define BOOTAREA_VERSION 1
+#define BOOTAREA_VERSION 2 /* 2 (0.17.1): with BA_LOAD_ADDR */
 #define BOOTAREA_ALIGN 2048
 #define BOOTAREA_PARTITION_TYPE 0xDA /* "non-filesystem data" */
 
@@ -31,6 +31,8 @@
 #define BA_KERNEL_LEN  36
 #define BA_CRC32       40  /* of bytes [BOOTAREA_ALIGN, total): all but the header */
 #define BA_OS_VERSION  48  /* 16 bytes, NUL-padded: "0.14.0" */
+#define BA_LOAD_ADDR   64  /* where stage 2 puts the whole boot area: just past the
+                            * kernel's memory and its frame bitmap (mkbootarea.py) */
 #define BA_CMDLINE     256 /* 256 bytes, NUL-terminated: the kernel command line */
 #define BA_CMDLINE_MAX 256
 
@@ -45,8 +47,13 @@
 #define STAGE2_ADDR  0x8000  /* up to 0x1FFFF */
 #define BOUNCE_SEG   0x2000  /* 0x20000: disk reads land here first */
 #define BOUNCE_SIZE  0x8000
-#define STAGE_ADDR   0x400000 /* the whole boot area, above the kernel: the
-                               * kernel gets it as a Multiboot module */
+/* The whole boot area goes at header[BA_LOAD_ADDR], above the kernel,
+ * which gets it as a Multiboot module. Until 0.17.1 that was a fixed
+ * 4 MiB, which capped the kernel at 3 MiB. */
+#define AREA_MIN_ADDR 0x100000
+#define AREA_MAX_SIZE 0x1000000 /* 16 MiB: the kernel's modules window */
+/* The memory ManiOS needs: its images, and this much more to run in. */
+#define RUN_MEMORY    0x200000
 
 #ifndef __ASSEMBLER__
 #include <stdint.h>

@@ -4,6 +4,10 @@
  * result to exit(). */
 #include <zkt_abi.h>
 
+#ifndef ZKT_NOTE_VERSION
+#define ZKT_NOTE_VERSION ZKT_ABI_VERSION
+#endif
+
 .section .text
 .global _start
 .type _start, @function
@@ -26,7 +30,8 @@ _start:
 .size _start, . - _start
 
 /* The ABI version this program was built for; the kernel refuses to run
- * a program without it (zkt_abi.h). Every program links crt0.o, so every
+ * a program without it (zkt_abi.h). The current one, unless the build
+ * asks for an older one (a test of the kernel's compatibility). Every program links crt0.o, so every
  * program carries it; userland/user.ld puts it in a PT_NOTE segment. */
 .section .note.zkt.abi, "a", @note
 .balign 4
@@ -35,5 +40,5 @@ _start:
 .long ZKT_NOTE_ABI
 1:	.asciz ZKT_NOTE_NAME
 2:	.balign 4
-3:	.long ZKT_ABI_VERSION
+3:	.long ZKT_NOTE_VERSION
 4:

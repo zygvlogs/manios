@@ -491,7 +491,16 @@ long syscall_dispatch(uint32_t num, uint32_t a0, uint32_t a1, uint32_t a2,
 	case SYS_REAP:   return sys_reap(p, (int *)a0);
 	case SYS_SEEK: {
 		struct file *f = process_fd(p, (int)a0);
-		return f ? vfs_seek(f, (int32_t)a1, (int)a2) : -EBADF;
+		if (!f) {
+			return -EBADF;
+		}
+		/* A pipe is a stream: since ABI version 2 it can't be seeked.
+		 * Version-1 programs get the old answer, an offset that pipe
+		 * reads ignore. */
+		if (vfs_is_pipe(f) && process_abi(p) >= 2) {
+			return -ESPIPE;
+		}
+		return vfs_seek(f, (int32_t)a1, (int)a2);
 	}
 	case SYS_MOUNTFD: return sys_mountfd(p, (int)a0, (const char *)a1, (int)a2, (const char *)a3);
 	case SYS_EXPORT: return sys_export(p, (const char *)a0, (const char *)a1);

@@ -18,7 +18,7 @@ directories, devfs and FAT — see
 **M8 achieved**: userspace — ring 3 processes in their own address
 spaces, `int $0x80` system calls, an ELF loader and a boot archive —
 see [docs/milestones/M8-userspace.md](milestones/M8-userspace.md).
-**M9 achieved**: a C library, ABI version 1 (checked by the loader),
+**M9 achieved**: a C library, ABI version 1 (checked by the loader; version 2 since 0.17.1),
 coreutils, and a shell that ManiOS boots into — see
 [docs/milestones/M9-libc-shell.md](milestones/M9-libc-shell.md).
 **M10 achieved**: an NE2000 driver, IPv4/ICMP/UDP, and ZRP — two ManiOS

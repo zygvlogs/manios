@@ -16,8 +16,10 @@ under `qemu-system-i386 -kernel` and GRUB
 - `cdboot.S` — the El Torito "no emulation" boot image of the ISO: loads
   stage 2 from the boot area, whose location `tools/mkiso.py` patches in.
 - `stage2_entry.S` — stage 2 in real mode: memory map, the command-line
-  prompt (keyboard or COM1), loading the boot area above 1 MiB, A20,
-  protected mode.
+  prompt (keyboard or COM1), loading the boot area above 1 MiB -- just
+  past the kernel, where the header's `BA_LOAD_ADDR` says (0.17.1), after
+  checking the machine has the memory ManiOS needs -- A20, protected
+  mode.
 - `stage2.c` — stage 2 in protected mode: the CRC check, loading the
   kernel's ELF segments, the Multiboot information, the jump.
 - `sector.ld`, `stage2.ld` — flat binaries at 0x7C00 and 0x8000.

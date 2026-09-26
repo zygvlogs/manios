@@ -9,9 +9,15 @@
  * built for: in a PT_NOTE segment, name "ZKT", type ZKT_NOTE_ABI, and a
  * 4-byte descriptor holding the version. The kernel refuses (ENOEXEC)
  * executables without it, or built for a version it doesn't know.
- * Version 1: the system calls below. New calls may be added under the
- * same version; changing an existing one means a new version. */
-#define ZKT_ABI_VERSION 1
+ * New calls may be added under the same version; changing an existing
+ * one means a new version, and the kernel goes on giving programs built
+ * for an older version what that version promised.
+ *   Version 1 (M9): the system calls below.
+ *   Version 2 (0.17.1): SYS_SEEK on a pipe fails with ESPIPE. For a
+ *   version-1 program it succeeds, as before, moving an offset that
+ *   pipe reads ignore. */
+#define ZKT_ABI_VERSION 2
+#define ZKT_ABI_VERSION_MIN 1 /* the oldest the kernel still runs */
 #define ZKT_NOTE_NAME "ZKT"
 #define ZKT_NOTE_ABI 1
 
@@ -43,7 +49,7 @@
                         * its tree onto old, as SYS_BIND does. aname may be NULL. */
 #define SYS_SEEK    18 /* (int fd, int32_t offset, int whence) -> the new offset. A
                         * directory can only be rewound (offset 0, SEEK_SET); a
-                        * pipe can't be seeked at all (ESPIPE, since 0.17). */
+                        * pipe can't be seeked at all (ESPIPE, ABI version 2). */
 #define SYS_POLL    19 /* (struct zkt_pollfd *fds, uint32_t count, int32_t timeout_ms)
                         * -> how many are readable (0: timed out). -1 waits forever. */
 #define SYS_PIPE    20 /* (int fds[2]): a connected pair; each write is one message */

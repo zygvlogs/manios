@@ -17,10 +17,12 @@
  * checks its ZKT ABI note (zkt_abi.h), maps and zeroes pages for each
  * PT_LOAD segment, copies file contents, makes segments without PF_W
  * read-only, and stores the entry point and the end of the highest
- * segment. Every field is treated as untrusted.
+ * segment, and the ABI version it was built for. Every field is treated
+ * as untrusted.
  * Returns 0 or -ENOEXEC (malformed or unsupported), -ENOMEM. On error,
  * pages already mapped stay mapped; the caller discards the whole
  * address space. */
-int elf_load(const uint8_t *image, size_t size, uintptr_t *entry, uintptr_t *image_end);
+int elf_load(const uint8_t *image, size_t size, uintptr_t *entry, uintptr_t *image_end,
+             uint32_t *abi);
 
 #endif

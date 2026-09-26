@@ -330,6 +330,11 @@ static void test_pipes(void)
 	check(read(fds[1], buf, sizeof(buf)) == 0, "the other end closed: end of file", 0);
 	check_err(write(fds[1], "x", 1), EPIPE, "writing with no reader is EPIPE");
 	check_err(lseek(fds[1], 0, SEEK_CUR), ESPIPE, "seeking a pipe is ESPIPE");
+	/* Each program gets what its ABI version promised (zkt_abi.h). */
+	int seek_status = run("/boot/test/pipeseek", 0);
+	check(seek_status == 1, "a version-2 program: seeking a pipe fails", seek_status);
+	seek_status = run("/boot/test/pipeseek1", 0);
+	check(seek_status == 0, "a version-1 program: seeking a pipe works as before", seek_status);
 	close(fds[1]);
 
 	struct zkt_dirent st;

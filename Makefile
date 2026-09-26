@@ -102,10 +102,13 @@ USER_OBJECTS := $(patsubst %,$(BUILD)/userland/%.o,$(USER_PROGRAMS))
 NOTICES := $(BUILD)/bootfs/etc/notices
 BOOTFS_FILES := $(patsubst %,$(BUILD)/bootfs/%,$(USER_PROGRAMS)) \
                 $(patsubst userland/%,$(BUILD)/bootfs/%,$(wildcard userland/etc/*)) \
-                $(BUILD)/bootfs/bin/desktop $(DESKTOP_BOOTFS) $(NOTICES)
+                $(BUILD)/bootfs/bin/desktop $(DESKTOP_BOOTFS) $(NOTICES) \
+                $(BUILD)/bootfs/test/pipeseek1
 BOOTFS_OBJECT := $(BUILD)/bootfs.o
 
 .PHONY: all toolchain run test clean iso release test-images
+# A recipe that fails leaves no half-made file behind for make to trust.
+.DELETE_ON_ERROR:
 
 all: $(KERNEL) $(ISO)
 
@@ -190,6 +193,16 @@ $(BUILD)/userland/%.o: userland/%.c
 $(BUILD)/userland/%.elf: $(BUILD)/userland/%.o $(CRT0) $(USER_LIBS) userland/user.ld
 	$(CC) $(USER_LDFLAGS) -o $@ $(CRT0) $< $(USER_LIBS)
 
+# pipeseek again, built for ABI version 1: the kernel must still give it
+# what version 1 promised (zkt_abi.h; utest runs both).
+$(BUILD)/libc/crt0-abi1.o: libc/crt0.S
+	@mkdir -p $(dir $@)
+	$(CC) $(USER_CFLAGS) -DZKT_NOTE_VERSION=1 -c $< -o $@
+
+$(BUILD)/userland/test/pipeseek1.elf: $(BUILD)/userland/test/pipeseek.o $(BUILD)/libc/crt0-abi1.o \
+                                      $(USER_LIBS) userland/user.ld
+	$(CC) $(USER_LDFLAGS) -o $@ $(BUILD)/libc/crt0-abi1.o $< $(USER_LIBS)
+
 $(BUILD)/bootfs/%: $(BUILD)/userland/%.elf
 	@mkdir -p $(dir $@)
 	$(STRIP) -o $@ $<
@@ -266,7 +279,37 @@ $(BUILD)/manios-chs.bin: $(BUILD)/boot/chs/mbr.bin $(BUILD)/boot/chs/stage2.bin 
 	python3 tools/mkbootarea.py --mbr $(BUILD)/boot/chs/mbr.bin --stage2 $(BUILD)/boot/chs/stage2.bin \
 	    --kernel $(KERNEL_STRIPPED) --version $(VERSION) -o $@
 
-test-images: $(ISO) $(BUILD)/manios-chs.bin
+# A test build that is much bigger: a 5 MiB file (etc/pad) added to its
+# boot archive makes a 7 MiB kernel and a 6 MiB boot area, far past the
+# 4 MiB the loader and the kernel's boot mapping allowed until 0.17.1.
+# tests/install_test.py boots its CD image.
+BIG := $(BUILD)/big
+$(BIG)/extra/etc/pad:
+	@mkdir -p $(dir $@)
+	python3 -c "import random, sys; sys.stdout.buffer.write(random.Random(17).randbytes(5 << 20))" > $@
+
+$(BIG)/bootfs.tar: $(BOOTFS_FILES) $(BIG)/extra/etc/pad
+	tar --format=ustar --sort=name --owner=0 --group=0 --numeric-owner --mtime=@0 \
+	    -C $(BUILD)/bootfs -cf $@ $(patsubst $(BUILD)/bootfs/%,%,$(BOOTFS_FILES)) \
+	    -C $(abspath $(BIG)/extra) etc/pad
+
+$(BIG)/bootfs.o: $(BIG)/bootfs.tar
+	cd $(BIG) && $(OBJCOPY) -I binary -O elf32-i386 -B i386 \
+	    --rename-section .data=.rodata,alloc,load,readonly,data,contents bootfs.tar bootfs.o
+
+$(BIG)/manios-zkt.elf: $(OBJECTS) $(BIG)/bootfs.o zkt/arch/i386/linker.ld
+	$(LD) $(LDFLAGS) -o $@ $(OBJECTS) $(BIG)/bootfs.o -lgcc
+
+$(BIG)/manios.bin: $(MBR) $(STAGE2) $(BIG)/manios-zkt.elf tools/mkbootarea.py VERSION
+	$(STRIP) -o $(BIG)/manios-zkt.stripped.elf $(BIG)/manios-zkt.elf
+	python3 tools/mkbootarea.py --mbr $(MBR) --stage2 $(STAGE2) \
+	    --kernel $(BIG)/manios-zkt.stripped.elf --version $(VERSION) -o $@
+
+$(BIG)/manios.iso: $(BIG)/manios.bin $(CDBOOT) $(MBR) tools/mkiso.py
+	python3 tools/mkiso.py --bootarea $(BIG)/manios.bin --cdboot $(CDBOOT) --mbr $(MBR) \
+	    --volume MANIOS_BIG -o $@
+
+test-images: $(ISO) $(BUILD)/manios-chs.bin $(BIG)/manios.iso
 
 # What a release publishes (.github/workflows/release.yml).
 release: $(ISO) $(KERNEL)

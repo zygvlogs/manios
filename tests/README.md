@@ -17,9 +17,12 @@
   from the keyboard; runs `install` (its refusals, the question, the
   write) and checks the disk from outside; boots the installed disk
   with its command line and installs a clone from it; boots the ISO as
-  a hard disk, a CHS-only build, and an 8 MiB machine; and makes the
-  loader explain too little memory, a damaged boot area, a bad header
-  and a disk without a boot partition. The screen itself is read from
+  a hard disk, a CHS-only build, and a 6 MiB machine; boots a much
+  bigger build (`build/big/`: a 5 MiB file in its boot archive, a 7 MiB
+  kernel) and reads the file back; and makes the loader explain too
+  little memory (with the figure it works out), a damaged boot area, a
+  bad header, a load address that would overwrite the loader, and a
+  disk without a boot partition. The screen itself is read from
   VGA text memory (QEMU's `pmemsave`): quiet by default, the whole boot
   log with `verbose=1` (0.14.1).
 

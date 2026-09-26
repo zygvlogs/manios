@@ -10,13 +10,19 @@ on QEMU's BIOS (SeaBIOS) -- no -kernel anywhere.
   - The installed disk boots on its own with the chosen command line,
     and can install itself on another disk.
   - The ISO written to a disk (a USB stick) boots; so does a disk read
-    with CHS calls (an old BIOS), and an 8 MiB machine.
-  - The loader stops with a message on too little memory, a damaged
-    boot area, a bad header and a disk without a boot partition.
+    with CHS calls (an old BIOS), and a 6 MiB machine.
+  - A much bigger build (a 5 MiB file in its boot archive: a 7 MiB
+    kernel) boots, with the file whole: the loader puts the boot area
+    wherever the kernel ends (0.17.1).
+  - The loader stops with a message on too little memory (saying how
+    much ManiOS needs), a damaged boot area, a bad header, a load
+    address that would overwrite the loader, and a disk without a boot
+    partition.
 
 Usage: tests/install_test.py [build-directory]
 """
 import os
+import random
 import shutil
 import struct
 import subprocess
@@ -274,10 +280,36 @@ class Install:
             m.close()
 
     def small_machine(self):
-        m = boot(cdrom=self.iso, order="d", memory=8)
+        m = boot(cdrom=self.iso, order="d", memory=6)
         try:
             out = m.expect(SHELL_PROMPT, timeout=120)
             check("Milestone M13" in out, out[-800:])
+        finally:
+            m.close()
+
+    def big_boots(self):
+        """A build with a 5 MiB file in its boot archive (the Makefile's
+        test image): a 7 MiB kernel and a 6 MiB boot area, which the
+        loader puts just past the kernel -- far past the 4 MiB it allowed
+        until 0.17.1."""
+        big = os.path.join(self.build, "big")
+        area = open(os.path.join(big, "manios.bin"), "rb").read()
+        load, total = struct.unpack_from("<I", area, 64)[0], struct.unpack_from("<I", area, 12)[0]
+        check(load > 0x400000 and total > 0x400000,
+              f"the big image isn't big: loaded at {load:#x}, {total} bytes")
+        pad = random.Random(17).randbytes(5 << 20)
+        m = boot(cdrom=os.path.join(big, "manios.iso"), order="d", memory=32)
+        try:
+            m.expect(SHELL_PROMPT, timeout=180)
+            run_command(m, "serial", "sum /boot/etc/pad",
+                        [f"/boot/etc/pad: {len(pad)} bytes, fnv1a {fnv1a(pad):08x}"], SHELL_PROMPT)
+        finally:
+            m.close()
+        # Too little memory for it: the loader says how much it needs.
+        need = -(-(load + total + 2 * 1024 * 1024) // (1024 * 1024))
+        m = boot(cdrom=os.path.join(big, "manios.iso"), order="d", memory=need - 2)
+        try:
+            m.expect(f"not enough memory: ManiOS needs {need} MiB", timeout=60)
         finally:
             m.close()
 
@@ -289,7 +321,11 @@ class Install:
             finally:
                 m.close()
 
-        loader_says([], self.iso, "d", "not enough memory: ManiOS needs 6 MiB", memory=4)
+        # What ManiOS needs: its images, up to where the boot area ends,
+        # and 2 MiB to run in (boot/bootarea.h), rounded up.
+        load, total = struct.unpack_from("<I", self.area, 64)[0], struct.unpack_from("<I", self.area, 12)[0]
+        need = -(-(load + total + 2 * 1024 * 1024) // (1024 * 1024))
+        loader_says([], self.iso, "d", f"not enough memory: ManiOS needs {need} MiB", memory=need - 2)
         good = self.path("good.img")
         subprocess.run([sys.executable, "tools/mkdisk.py", "--bootarea",
                         os.path.join(self.build, "manios.bin"), "-o", good], check=True)
@@ -304,6 +340,10 @@ class Install:
         header[2048 * 512] ^= 0xFF  # the magic
         open(self.path("header.img"), "wb").write(header)
         loader_says([self.path("header.img")], None, "c", "ManiOS: bad boot area")
+        low = bytearray(image)
+        struct.pack_into("<I", low, 2048 * 512 + 64, 0x8000)  # over stage 2 itself
+        open(self.path("low.img"), "wb").write(low)
+        loader_says([self.path("low.img")], None, "c", "the boot area's header is damaged")
         nopart = bytearray(image)
         nopart[446 + 4] = 0x83  # a partition, but not ManiOS's
         open(self.path("nopart.img"), "wb").write(nopart)
@@ -327,8 +367,11 @@ def main():
             ("the installed disk boots with its command line, and installs a clone", t.disk_boots_and_clones),
             ("the ISO written to a disk (a USB stick) boots", t.usb_boots),
             ("a disk read with CHS calls, as on an old BIOS", t.chs_boots),
-            ("an 8 MiB machine boots the CD", t.small_machine),
-            ("the loader explains: too little memory, damage, a bad header, no partition",
+            ("a 6 MiB machine boots the CD", t.small_machine),
+            ("a much bigger ManiOS (a 7 MiB kernel) boots, and the loader says what it needs",
+             t.big_boots),
+            ("the loader explains: too little memory, damage, a bad header, a bad load address, "
+             "no partition",
              t.refusals),
         ]:
             try:

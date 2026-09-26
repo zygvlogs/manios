@@ -81,10 +81,11 @@ manios% expr 4294967296 / 3
   to read by trying to seek, so `cat file | tail -n 2` went wrong. Now
   SYS_SEEK on a pipe returns ESPIPE (a new error number, the traditional
   29), as POSIX requires. It changes what an existing call returns,
-  which `zkt_abi.h` says needs a new ABI version; it is kept at version
-  1 because the old result meant nothing -- no program could have used
-  it. `fseek` now keeps its buffered input when the seek fails, which it
-  used to drop first.
+  which `zkt_abi.h` says needs a new ABI version. 0.17.0 kept version 1,
+  arguing the old result meant nothing; 0.17.1 does it properly: ABI
+  version 2, with version-1 programs still getting the old answer (see
+  below). `fseek` now keeps its buffered input when the seek fails,
+  which it used to drop first.
 - **`<zlib.h>` with types only.** OpenBSD's grep, built with its own
   `NOZ` switch (as for OpenBSD's install media), has no `-Z` but still
   names zlib's types.
@@ -158,3 +159,69 @@ manios% expr 4294967296 / 3
 - No signals, no `kqueue`: `tail -f` doesn't follow.
 - `st_ino` follows paths, not files: two paths to one file through a
   bind count as different files.
+
+## Afterwards: 0.17.1, room to grow
+
+0.17.0's notes listed three changes to know about. 0.17.1 settles them.
+
+- **ABI version 2.** The kernel now reads each program's ABI version
+  from its ELF note when it starts it, and SYS_SEEK answers as that
+  version promised: ESPIPE on a pipe for version 2, the old "success"
+  for version 1. Everything in ManiOS is built for version 2; the kernel
+  runs versions 1 and 2 (`ZKT_ABI_VERSION_MIN`). `utest` runs the same
+  test program built both ways (`pipeseek` and `pipeseek1`, the latter
+  linked with a version-1 note) and checks each answer.
+- **`malloc(0)`** stays as 0.17.0 made it: a pointer of its own, as on
+  the BSDs and glibc. Nothing to undo; M9's NULL was allowed by POSIX,
+  but nothing in ManiOS relied on it.
+- **Growth.** ManiOS gets bigger with every import, and two fixed limits
+  would have stopped it booting: the loader put the whole boot area at
+  4 MiB, so the kernel -- which carries the boot archive, every program
+  in `/bin` -- had to end below it (2.25 MiB used of 3); and the
+  kernel's first page table mapped only the first 4 MiB. Now:
+  - `mkbootarea.py` reads the kernel's program headers and writes, into
+    the boot area's header, where stage 2 is to load the area: just past
+    the kernel and room for its frame bitmap (`BA_LOAD_ADDR`; header
+    format 2). Stage 2 checks the address (page-aligned, above 1 MiB,
+    and the area at most 16 MiB, the kernel's modules window) and says
+    "the boot area's header is damaged" otherwise; the kernel's
+    segments must end below it.
+  - The loader works out what ManiOS needs -- up to where the boot area
+    ends, and 2 MiB to run in -- and says it in MiB: "not enough memory:
+    ManiOS needs 6 MiB" today. It compares exact figures: a BIOS keeps
+    a little of the top of memory, so a 6 MiB machine reports slightly
+    less, and a rounded comparison refused it. Loading the area lower
+    (at 2.4 MiB rather than 4) lowered the true need, so 6 MiB machines
+    still boot, and are tested.
+  - `boot.S` maps the first 16 MiB with four page tables. The kernel
+    image can grow to nearly 16 MiB, and the boot area to 16 MiB; the
+    link (the kernel) and `mkbootarea.py` (the area) fail loudly past
+    that, rather than a machine failing to boot.
+  - **The proof:** a test build (`build/big/`) with a 5 MiB file in its
+    boot archive -- a 7.3 MiB kernel and a 6.2 MiB boot area, loaded at
+    7.4 MiB -- boots from its CD in `install_test.py`, the file reads
+    back whole (`sum`), and on too small a machine the loader says it
+    needs 16 MiB.
+- Also: `make` deletes what a failing recipe half-made
+  (`.DELETE_ON_ERROR`), which a mistake in the new rules showed was
+  needed: a half-written archive was taken as up to date.
+
+Verification: `utest` 122 checks (two new: a version-2 and a version-1
+program seeking a pipe); `install_test.py` adds a 6 MiB machine (was 8),
+the big build, the memory message computed from the header, and a load
+address that would overwrite the loader. `make test`: 356 checks, none
+failing. Negative controls, each caught:
+
+| Sabotage | Caught by |
+|---|---|
+| The kernel ignores a program's ABI version (always ESPIPE) | `utest`: "a version-1 program: seeking a pipe works as before" |
+| Pipes can always be seeked again | `utest`: "seeking a pipe is ESPIPE", and the version-2 program |
+| Stage 2 loads the area at a fixed 4 MiB again | every boot through the loader: the header check sees the wrong place |
+| The kernel maps only its first 4 MiB at boot | `install_test`: the big build doesn't boot |
+| Stage 2 takes a load address below 1 MiB | `install_test`: the loader overwrites itself instead of explaining |
+| The memory check compares rounded MiB | `install_test`: the 6 MiB machine is refused |
+
+(A first run of the page-table control passed for a bad reason: the
+sabotage script rebuilt only the default target, so the install test
+booted the unchanged big image. With the test images rebuilt, it is
+caught.)

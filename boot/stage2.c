@@ -1,7 +1,7 @@
 /*
  * Stage 2 of the ManiOS boot loader, protected-mode part (M14,
  * ADR-0006). The real-mode part (stage2_entry.S) has put the whole boot
- * area at STAGE_ADDR, the memory map at MMAP_ADDR and the command line
+ * area where its header asked (just past the kernel's memory), the memory map at MMAP_ADDR and the command line
  * at CMDLINE_ADDR. This checks the boot area, loads the kernel's ELF
  * segments where they ask to be, builds the Multiboot 1 information --
  * with the boot area as a module, "bootarea", for the installer -- and
@@ -14,7 +14,7 @@
 #include "bootarea.h"
 
 struct params { /* filled in by stage2_entry.S */
-	uint32_t mmap_length, mem_lower, mem_upper, area_size, area_lba;
+	uint32_t mmap_length, mem_lower, mem_upper, area_size, area_lba, area_addr;
 };
 
 /* Multiboot 1, section 3.3. */
@@ -134,8 +134,9 @@ static void fail(const char *why)
 
 /* --- loading ------------------------------------------------------------ */
 
-/* Loads the kernel's segments; returns its entry point. */
-static uint32_t load_kernel(const uint8_t *file, uint32_t size)
+/* Loads the kernel's segments, which must end below the boot area at
+ * area_addr; returns its entry point. */
+static uint32_t load_kernel(const uint8_t *file, uint32_t size, uint32_t area_addr)
 {
 	const struct elf_header *h = (const void *)file;
 	if (size < sizeof(*h) || h->ident[0] != 0x7F || h->ident[1] != 'E' || h->ident[2] != 'L'
@@ -160,7 +161,8 @@ static uint32_t load_kernel(const uint8_t *file, uint32_t size)
 			continue;
 		}
 		if (ph->filesz > ph->memsz || ph->offset > size || ph->filesz > size - ph->offset
-		    || ph->paddr < 0x100000 || ph->memsz > STAGE_ADDR - ph->paddr) {
+		    || ph->paddr < 0x100000 || ph->paddr > area_addr
+		    || ph->memsz > area_addr - ph->paddr) {
 			fail("a kernel segment is damaged, or would overlap the loader");
 		}
 		memcpy((void *)ph->paddr, file + ph->offset, ph->filesz);
@@ -171,9 +173,10 @@ static uint32_t load_kernel(const uint8_t *file, uint32_t size)
 
 void stage2_main(const struct params *p)
 {
-	const uint8_t *area = (const uint8_t *)STAGE_ADDR;
+	const uint8_t *area = (const uint8_t *)p->area_addr;
 	uint32_t total = bootarea_u32(area, BA_TOTAL);
-	if (total != p->area_size || total < BOOTAREA_ALIGN) {
+	if (total != p->area_size || total < BOOTAREA_ALIGN
+	    || bootarea_u32(area, BA_LOAD_ADDR) != p->area_addr) {
 		fail("the boot area's header is damaged");
 	}
 	if (bootarea_crc32(0, area + BOOTAREA_ALIGN, total - BOOTAREA_ALIGN)
@@ -184,7 +187,7 @@ void stage2_main(const struct params *p)
 	if (koff > total || klen > total - koff) {
 		fail("the boot area's header is damaged");
 	}
-	uint32_t entry = load_kernel(area + koff, klen);
+	uint32_t entry = load_kernel(area + koff, klen, p->area_addr);
 
 	/* The Multiboot information, the module and their strings. */
 	struct mb_info *mbi = (struct mb_info *)MBI_ADDR;
@@ -199,8 +202,8 @@ void stage2_main(const struct params *p)
 		n++;
 	}
 	memcpy(loader, name, n + 1);
-	mod->start = STAGE_ADDR;
-	mod->end = STAGE_ADDR + total;
+	mod->start = p->area_addr;
+	mod->end = p->area_addr + total;
 	mod->string = (uint32_t)mod_name;
 	mbi->flags = MB_MEMORY | MB_CMDLINE | MB_MODS | MB_LOADER;
 	mbi->mem_lower = p->mem_lower;

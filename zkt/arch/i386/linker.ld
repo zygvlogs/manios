@@ -8,7 +8,7 @@
 ENTRY(_start)
 
 KERNEL_VIRT_BASE = 0xC0000000; /* must match memlayout.h */
-BOOT_MAPPED_PHYS_LIMIT = 0x00400000; /* must match memlayout.h */
+BOOT_MAPPED_PHYS_LIMIT = 0x01000000; /* must match memlayout.h */
 
 SECTIONS
 {
@@ -55,5 +55,5 @@ SECTIONS
 	_kernel_end = .;
 
 	ASSERT(_kernel_end - KERNEL_VIRT_BASE <= BOOT_MAPPED_PHYS_LIMIT,
-	       "kernel image exceeds the boot page table's 4 MiB mapping (boot.S)")
+	       "kernel image exceeds the boot page tables' 16 MiB mapping (boot.S)")
 }

@@ -349,7 +349,7 @@ SCENARIOS = [
     {
         "name": "no disk",
         "disk": None,
-        "boot": ["devices: cons com1 vga null sysname kbd mouse fb fbctl time\r\n", "Milestone M9: libc, ABI v1 and shell online"],
+        "boot": ["devices: cons com1 vga null sysname kbd mouse fb fbctl time\r\n", "Milestone M9: libc, ABI v2 and shell online"],
         "shell": [
             ("serial", "ls /bin", ["cat", "echo", "ls", "sh", "wc"]),
             ("serial", "echo 'a;b' c\\;d; echo e", ["\r\na;b c;d\r\ne\r\n"]),
