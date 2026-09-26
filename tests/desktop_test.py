@@ -278,9 +278,11 @@ class Scenario:
 
     def scrollback(self):
         tx, ty = self.term
-        self.d.type("ls /bin; ls /bin; echo last line\n")
+        # Over two screens of distinct lines, however many programs /bin
+        # holds (the terminal draws about five lines a second in QEMU).
+        self.d.type("ls /bin | head -n 30; ls /bin | head -n 30; echo last line\n")
         live = self.d.wait(lambda s: term_rows(s, tx, ty)[-2:] == ["last line", "manios%"],
-                           "two listings of /bin", timeout=20)
+                           "two listings of /bin", timeout=30)
         live = term_rows(live, tx, ty)
         # PgUp: half a screen back, and a note saying so on the top row.
         self.d.key("pgup")
