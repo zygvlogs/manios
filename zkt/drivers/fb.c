@@ -24,6 +24,8 @@
 #include "memlayout.h"
 #include "mutex.h"
 #include "pci.h"
+#include "sched.h"
+#include "timer.h"
 #include "vga_hw.h"
 #include "vga_text.h"
 #include "vmm.h"
@@ -35,7 +37,9 @@
 #define VBE_YRES   2
 #define VBE_BPP    3
 #define VBE_ENABLE 4
+#define VBE_BANK   5
 #define VBE_VIRT_WIDTH 6
+#define VBE_VIRT_HEIGHT 7
 #define VBE_X_OFFSET 8
 #define VBE_Y_OFFSET 9
 #define VBE_MEMORY_64K 10
@@ -67,6 +71,7 @@ static uint32_t width, height, pitch, depth;
 static uint8_t *pixels; /* kernel address of the visible framebuffer */
 static uint32_t bytes;
 static uint32_t mapped_pages;
+static uint32_t mode_generation; /* counts mode changes (for the refresher) */
 
 static bool bga_present;
 static uintptr_t bga_phys;
@@ -139,6 +144,42 @@ static int set_text(void)
 	return 0;
 }
 
+/* VirtualBox can repaint what is drawn just after a mode change with
+ * the previous mode's line length, leaving most of the screen as it was
+ * (seen in VirtualBox going from the desktop's 800x600 to gfxdemo's
+ * 640x480: only the first 640 bytes of every 3200, the old line, were
+ * repainted). An emulator repaints the pages that were written to, so for
+ * a while after each change a thread writes every page of the frame
+ * again, unchanged; by then the emulator has the new mode. Harmless
+ * elsewhere: a few hundred reads and writes. */
+static const uint32_t REFRESH_AFTER_MS[] = { 50, 200, 600, 1500 };
+
+static void refresher_main(void *arg)
+{
+	uint32_t generation = (uint32_t)(uintptr_t)arg, slept = 0;
+	for (size_t i = 0; i < sizeof(REFRESH_AFTER_MS) / sizeof(REFRESH_AFTER_MS[0]); i++) {
+		timer_sleep_ms(REFRESH_AFTER_MS[i] - slept);
+		slept = REFRESH_AFTER_MS[i];
+		mutex_lock(&lock);
+		bool current = generation == mode_generation && kind == BGA && pixels;
+		for (uint32_t off = 0; current && off < bytes; off += PAGE_SIZE) {
+			volatile uint32_t *p = (volatile uint32_t *)(pixels + off);
+			*p = *p;
+		}
+		mutex_unlock(&lock);
+		if (!current) {
+			break; /* another mode since: its own thread refreshes it */
+		}
+	}
+	thread_exit();
+}
+
+static void start_refresher(void)
+{
+	mode_generation++;
+	thread_create("fbrefresh", refresher_main, (void *)(uintptr_t)mode_generation);
+}
+
 static int set_bga(uint32_t w, uint32_t h)
 {
 	if (!bga_present) {
@@ -149,10 +190,15 @@ static int set_bga(uint32_t w, uint32_t h)
 	}
 	enter_graphics();
 	kind = BGA;
+	/* In the order VirtualBox's own VGA BIOS uses, the line length given
+	 * outright rather than left to the adapter to derive. */
 	dispi_write(VBE_ENABLE, 0);
+	dispi_write(VBE_BPP, 32);
 	dispi_write(VBE_XRES, (uint16_t)w);
 	dispi_write(VBE_YRES, (uint16_t)h);
-	dispi_write(VBE_BPP, 32);
+	dispi_write(VBE_BANK, 0);
+	dispi_write(VBE_VIRT_WIDTH, (uint16_t)w);
+	dispi_write(VBE_VIRT_HEIGHT, (uint16_t)h);
 	dispi_write(VBE_X_OFFSET, 0);
 	dispi_write(VBE_Y_OFFSET, 0);
 	dispi_write(VBE_ENABLE, VBE_ENABLED | VBE_LFB);
@@ -167,6 +213,7 @@ static int set_bga(uint32_t w, uint32_t h)
 	}
 	pixels = (uint8_t *)KERNEL_FB_START;
 	memset(pixels, 0, bytes);
+	start_refresher();
 	return 0;
 }
 
