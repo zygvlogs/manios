@@ -2,15 +2,28 @@
  * (zkt/kernel/user_selftest.c). Prints only failures and a summary;
  * exits 0 only if every check passed. */
 #include <ctype.h>
+#include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <getopt.h>
 #include <libgen.h>
 #include <limits.h>
-#include <manios.h>
+#include <regex.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <unistd.h>
+
+/* From <manios.h>, whose open() and fstat() are ManiOS's own: this test
+ * uses the POSIX ones (<fcntl.h>, <sys/stat.h>). */
+int spawn(const char *path, char *const argv[]);
+int wait(int pid, int *status);
+void *sbrk(intptr_t increment);
 
 static int checks, failures;
 static char *heap_start; /* sbrk(0) before the first malloc */
@@ -146,6 +159,111 @@ static void test_strings(void)
 	      "basename, dirname (OpenBSD's)");
 	check(reallocarray(NULL, 0x10000, 0x10000) == NULL && errno == ENOMEM,
 	      "reallocarray catches overflow");
+	strcpy(buf, "ab");
+	check(strlcat(buf, "cdef", 5) == 6 && !strcmp(buf, "abcd") && strnlen("abc", 2) == 2,
+	      "strlcat truncates and returns the full length; strnlen");
+	char *s = NULL;
+	check(asprintf(&s, "%d-%s", 42, "x") == 4 && s && !strcmp(s, "42-x"), "asprintf");
+	free(s);
+	check(isgraph('a') && !isgraph(' ') && isascii(0x7f) && !isascii(0x80), "isgraph, isascii");
+}
+
+/* 64-bit division (divdi3.c): operands the compiler can't fold. */
+static void test_divide(void)
+{
+	volatile uint64_t max = UINT64_MAX, three = 3, seven = 7, big = 0x100000001ULL;
+	volatile uint64_t ten_g = 10000000000ULL, two32 = 0x100000000ULL;
+	volatile int64_t m9 = -9, two = 2, mtwo = -2, min = INT64_MIN, one = 1;
+	/* The high word's remainder carries into the low word's division. */
+	check(max / three == 6148914691236517205ULL && max % three == 0 && (max - 1) % three == 2
+	      && two32 / three == 0x55555555ULL && two32 % three == 1
+	      && ten_g / seven == 1428571428ULL && ten_g % seven == 4,
+	      "64-bit unsigned division by a 32-bit number");
+	/* 2^64 - 1 = (2^32 - 1)(2^32 + 1) */
+	check(max / big == 0xFFFFFFFFULL && max % big == 0 && (max - 5) / big == 0xFFFFFFFEULL
+	      && (max - 5) % big == 0x100000001ULL - 5, "64-bit unsigned division by a 64-bit number");
+	check(m9 / two == -4 && m9 % two == -1 && -m9 / mtwo == -4 && -m9 % mtwo == 1
+	      && min / one == INT64_MIN, "64-bit signed division truncates toward zero");
+}
+
+static void test_regex(void)
+{
+	regex_t re;
+	regmatch_t m[2];
+	check(regcomp(&re, "^b(an)+a$", REG_EXTENDED) == 0
+	      && regexec(&re, "banana", 2, m, 0) == 0 && m[1].rm_so == 3 && m[1].rm_eo == 5
+	      && regexec(&re, "bnana", 0, NULL, 0) == REG_NOMATCH, "regcomp, regexec, subexpressions");
+	regfree(&re);
+	char msg[64];
+	int rc = regcomp(&re, "[", 0);
+	check(rc == REG_EBRACK && regerror(rc, &re, msg, sizeof(msg)) > 0
+	      && !strcmp(msg, "brackets ([ ]) not balanced"), "regerror");
+}
+
+/* The POSIX layer over ManiOS's calls (stat.c, dirent.c, posix.c). */
+static void test_posix(void)
+{
+	struct stat a, b, c;
+	check(stat("/boot/etc/motd", &a) == 0 && S_ISREG(a.st_mode) && a.st_size == 19
+	      && stat("/boot/etc/../etc//motd", &b) == 0 && a.st_ino == b.st_ino
+	      && stat("/boot/etc/rc.cpu", &c) == 0 && c.st_ino != a.st_ino,
+	      "stat: type, size, and st_ino by path");
+	check(stat("/boot", &a) == 0 && S_ISDIR(a.st_mode) && a.st_nlink == 1
+	      && stat("/dev/cons", &b) == 0 && S_ISCHR(b.st_mode), "stat of a directory and a device");
+	errno = 0;
+	check(stat("/no/such", &a) == -1 && errno == ENOENT, "stat of a missing file");
+	int fds[2];
+	check(pipe(fds) == 0 && fstat(fds[0], &a) == 0 && S_ISFIFO(a.st_mode) && !isatty(fds[0])
+	      && errno == ENOTTY, "fstat of a pipe, isatty");
+	close(fds[0]);
+	close(fds[1]);
+
+	DIR *d = opendir("/boot/etc");
+	struct dirent *e;
+	int seen = 0;
+	while (d && (e = readdir(d))) {
+		seen |= !strcmp(e->d_name, "motd") && e->d_type == DT_REG && e->d_namlen == 4;
+	}
+	check(d && seen, "opendir, readdir");
+	if (d) {
+		closedir(d);
+	}
+	d = opendir("/boot");
+	check(d && fstatat(dirfd(d), "etc", &a, 0) == 0 && S_ISDIR(a.st_mode)
+	      && fstatat(AT_FDCWD, "/boot/etc/motd", &b, 0) == 0 && S_ISREG(b.st_mode),
+	      "fstatat, relative to an open directory");
+	if (d) {
+		closedir(d);
+	}
+	errno = 0;
+	check(!opendir("/boot/etc/motd") && errno == ENOTDIR, "opendir of a file");
+
+	int fd = open("/boot/etc/motd", O_RDONLY);
+	check(fd >= 0 && close(fd) == 0, "open, O_RDONLY");
+	errno = 0;
+	check(open("/boot/etc/new", O_WRONLY | O_CREAT, 0644) == -1 && errno == EROFS,
+	      "open can't create files: EROFS");
+	errno = 0;
+	check(open("/boot/etc/motd", O_WRONLY | O_TRUNC) == -1, "open can't truncate files");
+	errno = 0;
+	check(open("/boot/etc/motd", O_RDONLY | O_DIRECTORY) == -1 && errno == ENOTDIR,
+	      "O_DIRECTORY of a file: ENOTDIR");
+	check(access("/boot/etc/motd", R_OK) == 0 && access("/boot/etc/motd", X_OK) == -1
+	      && access("/boot", X_OK) == 0 && access("/no/such", F_OK) == -1, "access");
+	errno = 0;
+	check(mmap(NULL, 4096, PROT_READ, MAP_PRIVATE, 0, 0) == MAP_FAILED && errno == ENODEV,
+	      "mmap fails: ENODEV");
+	struct winsize ws;
+	errno = 0;
+	check(ioctl(1, TIOCGWINSZ, &ws) == -1 && errno == ENOTTY, "ioctl fails: ENOTTY");
+	check(signal(SIGINT, SIG_IGN) == SIG_DFL && raise(SIGINT) == 0 && signal(SIGINT, SIG_DFL) == SIG_IGN,
+	      "signal records a handler; raise of an ignored signal");
+	errno = 0;
+	check(rename("/boot/etc/motd", "/boot/etc/x") == -1 && errno == EROFS
+	      && unlink("/boot/etc/motd") == -1 && errno == EROFS, "rename, unlink: EROFS");
+	errno = 0;
+	check(unlink("/boot/etc/none") == -1 && errno == ENOENT, "unlink of a missing file: ENOENT");
+	check(getenv("PATH") == NULL && geteuid() == 0, "getenv, geteuid");
 }
 
 static void test_getopt(void)
@@ -176,6 +294,24 @@ static void test_getopt(void)
 	char *operand[] = { "prog", "file", "-v", 0 };
 	optind = 0;
 	check(getopt(3, operand, "v") == -1 && optind == 1, "getopt stops at the first operand");
+	static const struct option longs[] = {
+		{ "verbose", no_argument, NULL, 'v' },
+		{ "name", required_argument, NULL, 'n' },
+		{ NULL, 0, NULL, 0 },
+	};
+	char *largs[] = { "prog", "--verbose", "--name=x", "--name", "y", "-v", "file", 0 };
+	char *names[2] = { 0, 0 };
+	int k = 0, lv = 0;
+	optind = 0;
+	while ((c = getopt_long(7, largs, "vn:", longs, NULL)) != -1) {
+		if (c == 'v') {
+			lv++;
+		} else if (c == 'n' && k < 2) {
+			names[k++] = optarg;
+		}
+	}
+	check(lv == 2 && k == 2 && !strcmp(names[0], "x") && !strcmp(names[1], "y") && optind == 6,
+	      "getopt_long: --flag, --opt=value, --opt value");
 	opterr = 1;
 	optind = 1;
 	check(!strcmp(getprogname(), "ctest"), "getprogname");
@@ -261,7 +397,11 @@ static void test_malloc(void)
 	big = malloc((size_t)(end - heap_start) - 16);
 	check(big != NULL && sbrk(0) == end, "freed blocks coalesce and are reused");
 	free(big);
-	check(malloc(0) == NULL && realloc(NULL, 8) != NULL, "malloc(0), realloc(NULL)");
+	char *none = malloc(0), *other = malloc(0);
+	check(none && other && none != other && realloc(none, 0) == none && realloc(NULL, 8) != NULL,
+	      "malloc(0) and realloc(p, 0) give pointers of their own, realloc(NULL)");
+	free(none);
+	free(other);
 }
 
 static int run(const char *path, const char *arg)
@@ -313,6 +453,26 @@ static void test_stdio(void)
 	check(freopen("/boot/etc/motd", "r", stdin) == stdin && fgets(line, sizeof(line), stdin)
 	      && !strcmp(line, "Welcome to ManiOS.\n"), "freopen");
 
+	f = fopen("/boot/etc/motd", "r");
+	size_t len = 0;
+	char *ln = f ? fgetln(f, &len) : NULL;
+	check(ln && len == 19 && !memcmp(ln, "Welcome to ManiOS.\n", 19) && !fgetln(f, &len),
+	      "fgetln");
+	check(f && setvbuf(f, NULL, 7, 0) == -1 && errno == EINVAL && setvbuf(f, NULL, _IONBF, 0) == 0,
+	      "setvbuf");
+	if (f) {
+		fclose(f);
+	}
+	int ends2[2];
+	f = pipe(ends2) == 0 && write(ends2[1], "xyz", 3) == 3 && close(ends2[1]) == 0
+	    ? fdopen(ends2[0], "r") : NULL;
+	errno = 0;
+	check(f && fgetc(f) == 'x' && fseek(f, 0, SEEK_SET) == -1 && errno == ESPIPE && fgetc(f) == 'y',
+	      "a pipe can't be seeked, and keeps its buffered input");
+	if (f) {
+		fclose(f);
+	}
+
 	/* No SIGPIPE: stdio ends a program whose reader is gone, with the
 	 * status a shell shows for SIGPIPE. OpenBSD's yes(1) relies on it;
 	 * basename(1) prints one line, so a regression fails, not hangs. */
@@ -342,6 +502,9 @@ int main(void)
 	test_printf();
 	test_strtol();
 	test_strings();
+	test_divide();
+	test_regex();
+	test_posix();
 	test_getopt();
 	test_sort();
 	test_malloc();

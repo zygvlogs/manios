@@ -33,6 +33,7 @@ is written anew for it.
 | M14 — own boot loader, bootable hybrid ISO, installer, releases | Achieved ([notes](docs/milestones/M14-installer-release.md), [ADR-0006](docs/adr/0006-native-boot-loader-and-installer.md)) |
 | M15 — network cards for VirtualBox (AMD PCnet, Intel PRO/1000), DHCP | Achieved ([notes](docs/milestones/M15-network-cards-dhcp.md)) |
 | M16 — first BSD imports: OpenBSD's text tools on ManiOS's libc | Achieved ([notes](docs/milestones/M16-openbsd-tools.md), [imports](third_party/openbsd/README.md)) |
+| M17 — grep, sed and more from OpenBSD: regular expressions, a POSIX file layer in libc | Achieved ([notes](docs/milestones/M17-grep-sed-posix.md)) |
 
 ## Download and install
 
@@ -41,7 +42,7 @@ page has a bootable ISO, `manios-VERSION.iso`. It boots from a CD, from
 a USB stick it is written to, or in QEMU or VirtualBox:
 
 ```
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.16.0.iso -boot d
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.17.0.iso -boot d
 ```
 
 and `install ata0` puts ManiOS on a hard disk. ManiOS boots with its own
@@ -119,10 +120,11 @@ closes windows. The window system is a file server: in a terminal,
 one ([design](docs/desktop/DESIGN.md)). The shell does pipelines and
 redirection (`ls /bin | wc`, `cat < FILE`, `echo x > /dev/null`).
 
-Besides ManiOS's own programs, `/bin` has text tools from OpenBSD,
-built from OpenBSD's source unmodified: `head`, `cut`, `paste`, `comm`,
-`uniq`, `rev`, `fold`, `expand`, `basename`, `dirname` and `yes`
-(`ls /bin | head -n 5`; [third_party/openbsd](third_party/openbsd/README.md)).
+Besides ManiOS's own programs, `/bin` has 30 tools from OpenBSD, built
+from OpenBSD's source unmodified: `grep`, `sed`, `expr`, `test`, `head`,
+`tail`, `cut`, `paste`, `join`, `comm`, `cmp`, `uniq`, `tr`, `nl`,
+`fmt`, `fold`, `column` and more (`ls /bin | column`, `grep -r word
+/n/ata0p1`; [third_party/openbsd](third_party/openbsd/README.md)).
 Their licenses are in `/boot/etc/notices`.
 
 ## Repository layout

@@ -2,6 +2,7 @@
 #define MANIOS_STRING_H
 
 #include <stddef.h>
+#include <sys/cdefs.h>
 
 void *memset(void *dst, int c, size_t n);
 void *memcpy(void *restrict dst, const void *restrict src, size_t n);
@@ -26,6 +27,9 @@ char *strtok_r(char *restrict s, const char *restrict delim, char **restrict sav
 void *memchr(const void *s, int c, size_t n);
 char *strdup(const char *s);            /* malloc()ed; NULL when out of memory */
 char *strndup(const char *s, size_t n);
+size_t strnlen(const char *s, size_t max); /* strlen(), at most max */
+/* memset() to zero that the compiler can't leave out (for secrets). */
+void explicit_bzero(void *p, size_t n);
 
 /* The message for an error number (zkt_abi.h). */
 char *strerror(int err);
@@ -38,5 +42,9 @@ char *strsep(char **s, const char *delim);
 /* Copies at most size-1 bytes and always NUL-terminates (when size > 0).
  * Returns strlen(src), so truncation is `result >= size`. */
 size_t strlcpy(char *restrict dst, const char *restrict src, size_t size);
+/* Appends src to the string in dst (size bytes in all), always
+ * NUL-terminated. Returns the length it tried to make: truncation is
+ * `result >= size`. */
+size_t strlcat(char *restrict dst, const char *restrict src, size_t size);
 
 #endif

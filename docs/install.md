@@ -36,7 +36,7 @@ fixed date), so the same boot area always gives the same ISO.
 ## Trying it in QEMU
 
 ```
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.16.0.iso -boot d
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.17.0.iso -boot d
 ```
 
 Add `-serial stdio` to use the serial console from your terminal. QEMU
@@ -47,7 +47,7 @@ the desktop, QEMU's default display adapter is the right one. To try the install
 
 ```
 qemu-img create -f raw disk.img 64M
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.16.0.iso -boot d -hda disk.img
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.17.0.iso -boot d -hda disk.img
 ```
 
 and after `install ata0`, boot the disk alone with `-hda disk.img -boot c`.
@@ -82,7 +82,7 @@ The loader prints its version and the boot options -- the kernel's
 command line -- then waits 3 seconds:
 
 ```
-ManiOS boot loader 0.16.0
+ManiOS boot loader 0.17.0
 Boot options: (none)
 Press any key within 3 seconds to change them.
 ```
@@ -114,10 +114,10 @@ The options are words of the form `KEY=VALUE`:
 ManiOS tests itself at every boot, and the screen shows what it checks:
 
 ```
-ManiOS 0.16.0 / ZKT (ZygKernel Technology)
+ManiOS 0.17.0 / ZKT (ZygKernel Technology)
 Self-tests: memory, interrupts, threads, devices, disks, files, programs,
             C library, network, graphics, windows, cluster. All passed.
-ManiOS 0.16.0 is ready. Try ls /bin (programs), help (the shell), desktop.
+ManiOS 0.17.0 is ready. Try ls /bin (programs), help (the shell), desktop.
 manios%
 ```
 
@@ -154,7 +154,7 @@ hard disk. **This destroys everything on the stick.** On Linux, with the
 stick at `/dev/sdX`:
 
 ```
-sudo dd if=manios-0.16.0.iso of=/dev/sdX bs=1M conv=fsync
+sudo dd if=manios-0.17.0.iso of=/dev/sdX bs=1M conv=fsync
 ```
 
 ## Installing on a hard disk
@@ -163,13 +163,13 @@ Boot the CD (or stick) on the machine, then, at the `manios% ` prompt:
 
 ```
 manios% install ata0 sysname=box ip=10.0.0.5/24
-ManiOS 0.16.0 will be installed on ata0 (512 MiB).
+ManiOS 0.17.0 will be installed on ata0 (512 MiB).
 EVERYTHING ON ata0 WILL BE LOST.
 The installed system's command line: "sysname=box ip=10.0.0.5/24"
 Type yes to go on: yes
-writing the boot area (942 KiB)...
+writing the boot area (1222 KiB)...
 checking what was written...
-ManiOS 0.16.0 is installed on ata0. Remove the CD and restart the machine.
+ManiOS 0.17.0 is installed on ata0. Remove the CD and restart the machine.
 ```
 
 - `ata0` is the first IDE disk (primary master), `ata1` the second, and
@@ -179,8 +179,8 @@ ManiOS 0.16.0 is installed on ata0. Remove the CD and restart the machine.
   the loader still offers to edit it at every boot.
 - `install -y` skips the question, for scripts.
 - The disk gets a new MBR with one active partition of type 0xDA,
-  starting at 1 MiB and just large enough for ManiOS (under 1 MiB, rounded
-  up to a MiB). The rest of the disk is left unpartitioned. Nothing else
+  starting at 1 MiB and just large enough for ManiOS (its boot area,
+  about 1.2 MiB, rounded up to a whole MiB: 2 MiB). The rest of the disk is left unpartitioned. Nothing else
   on the disk survives: the old partition table is replaced.
 - `install` reads everything back and says so if the disk didn't keep
   what was written.

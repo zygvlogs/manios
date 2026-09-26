@@ -57,10 +57,11 @@ OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(C_SOURCES)) \
 # the file: the kernel copies segments rather than mapping file pages,
 # so the padding would only waste space in the kernel image.
 USER_CFLAGS := -std=gnu11 -ffreestanding -fno-asynchronous-unwind-tables -O2 -g \
+               -ffunction-sections -fdata-sections \
                -DMANIOS_VERSION='"$(VERSION)"' \
                -Wall -Wextra -MMD -MP $(ARCHFLAGS) -Ilibc/include -Izkt/abi -Idesktop/libgfx \
-               -Idesktop/libwin -Iboot
-USER_LDFLAGS := -nostdlib -static -T userland/user.ld -Wl,-n
+               -Idesktop/libwin -Iboot -Ithird_party/openbsd/include
+USER_LDFLAGS := -nostdlib -static -T userland/user.ld -Wl,-n -Wl,--gc-sections
 
 LIBC := $(BUILD)/libc/libc.a
 CRT0 := $(BUILD)/libc/crt0.o
@@ -68,10 +69,19 @@ CRT0 := $(BUILD)/libc/crt0.o
 # third_party/THIRD_PARTY_NOTICES.md), built unmodified against ManiOS's
 # libc. Upstream builds them without -Wextra's style warnings.
 OBSD := third_party/openbsd
-OBSD_TOOLS := basename comm cut dirname expand fold head paste rev uniq yes
-OBSD_CFLAGS = $(USER_CFLAGS) -I$(OBSD)/sys -Wno-sign-compare -Wno-unused-parameter \
-              -Wno-maybe-uninitialized '-DDEF_WEAK(x)='
-LIBC_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard libc/*.c $(OBSD)/lib/libc/*/*.c))
+# Each directory under usr.bin/ and bin/ is a program, named after it and
+# built from all its .c files; OBSD_EXTRA adds a program's own flags.
+OBSD_TOOL_DIRS := $(wildcard $(OBSD)/usr.bin/* $(OBSD)/bin/*)
+OBSD_TOOLS := $(notdir $(OBSD_TOOL_DIRS))
+OBSD_CFLAGS = $(USER_CFLAGS) -I$(OBSD)/sys -I$(OBSD)/lib/libutil -Wno-sign-compare \
+              -Wno-unused-parameter -Wno-maybe-uninitialized -Wno-unused-but-set-variable \
+              -Wno-type-limits -Wno-pointer-sign -Wno-implicit-fallthrough \
+              -Wno-missing-field-initializers \
+              '-DDEF_WEAK(x)=' $(OBSD_EXTRA)
+# regexec.c includes engine.c, which isn't built on its own. (ohash, from
+# OpenBSD's libutil, goes in libc too: a program links only what it uses.)
+LIBC_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard libc/*.c) \
+                  $(filter-out %/engine.c,$(wildcard $(OBSD)/lib/libc/*/*.c $(OBSD)/lib/libutil/*.c)))
 # The 2D graphics library (M11); linked into every program, which only
 # takes what it uses.
 LIBGFX := $(BUILD)/desktop/libgfx/libgfx.a
@@ -131,14 +141,17 @@ $(BUILD)/$(OBSD)/%.o: $(OBSD)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(OBSD_CFLAGS) -c $< -o $@
 
-# An OpenBSD tool's object goes where a userland/bin/ program's would, so
-# the usual rules link it and install it in /bin.
+# An OpenBSD program is linked where a userland/bin/ program would be, so
+# the usual rules strip it and install it in /bin.
 define OBSD_TOOL_RULE
-$(BUILD)/userland/bin/$(1).o: $(OBSD)/usr.bin/$(1)/$(1).c
-	@mkdir -p $$(dir $$@)
-	$$(CC) $$(OBSD_CFLAGS) -c $$< -o $$@
+$(BUILD)/userland/bin/$(notdir $(1)).elf: $(patsubst %.c,$(BUILD)/%.o,$(wildcard $(1)/*.c)) \
+                                        $(CRT0) $(USER_LIBS) userland/user.ld
+	$$(CC) $$(USER_LDFLAGS) -o $$@ $$(CRT0) $(patsubst %.c,$(BUILD)/%.o,$(wildcard $(1)/*.c)) \
+	    $$(USER_LIBS)
 endef
-$(foreach t,$(OBSD_TOOLS),$(eval $(call OBSD_TOOL_RULE,$(t))))
+$(foreach d,$(OBSD_TOOL_DIRS),$(eval $(call OBSD_TOOL_RULE,$(d))))
+# grep without zlib (-Z): OpenBSD's own switch for small builds.
+$(BUILD)/$(OBSD)/usr.bin/grep/%.o: OBSD_EXTRA := -DNOZ
 
 $(LIBC): $(LIBC_OBJECTS)
 	@rm -f $@

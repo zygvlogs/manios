@@ -9,6 +9,8 @@ int isxdigit(int c) { return isdigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' &
 int isspace(int c)  { return c == ' ' || (c >= '\t' && c <= '\r'); }
 int isblank(int c)  { return c == ' ' || c == '\t'; }
 int isprint(int c)  { return c >= 0x20 && c < 0x7F; }
+int isgraph(int c)  { return c > 0x20 && c < 0x7F; }
+int isascii(int c)  { return c >= 0 && c < 0x80; }
 int iscntrl(int c)  { return (c >= 0 && c < 0x20) || c == 0x7F; }
 int ispunct(int c)  { return isprint(c) && c != ' ' && !isalnum(c); }
 int tolower(int c)  { return isupper(c) ? c + ('a' - 'A') : c; }

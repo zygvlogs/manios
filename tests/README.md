@@ -71,13 +71,17 @@
   window on the terminal's desktop, and a CPU server dying under a job.
 
 - `openbsd_test.py` (also run by `make test`) — the programs imported
-  from OpenBSD (0.16, [third_party/openbsd](../third_party/openbsd/README.md)),
-  on a FAT disk of small text files it generates: each program's whole
-  output, including pipes, standard input (`-`), `yes | head` ending,
-  and error messages from `getopt`, `err`/`warn` and `strtonum`; exit
-  statuses through the monitor's `run`. The expected outputs are
-  OpenBSD's (GNU's tools agree, but for `uniq -c`'s column width).
-  Needs mtools.
+  from OpenBSD (0.16, 0.17, [third_party/openbsd](../third_party/openbsd/README.md)),
+  on a FAT disk of small text files (and nested directories) it
+  generates: each program's whole output, including pipes, standard
+  input (`-`), `yes | head` and `yes | grep -m 2` ending, regular
+  expressions, `grep -r`, 64-bit `expr` arithmetic, what ManiOS can't do
+  (`sed -i`, `tee FILE`, `tail -f` say so), and error messages from
+  `getopt`, `err`/`warn`, `strtonum` and `regerror`; exit statuses
+  through the monitor's `run` (`test`, `cmp -s`, `grep -q`); and that
+  `/boot/etc/notices` holds every imported file's license. Where GNU's
+  tools behave the same, the expected outputs were checked against them
+  too. Needs mtools.
 
 - `tools/mkfont.py --check` (in `make test`) — the generated font
   matches `desktop/libgfx/font.txt`.

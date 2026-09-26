@@ -3,6 +3,7 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <sys/cdefs.h>
 
 #define EOF (-1)
 #define BUFSIZ 512
@@ -24,7 +25,17 @@ FILE *fdopen(int fd, const char *mode);
 /* The stream, now on `path` (the old file closed). NULL on failure. */
 FILE *freopen(const char *path, const char *mode, FILE *f);
 int fclose(FILE *f);
+/* ManiOS can't rename or remove files (<unistd.h>): EROFS. */
+int rename(const char *from, const char *to);
+int remove(const char *path);
 int fflush(FILE *f); /* NULL: every stream */
+/* Buffering: whole blocks, lines, or none. A buffer passed in is used
+ * only by a stream that has none of its own (stderr). */
+#define _IOFBF 0
+#define _IOLBF 1
+#define _IONBF 2
+int setvbuf(FILE *f, char *buf, int mode, size_t size);
+void setbuf(FILE *f, char *buf);
 int fileno(FILE *f);
 int feof(FILE *f);
 int ferror(FILE *f);
@@ -33,6 +44,10 @@ void clearerr(FILE *f);
 /* whence: SEEK_SET, SEEK_CUR, SEEK_END. */
 int fseek(FILE *f, long offset, int whence);
 long ftell(FILE *f);
+#include <sys/types.h>
+int fseeko(FILE *f, off_t offset, int whence); /* off_t is a long */
+off_t ftello(FILE *f);
+int fpurge(FILE *f);
 void rewind(FILE *f);
 
 int fgetc(FILE *f);
@@ -48,6 +63,9 @@ typedef long ssize_t;
  * grown as needed; *size its capacity): its length, or -1 at the end. */
 ssize_t getdelim(char **line, size_t *size, int delim, FILE *f);
 ssize_t getline(char **line, size_t *size, FILE *f);
+/* The next line as it is in f: *len bytes, not NUL-terminated, good
+ * until the next read of f (BSD). NULL at the end. */
+char *fgetln(FILE *f, size_t *len);
 size_t fread(void *buf, size_t size, size_t count, FILE *f);
 
 int fputc(int c, FILE *f);
@@ -68,6 +86,9 @@ int vprintf(const char *fmt, va_list ap);
 int vfprintf(FILE *f, const char *fmt, va_list ap);
 int vsprintf(char *s, const char *fmt, va_list ap);
 int vsnprintf(char *s, size_t size, const char *fmt, va_list ap);
+/* Into a new malloc()ed string, *s; -1 (and *s NULL) if out of memory. */
+int asprintf(char **s, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+int vasprintf(char **s, const char *fmt, va_list ap);
 
 /* "prefix: message for errno" on stderr. */
 void perror(const char *prefix);

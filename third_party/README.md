@@ -16,10 +16,11 @@ No GPL/LGPL/AGPL code, and no Linux-derived code, is ever placed here or
 anywhere else in this repository — see
 [§3.4](../docs/FOUNDING-PROPOSAL.md#34-what-legally-compatible-rules-out).
 
-- [`openbsd/`](openbsd/README.md) — from OpenBSD (M16, 0.16): text
-  tools (`head`, `cut`, `paste`, `comm`, `uniq`, `rev`, `fold`,
-  `expand`, `basename`, `dirname`, `yes`), four libc functions and
-  `<sys/queue.h>`, all unmodified.
+- [`openbsd/`](openbsd/README.md) — from OpenBSD (M16 and M17, 0.16
+  and 0.17): 30 programs (`grep`, `sed`, `expr`, `test`, `tail`, `tr`
+  and other text tools), and parts of the C library (regular
+  expressions, `getopt_long`, `fts`, `vis`, and smaller functions), all
+  unmodified.
 
 The build collects the license header of every file here into
 `/boot/etc/notices` (`tools/mknotices.py`): the licenses require the

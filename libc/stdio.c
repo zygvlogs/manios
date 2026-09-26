@@ -22,12 +22,16 @@ struct manios_file {
 	size_t wlen;       /* buffered output: buf[0..wlen) */
 	int unget;         /* a pushed-back character, or EOF */
 	struct manios_file *next;
+	char *line;        /* fgetln()'s line, malloc()ed */
+	size_t line_size;
 };
 
 static unsigned char in_buf[BUFSIZ], out_buf[BUFSIZ];
-static struct manios_file std_in = { 0, F_READ, in_buf, BUFSIZ, 0, 0, 0, EOF, 0 };
-static struct manios_file std_out = { 1, F_WRITE | F_LINE, out_buf, BUFSIZ, 0, 0, 0, EOF, 0 };
-static struct manios_file std_err = { 2, F_WRITE | F_UNBUF, 0, 0, 0, 0, 0, EOF, 0 };
+static struct manios_file std_in = { .fd = 0, .flags = F_READ, .buf = in_buf, .size = BUFSIZ,
+                                     .unget = EOF };
+static struct manios_file std_out = { .fd = 1, .flags = F_WRITE | F_LINE, .buf = out_buf,
+                                      .size = BUFSIZ, .unget = EOF };
+static struct manios_file std_err = { .fd = 2, .flags = F_WRITE | F_UNBUF, .unget = EOF };
 FILE *stdin = &std_in, *stdout = &std_out, *stderr = &std_err;
 
 /* Streams fopen() made, for fflush(NULL). */
@@ -155,6 +159,41 @@ FILE *freopen(const char *path, const char *mode, FILE *f)
 	return f;
 }
 
+int setvbuf(FILE *f, char *buf, int mode, size_t size)
+{
+	if (mode != _IOFBF && mode != _IOLBF && mode != _IONBF) {
+		errno = EINVAL;
+		return -1;
+	}
+	fflush(f);
+	f->flags &= ~(F_LINE | F_UNBUF);
+	if (mode == _IONBF) {
+		f->flags |= F_UNBUF;
+		return 0;
+	}
+	if (!f->buf) {
+		if (buf && size) {
+			f->buf = (unsigned char *)buf;
+			f->size = size;
+		} else if ((f->buf = malloc(BUFSIZ))) {
+			f->size = BUFSIZ;
+		} else {
+			f->flags |= F_UNBUF;
+			errno = ENOMEM;
+			return -1;
+		}
+	}
+	if (mode == _IOLBF) {
+		f->flags |= F_LINE;
+	}
+	return 0;
+}
+
+void setbuf(FILE *f, char *buf)
+{
+	setvbuf(f, buf, buf ? _IOFBF : _IONBF, BUFSIZ);
+}
+
 FILE *fdopen(int fd, const char *mode)
 {
 	unsigned flags;
@@ -165,8 +204,23 @@ FILE *fdopen(int fd, const char *mode)
 	return make_file(fd, flags);
 }
 
+/* The next line, as it is in the stream: *len bytes, with the newline
+ * if there is one, not NUL-terminated; good until the next read of f
+ * (BSD). */
+char *fgetln(FILE *f, size_t *len)
+{
+	ssize_t n = getdelim(&f->line, &f->line_size, '\n', f);
+	if (n < 0) {
+		return NULL;
+	}
+	*len = (size_t)n;
+	return f->line;
+}
+
 int fclose(FILE *f)
 {
+	free(f->line);
+	f->line = NULL;
 	int rc = fflush(f);
 	if (close(f->fd) < 0) {
 		rc = EOF;
@@ -203,10 +257,26 @@ int fseek(FILE *f, long offset, int whence)
 	if (whence == SEEK_CUR) { /* from where the program has read to, not the buffer's end */
 		offset -= (long)(f->rlen - f->rpos) + (f->unget != EOF);
 	}
+	/* Only once the seek has worked is the buffered input dropped: a
+	 * pipe refuses (ESPIPE), and its input must survive the attempt. */
+	if (lseek(f->fd, offset, whence) < 0) {
+		return -1;
+	}
 	f->rpos = f->rlen = 0;
 	f->unget = EOF;
 	f->flags &= ~F_EOF;
-	return lseek(f->fd, offset, whence) < 0 ? -1 : 0;
+	return 0;
+}
+
+int fseeko(FILE *f, off_t offset, int whence) { return fseek(f, offset, whence); }
+off_t ftello(FILE *f) { return ftell(f); }
+
+/* Drops what is buffered, unread or unwritten (BSD). */
+int fpurge(FILE *f)
+{
+	f->rpos = f->rlen = f->wlen = 0;
+	f->unget = EOF;
+	return 0;
 }
 
 long ftell(FILE *f)

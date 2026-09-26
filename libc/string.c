@@ -127,6 +127,15 @@ size_t strlcpy(char *restrict dst, const char *restrict src, size_t size)
 	return len;
 }
 
+size_t strlcat(char *restrict dst, const char *restrict src, size_t size)
+{
+	size_t have = strnlen(dst, size);
+	if (have == size) {
+		return size + strlen(src); /* no NUL within size: nothing fits */
+	}
+	return have + strlcpy(dst + have, src, size - have);
+}
+
 char *strncpy(char *restrict dst, const char *restrict src, size_t n)
 {
 	size_t i = 0;
@@ -246,11 +255,16 @@ char *strerror(int err)
 	case ENAMETOOLONG: return "file name too long";
 	case ENOSYS:       return "function not implemented";
 	case EPIPE:        return "broken pipe";
+	case ESPIPE:       return "illegal seek";
 	case EPROTO:       return "protocol error";
 	case EADDRINUSE:   return "address in use";
 	case ENETUNREACH:  return "network unreachable";
 	case ETIMEDOUT:    return "timed out";
 	case EHOSTUNREACH: return "host unreachable";
+	case ENOTTY:       return "not a terminal";
+	case EINTR:        return "interrupted system call";
+	case EAGAIN:       return "resource temporarily unavailable";
+	case EILSEQ:       return "illegal byte sequence";
 	default:           return "unknown error";
 	}
 }
@@ -299,4 +313,24 @@ char *strsep(char **s, const char *delim)
 		*s = NULL;
 	}
 	return token;
+}
+
+size_t strnlen(const char *s, size_t max)
+{
+	size_t n = 0;
+	while (n < max && s[n]) {
+		n++;
+	}
+	return n;
+}
+
+void explicit_bzero(void *p, size_t n)
+{
+	memset(p, 0, n);
+	__asm__ volatile("" : : "r"(p) : "memory"); /* the zeros must be written */
+}
+
+void bzero(void *p, size_t n)
+{
+	memset(p, 0, n);
 }

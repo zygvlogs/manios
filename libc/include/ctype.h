@@ -11,6 +11,8 @@ int isupper(int c);
 int isspace(int c);
 int isblank(int c);
 int isprint(int c);
+int isgraph(int c);
+int isascii(int c);
 int ispunct(int c);
 int iscntrl(int c);
 int tolower(int c);

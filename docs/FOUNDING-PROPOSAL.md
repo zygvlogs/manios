@@ -507,6 +507,7 @@ a concrete shape rather than only a diagram.
 | M14 | **Achieved** ([notes](milestones/M14-installer-release.md)). Native boot loader, bootable ISO, installer, published releases (ADR-0006) | M6, M9 |
 | M15 | **Achieved** ([notes](milestones/M15-network-cards-dhcp.md)). Network cards for VirtualBox (AMD PCnet, Intel 8254x), DHCP | M10 |
 | M16 | **Achieved** ([notes](milestones/M16-openbsd-tools.md)). The first BSD-derived imports (§3.3): OpenBSD's text tools, unmodified, on a POSIX/BSD layer in ManiOS's libc | M9 |
+| M17 | **Achieved** ([notes](milestones/M17-grep-sed-posix.md)). grep, sed and 17 more OpenBSD programs; OpenBSD's regex, getopt_long, fts; a POSIX file layer in libc | M16 |
 
 Each milestone gets its own short design note under `docs/` when it
 starts (not written speculatively now), following the ADR practice

@@ -15,10 +15,12 @@ program:
   a hard disk, M14, [docs/install.md](../docs/install.md)), `dd`
   (copies blocks, e.g. to and from disks) and `hello`. The desktop's programs (`desktop`,
   `term`, `clock`, `about`) are built from `desktop/` into `/bin` too,
-  and so are the programs imported from OpenBSD (0.16): `basename`,
-  `comm`, `cut`, `dirname`, `expand`, `fold`, `head`, `paste`, `rev`,
-  `uniq` and `yes`, from
-  [`third_party/openbsd/usr.bin/`](../third_party/openbsd/README.md).
+  and so are the programs imported from OpenBSD (0.16, 0.17): `grep`,
+  `sed`, `expr`, `test`, `head`, `tail`, `cut`, `paste`, `join`, `comm`,
+  `cmp`, `uniq`, `tr`, `nl`, `fmt`, `fold`, `column`, `colrm`, `col`,
+  `lam`, `expand`, `unexpand`, `rev`, `tee`, `tsort`, `vis`, `unvis`,
+  `basename`, `dirname` and `yes`, from
+  [`third_party/openbsd/`](../third_party/openbsd/README.md).
 - `test/` — test programs, installed in `/boot/test`: `utest` (system
   calls), `ctest` (libc), `gtest` (libgfx), `ztest` (a program
   serving files over a pipe, M12) and `cltest` (exports and ZRP over

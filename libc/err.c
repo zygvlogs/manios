@@ -73,3 +73,29 @@ void errx(int status, const char *fmt, ...)
 	va_start(ap, fmt);
 	verrx(status, fmt, ap);
 }
+
+void vwarnc(int code, const char *fmt, va_list ap)
+{
+	say(fmt, ap, true, code);
+}
+
+void warnc(int code, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	vwarnc(code, fmt, ap);
+	va_end(ap);
+}
+
+void verrc(int status, int code, const char *fmt, va_list ap)
+{
+	vwarnc(code, fmt, ap);
+	exit(status);
+}
+
+void errc(int status, int code, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	verrc(status, code, fmt, ap);
+}

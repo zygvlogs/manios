@@ -2,6 +2,7 @@
 #define MANIOS_STDLIB_H
 
 #include <stddef.h>
+#include <sys/cdefs.h> /* as on the BSDs, whose headers expect it */
 
 #define EXIT_SUCCESS 0
 #define EXIT_FAILURE 1
@@ -33,6 +34,12 @@ unsigned long long strtoull(const char *s, char **end, int base);
 /* From OpenBSD (third_party/openbsd/lib/libc/stdlib). */
 long long strtonum(const char *s, long long min, long long max, const char **errstr);
 void *reallocarray(void *ptr, size_t count, size_t size);
+void *recallocarray(void *ptr, size_t oldcount, size_t count, size_t size);
+
+/* ManiOS has no environment: always NULL. */
+char *getenv(const char *name);
+/* ManiOS can't create files: -1, EROFS. */
+int mkstemp(char *template);
 
 /* This program's name: the last part of argv[0] (err() prints it). */
 const char *getprogname(void);
@@ -42,6 +49,8 @@ const char *getprogname(void);
 int mblen(const char *s, size_t n);
 int mbtowc(wchar_t *wc, const char *s, size_t n);
 int wctomb(char *s, wchar_t wc);
+size_t mbstowcs(wchar_t *dst, const char *src, size_t n);
+size_t wcstombs(char *dst, const wchar_t *src, size_t n);
 
 void qsort(void *base, size_t count, size_t size, int (*cmp)(const void *, const void *));
 void *bsearch(const void *key, const void *base, size_t count, size_t size,

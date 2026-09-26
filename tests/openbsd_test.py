@@ -36,6 +36,14 @@ FILES = {
     "A.TXT": "apple\nbanana\ncherry\n",
     "B.TXT": "banana\ncherry\ndate\n",
     "TABS.TXT": "a\tb\tc\n1\t22\t333\n",
+    "TEXT.TXT": "The quick brown fox\njumps over\nthe lazy dog.\n\nA second paragraph here.\n",
+    "SPACES.TXT": "        eight\n    four    x\n",
+    "DEPS.TXT": "a b\nb c\nc d\n",
+    "J1.TXT": "1 apple\n2 banana\n3 cherry\n",
+    "J2.TXT": "1 red\n3 yellow\n4 green\n",
+    "CTRL.TXT": "tab\there\x01bell\x7f\n",
+    "DIR/SUB.TXT": "a cherry in a subdirectory\n",
+    "DIR/DIR/DEEP.TXT": "a deep cherry\n",  # a directory named like its parent
 }
 
 CUT_USAGE = ("usage: cut -b list [-n] [file ...]\n"
@@ -81,6 +89,72 @@ SHELL_CASES = [
     ("cut -d", "cut: option requires an argument -- d\n" + CUT_USAGE),
     ("basename", "usage: basename string [suffix]\n"),
     ("comm a.txt", "usage: comm [-123f] file1 file2\n"),
+    # 0.17: regular expressions (OpenBSD's regex library in libc).
+    ("grep an a.txt", "banana\n"),
+    ("grep -c e lines.txt", "9\n"),
+    ("grep -v e lines.txt", "two\nfour\nsix\n"),
+    ("grep -n '^t' lines.txt", "2:two\n3:three\n10:ten\n12:twelve\n"),
+    ("grep -i MANIOS words.txt", "ManiOS\n"),
+    ("grep -E 'one|two' lines.txt", "one\ntwo\n"),
+    ("grep -w an a.txt", ""),
+    ("grep -l banana a.txt b.txt", "a.txt\nb.txt\n"),
+    ("cat lines.txt | grep ve", "five\nseven\neleven\ntwelve\n"),
+    ("grep -F . text.txt", "the lazy dog.\nA second paragraph here.\n"),
+    ("grep -r cherry dir", "dir/dir/deep.txt:a deep cherry\ndir/sub.txt:a cherry in a subdirectory\n"),
+    ("yes | grep -m 2 y", "y\ny\n"),
+    ("grep '[' lines.txt", "grep: brackets ([ ]) not balanced\n"),
+    ("grep x nosuch", "grep: nosuch: no such file or directory\n"),
+    ("sed s/a/A/g a.txt", "Apple\nbAnAnA\ncherry\n"),
+    ("sed -n 2p lines.txt", "two\n"),
+    ("sed 3q lines.txt", "one\ntwo\nthree\n"),
+    ("sed /e/d lines.txt", "two\nfour\nsix\n"),
+    ("sed -E 's/(an)+/X/' a.txt", "apple\nbXa\ncherry\n"),
+    ("sed 's/\\(.*\\)/<\\1>/' a.txt", "<apple>\n<banana>\n<cherry>\n"),
+    ("sed y/abc/ABC/ a.txt", "Apple\nBAnAnA\nCherry\n"),
+    ("echo hello | sed 's/l*o/0/'", "he0\n"),
+    ("sed = a.txt", "1\napple\n2\nbanana\n3\ncherry\n"),
+    ("sed -i s/a/b/ a.txt", "sed: a.txt: read-only file system\n"),
+    ("nl a.txt", "     1\tapple\n     2\tbanana\n     3\tcherry\n"),
+    ("nl -b a text.txt", "     1\tThe quick brown fox\n     2\tjumps over\n     3\tthe lazy dog.\n"
+                         "     4\t\n     5\tA second paragraph here.\n"),
+    ("expr 1 + 2", "3\n"),
+    ("expr 7 % 3", "1\n"),
+    ("expr -9 / 2", "-4\n"),
+    ("expr 4294967296 / 3", "1431655765\n"),  # 64-bit division, on a 386
+    ("expr 9223372036854775807 + 1", "expr: overflow\n"),
+    ("expr abc : 'a\\(.\\)'", "b\n"),
+    ("expr 5 '>' 3", "1\n"),
+    ("expr 1 / 0", "expr: division by zero\n"),
+    # 0.17: the other text tools.
+    ("echo hello | tr a-z A-Z", "HELLO\n"),
+    ("tr -d aeiou < a.txt", "ppl\nbnn\nchrry\n"),
+    ("echo aaabbb | tr -s ab", "ab\n"),
+    ("echo hello | tr '[:lower:]' '[:upper:]'", "HELLO\n"),
+    ("colrm 4 10 < long.txt", "thebrown fox jumps over the lazy dog\n"),
+    ("fmt -w 20 text.txt", "The quick brown fox\njumps over the lazy\ndog.\n\nA second paragraph\nhere.\n"),
+    ("join j1.txt j2.txt", "1 apple red\n3 cherry yellow\n"),
+    ("join -a 1 j1.txt j2.txt", "1 apple red\n2 banana\n3 cherry yellow\n"),
+    ("lam a.txt -s : b.txt", "apple:banana\nbanana:cherry\ncherry:date\n"),
+    ("unexpand spaces.txt", "\teight\n    four    x\n"),
+    ("echo hi | tee /dev/null", "hi\n"),
+    ("tee /n/ata0p1/new.txt < a.txt",
+     "tee: /n/ata0p1/new.txt: read-only file system\napple\nbanana\ncherry\n"),
+    ("tail -n 3 lines.txt", "ten\neleven\ntwelve\n"),
+    ("tail -3 lines.txt", "ten\neleven\ntwelve\n"),
+    ("cat lines.txt | tail -n 2", "eleven\ntwelve\n"),  # a pipe: ESPIPE
+    ("tail -r a.txt", "cherry\nbanana\napple\n"),
+    ("cat a.txt | tail -r", "cherry\nbanana\napple\n"),
+    ("tail -c 7 lines.txt", "twelve\n"),
+    ("tail -n +11 lines.txt", "eleven\ntwelve\n"),
+    ("tail -f a.txt", "tail: kqueue: function not implemented\napple\nbanana\ncherry\n"
+                      "tail: Unable to follow a.txt: bad file descriptor\n"),
+    ("cmp a.txt a.txt", ""),
+    ("cmp a.txt b.txt", "a.txt b.txt differ: char 1, line 1\n"),
+    ("column -t -s : fields.txt", "root  x  0     0\nuser  x  1000  1000\n"),
+    ("tsort deps.txt", "a\nb\nc\nd\n"),
+    ("vis ctrl.txt", "tab\there\\^Abell\\^?\n"),
+    ("vis ctrl.txt | unvis | vis", "tab\there\\^Abell\\^?\n"),
+    ("col < a.txt", "apple\nbanana\ncherry\n"),
 ]
 
 # Exit statuses, from the kernel monitor's `run` (which says nothing
@@ -93,6 +167,17 @@ MONITOR_CASES = [
     ("run /bin/head /n/ata0p1/nosuch",
      "head: /n/ata0p1/nosuch: no such file or directory\n"
      "run: /bin/head exited with status 1\n"),
+    ("run /bin/test -f /n/ata0p1/a.txt", ""),
+    ("run /bin/test -d /n/ata0p1/a.txt", "run: /bin/test exited with status 1\n"),
+    ("run /bin/test -d /n/ata0p1/dir", ""),
+    ("run /bin/test -e /n/ata0p1/nosuch", "run: /bin/test exited with status 1\n"),
+    ("run /bin/test abc = abc", ""),
+    ("run /bin/test 3 -lt 2", "run: /bin/test exited with status 1\n"),
+    ("run /bin/test /n/ata0p1/a.txt -ef /n/ata0p1/dir/../a.txt", ""),
+    ("run /bin/test /n/ata0p1/a.txt -ef /n/ata0p1/b.txt", "run: /bin/test exited with status 1\n"),
+    ("run /bin/cmp -s /n/ata0p1/a.txt /n/ata0p1/b.txt", "run: /bin/cmp exited with status 1\n"),
+    ("run /bin/grep -q an /n/ata0p1/a.txt", ""),
+    ("run /bin/grep -q zzz /n/ata0p1/a.txt", "run: /bin/grep exited with status 1\n"),
 ]
 
 
@@ -107,9 +192,10 @@ def make_disk(path):
                     "-H", str(PART_START), "::"], check=True)
     files = os.path.join(os.path.dirname(path), "files")
     os.mkdir(files)
+    subprocess.run(["mmd", "-i", part, "::/DIR", "::/DIR/DIR"], check=True)
     for name, text in FILES.items():
-        local = os.path.join(files, name)
-        with open(local, "w") as f:
+        local = os.path.join(files, name.replace("/", "_"))
+        with open(local, "w", encoding="latin-1") as f:
             f.write(text)
         subprocess.run(["mcopy", "-i", part, local, "::/" + name], check=True)
 
@@ -121,12 +207,12 @@ def notices_cases(kernel):
     path = os.path.join(os.path.dirname(kernel), "bootfs", "etc", "notices")
     with open(path, "rb") as f:
         data = f.read()
-    text = data.decode()
+    text = data.decode("latin-1")  # some headers are ISO 8859-1: compare bytes
     count = 0
     for top, _, names in os.walk(os.path.join(ROOT, "third_party")):
         for name in names:
             if name.endswith((".c", ".h")):
-                with open(os.path.join(top, name)) as f:
+                with open(os.path.join(top, name), encoding="latin-1") as f:
                     source = f.read()
                 header = source[:source.find(NOTE)].rstrip()
                 if NOTE not in source or header not in text:

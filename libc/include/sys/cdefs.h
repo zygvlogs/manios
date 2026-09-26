@@ -6,5 +6,8 @@
 #define __unused __attribute__((__unused__))
 #define __BEGIN_DECLS
 #define __END_DECLS
+/* OpenBSD's compiler checks buffer bounds with __attribute__((__bounded__
+ * (...))); GCC doesn't know the attribute, so it is dropped. */
+#define __bounded__(...)
 
 #endif

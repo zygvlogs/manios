@@ -12,4 +12,18 @@ typedef struct { int unused; } mbstate_t;
  * anything else. */
 int wcwidth(wchar_t wc);
 
+#include <stdio.h>
+size_t wcslen(const wchar_t *s);
+wchar_t *wcschr(const wchar_t *s, wchar_t wc);
+wint_t putwchar(wchar_t wc);
+wint_t fputwc(wchar_t wc, FILE *f);
+wint_t getwc(FILE *f);
+wint_t fgetwc(FILE *f);
+wint_t btowc(int c);
+int wctob(wint_t wc);
+size_t mbrtowc(wchar_t *wc, const char *s, size_t n, mbstate_t *ps);
+size_t mbrlen(const char *s, size_t n, mbstate_t *ps);
+size_t wcrtomb(char *s, wchar_t wc, mbstate_t *ps);
+int mbsinit(const mbstate_t *ps);
+
 #endif

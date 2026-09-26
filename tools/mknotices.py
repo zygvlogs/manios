@@ -36,7 +36,7 @@ def sources():
 
 
 def notice(path):
-    with open(path, encoding="utf-8") as f:
+    with open(path, encoding="latin-1") as f:  # bytes as they are
         text = f.read()
     end = text.find(NOTE)
     if end <= 0:
@@ -54,7 +54,7 @@ def main():
         parts.append(f"\n{'=' * 72}\n{rel}\n{'=' * 72}\n\n{notice(path)}")
     if len(parts) == 1:
         sys.exit("mknotices: nothing under third_party/")
-    with open(sys.argv[1], "w", encoding="utf-8") as f:
+    with open(sys.argv[1], "w", encoding="latin-1") as f:
         f.write("".join(parts))
 
 

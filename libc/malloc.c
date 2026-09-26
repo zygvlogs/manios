@@ -64,11 +64,12 @@ static int grow(size_t need)
 
 void *malloc(size_t size)
 {
-	if (size == 0 || size > (size_t)-1 / 2) {
-		if (size) {
-			errno = ENOMEM;
-		}
+	if (size > (size_t)-1 / 2) {
+		errno = ENOMEM;
 		return NULL;
+	}
+	if (size == 0) {
+		size = 1; /* a pointer of its own, as the BSDs give: NULL means failure */
 	}
 	size_t need = (size + sizeof(struct block) + ALIGN - 1) & ~(size_t)(ALIGN - 1);
 	for (int attempt = 0; attempt < 2; attempt++) {
@@ -137,8 +138,7 @@ void *realloc(void *ptr, size_t size)
 		return malloc(size);
 	}
 	if (size == 0) {
-		free(ptr);
-		return NULL;
+		size = 1; /* the block, shrunk to nothing (as malloc(0)) */
 	}
 	struct block *b = header(ptr);
 	size_t have = b->size - sizeof(struct block);
