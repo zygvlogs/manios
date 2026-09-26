@@ -30,16 +30,18 @@ clone. It does not depend on the Linux kernel.
 
 Each release on the [Releases](https://github.com/zygvlogs/manios/releases)
 page has a bootable ISO, `manios-VERSION.iso`. It boots from a CD, from
-a USB stick it is written to, or in QEMU:
+a USB stick it is written to, or in QEMU or VirtualBox:
 
 ```
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.14.0.iso -boot d
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.14.1.iso -boot d
 ```
 
 and `install ata0` puts ManiOS on a hard disk. ManiOS boots with its own
-boot loader, which offers to edit the kernel's command line for 3
-seconds. See [docs/install.md](docs/install.md). ManiOS has only been
-tested in QEMU so far; reports from real (old) PCs are welcome.
+boot loader, which offers to change the boot options for 3 seconds;
+then it tests itself and gives you the shell (`verbose=1` shows the
+whole boot log). See [docs/install.md](docs/install.md). ManiOS has only
+been tested in emulators so far; reports from real (old) PCs are
+welcome.
 
 The full architecture and roadmap are in
 [`docs/FOUNDING-PROPOSAL.md`](docs/FOUNDING-PROPOSAL.md).

@@ -19,7 +19,9 @@
   with its command line and installs a clone from it; boots the ISO as
   a hard disk, a CHS-only build, and an 8 MiB machine; and makes the
   loader explain too little memory, a damaged boot area, a bad header
-  and a disk without a boot partition.
+  and a disk without a boot partition. The screen itself is read from
+  VGA text memory (QEMU's `pmemsave`): quiet by default, the whole boot
+  log with `verbose=1` (0.14.1).
 
 - `console_test.py` (also run by `make test`) — boots the kernel with
   the serial line on stdio and drives the shell, then (after `exit`)
@@ -29,7 +31,8 @@
   and command output, and runs user programs (including malformed ELF
   files and a program on a FAT disk). It runs several machine
   configurations with disk images it generates (partitioned,
-  partitionless FAT, none). Needs Python 3 and mtools, and the build's
+  partitionless FAT, none), and a 3 MiB machine whose failed self-test
+  must show on the quiet boot screen. Needs Python 3 and mtools, and the build's
   `build/bootfs/` programs.
 
 - `net_test.py` (also run by `make test`) — the NE2000, the IPv4 stack
@@ -43,7 +46,9 @@
 - `gfx_test.py` (also run by `make test`) — the framebuffer and
   libgfx, checked on the screen itself through QEMU's `screendump`:
   colours where `gfxdemo` draws them, in each mode, and text mode
-  restored pixel for pixel afterwards.
+  restored pixel for pixel afterwards; on QEMU's standard adapter and on
+  its VMware SVGA II (VirtualBox's VMSVGA), whose video memory is in
+  another BAR.
 
 - `desktop_test.py` (also run by `make test`) — the desktop, driven
   with `sendkey`, `mouse_move` and `mouse_button`, and checked through

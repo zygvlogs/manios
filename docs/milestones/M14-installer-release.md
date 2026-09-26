@@ -184,3 +184,42 @@ Further:
   compositor shows each write of a window's image as it arrives, not
   whole frames.
 - Still no signals: a program can't be interrupted with ^C.
+
+## After the release: 0.14.1
+
+The first user to try 0.14.0 booted it in VirtualBox (a second BIOS,
+after QEMU's) and asked what the boot messages were. Three changes
+followed:
+
+- **A quiet boot screen.** The kernel console gained a quiet mode, on
+  during the boot unless `verbose=1`: messages go to COM1 only, and the
+  screen shows one progress line (`Self-tests: memory, interrupts, ...
+  All passed.`), then `ManiOS 0.14.1 is ready. ...`. A panic turns the
+  screen back on before it prints. Everything on COM1 is as before, so
+  the tests' needles didn't change; `gfx_test` boots with `verbose=1`,
+  since it compares text rows of a full screen.
+- **The loader's words:** "Boot options: (none)", "Press any key within
+  3 seconds to change them.", "Type the boot options, then press Enter
+  to start ManiOS.", "Loading ManiOS", "Starting ManiOS...".
+- **Display adapters:** besides 1234:1111, VirtualBox's 80ee:beef and
+  VMware's SVGA II 15ad:0405 (VirtualBox's VMSVGA, QEMU's `-vga vmware`),
+  which keep the Bochs VBE registers. The video memory is the first
+  prefetchable memory BAR (BAR 1 on SVGA II), sized by the standard BAR
+  probe.
+
+Tests: `install_test` reads the screen (QEMU `pmemsave` of the VGA text
+memory): the default CD boot shows the banner, the progress line and the
+prompt and none of "Milestone", "killed", "assertion", "utest"; a boot
+with `verbose=1` typed at the loader shows the log. `console_test`
+boots a 3 MiB machine, too small for the user self-test's programs: the
+panic is on the (quiet) screen, after the checks that passed. `gfx_test`
+runs a second machine with `-vga vmware`: found, 800x600 swatches exact,
+text restored, `fbtest`.
+
+`make test`: 194 checks (190 at 0.14.0), none failing.
+
+Negative controls, each caught: the console ignoring quiet mode (the
+CD boot's screen check), a panic that leaves the screen quiet (the
+3 MiB check), and the framebuffer taken from BAR 0 as before (the SVGA II
+machine draws nothing).
+
