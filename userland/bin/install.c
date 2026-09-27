@@ -2,7 +2,7 @@
  * (M14, ADR-0006).
  *
  * Copies the boot area this system was started from (/dev/bootarea:
- * the ManiOS boot loader and kernel) to DISK (ata0, ata1, ...) and makes
+ * the ManiOS boot loader and kernel) to DISK (ata0, sata0, vd0, ...) and makes
  * the disk boot it: an MBR with the ManiOS boot code, and one partition
  * of type 0xDA holding the boot area, at 1 MiB. KEY=VALUE words become
  * the installed system's kernel command line (sysname=, ip=, key=, rc=,
@@ -11,6 +11,7 @@
  * Everything on DISK is lost: install asks you to type "yes" first,
  * unless -y. It reads everything back to check it. */
 #include <bootarea.h>
+#include <ctype.h>
 #include <errno.h>
 #include <manios.h>
 #include <stdio.h>
@@ -95,7 +96,7 @@ int main(int argc, char **argv)
 	}
 	if (a >= argc) {
 		fprintf(stderr, "usage: install [-y] DISK [KEY=VALUE...]\n"
-		                "  DISK: a whole disk, such as ata0 (see ls /dev)\n");
+		                "  DISK: a whole hard disk, such as ata0, sata0 or vd0 (see ls /dev)\n");
 		return 2;
 	}
 	const char *disk = argv[a++];
@@ -144,8 +145,10 @@ int main(int argc, char **argv)
 	char version[17] = "";
 	memcpy(version, area + BA_OS_VERSION, 16);
 
-	/* Where: a whole disk, big enough. */
-	if (!strncmp(disk, "ata", 3) && strchr(disk, 'p')) {
+	/* Where: a whole hard disk (IDE, SATA or virtio), big enough. A
+	 * partition's name is its disk's and "pN" (ata0p1, sata0p2). */
+	const char *p = strrchr(disk, 'p');
+	if (p && p > disk && isdigit((unsigned char)p[-1]) && isdigit((unsigned char)p[1])) {
 		return fail("install on a whole disk (such as ata0), not a partition", disk);
 	}
 	char path[32];
@@ -156,6 +159,9 @@ int main(int argc, char **argv)
 	}
 	if (st.type != ZKT_TYPE_DEVICE) {
 		return fail("not a disk", path);
+	}
+	if (strncmp(disk, "ata", 3) && strncmp(disk, "sata", 4) && strncmp(disk, "vd", 2)) {
+		return fail("install on a hard disk (such as ata0, sata0 or vd0)", disk);
 	}
 	uint32_t disk_sectors = st.size / SECTOR;
 	uint32_t area_sectors = (total + SECTOR - 1) / SECTOR;

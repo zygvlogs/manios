@@ -3,6 +3,8 @@
 #include "devfs.h"
 #include "device.h"
 #include "fat.h"
+#include "iso9660.h"
+#include "kstring.h"
 #include "kprintf.h"
 #include "namespace.h"
 #include "panic.h"
@@ -35,18 +37,33 @@ void fs_init(void)
 		panic("fs_init: cannot mount the boot archive");
 	}
 
-	/* The FAT roots keep the reference fat_mount() returned, so they stay
+	/* Each disk's file system at /n/NAME: FAT, or ISO 9660. A drive with
+	 * removable media (a CD drive) gets a root that follows its disc.
+	 * The roots keep the reference the mount returned, so they stay
 	 * alive even if the mount is later unbound. */
 	for (struct device *d = device_next(0); d; d = device_next(d)) {
-		struct vnode *fat_root;
-		char desc[32], dir[8 + DEVICE_NAME_MAX], path[8 + DEVICE_NAME_MAX], label[32];
-		if (d->class != DEVICE_BLOCK || fat_mount(d, &fat_root, desc, sizeof(desc)) != 0) {
+		struct vnode *fs_root;
+		char desc[64], dir[8 + DEVICE_NAME_MAX], path[8 + DEVICE_NAME_MAX], label[32];
+		const char *kind = "fat";
+		if (d->class != DEVICE_BLOCK) {
 			continue;
+		}
+		if (d->block_ops->check_media) {
+			kind = "iso9660";
+			if (iso9660_mount_removable(d, &fs_root) != 0) {
+				continue;
+			}
+			strlcpy(desc, "the disc in the drive", sizeof(desc));
+		} else if (fat_mount(d, &fs_root, desc, sizeof(desc)) != 0) {
+			kind = "iso9660";
+			if (iso9660_mount(d, &fs_root, desc, sizeof(desc)) != 0) {
+				continue;
+			}
 		}
 		ksnprintf(dir, sizeof(dir), "n/%s", d->name);
 		ksnprintf(path, sizeof(path), "/n/%s", d->name);
-		ksnprintf(label, sizeof(label), "fat:%s", d->name);
-		if (ramfs_mkdir(root, dir) == 0 && vfs_mount(fat_root, label, path, BIND_REPLACE) == 0) {
+		ksnprintf(label, sizeof(label), "%s:%s", kind, d->name);
+		if (ramfs_mkdir(root, dir) == 0 && vfs_mount(fs_root, label, path, BIND_REPLACE) == 0) {
 			kprintf("%s: %s, mounted at %s\n", d->name, desc, path);
 		}
 	}

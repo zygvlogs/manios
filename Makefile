@@ -347,6 +347,7 @@ test: $(KERNEL) test-images
 	python3 tests/gfx_test.py $(KERNEL)
 	python3 tests/desktop_test.py $(KERNEL)
 	python3 tests/dos_test.py $(KERNEL)
+	python3 tests/driver_test.py $(KERNEL)
 	python3 tests/cluster_test.py $(KERNEL)
 
 clean:

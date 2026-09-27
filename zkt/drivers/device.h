@@ -41,6 +41,10 @@ struct block_device_ops {
 	 * error. The caller keeps lba + count <= block_count. */
 	int (*read)(struct device *dev, uint32_t lba, uint32_t count, void *buf);
 	int (*write)(struct device *dev, uint32_t lba, uint32_t count, const void *buf);
+	/* Optional, for removable media (CDs): looks whether the medium
+	 * changed (or came, or went) and if so sets block_count to the new
+	 * one's (0: none) and counts the change in media_changes. */
+	void (*check_media)(struct device *dev);
 };
 
 struct device {
@@ -50,6 +54,7 @@ struct device {
 	const struct block_device_ops *block_ops;
 	uint32_t block_size;  /* bytes; block devices only */
 	uint32_t block_count; /* 32 bits: 2 TiB at 512-byte blocks */
+	uint32_t media_changes; /* removable media: discs changed so far */
 	void *driver_data;
 	struct device *next;
 };

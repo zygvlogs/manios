@@ -29,7 +29,7 @@ struct drive {
 	bool present;
 	char root[64];          /* its ManiOS directory: "/boot", "/n/ata0p1", "/" */
 	char device[32];        /* its block device, "/dev/ata0p1"; "" for none */
-	const char *kind;       /* "boot disk", "FAT", "ManiOS" */
+	const char *kind;       /* "boot disk", "hard disk", "CD-ROM", "ManiOS"... */
 	char cwd[PATH_MAX_DOS]; /* its current directory: "\" or "\DOCS" */
 };
 
@@ -37,6 +37,9 @@ extern struct drive drives[26];
 extern int current;         /* the current drive: 0 is A: */
 
 void drives_init(void);
+bool drive_is_cd(int d);
+/* A CD's volume label (from its primary volume descriptor), if a disc is in. */
+bool cd_label(int d, char *label, size_t size);
 /* The current drive from ManiOS's current directory, if it is on one. */
 void drives_follow_cwd(void);
 

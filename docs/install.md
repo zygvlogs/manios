@@ -16,10 +16,13 @@ not been tried on real hardware yet (see "What to expect", below).
   as ManiOS grows: the loader works it out -- its programs, up to where
   they end in memory, and 2 MiB to run in -- and says so if the machine
   has less.
-- An IDE/ATA hard disk, to install on (PIO mode; LBA or CHS).
+- A hard disk to install on: IDE/ATA (PIO mode; LBA or CHS), SATA on an
+  AHCI controller, or a virtio disk -- one the BIOS can boot from.
 - Optional: a network card -- an NE2000-compatible ISA card at I/O
-  0x300, IRQ 9, an AMD PCnet PCI card (PCnet-PCI II, PCnet-FAST III), or
-  an Intel PRO/1000 of the 8254x family (82540EM and relatives); for
+  0x300, IRQ 9, an AMD PCnet PCI card (PCnet-PCI II, PCnet-FAST III),
+  an Intel PRO/1000 of the 8254x family (82540EM and relatives), a
+  RealTek 8139, a DEC 21143 or a virtio card; a Sound Blaster 16 or
+  AC'97 sound card; [docs/drivers.md](drivers.md) has the list. For
   ManiDE, the desktop (640x480 or more; its first screen of panes runs
   in 32 MiB of memory with room to spare), a display adapter with the Bochs
   VBE registers: QEMU's and Bochs's standard one, VirtualBox's graphics
@@ -40,7 +43,7 @@ fixed date), so the same boot area always gives the same ISO.
 ## Trying it in QEMU
 
 ```
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.19.0.iso -boot d
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.20.0.iso -boot d
 ```
 
 Add `-serial stdio` to use the serial console from your terminal. QEMU
@@ -52,7 +55,7 @@ the right one. To try the installer, give it an empty disk:
 
 ```
 qemu-img create -f raw disk.img 64M
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.19.0.iso -boot d -hda disk.img
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.20.0.iso -boot d -hda disk.img
 ```
 
 and after `install ata0`, boot the disk alone with `-hda disk.img -boot c`.
@@ -89,7 +92,7 @@ The loader prints its version and the boot options -- the kernel's
 command line -- then waits 3 seconds:
 
 ```
-ManiOS boot loader 0.19.0
+ManiOS boot loader 0.20.0
 Boot options: (none)
 Press any key within 3 seconds to change them.
 ```
@@ -122,10 +125,10 @@ The options are words of the form `KEY=VALUE`:
 ManiOS tests itself at every boot, and the screen shows what it checks:
 
 ```
-ManiOS 0.19.0 / ZKT (ZygKernel Technology)
+ManiOS 0.20.0 / ZKT (ZygKernel Technology)
 Self-tests: memory, interrupts, threads, devices, disks, files, programs,
             C library, network, graphics, windows, cluster. All passed.
-ManiOS 0.19.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
+ManiOS 0.20.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
 manios%
 ```
 
@@ -162,7 +165,7 @@ hard disk. **This destroys everything on the stick.** On Linux, with the
 stick at `/dev/sdX`:
 
 ```
-sudo dd if=manios-0.19.0.iso of=/dev/sdX bs=1M conv=fsync
+sudo dd if=manios-0.20.0.iso of=/dev/sdX bs=1M conv=fsync
 ```
 
 ## Installing on a hard disk
@@ -171,24 +174,24 @@ Boot the CD (or stick) on the machine, then, at the `manios% ` prompt:
 
 ```
 manios% install ata0 sysname=box ip=10.0.0.5/24
-ManiOS 0.19.0 will be installed on ata0 (512 MiB).
+ManiOS 0.20.0 will be installed on ata0 (512 MiB).
 EVERYTHING ON ata0 WILL BE LOST.
 The installed system's command line: "sysname=box ip=10.0.0.5/24"
 Type yes to go on: yes
-writing the boot area (1350 KiB)...
+writing the boot area (1426 KiB)...
 checking what was written...
-ManiOS 0.19.0 is installed on ata0. Remove the CD and restart the machine.
+ManiOS 0.20.0 is installed on ata0. Remove the CD and restart the machine.
 ```
 
 - `ata0` is the first IDE disk (primary master), `ata1` the second, and
-  so on; `ls /dev` lists them. Name the whole disk, not a partition
-  (`ata0p1`).
+  so on; `sata0` the first SATA disk, `vd0` the first virtio disk; `ls
+  /dev` lists them. Name the whole disk, not a partition (`ata0p1`).
 - The words after the disk become the installed system's command line;
   the loader still offers to edit it at every boot.
 - `install -y` skips the question, for scripts.
 - The disk gets a new MBR with one active partition of type 0xDA,
   starting at 1 MiB and just large enough for ManiOS (its boot area,
-  about 1.3 MiB, rounded up to a whole MiB: 2 MiB). The rest of the disk is left unpartitioned. Nothing else
+  about 1.4 MiB, rounded up to a whole MiB: 2 MiB). The rest of the disk is left unpartitioned. Nothing else
   on the disk survives: the old partition table is replaced.
 - `install` reads everything back and says so if the disk didn't keep
   what was written.

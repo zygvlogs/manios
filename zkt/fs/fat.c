@@ -424,6 +424,10 @@ int fat_mount(struct device *dev, struct vnode **root, char *desc, size_t desc_l
 	r->vnode.type = VNODE_DIR;
 	r->vnode.refs = 1;
 	*root = &r->vnode;
-	ksnprintf(desc, desc_len, "%s, %lu MiB", fs->fat12 ? "FAT12" : "FAT16", total / 2048);
+	if (total < 4 * 2048) { /* floppies: 1440 KiB, not "1 MiB" */
+		ksnprintf(desc, desc_len, "%s, %lu KiB", fs->fat12 ? "FAT12" : "FAT16", total / 2);
+	} else {
+		ksnprintf(desc, desc_len, "%s, %lu MiB", fs->fat12 ? "FAT12" : "FAT16", total / 2048);
+	}
 	return 0;
 }

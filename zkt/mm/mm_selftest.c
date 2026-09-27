@@ -31,6 +31,20 @@ static void pmm_selftest(void)
 	uintptr_t c = pmm_alloc_frame();
 	expect(c == a, "selftest: pmm did not reuse the lowest freed frame");
 	pmm_free_frame(c);
+
+	/* Contiguous frames for DMA: 5 in a row, below 16 MiB, not across
+	 * a 64 KiB line -- and with the first frame taken, not over it. */
+	uintptr_t taken = pmm_alloc_frame();
+	uintptr_t run = pmm_alloc_contiguous(5, 0x1000000, 0x10000);
+	expect(run && run + 5 * PAGE_SIZE <= 0x1000000 && run / 0x10000 == (run + 5 * PAGE_SIZE - 1) / 0x10000
+	           && (taken < run || taken >= run + 5 * PAGE_SIZE),
+	       "selftest: pmm_alloc_contiguous gave a wrong run");
+	expect(pmm_free_frames() == before - 6, "selftest: pmm free count wrong after a contiguous alloc");
+	for (int i = 0; i < 5; i++) {
+		pmm_free_frame(run + (uintptr_t)i * PAGE_SIZE);
+	}
+	pmm_free_frame(taken);
+	expect(pmm_free_frames() == before, "selftest: pmm free count wrong after a contiguous free");
 }
 
 static void vmm_selftest(void)

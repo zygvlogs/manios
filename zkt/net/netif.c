@@ -10,6 +10,9 @@
 #include "e1000.h"
 #include "ne2000.h"
 #include "pcnet.h"
+#include "rtl8139.h"
+#include "tulip.h"
+#include "virtio_net.h"
 #include "panic.h"
 #include "sched.h"
 #include "timer.h"
@@ -314,6 +317,9 @@ void net_init(void)
 	ne2000_probe();
 	pcnet_probe();
 	e1000_probe();
+	rtl8139_probe();
+	virtio_net_probe();
+	tulip_probe();
 	for (struct netif *ifc = interfaces; ifc; ifc = ifc->next) {
 		if (!ifc->loopback) {
 			configure(ifc);

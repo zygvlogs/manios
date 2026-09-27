@@ -1,8 +1,14 @@
 /* ATA disks over PIO on the legacy IDE ports. Written from the public
  * ATA/ATAPI specifications (T13), register-level; polled, with the
  * device's interrupt disabled (nIEN), which works on every IDE
- * controller back to the ISA era. */
+ * controller back to the ISA era.
+ *
+ * CD and DVD drives on the same ports speak ATAPI: SCSI commands sent
+ * as a 12-byte packet through the PACKET command, their data coming
+ * back a 2048-byte block per DRQ. This file is that transport; what the
+ * commands are, and the drives' devices, are atapi.c's. */
 #include "ata.h"
+#include "atapi.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include "device.h"
@@ -40,6 +46,13 @@
 #define CMD_WRITE_SECTORS 0x30
 #define CMD_CACHE_FLUSH   0xE7 /* ATA-4 on; older drives abort it, harmlessly */
 #define CMD_IDENTIFY      0xEC
+#define CMD_PACKET        0xA0
+#define CMD_IDENTIFY_PACKET 0xA1
+
+/* A PACKET device's signature, left where IDENTIFY DEVICE aborted. */
+#define ATAPI_SIG1 0x14
+#define ATAPI_SIG2 0xEB
+#define CD_TIMEOUT_MS 10000 /* a disc may have to spin up */
 
 #define SECTOR_SIZE 512
 #define MAX_SECTORS_PER_COMMAND 256
@@ -121,7 +134,9 @@ static int wait_data(struct ata_channel *ch)
 	}
 }
 
-static bool identify(struct ata_channel *ch, bool slave, uint16_t *id)
+enum kind { NONE, ATA, ATAPI };
+
+static enum kind identify(struct ata_channel *ch, bool slave, uint16_t *id)
 {
 	outb(ch->ctrl, DEVCTL_NIEN);
 	outb(ch->io + REG_DRIVE, DRIVE_BASE | (slave ? DRIVE_SLAVE : 0));
@@ -135,23 +150,29 @@ static bool identify(struct ata_channel *ch, bool slave, uint16_t *id)
 
 	uint8_t status = inb(ch->io + REG_STATUS);
 	if (status == 0 || status == 0xFF) {
-		return false; /* no drive, or no controller (floating bus) */
+		return NONE; /* no drive, or no controller (floating bus) */
 	}
 	if (wait_not_busy(ch) < 0) {
-		return false;
+		return NONE;
 	}
 	/* ATAPI and SATA devices abort IDENTIFY and leave a signature here. */
-	if (inb(ch->io + REG_LBA1) || inb(ch->io + REG_LBA2)) {
-		return false;
+	enum kind kind = ATA;
+	uint8_t sig1 = inb(ch->io + REG_LBA1), sig2 = inb(ch->io + REG_LBA2);
+	if (sig1 == ATAPI_SIG1 && sig2 == ATAPI_SIG2) {
+		kind = ATAPI;
+		outb(ch->io + REG_COMMAND, CMD_IDENTIFY_PACKET);
+		delay_400ns(ch);
+	} else if (sig1 || sig2) {
+		return NONE;
 	}
 	int st = wait_data(ch);
 	if (st < 0 || (st & (STATUS_ERR | STATUS_DF))) {
-		return false;
+		return NONE;
 	}
 	for (int i = 0; i < 256; i++) {
 		id[i] = inw(ch->io + REG_DATA);
 	}
-	return true;
+	return kind;
 }
 
 /* Programs the address registers for one command. */
@@ -312,10 +333,16 @@ static bool chs_matches_lba(struct ata_drive *d)
 	return ok;
 }
 
+static void atapi_probe(struct ata_channel *ch, bool slave, const uint16_t *id);
+
 static void probe(struct ata_channel *ch, bool slave, int index)
 {
 	uint16_t *id = kmalloc(512);
-	if (!id || !identify(ch, slave, id)) {
+	enum kind kind = id ? identify(ch, slave, id) : NONE;
+	if (kind == ATAPI) {
+		atapi_probe(ch, slave, id);
+	}
+	if (kind != ATA) {
 		kfree(id);
 		return;
 	}
@@ -364,6 +391,89 @@ static void probe(struct ata_channel *ch, bool slave, int index)
 		        chs_matches_lba(d) ? "passed" : "FAILED");
 	}
 	mbr_scan(&d->dev);
+}
+
+struct atapi_drive {
+	struct atapi a; /* first: the transport's calls get this */
+	struct ata_channel *channel;
+	bool slave;
+};
+
+/* The ATAPI transport over the IDE ports (atapi.h): the PACKET
+ * command, then the packet, then the data a DRQ block at a time (up to
+ * `len` bytes kept, the rest read and dropped). */
+static long packet(struct atapi *a, const uint8_t cdb[12], void *buf, uint32_t len)
+{
+	struct atapi_drive *d = (struct atapi_drive *)a;
+	struct ata_channel *ch = d->channel;
+	uint8_t *out = buf;
+	uint32_t done = 0;
+
+	outb(ch->io + REG_DRIVE, DRIVE_BASE | (d->slave ? DRIVE_SLAVE : 0));
+	delay_400ns(ch);
+	if (wait_not_busy(ch) < 0) {
+		return -EIO;
+	}
+	outb(ch->io + REG_ERROR, 0);    /* features: PIO, not DMA */
+	outb(ch->io + REG_LBA1, CD_BLOCK & 0xFF); /* bytes per DRQ, at most */
+	outb(ch->io + REG_LBA2, CD_BLOCK >> 8);
+	outb(ch->io + REG_COMMAND, CMD_PACKET);
+	delay_400ns(ch);
+	int st = wait_data(ch);
+	if (st < 0 || !(st & STATUS_DRQ)) {
+		return st >= 0 && (st & STATUS_ERR) ? -(0x100 + (inb(ch->io + REG_ERROR) >> 4)) : -EIO;
+	}
+	for (int i = 0; i < 6; i++) {
+		outw(ch->io + REG_DATA, (uint16_t)(cdb[2 * i] | cdb[2 * i + 1] << 8));
+	}
+	uint64_t deadline = timer_uptime_ms() + CD_TIMEOUT_MS;
+	for (;;) {
+		delay_400ns(ch);
+		st = inb(ch->io + REG_STATUS);
+		if (st & STATUS_BSY) {
+			if (timer_uptime_ms() > deadline) {
+				return -EIO;
+			}
+			continue;
+		}
+		if (st & (STATUS_ERR | STATUS_DF)) {
+			return -(0x100 + (inb(ch->io + REG_ERROR) >> 4));
+		}
+		if (!(st & STATUS_DRQ)) {
+			return (long)done; /* the command is over */
+		}
+		uint32_t n = inb(ch->io + REG_LBA1) | (uint32_t)inb(ch->io + REG_LBA2) << 8;
+		for (uint32_t i = 0; i < (n + 1) / 2; i++) {
+			uint16_t w = inw(ch->io + REG_DATA);
+			if (done + 2 <= len) {
+				out[done] = (uint8_t)w;
+				out[done + 1] = (uint8_t)(w >> 8);
+			}
+			done += 2;
+		}
+		deadline = timer_uptime_ms() + CD_TIMEOUT_MS;
+	}
+}
+
+static void atapi_probe(struct ata_channel *ch, bool slave, const uint16_t *id)
+{
+	/* Word 0, bits 12-8: the device type; 5 is a CD/DVD drive. */
+	if (((id[0] >> 8) & 0x1F) != 5) {
+		return;
+	}
+	struct atapi_drive *d = kmalloc(sizeof(*d));
+	if (!d) {
+		return;
+	}
+	memset(d, 0, sizeof(*d));
+	d->channel = ch;
+	d->slave = slave;
+	d->a.packet = packet;
+	d->a.lock = &ch->lock;
+	copy_model(d->a.model, id);
+	if (atapi_register(&d->a, "ATAPI") != 0) {
+		kfree(d);
+	}
 }
 
 void ata_init(void)

@@ -36,6 +36,7 @@ is written anew for it.
 | M17 — grep, sed and more from OpenBSD: regular expressions, a POSIX file layer in libc | Achieved ([notes](docs/milestones/M17-grep-sed-posix.md)) |
 | M18 — ManiDE: a tiling desktop with workspaces and a status bar; fetch, top; ANSI colours | Achieved ([notes](docs/milestones/M18-manide.md), [design](docs/desktop/DESIGN.md), [ADR-0007](docs/adr/0007-manide-tiling-desktop.md)) |
 | M19 — ManiDOS: a disk operating system of ManiOS's own (`dos`): drive letters, DOS commands, batch files, CHKDSK | Achieved ([notes](docs/milestones/M19-manidos.md), [guide](docs/dos.md), [ADR-0008](docs/adr/0008-manidos.md)) |
+| M20 — drivers: floppy, CD-ROM (ISO 9660, Rock Ridge, Joliet), SATA, virtio, RTL8139, Tulip, PC speaker, Sound Blaster 16, AC'97, AdLib, serial and parallel ports, NVRAM, ACPI power | Achieved ([notes](docs/milestones/M20-drivers.md), [guide](docs/drivers.md)) |
 
 ## Download and install
 
@@ -44,7 +45,7 @@ page has a bootable ISO, `manios-VERSION.iso`. It boots from a CD, from
 a USB stick it is written to, or in QEMU or VirtualBox:
 
 ```
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.19.0.iso -boot d
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.20.0.iso -boot d
 ```
 
 and `install ata0` puts ManiOS on a hard disk. ManiOS boots with its own
@@ -82,14 +83,20 @@ ManiOS boots into its shell, `manios% `. The programs are in `/bin`
 `ls -l /dev` lists devices, and with a FAT disk attached
 (`qemu-system-i386 ... -drive file=disk.img,format=raw`),
 `cd /n/ata0p1; ls` lists its files, while `bind -a /n/ata0p2 /n/ata0p1`
-makes a union of two volumes. `newns` gives the shell a private
-namespace. `exit` leaves the shell for the `ZKT>` kernel monitor, a
-debugging console with its own `help`; `run /bin/sh` goes back.
+makes a union of two volumes. A CD's files are at `/n/cd0` (`-cdrom
+disc.iso`), a floppy's at `/n/fd0` (`-fda floppy.img`); with a sound
+card (`-audiodev pa,id=snd -device sb16,audiodev=snd`), `play -t 440
+500` plays a tone and `play FILE.WAV` a sound file, and `poweroff` turns
+the machine off. [docs/drivers.md](docs/drivers.md) lists the hardware
+ManiOS drives. `newns` gives the shell a private namespace. `exit`
+leaves the shell for the `ZKT>` kernel monitor, a debugging console
+with its own `help`; `run /bin/sh` goes back.
 
 Machines share files over ZRP, ManiOS's 9P-style protocol, and take
 Plan 9's roles (M13). ManiOS drives NE2000, AMD PCnet (VirtualBox's
-default) and Intel PRO/1000 (e1000) network cards, and without `ip=` on
-the boot line asks a DHCP server for its address; `make run` attaches
+default), Intel PRO/1000 (e1000), RealTek 8139, virtio and DEC Tulip
+network cards, and without `ip=` on the boot line asks a DHCP server
+for its address; `make run` attaches
 an NE2000 to QEMU's user network. Give every machine of a cluster the same `key=SECRET` on its
 boot line; then:
 

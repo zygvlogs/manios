@@ -14,8 +14,11 @@ program:
   server's halves of remote execution, M13), `install` (puts ManiOS on
   a hard disk, M14, [docs/install.md](../docs/install.md)), `dd`
   (copies blocks, e.g. to and from disks), `hello`, `fetch` (the
-  system at a glance), `top` (the processes) and `desktop` (ManiDE by
-  its old name). ManiDE and its programs (`manide`, `term`, `welcome`,
+  system at a glance), `top` (the processes), `desktop` (ManiDE by
+  its old name), and since M20 `beep` (the PC speaker), `play` (WAV
+  files and tones on the sound card), `fm` (notes on the OPL2 FM
+  synthesizer), `poweroff` and `reboot`
+  ([docs/drivers.md](../docs/drivers.md)). ManiDE and its programs (`manide`, `term`, `welcome`,
   `clock`, `about`) are built from `desktop/` into `/bin` too,
   and so are the programs imported from OpenBSD (0.16, 0.17): `grep`,
   `sed`, `expr`, `test`, `head`, `tail`, `cut`, `paste`, `join`, `comm`,

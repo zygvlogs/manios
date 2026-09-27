@@ -180,6 +180,8 @@ static void volume(int d, char *label, size_t size, uint32_t *serial, bool *has_
 		*serial = v.serial;
 		*has_serial = v.has_serial;
 		*free_bytes = (unsigned long long)v.free_clusters * v.cluster_size;
+	} else if (drive_is_cd(d)) {
+		cd_label(d, label, size);
 	} else if (d == 0) {
 		strlcpy(label, "MANIOS-BOOT", size);
 	} else if (d == 'Z' - 'A') {
@@ -757,7 +759,7 @@ static int cmd_chkdsk(int argc, char **argv)
 	if (opt(argc, argv, 'F')) {
 		printf("CHKDSK /F can't correct anything: ManiOS's drives are read-only. Checking only.\n\n");
 	}
-	if (!drives[d].device[0]) {
+	if (!drives[d].device[0] || drive_is_cd(d)) {
 		printf("CHKDSK checks FAT disks; drive %c is the %s\n", 'A' + d, drives[d].kind);
 		return 1;
 	}

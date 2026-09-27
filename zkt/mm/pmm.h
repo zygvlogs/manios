@@ -23,6 +23,11 @@ void pmm_init(const struct mem_region *regions, size_t count);
  * memory is exhausted. */
 uintptr_t pmm_alloc_frame(void);
 
+/* `frames` physically contiguous free frames, all below `limit` and,
+ * with a `boundary`, not crossing a multiple of it (ISA DMA can't cross
+ * 64 KiB). Their physical address, or 0. Freed a frame at a time. */
+uintptr_t pmm_alloc_contiguous(size_t frames, uintptr_t limit, uintptr_t boundary);
+
 /* Panics on a misaligned, out-of-range, or already-free frame. */
 void pmm_free_frame(uintptr_t phys);
 

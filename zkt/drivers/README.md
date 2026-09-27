@@ -44,5 +44,34 @@ userspace servers (ADR-0002).
   other cards, QEMU's e1000), interface `em0`; registers in memory,
   descriptor rings (M15)
 
+M20 ([notes](../../docs/milestones/M20-drivers.md), [guide](../../docs/drivers.md)):
+
+- `isadma.c` — the PC's two 8237 ISA DMA controllers (channels 0-3 and
+  5-7), for the floppy and the Sound Blaster; DMA memory itself comes
+  from `zkt/mm/dma.c`
+- `floppy.c` — floppy drives on the 82077/765 controller: `fd0`, `fd1`;
+  the disk's format found by trying data rates, ISA DMA, a cache of the
+  last three cylinders
+- `atapi.c` — CD/DVD drives, whatever carries their packets: SCSI MMC
+  commands, REQUEST SENSE, discs coming and going; `cd0`…
+- `ata.c` — also carries ATAPI packets over the IDE ports
+- `ahci.c` — SATA on AHCI controllers: disks `sata0`… (DMA, 48-bit LBA)
+  and CD drives
+- `virtio.c` — legacy virtio over PCI: virtqueues; `virtio_blk.c` —
+  disks `vd0`…; `virtio_net.c` — interface `vio0`
+- `rtl8139.c` — RealTek RTL8139, interface `rl0`
+- `tulip.c` — DEC 21143/21140/21041, interface `dc0`: serial ROM, setup
+  frame
+- `pcspeaker.c` — the PC speaker, device `beep`
+- `audio.c` — device `audio`: the ring of fragments a sound card plays;
+  `sb16.c` — Sound Blaster 16; `ac97.c` — Intel ICH AC'97
+- `adlib.c` — the OPL2 FM synthesizer, device `opl`
+- `uart.c` — COM2-COM4, devices `com2`… and `com2ctl`…
+- `lpt.c` — the parallel port, device `lpt1`
+- `nvram.c` — the CMOS memory, device `nvram` (`rtc.c` has the CMOS
+  accessors)
+- `acpi.c` — ACPI tables (RSDP, RSDT, FADT, the DSDT's `\_S5`): device
+  `power`, off and reboot
+
 The console device `cons` lives in `zkt/kernel/kconsole.c`. See
 [`docs/FOUNDING-PROPOSAL.md` §2.7](../../docs/FOUNDING-PROPOSAL.md#27-driver-framework).

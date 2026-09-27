@@ -2,7 +2,10 @@
  * the ManiOS namespace:
  *
  *   A:        the boot disk: /boot, where the programs and AUTOEXEC.BAT are
- *   C: D: ... the FAT volumes ManiOS mounted at /n/ataXpY, in order
+ *   B:        the floppy disk, if ManiOS mounted one (/n/fd0)
+ *   C: D: ... the hard disks' volumes ManiOS mounted: /n/ataXpY (IDE),
+ *             /n/sataXpY (SATA), /n/vdXpY (virtio), in that order;
+ *             then the CD drives (/n/cd0...), and a second floppy
  *   Z:        all of ManiOS: /
  *
  * A DOS path is made absolute and upper case, then lower case for
@@ -40,30 +43,89 @@ static int by_name(const void *a, const void *b)
 	return strcmp((const char *)a, (const char *)b);
 }
 
+/* What a disk under /n is, by its device's name: 0 floppy, 1 hard
+ * disk, 2 CD drive; -1 for anything else (a ZRP mount...). */
+static int group(const char *name)
+{
+	if (!strncmp(name, "fd", 2)) {
+		return 0;
+	}
+	if (!strncmp(name, "ata", 3) || !strncmp(name, "sata", 4) || !strncmp(name, "vd", 2)) {
+		return 1;
+	}
+	return strncmp(name, "cd", 2) ? -1 : 2;
+}
+
+static const char *const KINDS[] = { "floppy disk", "hard disk", "CD-ROM" };
+
 void drives_init(void)
 {
 	add_drive('A', "/boot", "", "boot disk");
 	add_drive('Z', "/", "", "ManiOS");
-	/* The FAT volumes: directories under /n named after their disks. */
-	char names[23][ZKT_NAME_MAX + 1];
+	/* The disks: directories under /n named after their devices. */
+	char names[24][ZKT_NAME_MAX + 1];
 	int n = 0, fd = open("/n", OREAD);
 	struct zkt_dirent e;
-	while (fd >= 0 && n < 23 && read(fd, &e, sizeof(e)) == sizeof(e)) {
-		if (e.type == ZKT_TYPE_DIR && !strncmp(e.name, "ata", 3)) {
+	while (fd >= 0 && n < 24 && read(fd, &e, sizeof(e)) == sizeof(e)) {
+		if (e.type == ZKT_TYPE_DIR && group(e.name) >= 0) {
 			strlcpy(names[n++], e.name, sizeof(names[0]));
 		}
 	}
 	if (fd >= 0) {
 		close(fd);
 	}
-	qsort(names, (size_t)n, sizeof(names[0]), by_name);
-	for (int i = 0; i < n; i++) {
-		char root[64], device[32];
-		snprintf(root, sizeof(root), "/n/%s", names[i]);
-		snprintf(device, sizeof(device), "/dev/%s", names[i]);
-		add_drive('C' + i, root, device, "FAT");
+	qsort(names, (size_t)n, sizeof(names[0]), by_name); /* ata, sata, vd */
+	int letter = 'C', first_floppy = -1, first_disk = -1;
+	for (int pass = 0; pass < 4; pass++) {
+		for (int i = 0; i < n; i++) {
+			int g = group(names[i]);
+			bool here = pass == 0 ? (g == 0 && first_floppy < 0)
+			            : pass == 3 ? (g == 0 && i != first_floppy) : g == pass;
+			if (!here || letter > 'Y') {
+				continue;
+			}
+			char root[64], device[32];
+			snprintf(root, sizeof(root), "/n/%s", names[i]);
+			snprintf(device, sizeof(device), "/dev/%s", names[i]);
+			if (pass == 0) {
+				first_floppy = i;
+				add_drive('B', root, device, KINDS[g]);
+			} else {
+				if (pass == 1 && first_disk < 0) {
+					first_disk = letter - 'A';
+				}
+				add_drive(letter++, root, device, KINDS[g]);
+			}
+		}
 	}
-	current = drives['C' - 'A'].present ? 'C' - 'A' : 0;
+	current = first_disk >= 0 ? first_disk : 0; /* the first hard disk, or A: */
+}
+
+bool drive_is_cd(int d)
+{
+	return drives[d].kind == KINDS[2];
+}
+
+bool cd_label(int d, char *label, size_t size)
+{
+	/* The primary volume descriptor, at 16 * 2048 bytes: "CD001" at 1,
+	 * the volume's name at 40 (32 characters, blank-padded). */
+	uint8_t pvd[72];
+	int fd = open(drives[d].device, OREAD);
+	bool ok = fd >= 0 && lseek(fd, 16 * 2048, SEEK_SET) >= 0 && read(fd, pvd, sizeof(pvd)) == sizeof(pvd)
+	          && pvd[0] == 1 && !memcmp(pvd + 1, "CD001", 5);
+	if (fd >= 0) {
+		close(fd);
+	}
+	if (!ok) {
+		return false;
+	}
+	int n = 32;
+	while (n > 0 && pvd[40 + n - 1] == ' ') {
+		n--;
+	}
+	snprintf(label, size, "%.*s", n, (const char *)pvd + 40);
+	return true;
 }
 
 void drives_follow_cwd(void)

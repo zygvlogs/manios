@@ -225,7 +225,7 @@ def main():
                                   "D:  FAT12", "/n/ata0p2", "Z:  ManiOS"], SHELL_PROMPT)),
             ("dos: the banner, AUTOEXEC.BAT quietly, and the C:\\> prompt",
              lambda: (m.type_serial("dos\r"),
-                      m.expect("Drives:  A: boot disk  C: ata0p1  D: ata0p2  Z: ManiOS"),
+                      m.expect("Drives:  A: boot disk  C: ata0p1  D: ata0p2  E: cd0  Z: ManiOS"),
                       m.expect("\r\nC:\\>"))),
             ("DIR: the label and serial number from the boot sector, bytes free as mtools says",
              lambda: dos(m, "DIR", [" Volume in drive C is MANIDOS",

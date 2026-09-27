@@ -153,6 +153,9 @@ static int root_walk(struct vnode *dir, const char *name, struct vnode **out)
 	if (!n) {
 		return -ENOMEM;
 	}
+	if (d->class == DEVICE_BLOCK && d->block_ops->check_media) {
+		d->block_ops->check_media(d); /* the size is the disc's in now */
+	}
 	n->vnode.ops = &dev_ops;
 	n->vnode.type = VNODE_DEVICE;
 	n->vnode.size = device_bytes(d);

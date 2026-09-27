@@ -43,13 +43,17 @@
 - `net_test.py` (also run by `make test`) — the network cards, the IPv4
   stack and ZRP, on the wire. QEMU's socket netdev delivers the guest's
   Ethernet frames to the test, which speaks ARP/IPv4/ICMP/UDP and ZRP
-  itself. Over each card -- NE2000, AMD PCnet, Intel e1000 -- it checks
+  itself. Over each card -- NE2000, AMD PCnet, Intel e1000, and since
+  0.20 RealTek 8139, virtio-net and the DEC 21143 (Tulip) -- it checks
   the guest's replies and checksums, sends it malformed packets
   (among them frames too big for one receive buffer) and floods, and runs its own ZRP server (on a lossy link) and client
   against the guest's. It connects two ManiOS machines, one serving a
   FAT volume to the other. And DHCP: against the test's own server (a
   lost DISCOVER, a stray and a malformed OFFER, a NAK), and against
-  QEMU's, whose gateway must then answer pings.
+  QEMU's over every PCI card, whose gateway must then answer pings.
+  (QEMU's tulip model stalls on a frame under 14 bytes or over 2 KiB --
+  it asks QEMU to hold the frame rather than dropping it -- so those two
+  malformed frames aren't sent to it.)
 
 - `gfx_test.py` (also run by `make test`) — the framebuffer and
   libgfx, checked on the screen itself through QEMU's `screendump`:
@@ -82,6 +86,28 @@
   programs with DOS paths, errorlevels, SET, PROMPT, a batch file using
   parameters, IF, GOTO, SHIFT, FOR and CALL, and a machine booted with
   `shell=dos`.
+
+- `driver_test.py` (also run by `make test`; needs mtools and xorriso;
+  `tests/driver_test.py KERNEL storage|sound|misc` runs a part) — the
+  drivers of M20 on QEMU's models of the hardware
+  ([guide](../docs/drivers.md)). Disks: floppies (a 1.44 MB disk read
+  and written -- the writes checked in the image file, and read again
+  through the driver's cylinder cache -- a 720 KB disk, which the driver
+  must recognise by its data rate, a write-protected disk in the second
+  drive), CDs with Rock Ridge, Joliet and plain ISO 9660 names built
+  with xorriso (a 1 MB file checked by hash; the disc taken out and
+  others put in while ManiOS runs, through QEMU's monitor), on IDE and
+  on SATA (`-M q35`), the ManiOS ISO as a hard disk, AHCI and virtio
+  disks (read, written, and a read-only one), and ManiDOS's letters for
+  all of them. Sound: QEMU's `wav` audio backend records what the
+  machine plays and the test measures each tone's pitch (by counting
+  zero crossings) and length: the PC speaker, the Sound Blaster 16, the
+  AdLib's FM synthesizer, and AC'97 -- with WAV files of other rates,
+  sizes and channels that `play` converts. The rest: COM2 both ways
+  (a socket) and its speed, COM3 (sharing IRQ 4 with the console's COM1),
+  the parallel port (a file must get exactly what was printed),
+  `/dev/nvram`, and `poweroff` and `reboot`, which must make QEMU exit,
+  on the PC machine and on q35.
 
 - `cluster_test.py` (also run by `make test`) — the cluster roles
   (M13): a file server, a CPU server, a terminal and a machine with the

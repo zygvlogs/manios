@@ -137,6 +137,40 @@ uintptr_t pmm_alloc_frame(void)
 	return phys;
 }
 
+uintptr_t pmm_alloc_contiguous(size_t frames, uintptr_t limit, uintptr_t boundary)
+{
+	if (!frames) {
+		return 0;
+	}
+	uintptr_t phys = 0;
+	uint32_t flags = cpu_irq_save();
+	size_t last = limit >> PAGE_SHIFT;
+	last = last < frame_count ? last : frame_count;
+	for (size_t start = 0; start + frames <= last;) {
+		uintptr_t lo = (uintptr_t)start << PAGE_SHIFT;
+		uintptr_t hi = lo + ((uintptr_t)frames << PAGE_SHIFT) - 1;
+		if (boundary && lo / boundary != hi / boundary) {
+			start = (size_t)((hi / boundary) * boundary >> PAGE_SHIFT); /* the next boundary */
+			continue;
+		}
+		size_t run = 0;
+		while (run < frames && !is_used(start + run)) {
+			run++;
+		}
+		if (run == frames) {
+			for (size_t f = start; f < start + frames; f++) {
+				mark_used(f);
+			}
+			free_count -= frames;
+			phys = lo;
+			break;
+		}
+		start += run + 1; /* past the used frame */
+	}
+	cpu_irq_restore(flags);
+	return phys;
+}
+
 void pmm_free_frame(uintptr_t phys)
 {
 	size_t frame = phys >> PAGE_SHIFT;

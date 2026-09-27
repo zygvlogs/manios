@@ -29,10 +29,29 @@
 
 static uint32_t boot_time; /* seconds since the epoch, at uptime 0 */
 
+/* Index and data are two port accesses: with interrupts off, so that
+ * no other CMOS user (nvram.c) comes between them. Bit 7 of the index
+ * is the NMI mask, left clear. */
+uint8_t cmos_read(uint8_t reg)
+{
+	uint32_t flags = cpu_irq_save();
+	outb(CMOS_INDEX, reg & 0x7F);
+	uint8_t v = inb(CMOS_DATA);
+	cpu_irq_restore(flags);
+	return v;
+}
+
+void cmos_write(uint8_t reg, uint8_t value)
+{
+	uint32_t flags = cpu_irq_save();
+	outb(CMOS_INDEX, reg & 0x7F);
+	outb(CMOS_DATA, value);
+	cpu_irq_restore(flags);
+}
+
 static uint8_t cmos(uint8_t reg)
 {
-	outb(CMOS_INDEX, reg);
-	return inb(CMOS_DATA);
+	return cmos_read(reg);
 }
 
 struct reading {

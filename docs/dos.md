@@ -16,7 +16,7 @@ makes; its D: has faults put in it on purpose.)
 manios% dos
 
 ManiDOS 1.0 -- a disk operating system for ManiOS
-Drives:  A: boot disk  C: ata0p1  D: ata0p2  Z: ManiOS
+Drives:  A: boot disk  C: ata0p1  D: ata0p2  E: cd0  Z: ManiOS
 Type HELP for the commands, EXIT to go back to ManiOS.
 
 C:\>DIR
@@ -56,10 +56,14 @@ Drive letters are places in ManiOS's namespace:
 | Drive | Is | In ManiOS |
 |---|---|---|
 | A: | the boot disk: ManiOS's programs, `AUTOEXEC.BAT` | `/boot` |
-| C:, D:, ... | the FAT disks and partitions ManiOS found, in order | `/n/ata0p1`, `/n/ata0p2`, ... |
+| B: | the floppy disk, if one was in at boot | `/n/fd0` |
+| C:, D:, ... | the hard disks' volumes ManiOS found: IDE, then SATA, then virtio | `/n/ata0p1`, `/n/sata0p1`, `/n/vd0p1`, ... |
+| next | the CD drives (and a second floppy) | `/n/cd0`, ... |
 | Z: | all of ManiOS: `Z:\BIN`, `Z:\DEV`, `Z:\N` ... | `/` |
 
-ManiDOS starts on C: if there is a FAT disk, otherwise on A:. `DRIVES`
+ManiDOS starts on the first hard disk, or on A: if there is none. `VOL`
+on a CD drive gives the disc's name; `CHKDSK` checks FAT disks only.
+[docs/drivers.md](drivers.md) has the disks ManiOS drives. `DRIVES`
 lists them; `TRUENAME PATH` shows where a DOS path is in ManiOS
 (`C:\DOCS = /n/ata0p1/docs`). Each drive has its own current directory,
 as in DOS (`CD D:\X` changes D:'s without leaving C:).

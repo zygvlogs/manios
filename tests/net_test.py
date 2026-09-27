@@ -42,6 +42,9 @@ NICS = {
              f"ne0: NE2000 at 0x300 irq 9, {MAC}"),
     "pcnet": (f"pcnet,netdev=n0,mac={MAC}", "pcn0", "pcn0: AMD PCnet at pci "),
     "e1000": (f"e1000,netdev=n0,mac={MAC}", "em0", "em0: Intel 8254x (100e) at pci "),
+    "rtl8139": (f"rtl8139,netdev=n0,mac={MAC}", "rl0", "rl0: RealTek 8139 at pci "),
+    "virtio": (f"virtio-net-pci,netdev=n0,mac={MAC}", "vio0", "vio0: virtio network card at pci "),
+    "tulip": (f"tulip,netdev=n0,mac={MAC}", "dc0", f"dc0: DEC 21143 (Tulip) at pci "),
 }
 
 ENOENT, EBADF, EINVAL, EROFS, ENOSYS, EPROTO = 2, 9, 22, 30, 38, 71
@@ -430,7 +433,7 @@ def test_link(m, peer):
           "no correct ICMP echo reply")
 
 
-def test_malformed(m, peer):
+def test_malformed(m, peer, nic):
     """Garbage must be dropped and counted, and the guest keep working."""
     good = icmp_echo(0x4242, 1, b"x" * 20)
     raw = ipv4(HOST_IP, GUEST_IP, 1, good)
@@ -456,6 +459,12 @@ def test_malformed(m, peer):
         eth(GUEST_MAC, HOST_MAC, 0x0800, b"\x45" + b"\0" * 1985),
         eth(GUEST_MAC, HOST_MAC, 0x0800, b"\x45" + b"\0" * 2985),
     ]
+    if nic == "tulip":
+        # QEMU's tulip model answers a frame under 14 bytes, or over its
+        # 2 KiB buffer, with "not now" instead of dropping it: QEMU keeps
+        # it first in line and delivers nothing after it, whatever the
+        # driver does. (A real 21143 drops them.) Those two stay out.
+        bad = [f for f in bad if 14 <= len(f) <= 2044]
     for frame in bad:
         peer.send(frame)
     time.sleep(0.3)
@@ -658,7 +667,7 @@ def single_machine(kernel, workdir, nic="ne2k"):
         check("dhcp" not in boot, "DHCP ran although ip= was given")
         print(f"PASS: [{tag}] boot, the card found")
         for name, test in [("link", lambda: test_link(m, peer)),
-                           ("malformed", lambda: test_malformed(m, peer)),
+                           ("malformed", lambda: test_malformed(m, peer, nic)),
                            ("guest server", lambda: test_guest_server(peer, console_test.BOOTFS_DIR)),
                            ("guest client", lambda: test_guest_client(m, peer))]:
             try:
@@ -873,7 +882,7 @@ def main():
         failures = sum(single_machine(kernel, workdir, nic) for nic in NICS)
         failures += two_machines(kernel, workdir)
         failures += dhcp_host_server(kernel)
-        failures += sum(dhcp_qemu(kernel, nic) for nic in ("pcnet", "e1000"))
+        failures += sum(dhcp_qemu(kernel, nic) for nic in NICS if nic != "ne2k")
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
     sys.exit(1 if failures else 0)
