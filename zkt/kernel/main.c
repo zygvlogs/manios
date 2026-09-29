@@ -79,6 +79,7 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	char line[CMDLINE_MAX];
 	multiboot_cmdline(multiboot_info_phys, line, sizeof(line));
 	cmdline_set(line);
+	multiboot_save_framebuffer(multiboot_info_phys);
 	if (!verbose_boot()) {
 		kconsole_set_quiet(true);
 		kconsole_progress("Self-tests:");

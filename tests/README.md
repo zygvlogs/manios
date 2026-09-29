@@ -62,6 +62,21 @@
   its VMware SVGA II (VirtualBox's VMSVGA), whose video memory is in
   another BAR.
 
+- `vbe_test.py` (also run by `make test`) — `gfx=auto`, the boot
+  loader's own probe for a real display adapter's VESA linear
+  framebuffer (M21), which needs a real CD boot to reach at all
+  (`-kernel` never runs the boot loader that reads it, so each case's
+  command line is baked into its own small boot area and ISO). A plain
+  boot, and one with an unsupported `gfx=` value, are unaffected -- no
+  probe at all; `gfx=auto` with QEMU's own adapter (Bochs VBE
+  registers) still probes and sets a real mode over genuine BIOS calls,
+  but the registers keep driving graphics; with a different, real VESA
+  BIOS that has no usable mode (`-vga cirrus`) it says so and boots as
+  usual; and with a different PCI device again, whose BIOS does offer
+  one (`-vga qxl`, unmodified, no sabotage needed) the kernel's own new
+  code actually runs -- `gfxdemo` draws to it and a `screendump` is
+  read back exactly, as `gfx_test.py` checks the Bochs VBE path.
+
 - `desktop_test.py` (also run by `make test`) — ManiDE, driven with
   `sendkey` (Alt bindings included), `mouse_move` and `mouse_button`,
   and checked through `screendump`: text is read back off the screen by

@@ -7,9 +7,14 @@
 #define MULTIBOOT_INFO_CMDLINE (1u << 2) /* cmdline valid */
 #define MULTIBOOT_INFO_MODS    (1u << 3) /* mods_count / mods_addr valid */
 #define MULTIBOOT_INFO_MEM_MAP (1u << 6) /* mmap_addr / mmap_length valid */
+#define MULTIBOOT_INFO_FRAMEBUFFER (1u << 12) /* framebuffer_* valid */
 #define MULTIBOOT_MEMORY_AVAILABLE 1
+#define MULTIBOOT_FRAMEBUFFER_TYPE_RGB 1
 
-/* Multiboot 1 specification, section 3.3 -- only the fields ZKT reads. */
+/* Multiboot 1 specification, section 3.3 -- only the fields ZKT reads.
+ * (framebuffer_addr is 32-bit here, not the spec's 64: the ManiOS boot
+ * loader's own VBE probe -- the only source of these fields -- never
+ * has more than a 32-bit physical address to give.) */
 struct multiboot_info {
 	uint32_t flags;
 	uint32_t mem_lower; /* KiB below 1 MiB */
@@ -21,6 +26,11 @@ struct multiboot_info {
 	uint32_t syms[4];
 	uint32_t mmap_length;
 	uint32_t mmap_addr;
+	uint32_t drives_length, drives_addr, config_table, boot_loader_name;
+	uint32_t framebuffer_addr, framebuffer_addr_hi, framebuffer_pitch, framebuffer_width,
+	    framebuffer_height;
+	uint8_t framebuffer_bpp, framebuffer_type;
+	uint16_t framebuffer_reserved;
 } __attribute__((packed));
 
 struct multiboot_mmap_entry {
@@ -147,4 +157,35 @@ size_t multiboot_modules(uint32_t mbi_phys, struct boot_module *out, size_t max)
 		n++;
 	}
 	return n;
+}
+
+static struct boot_framebuffer saved_fb;
+static bool saved_fb_present;
+
+/* Called once, from kernel_main: the Multiboot information lies in
+ * memory the PMM may later hand out, so it must be read before that
+ * (the same reason cmdline_set() runs early); fb_init() (drivers_init(),
+ * much later) reads the copy kept here. */
+void multiboot_save_framebuffer(uint32_t mbi_phys)
+{
+	const struct multiboot_info *mbi = boot_phys(mbi_phys, sizeof(*mbi));
+	if (!(mbi->flags & MULTIBOOT_INFO_FRAMEBUFFER)
+	    || mbi->framebuffer_type != MULTIBOOT_FRAMEBUFFER_TYPE_RGB || mbi->framebuffer_addr_hi
+	    || !mbi->framebuffer_width || !mbi->framebuffer_height) {
+		return;
+	}
+	saved_fb.addr = mbi->framebuffer_addr;
+	saved_fb.pitch = mbi->framebuffer_pitch;
+	saved_fb.width = mbi->framebuffer_width;
+	saved_fb.height = mbi->framebuffer_height;
+	saved_fb.bpp = mbi->framebuffer_bpp;
+	saved_fb_present = true;
+}
+
+bool multiboot_boot_framebuffer(struct boot_framebuffer *out)
+{
+	if (saved_fb_present) {
+		*out = saved_fb;
+	}
+	return saved_fb_present;
 }

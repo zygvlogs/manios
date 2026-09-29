@@ -345,6 +345,7 @@ test: $(KERNEL) test-images
 	python3 tests/openbsd_test.py $(KERNEL)
 	python3 tests/net_test.py $(KERNEL)
 	python3 tests/gfx_test.py $(KERNEL)
+	python3 tests/vbe_test.py $(KERNEL)
 	python3 tests/desktop_test.py $(KERNEL)
 	python3 tests/dos_test.py $(KERNEL)
 	python3 tests/driver_test.py $(KERNEL)

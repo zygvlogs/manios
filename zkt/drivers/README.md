@@ -32,7 +32,10 @@ userspace servers (ADR-0002).
 - `pci.c` — PCI configuration space and bus scan
 - `fb.c` — the framebuffer: devices `fb` and `fbctl`, Bochs VBE modes
   ([M11 notes](../../docs/milestones/M11-graphics.md)), on QEMU's and
-  Bochs's adapter, VirtualBox's and VMware's SVGA II (0.14.1)
+  Bochs's adapter, VirtualBox's and VMware's SVGA II (0.14.1); or,
+  without one of those, a real adapter's own linear framebuffer, set up
+  by the boot loader's VESA probe (`gfx=auto`;
+  [M21 notes](../../docs/milestones/M21-vesa-lfb.md))
 - `vga_hw.c` — VGA registers: saving/restoring text mode, mode 13h
 - `ne2000.c` — NE2000-compatible ISA Ethernet (DP8390), registered with
   the network stack as interface `ne0`

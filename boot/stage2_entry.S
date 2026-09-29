@@ -87,6 +87,7 @@ _start:
 2:
 	call memory_map
 	call boot_prompt
+	call vbe_probe                  /* after boot_prompt: needs the final command line */
 	call load_area
 	call enable_a20
 
@@ -239,6 +240,173 @@ memory_map:
 	int $0x15
 	movzwl %ax, %eax
 	movl %eax, mem_upper
+	ret
+
+/* --- graphics (VESA BIOS Extensions) ------------------------------------ */
+
+/* A linear framebuffer for real display adapters, which don't have the
+ * Bochs VBE registers fb.c otherwise drives: the VESA BIOS's own
+ * INT 10h services (VBE 2.0+; every card since the late 1990s).
+ * AX=4F00 lists its modes; AX=4F01 describes one (its resolution, pixel
+ * format, and -- VBE 2.0 -- its framebuffer's physical address);
+ * AX=4F02 sets it, with bit 14 of the mode number asking for the linear
+ * framebuffer rather than the legacy bank-switched window. Only modes
+ * of the same 8:8:8:8 XRGB layout fb.c's Bochs VBE path already uses are
+ * taken, so the kernel needs nothing new to draw to one; the biggest
+ * such mode up to 1024x768 (bigger ones cost old CPUs more per frame,
+ * with nothing here to accelerate them) is chosen.
+ *
+ * Only with "gfx=auto" on the (by-now final) command line: setting a
+ * VESA mode can't be undone by asking the BIOS again once the kernel
+ * has left real mode (there is no V86 monitor to call it with), so an
+ * ordinary boot -- no gfx= -- is left alone and stays in the BIOS's
+ * text mode, exactly as before this existed. */
+vbe_probe:
+	movw $CMDLINE_ADDR, %si
+1:	cmpb $'g', (%si)
+	jne 2f
+	cmpb $'f', 1(%si)
+	jne 2f
+	cmpb $'x', 2(%si)
+	jne 2f
+	cmpb $'=', 3(%si)
+	jne 2f
+	cmpb $'a', 4(%si)
+	jne 2f
+	cmpb $'u', 5(%si)
+	jne 2f
+	cmpb $'t', 6(%si)
+	jne 2f
+	cmpb $'o', 7(%si)
+	jne 2f
+	movb 8(%si), %al                 /* "auto" must end the word cleanly */
+	cmpb $0, %al
+	je 4f
+	cmpb $' ', %al
+	je 4f
+2:	lodsb                            /* not a match at this word: to the next */
+	testb %al, %al
+	jz 8f                            /* end of the command line: gfx= not asked for */
+	cmpb $' ', %al
+	jne 2b
+3:	cmpb $' ', (%si)
+	jne 1b
+	incw %si
+	jmp 3b
+4:
+	movw $VBE_ADDR, %di
+	movb $'V', (%di)                /* "VBE2": ask for VBE 2.0 info */
+	movb $'B', 1(%di)
+	movb $'E', 2(%di)
+	movb $'2', 3(%di)
+	movw $0x4F00, %ax
+	int $0x10
+	cmpw $0x004F, %ax
+	jne 9f
+	cmpb $'V', (%di)                 /* the controller answers "VESA" */
+	jne 9f
+	cmpb $'E', 1(%di)
+	jne 9f
+	cmpb $'S', 2(%di)
+	jne 9f
+	cmpb $'A', 3(%di)
+	jne 9f
+
+	movw VBE_ADDR + 16, %ax          /* VideoModePtr: a far pointer to a */
+	movw %ax, mode_list_seg          /* 0xFFFF-terminated list of mode numbers */
+	movw VBE_ADDR + 14, %ax
+	movw %ax, mode_list_off
+	movl $0, best_area
+	movw $256, scan_budget           /* a broken BIOS's list must still end */
+
+1:	decw scan_budget
+	jz 3f
+	movw mode_list_seg, %es
+	movw mode_list_off, %si
+	movw %es:(%si), %ax
+	cmpw $0xFFFF, %ax
+	je 3f
+	addw $2, mode_list_off
+	movw %ax, cur_mode
+
+	xorw %ax, %ax                    /* ES:DI = 0:VBE_MODE_ADDR for the call */
+	movw %ax, %es
+	movw $VBE_MODE_ADDR, %di
+	movw cur_mode, %cx
+	movw $0x4F01, %ax
+	int $0x10
+	cmpw $0x004F, %ax
+	jne 1b
+
+	movw VBE_MODE_ADDR, %ax          /* ModeAttributes: supported (bit 0), */
+	andw $0x99, %ax                  /* colour (3), graphics (4), LFB (7) */
+	cmpw $0x99, %ax
+	jne 1b
+	cmpb $1, VBE_MODE_ADDR + 24      /* NumberOfPlanes */
+	jne 1b
+	cmpb $32, VBE_MODE_ADDR + 25     /* BitsPerPixel */
+	jne 1b
+	cmpb $8, VBE_MODE_ADDR + 31      /* RedMaskSize/FieldPosition, */
+	jne 1b
+	cmpb $16, VBE_MODE_ADDR + 32
+	jne 1b
+	cmpb $8, VBE_MODE_ADDR + 33      /* Green.../Blue...: the same 8:8:8:8 */
+	jne 1b
+	cmpb $8, VBE_MODE_ADDR + 34
+	jne 1b
+	cmpb $8, VBE_MODE_ADDR + 35
+	jne 1b
+	cmpb $0, VBE_MODE_ADDR + 36      /* layout as Bochs VBE's XRGB8888 */
+	jne 1b
+	cmpl $0, VBE_MODE_ADDR + 40      /* PhysBasePtr */
+	je 1b
+	cmpw $1024, VBE_MODE_ADDR + 18   /* XResolution: capped, not chosen */
+	ja 1b                            /* for being the biggest available */
+	cmpw $768, VBE_MODE_ADDR + 20    /* YResolution */
+	ja 1b
+
+	movzwl VBE_MODE_ADDR + 18, %eax
+	movzwl VBE_MODE_ADDR + 20, %ecx
+	imull %ecx, %eax
+	cmpl best_area, %eax
+	jbe 1b
+	movl %eax, best_area
+	movw cur_mode, %ax
+	movw %ax, best_mode
+	movzwl VBE_MODE_ADDR + 18, %eax
+	movl %eax, fb_width
+	movzwl VBE_MODE_ADDR + 20, %eax
+	movl %eax, fb_height
+	movzwl VBE_MODE_ADDR + 16, %eax  /* BytesPerScanLine */
+	movl %eax, fb_pitch
+	movl VBE_MODE_ADDR + 40, %eax    /* PhysBasePtr */
+	movl %eax, fb_addr
+	jmp 1b
+
+3:	cmpl $0, best_area
+	je 9f
+	movw best_mode, %bx
+	orw $0x4000, %bx                 /* bit 14: a linear framebuffer */
+	movw $0x4F02, %ax
+	int $0x10
+	cmpw $0x004F, %ax
+	jne 9f
+	movl $32, fb_bpp
+	movl $1, fb_present
+	movw $msg_vbe_found, %si
+	call print
+	movl fb_width, %eax
+	call print_decimal
+	movw $msg_vbe_x, %si
+	call print
+	movl fb_height, %eax
+	call print_decimal
+	movw $msg_vbe_found_end, %si
+	call print
+	ret
+8:	ret                              /* gfx=auto wasn't asked for: say nothing */
+9:	movw $msg_vbe_none, %si
+	call print
 	ret
 
 /* --- the command line --------------------------------------------------- */
@@ -614,6 +782,10 @@ msg_memory:   .asciz "not enough memory: ManiOS needs "
 msg_mib:      .asciz " MiB; this machine has "
 msg_kib:      .asciz " KiB\r\n"
 msg_header:   .asciz "the boot area's header is damaged\r\n"
+msg_vbe_found: .asciz "graphics: VESA "
+msg_vbe_x:     .asciz "x"
+msg_vbe_found_end: .asciz " found\r\n"
+msg_vbe_none: .asciz "graphics: no VESA linear framebuffer\r\n"
 
 	.balign 8
 gdt:
@@ -649,16 +821,28 @@ mem_upper:   .long 0
 area_size:   .long 0
 area_lba:    .long 0
 area_addr:   .long 0
+fb_present:  .long 0
+fb_addr:     .long 0
+fb_pitch:    .long 0
+fb_width:    .long 0
+fb_height:   .long 0
+fb_bpp:      .long 0
 
 	.section .bss
 next_lba:    .long 0
 left:        .long 0
 dest:        .long 0
 need_mib:    .long 0
+best_area:   .long 0
 cmdline_end: .word 0
 chunk:       .word 0
 sector_size: .word 0
 sectors:     .word 0
 heads:       .word 0
+mode_list_seg: .word 0
+mode_list_off: .word 0
+cur_mode:    .word 0
+best_mode:   .word 0
+scan_budget: .word 0
 drive:       .byte 0
 use_lba:     .byte 0

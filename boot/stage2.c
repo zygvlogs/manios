@@ -15,6 +15,8 @@
 
 struct params { /* filled in by stage2_entry.S */
 	uint32_t mmap_length, mem_lower, mem_upper, area_size, area_lba, area_addr;
+	/* A VESA linear framebuffer vbe_probe set up (0 fb_present: none). */
+	uint32_t fb_present, fb_addr, fb_pitch, fb_width, fb_height, fb_bpp;
 };
 
 /* Multiboot 1, section 3.3. */
@@ -22,15 +24,23 @@ struct params { /* filled in by stage2_entry.S */
 #define MB_CMDLINE (1u << 2)
 #define MB_MODS    (1u << 3)
 #define MB_MMAP    (1u << 6)
+#define MB_FRAMEBUFFER (1u << 12)
 #define MB_LOADER  (1u << 9)
 #define MB_BOOTLOADER_MAGIC 0x2BADB002
 #define MB_HEADER_MAGIC 0x1BADB002
+#define MB_FRAMEBUFFER_TYPE_RGB 1
 
 struct mb_info {
 	uint32_t flags, mem_lower, mem_upper, boot_device, cmdline, mods_count, mods_addr;
 	uint32_t syms[4];
 	uint32_t mmap_length, mmap_addr;
 	uint32_t drives_length, drives_addr, config_table, boot_loader_name;
+	/* Section 3.3's framebuffer fields, the ones ZKT reads; the address
+	 * is 32-bit here (vbe_probe only asks VBE for a 32-bit PhysBasePtr). */
+	uint32_t framebuffer_addr, framebuffer_addr_hi, framebuffer_pitch, framebuffer_width,
+	    framebuffer_height;
+	uint8_t framebuffer_bpp, framebuffer_type;
+	uint16_t framebuffer_reserved;
 };
 
 struct mb_module {
@@ -216,6 +226,16 @@ void stage2_main(const struct params *p)
 		mbi->flags |= MB_MMAP;
 		mbi->mmap_addr = MMAP_ADDR;
 		mbi->mmap_length = p->mmap_length;
+	}
+	if (p->fb_present) {
+		mbi->flags |= MB_FRAMEBUFFER;
+		mbi->framebuffer_addr = p->fb_addr;
+		mbi->framebuffer_addr_hi = 0;
+		mbi->framebuffer_pitch = p->fb_pitch;
+		mbi->framebuffer_width = p->fb_width;
+		mbi->framebuffer_height = p->fb_height;
+		mbi->framebuffer_bpp = (uint8_t)p->fb_bpp;
+		mbi->framebuffer_type = MB_FRAMEBUFFER_TYPE_RGB;
 	}
 
 	__asm__ volatile("cli\n\tjmp *%%ecx" : : "c"(entry), "a"(MB_BOOTLOADER_MAGIC), "b"(mbi) : "memory");

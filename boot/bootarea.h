@@ -43,6 +43,8 @@
 #define MMAP_ADDR    0x2000  /* the BIOS memory map, as Multiboot entries */
 #define MMAP_MAX     0x0F00
 #define MBI_ADDR     0x3000  /* the Multiboot information for the kernel */
+#define VBE_ADDR      0x3400 /* the VESA BIOS's controller info block: 512 bytes */
+#define VBE_MODE_ADDR 0x3600 /* its mode info block, reused for each mode tried: 256 bytes */
 #define STACK_TOP    0x7000
 #define STAGE2_ADDR  0x8000  /* up to 0x1FFFF */
 #define BOUNCE_SEG   0x2000  /* 0x20000: disk reads land here first */

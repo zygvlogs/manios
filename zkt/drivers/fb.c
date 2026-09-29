@@ -1,19 +1,29 @@
 /* The framebuffer: devices "fb" and "fbctl" (M11). Design notes:
  * docs/milestones/M11-graphics.md.
  *
- * Two kinds of graphics mode:
+ * Three kinds of graphics mode:
  *  - Bochs VBE ("BGA"): any size, 32-bit pixels (0x00RRGGBB), a linear
  *    framebuffer in a PCI BAR. QEMU's and Bochs's standard adapter have
  *    it, and so do the adapters that grew out of it or kept it for their
  *    BIOS: VirtualBox's (VBoxVGA, VBoxSVGA) and VMware's SVGA II (which
  *    is also VirtualBox's VMSVGA and QEMU's -vga vmware);
+ *  - VESA ("LFB"): a real display adapter's own linear framebuffer, in
+ *    the same 32-bit 0x00RRGGBB pixels, set up by the boot loader's own
+ *    VESA BIOS Extensions probe (boot/stage2_entry.S, with "gfx=auto"
+ *    on the command line) before the kernel starts -- fixed at
+ *    whatever size that found, since nothing here can ask the BIOS to
+ *    change it once real mode is behind (M21);
  *  - VGA mode 13h, on any VGA card: 320x200, one RGB 3-3-2 byte per pixel.
  * Text mode's state is saved on the way into graphics and restored on
- * the way out (vga_hw.c, vga_text.c).
+ * the way out (vga_hw.c, vga_text.c) -- best-effort for LFB, whose mode
+ * a real card need not be VGA-register-compatible in (M21's known limits).
  *
  * fbctl reads as "text\n", or "WIDTH HEIGHT DEPTH PITCH FORMAT DRIVER\n";
- * writing "mode W H", "mode vga" or "text" changes the mode. fb is the
- * pixels, read and written at byte offsets (row y starts at y * PITCH). */
+ * writing "mode W H", "mode vga" or "text" changes the mode -- on an LFB
+ * machine (no BGA), W and H are taken as "give me graphics" and the
+ * actual fixed size comes back from the read, same as "mode vga"'s. fb
+ * is the pixels, read and written at byte offsets (row y starts at
+ * y * PITCH). */
 #include "fb.h"
 #include <stdbool.h>
 #include "device.h"
@@ -22,6 +32,7 @@
 #include "kprintf.h"
 #include "kstring.h"
 #include "memlayout.h"
+#include "multiboot.h"
 #include "mutex.h"
 #include "pci.h"
 #include "sched.h"
@@ -63,7 +74,7 @@ static const struct {
 	{ 0x15AD, 0x0405, "VMware SVGA II" },
 };
 
-enum kind { TEXT, BGA, VGA13 };
+enum kind { TEXT, BGA, VGA13, LFB };
 
 static struct mutex lock = MUTEX_INIT;
 static enum kind kind = TEXT;
@@ -77,6 +88,10 @@ static bool bga_present;
 static uintptr_t bga_phys;
 static uint32_t bga_memory;
 static const char *bga_name;
+
+static bool lfb_present;
+static uintptr_t lfb_phys;
+static uint32_t lfb_width, lfb_height, lfb_pitch;
 
 static uint16_t dispi_read(uint16_t index)
 {
@@ -118,6 +133,8 @@ static void leave_graphics(void)
 	if (kind == BGA) {
 		dispi_write(VBE_ENABLE, 0);
 		unmap_lfb();
+	} else if (kind == LFB) {
+		unmap_lfb(); /* no register to turn it off with; the mode stays set */
 	}
 	pixels = 0;
 	bytes = 0;
@@ -231,14 +248,45 @@ static int set_vga13(void)
 	return 0;
 }
 
+/* The boot loader's own VESA mode: fixed at whatever size vbe_probe
+ * found (gfx=auto), so unlike set_bga() this takes no size -- a caller
+ * asking for one gets it regardless, and reads back what it actually
+ * is (M21). */
+static int set_lfb(void)
+{
+	if (!lfb_present) {
+		return -ENODEV;
+	}
+	uint32_t total = lfb_pitch * lfb_height;
+	if (total == 0 || total > KERNEL_FB_SIZE) {
+		return -ENODEV; /* can't happen (vbe_probe's own cap), but never trust the BIOS blindly */
+	}
+	enter_graphics();
+	kind = LFB;
+	width = lfb_width;
+	height = lfb_height;
+	pitch = lfb_pitch;
+	depth = 32;
+	bytes = total;
+	if (map_lfb(lfb_phys, bytes) != 0) {
+		set_text();
+		return -ENOMEM;
+	}
+	pixels = (uint8_t *)KERNEL_FB_START;
+	memset(pixels, 0, bytes);
+	return 0;
+}
+
 static int describe(char *buf, size_t size)
 {
 	if (kind == TEXT) {
 		return ksnprintf(buf, size, "text\n");
 	}
+	const char *format = kind == VGA13 ? "rgb332" : "xrgb8888";
+	const char *driver = kind == VGA13 ? "vga" : kind == LFB ? "vesa" : "bga";
 	return ksnprintf(buf, size, "%lu %lu %lu %lu %s %s\n", (unsigned long)width,
-	                 (unsigned long)height, (unsigned long)depth, (unsigned long)pitch,
-	                 kind == BGA ? "xrgb8888" : "rgb332", kind == BGA ? "bga" : "vga");
+	                 (unsigned long)height, (unsigned long)depth, (unsigned long)pitch, format,
+	                 driver);
 }
 
 static long ctl_pread(struct device *dev, uint32_t offset, void *buf, size_t len)
@@ -296,6 +344,9 @@ static long ctl_pwrite(struct device *dev, uint32_t offset, const void *buf, siz
 		uint32_t w, h;
 		if (parse_number(&p, &w) && parse_number(&p, &h) && !*p) {
 			rc = set_bga(w, h);
+			if (rc == -ENODEV && lfb_present) {
+				rc = set_lfb(); /* fixed-size: the caller reads back what it got */
+			}
 		}
 	}
 	mutex_unlock(&lock);
@@ -418,6 +469,23 @@ void fb_init(void)
 		kprintf("fb: %s at pci %02x:%02x.%x lacks the Bochs VBE registers (id 0x%04x)\n", bga_name,
 		        pci->bus, pci->dev, pci->fn, id);
 	}
+
+	/* A real display adapter's own linear framebuffer, from the boot
+	 * loader's VESA probe (gfx=auto; M21) -- only when there is no
+	 * Bochs VBE one, which can do everything this can and more
+	 * (arbitrary sizes, changed at will). */
+	struct boot_framebuffer loader_fb;
+	if (!bga_present && multiboot_boot_framebuffer(&loader_fb) && loader_fb.bpp == 32
+	    && loader_fb.width && loader_fb.height) {
+		lfb_present = true;
+		lfb_phys = loader_fb.addr;
+		lfb_width = loader_fb.width;
+		lfb_height = loader_fb.height;
+		lfb_pitch = loader_fb.pitch;
+		kprintf("fb: VESA linear framebuffer at 0x%08lx, %lux%lu, from the boot loader\n",
+		        (unsigned long)lfb_phys, (unsigned long)lfb_width, (unsigned long)lfb_height);
+	}
+
 	device_register(&fb_device);
 	device_register(&ctl_device);
 }

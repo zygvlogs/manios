@@ -103,12 +103,27 @@ the card asks a DHCP server for an address.
   tables) and `reboot` (ACPI's reset register, or the keyboard
   controller); `cat /dev/power` says how.
 
+## Graphics on real hardware
+
+`manide` and `gfxdemo` need a display adapter with the Bochs VBE
+registers (QEMU's, VirtualBox's, VMware's SVGA II) -- emulators, so
+far, not real cards. `gfx=auto` on the boot line has the boot loader
+itself ask the display's own VESA BIOS for a linear framebuffer before
+ManiOS starts (M21, [docs/install.md](install.md#gfxauto-a-real-adapters-own-linear-framebuffer)):
+
+```
+graphics: VESA 1024x768 found
+```
+
+which `fb_init()` then uses if there is no Bochs VBE adapter to prefer.
+Left out, nothing about a boot changes.
+
 ## Also
 
 The keyboard and mouse (PS/2), the VGA text console, the framebuffer
-(Bochs VBE, VirtualBox's and VMware's SVGA II, VGA mode 13h), the clock
-(CMOS) and COM1 are the older drivers; `zkt/drivers/README.md` lists
-every file.
+(Bochs VBE, VirtualBox's and VMware's SVGA II, VGA mode 13h, and since
+M21 a real adapter's own VESA linear framebuffer), the clock (CMOS) and
+COM1 are the older drivers; `zkt/drivers/README.md` lists every file.
 
 ## In emulators
 

@@ -328,7 +328,9 @@ int main(int argc, char **argv)
 	}
 
 	if (gfx_screen_open(&D.screen, width, height) < 0) {
-		fprintf(stderr, "manide: cannot set a %dx%d mode: %s (a Bochs VBE display is needed)\n",
+		fprintf(stderr,
+		        "manide: cannot set a %dx%d mode: %s (a Bochs VBE display is needed, or boot "
+		        "with gfx=auto for a real one's own VESA mode)\n",
 		        width, height, strerror(errno));
 		return 1;
 	}

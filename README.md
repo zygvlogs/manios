@@ -37,6 +37,7 @@ is written anew for it.
 | M18 — ManiDE: a tiling desktop with workspaces and a status bar; fetch, top; ANSI colours | Achieved ([notes](docs/milestones/M18-manide.md), [design](docs/desktop/DESIGN.md), [ADR-0007](docs/adr/0007-manide-tiling-desktop.md)) |
 | M19 — ManiDOS: a disk operating system of ManiOS's own (`dos`): drive letters, DOS commands, batch files, CHKDSK | Achieved ([notes](docs/milestones/M19-manidos.md), [guide](docs/dos.md), [ADR-0008](docs/adr/0008-manidos.md)) |
 | M20 — drivers: floppy, CD-ROM (ISO 9660, Rock Ridge, Joliet), SATA, virtio, RTL8139, Tulip, PC speaker, Sound Blaster 16, AC'97, AdLib, serial and parallel ports, NVRAM, ACPI power | Achieved ([notes](docs/milestones/M20-drivers.md), [guide](docs/drivers.md)) |
+| M21 — `gfx=auto`: a real display adapter's own linear framebuffer, over its VESA BIOS, for ManiDE on real hardware | Achieved ([notes](docs/milestones/M21-vesa-lfb.md)) |
 
 ## Download and install
 
@@ -45,7 +46,7 @@ page has a bootable ISO, `manios-VERSION.iso`. It boots from a CD, from
 a USB stick it is written to, or in QEMU or VirtualBox:
 
 ```
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.20.0.iso -boot d
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.21.0.iso -boot d
 ```
 
 and `install ata0` puts ManiOS on a hard disk. ManiOS boots with its own
