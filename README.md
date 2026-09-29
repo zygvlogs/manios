@@ -74,7 +74,8 @@ release workflow by hand with "publish" ticked, makes GitHub Actions
 build, run `make test` and publish a release
 ([workflow](.github/workflows/release.yml)).
 
-Requires `qemu-system-i386`, Python 3 and mtools (for the tests; xorriso
+Requires `qemu-system-i386` (with its QXL display, `qemu-system-modules-spice`
+on Debian and Ubuntu), Python 3 and mtools (for the tests; xorriso
 optionally), plus
 the usual GCC build dependencies (GMP, MPFR, MPC, texinfo, bison, flex)
 for `make toolchain`.

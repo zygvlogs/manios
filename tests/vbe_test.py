@@ -67,6 +67,13 @@ def build_iso(build, workdir, cmdline, name):
     return iso
 
 
+def qemu_has_device(name):
+    """Whether this QEMU build has the device (some are separate
+    packages: Debian and Ubuntu ship qxl-vga in qemu-system-modules-spice)."""
+    out = subprocess.run(["qemu-system-i386", "-device", "help"], capture_output=True, text=True)
+    return re.search(rf'^name "{re.escape(name)}"', out.stdout + out.stderr, re.M) is not None
+
+
 def boot(iso, vga, memory=64):
     return Machine(None, ["-boot", "d", "-cdrom", iso, "-vga", vga], memory)
 
@@ -139,6 +146,10 @@ def main():
         step("gfx=auto, no usable mode (Cirrus): says so, boots as usual", cirrus_none)
 
         def qxl_lfb():
+            # The only test of the kernel's own LFB path: a missing
+            # device fails it, rather than skipping it unseen.
+            check(qemu_has_device("qxl-vga"),
+                  "this QEMU has no qxl-vga device (Debian/Ubuntu: apt install qemu-system-modules-spice)")
             m = boot(auto, "qxl")
             try:
                 out = m.expect(SHELL_PROMPT, timeout=120)

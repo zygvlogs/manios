@@ -75,7 +75,11 @@
   usual; and with a different PCI device again, whose BIOS does offer
   one (`-vga qxl`, unmodified, no sabotage needed) the kernel's own new
   code actually runs -- `gfxdemo` draws to it and a `screendump` is
-  read back exactly, as `gfx_test.py` checks the Bochs VBE path.
+  read back exactly, as `gfx_test.py` checks the Bochs VBE path. Needs
+  QEMU's `qxl-vga` device, a separate package on Debian and Ubuntu
+  (`qemu-system-modules-spice`); a QEMU without it fails that case with
+  a message saying so, rather than skipping the one test of the kernel's
+  own LFB path.
 
 - `desktop_test.py` (also run by `make test`) — ManiDE, driven with
   `sendkey` (Alt bindings included), `mouse_move` and `mouse_button`,
