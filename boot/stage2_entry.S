@@ -252,48 +252,78 @@ memory_map:
  * AX=4F02 sets it, with bit 14 of the mode number asking for the linear
  * framebuffer rather than the legacy bank-switched window. Only modes
  * of the same 8:8:8:8 XRGB layout fb.c's Bochs VBE path already uses are
- * taken, so the kernel needs nothing new to draw to one; the biggest
- * such mode up to 1024x768 (bigger ones cost old CPUs more per frame,
- * with nothing here to accelerate them) is chosen.
+ * taken, so the kernel needs nothing new to draw to one. With "gfx=auto"
+ * the biggest such mode up to 1024x768 is chosen; with "gfx=WxH" the
+ * biggest mode that fits within W by H is chosen, so a panel's native
+ * resolution can be requested explicitly.
  *
- * Only with "gfx=auto" on the (by-now final) command line: setting a
- * VESA mode can't be undone by asking the BIOS again once the kernel
- * has left real mode (there is no V86 monitor to call it with), so an
- * ordinary boot -- no gfx= -- is left alone and stays in the BIOS's
+ * Only with "gfx=auto" or "gfx=WxH" on the (by-now final) command line:
+ * setting a VESA mode can't be undone by asking the BIOS again once the
+ * kernel has left real mode (there is no V86 monitor to call it with), so
+ * an ordinary boot -- no gfx= -- is left alone and stays in the BIOS's
  * text mode, exactly as before this existed. */
 vbe_probe:
 	movw $CMDLINE_ADDR, %si
-1:	cmpb $'g', (%si)
-	jne 2f
+10:	cmpb $'g', (%si)
+	jne 11f
 	cmpb $'f', 1(%si)
-	jne 2f
+	jne 11f
 	cmpb $'x', 2(%si)
-	jne 2f
+	jne 11f
 	cmpb $'=', 3(%si)
-	jne 2f
-	cmpb $'a', 4(%si)
-	jne 2f
-	cmpb $'u', 5(%si)
-	jne 2f
-	cmpb $'t', 6(%si)
-	jne 2f
-	cmpb $'o', 7(%si)
-	jne 2f
-	movb 8(%si), %al                 /* "auto" must end the word cleanly */
+	jne 11f
+	addw $4, %si                     /* SI now points at the value */
+	/* Try "auto" first. */
+	cmpb $'a', (%si)
+	jne 12f
+	cmpb $'u', 1(%si)
+	jne 12f
+	cmpb $'t', 2(%si)
+	jne 12f
+	cmpb $'o', 3(%si)
+	jne 12f
+	movb 4(%si), %al
 	cmpb $0, %al
-	je 4f
+	je 13f
 	cmpb $' ', %al
-	je 4f
-2:	lodsb                            /* not a match at this word: to the next */
-	testb %al, %al
-	jz 8f                            /* end of the command line: gfx= not asked for */
-	cmpb $' ', %al
-	jne 2b
-3:	cmpb $' ', (%si)
-	jne 1b
+	jne 12f
+13:
+	movw $1024, gfx_w
+	movw $768, gfx_h
+	jmp 20f
+12:
+	/* Not "auto": try "WIDTHxHEIGHT". */
+	call parse_number16
+	jz 11f
+	movw %ax, gfx_w
+	cmpb $'x', (%si)
+	jne 11f
 	incw %si
-	jmp 3b
-4:
+	call parse_number16
+	jz 11f
+	movw %ax, gfx_h
+	movb (%si), %al
+	cmpb $0, %al
+	je 20f
+	cmpb $' ', %al
+	je 20f
+	/* Invalid terminator: not a valid gfx= value; keep scanning. */
+	movw $0, gfx_w
+11:	lodsb                            /* not a match at this word: to the next */
+	testb %al, %al
+	jz 18f                           /* end of the command line: gfx= not asked for */
+	cmpb $' ', %al
+	jne 11b
+15:	cmpb $' ', (%si)
+	jne 10b
+	incw %si
+	jmp 15b
+18:	ret
+20:	cmpw $0, gfx_w
+	je 18b
+	cmpw $0, gfx_h
+	je 18b
+
 	movw $VBE_ADDR, %di
 	movb $'V', (%di)                /* "VBE2": ask for VBE 2.0 info */
 	movb $'B', 1(%di)
@@ -302,15 +332,15 @@ vbe_probe:
 	movw $0x4F00, %ax
 	int $0x10
 	cmpw $0x004F, %ax
-	jne 9f
+	jne vbe_info_fail
 	cmpb $'V', (%di)                 /* the controller answers "VESA" */
-	jne 9f
+	jne vbe_info_fail
 	cmpb $'E', 1(%di)
-	jne 9f
+	jne vbe_info_fail
 	cmpb $'S', 2(%di)
-	jne 9f
+	jne vbe_info_fail
 	cmpb $'A', 3(%di)
-	jne 9f
+	jne vbe_info_fail
 
 	movw VBE_ADDR + 16, %ax          /* VideoModePtr: a far pointer to a */
 	movw %ax, mode_list_seg          /* 0xFFFF-terminated list of mode numbers */
@@ -339,9 +369,12 @@ vbe_probe:
 	jne 1b
 
 	movw VBE_MODE_ADDR, %ax          /* ModeAttributes: supported (bit 0), */
-	andw $0x99, %ax                  /* colour (3), graphics (4), LFB (7) */
-	cmpw $0x99, %ax
+	andw $0x19, %ax                  /* colour (3), graphics (4) */
+	cmpw $0x19, %ax
 	jne 1b
+	/* Some ATI laptop BIOSes do not set the LFB bit (7) even though the
+	 * mode supports a linear framebuffer; the PhysBasePtr check below
+	 * is the real gate. */
 	cmpb $1, VBE_MODE_ADDR + 24      /* NumberOfPlanes */
 	jne 1b
 	cmpb $32, VBE_MODE_ADDR + 25     /* BitsPerPixel */
@@ -360,9 +393,11 @@ vbe_probe:
 	jne 1b
 	cmpl $0, VBE_MODE_ADDR + 40      /* PhysBasePtr */
 	je 1b
-	cmpw $1024, VBE_MODE_ADDR + 18   /* XResolution: capped, not chosen */
-	ja 1b                            /* for being the biggest available */
-	cmpw $768, VBE_MODE_ADDR + 20    /* YResolution */
+	movw gfx_w, %cx
+	cmpw %cx, VBE_MODE_ADDR + 18     /* XResolution: capped to the request, */
+	ja 1b                            /* not chosen for being the biggest */
+	movw gfx_h, %cx
+	cmpw %cx, VBE_MODE_ADDR + 20     /* YResolution */
 	ja 1b
 
 	movzwl VBE_MODE_ADDR + 18, %eax
@@ -384,13 +419,22 @@ vbe_probe:
 	jmp 1b
 
 3:	cmpl $0, best_area
-	je 9f
+	je vbe_nomode_fail
+
 	movw best_mode, %bx
 	orw $0x4000, %bx                 /* bit 14: a linear framebuffer */
+	xorw %cx, %cx                    /* default display device (safer than CX=2) */
 	movw $0x4F02, %ax
 	int $0x10
 	cmpw $0x004F, %ax
-	jne 9f
+	je 4f
+	orw $0xC000, %bx                 /* retry with bit 15 set too */
+	xorw %cx, %cx
+	movw $0x4F02, %ax
+	int $0x10
+	cmpw $0x004F, %ax
+	jne vbe_setmode_fail
+4:
 	movl $32, fb_bpp
 	movl $1, fb_present
 	movw $msg_vbe_found, %si
@@ -404,9 +448,48 @@ vbe_probe:
 	movw $msg_vbe_found_end, %si
 	call print
 	ret
-8:	ret                              /* gfx=auto wasn't asked for: say nothing */
-9:	movw $msg_vbe_none, %si
+
+vbe_info_fail:
+vbe_nomode_fail:
+vbe_setmode_fail:
+	movw $msg_vbe_none, %si
 	call print
+	ret
+
+/* Parse an unsigned decimal 16-bit number at SI. Returns AX = value and
+ * SI pointing to the first non-digit. ZF is set if no digits were parsed
+ * (AX == 0 and SI is unchanged). */
+parse_number16:
+	pushw %bx
+	pushw %dx
+	xorw %ax, %ax
+	xorw %bx, %bx
+	xorw %dx, %dx
+1:
+	movb (%si), %bl                  /* peek at the next character */
+	cmpb $'0', %bl
+	jb 2f
+	cmpb $'9', %bl
+	ja 2f
+	incw %si                         /* it is a digit: consume it */
+	subb $'0', %bl                   /* BX = digit */
+	pushw %ax
+	addw %ax, %ax
+	addw %ax, %ax
+	addw %ax, %ax
+	movw %ax, %dx                    /* DX = old value * 8 */
+	popw %ax
+	addw %ax, %ax                    /* AX = old value * 2 */
+	addw %dx, %ax                    /* AX = old value * 10 */
+	addw %bx, %ax                    /* AX = old value * 10 + digit */
+	xorw %bx, %bx
+	cmpw $4096, %ax                  /* sanity cap for a screen dimension */
+	jbe 1b
+	xorw %ax, %ax                    /* overflow: return 0 */
+2:
+	testw %ax, %ax
+	popw %dx
+	popw %bx
 	ret
 
 /* --- the command line --------------------------------------------------- */
@@ -834,6 +917,8 @@ left:        .long 0
 dest:        .long 0
 need_mib:    .long 0
 best_area:   .long 0
+gfx_w:       .word 0
+gfx_h:       .word 0
 cmdline_end: .word 0
 chunk:       .word 0
 sector_size: .word 0

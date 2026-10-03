@@ -120,6 +120,7 @@ The options are words of the form `KEY=VALUE`:
 | `rc=PATH` | a boot script to run before the shell, e.g. `rc=/boot/etc/rc.cpu` for a CPU server |
 | `shell=PROGRAM` | what the console runs instead of ManiOS's shell (`sh`): `shell=dos` starts ManiOS in ManiDOS ([docs/dos.md](dos.md)) |
 | `gfx=auto` | on real hardware with no Bochs VBE adapter: probe the display's own VESA BIOS for a linear framebuffer (below) |
+| `gfx=WxH` | the same probe, but ask for the biggest mode that fits within `W` by `H` (e.g. `gfx=1400x1050`) instead of capping at 1024x768 |
 | `verbose=1` | show the whole boot log on the screen (see below) |
 
 ### gfx=auto: a real adapter's own linear framebuffer
@@ -131,7 +132,9 @@ display's own VESA BIOS (VBE 2.0 or later; every card since the late
 1990s) for the biggest mode, up to 1024x768, of the 32-bit colour a
 Bochs VBE mode already gives, and sets it before ManiOS starts --
 there is no changing it once ManiOS is running, since the BIOS can't
-be called again by then. Left out (or given any other value), nothing
+be called again by then. `gfx=WxH` does the same but caps the search
+at the requested width and height, so a panel's native resolution can
+be selected explicitly. Left out (or given any other value), nothing
 changes: ManiOS boots into text mode exactly as before, and the whole
 probe is skipped.
 

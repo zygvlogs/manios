@@ -37,6 +37,7 @@
 #include "pci.h"
 #include "sched.h"
 #include "timer.h"
+#include "kconsole.h"
 #include "vga_hw.h"
 #include "vga_text.h"
 #include "vmm.h"
@@ -117,8 +118,15 @@ static void unmap_lfb(void)
 static int map_lfb(uintptr_t phys, uint32_t len)
 {
 	uint32_t pages = (len + PAGE_SIZE - 1) / PAGE_SIZE;
+	/* The window must not reach the kernel's own page tables, which
+	 * live in the directory entry below the recursive one: mapping
+	 * over them would overwrite a page table with device memory. */
+	if (pages > (KERNEL_PT_AREA_START - KERNEL_FB_START) / PAGE_SIZE) {
+		return -ENOMEM;
+	}
 	for (uint32_t i = 0; i < pages; i++) {
-		if (vmm_map_page(KERNEL_FB_START + i * PAGE_SIZE, phys + i * PAGE_SIZE, VMM_WRITABLE) != 0) {
+		if (vmm_map_page(KERNEL_FB_START + i * PAGE_SIZE, phys + i * PAGE_SIZE,
+		                 VMM_WRITABLE | VMM_UNCACHED) != 0) {
 			unmap_lfb();
 			return -ENOMEM;
 		}
@@ -152,6 +160,15 @@ static void enter_graphics(void)
 
 static int set_text(void)
 {
+	/* An LFB mode can't be undone: there is no V86 monitor to call the
+	 * BIOS with, and a plain VGA register poke need not restore text on
+	 * a real card (M21's known limits). The kernel console draws into
+	 * that framebuffer, so unmapping it here would fault on the next
+	 * character written. Leave it mapped and active: the screen stays
+	 * in graphics, as documented, and the machine keeps working. */
+	if (kind == LFB) {
+		return 0;
+	}
 	if (kind != TEXT) {
 		leave_graphics();
 		vga_restore_text();
@@ -181,7 +198,8 @@ static void refresher_main(void *arg)
 		bool current = generation == mode_generation && kind == BGA && pixels;
 		for (uint32_t off = 0; current && off < bytes; off += PAGE_SIZE) {
 			volatile uint32_t *p = (volatile uint32_t *)(pixels + off);
-			*p = *p;
+			uint32_t v = *p;
+			*p = v;
 		}
 		mutex_unlock(&lock);
 		if (!current) {
@@ -261,6 +279,9 @@ static int set_lfb(void)
 	if (total == 0 || total > KERNEL_FB_SIZE) {
 		return -ENODEV; /* can't happen (vbe_probe's own cap), but never trust the BIOS blindly */
 	}
+	if (kind == LFB) {
+		return 0; /* already active; the loader fixed the resolution */
+	}
 	enter_graphics();
 	kind = LFB;
 	width = lfb_width;
@@ -269,7 +290,11 @@ static int set_lfb(void)
 	depth = 32;
 	bytes = total;
 	if (map_lfb(lfb_phys, bytes) != 0) {
-		set_text();
+		/* The mode is already set and can't be undone (no V86 monitor
+		 * to call the BIOS with), so the screen stays as the loader
+		 * left it: say so rather than draw into nothing. */
+		kind = TEXT;
+		kprintf("fb: cannot map the VESA framebuffer at 0x%lx\n", (unsigned long)lfb_phys);
 		return -ENOMEM;
 	}
 	pixels = (uint8_t *)KERNEL_FB_START;
@@ -477,13 +502,38 @@ void fb_init(void)
 	struct boot_framebuffer loader_fb;
 	if (!bga_present && multiboot_boot_framebuffer(&loader_fb) && loader_fb.bpp == 32
 	    && loader_fb.width && loader_fb.height) {
-		lfb_present = true;
-		lfb_phys = loader_fb.addr;
-		lfb_width = loader_fb.width;
-		lfb_height = loader_fb.height;
-		lfb_pitch = loader_fb.pitch;
-		kprintf("fb: VESA linear framebuffer at 0x%08lx, %lux%lu, from the boot loader\n",
-		        (unsigned long)lfb_phys, (unsigned long)lfb_width, (unsigned long)lfb_height);
+		/* The loader has already set the mode, so the screen is this
+		 * framebuffer whether or not the kernel can map it: a window
+		 * that doesn't fit is refused here, before anything draws. */
+		uint32_t total = loader_fb.pitch * loader_fb.height;
+		if (total == 0 || total > KERNEL_FB_SIZE
+		    || (total + PAGE_SIZE - 1) / PAGE_SIZE
+		           > (KERNEL_PT_AREA_START - KERNEL_FB_START) / PAGE_SIZE) {
+			kprintf("fb: the boot loader's VESA framebuffer (%lux%lu) is too big to map\n",
+			        (unsigned long)loader_fb.width, (unsigned long)loader_fb.height);
+		} else {
+			lfb_present = true;
+			lfb_phys = loader_fb.addr;
+			lfb_width = loader_fb.width;
+			lfb_height = loader_fb.height;
+			lfb_pitch = loader_fb.pitch;
+			kprintf("fb: VESA linear framebuffer at 0x%08lx, %lux%lu, from the boot loader\n",
+			        (unsigned long)lfb_phys, (unsigned long)lfb_width,
+			        (unsigned long)lfb_height);
+			/* Map it immediately so the kernel console can draw here and
+			 * /dev/fb is usable without an explicit mode switch. */
+			if (map_lfb(lfb_phys, total) == 0) {
+				kind = LFB;
+				width = lfb_width;
+				height = lfb_height;
+				pitch = lfb_pitch;
+				depth = 32;
+				bytes = total;
+				pixels = (uint8_t *)KERNEL_FB_START;
+				kconsole_use_lfb(KERNEL_FB_START, lfb_width, lfb_height,
+				                 lfb_pitch);
+			}
+		}
 	}
 
 	device_register(&fb_device);

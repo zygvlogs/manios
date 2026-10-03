@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "cpu.h"
 #include "heap.h"
+#include "kstack.h"
 #include "kstring.h"
 #include "mutex.h"
 #include "panic.h"
@@ -168,4 +169,18 @@ void sched_selftest_sync(void)
 	       "selftest: a timed wait did not time out on schedule");
 	expect(timed_wq.head == NULL && timed_wq.tail == NULL,
 	       "selftest: a timed-out thread was left on its wait queue");
+}
+
+/* A thread's stack is freed when the thread is reclaimed, and the slot
+ * it was in must be usable again: a slot that is never released runs
+ * the kernel out of stacks, and one released while still in use hands
+ * the same stack to two threads. */
+void sched_selftest_stack_reuse(void)
+{
+	uintptr_t first = kstack_alloc();
+	expect(first != 0, "selftest: kstack_alloc failed");
+	kstack_free(first);
+	uintptr_t again = kstack_alloc();
+	expect(again == first, "selftest: a freed stack slot was not reused");
+	kstack_free(again);
 }

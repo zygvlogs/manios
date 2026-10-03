@@ -131,6 +131,7 @@ void kernel_main(uint32_t multiboot_magic, uint32_t multiboot_info_phys)
 	kconsole_progress(", threads");
 
 	sched_selftest_sync();
+	sched_selftest_stack_reuse();
 	drivers_init();
 	kprintf("Milestone M5: driver framework online "
 	        "(keyboard + serial console input, mutex self-test passed).\n");

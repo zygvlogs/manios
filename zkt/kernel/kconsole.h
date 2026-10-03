@@ -10,6 +10,8 @@
  * input comes from the PS/2 keyboard and COM1. Each write is one
  * message: messages from different threads never interleave. */
 void kconsole_init(void);
+void kconsole_use_lfb(uintptr_t base, uint32_t width, uint32_t height,
+                      uint32_t pitch);
 void kconsole_putc(char c);
 void kconsole_write(const char *s);
 void kconsole_write_n(const char *s, size_t len);

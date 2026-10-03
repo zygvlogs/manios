@@ -1,23 +1,26 @@
 # M21 — a real display adapter's own linear framebuffer (VESA BIOS Extensions)
 
-**Status:** Achieved (2026-09-27). Released as **0.21.0**. Found within
+**Status:** Achieved (2026-09-27). Released as **0.21.0**; the kernel
+console on the framebuffer, `gfx=WxH` and the page-table fix followed
+in **0.22.0**. Found within
 hours of 0.20.0's real-hardware boot: `manide` ("cannot set a 800x600
 mode: no such device (a Bochs VBE display is needed)") on a laptop with
 an ATI graphics chip, none of the emulator-specific hardware
-`zkt/drivers/fb.c` already drove. Asked for as "Yes VBE". `gfx=auto` on
-the boot line now has ManiOS's own boot loader ask the display's own
-VESA BIOS Extensions for a linear framebuffer before ManiOS starts, so
-`manide` and `gfxdemo` can draw to a real adapter, not only an
-emulator's.
+`zkt/drivers/fb.c` already drove. Asked for as "Yes VBE". `gfx=auto`
+(or `gfx=WxH`) on the boot line now has ManiOS's own boot loader ask
+the display's own VESA BIOS Extensions for a linear framebuffer before
+ManiOS starts, so `manide` and `gfxdemo` can draw to a real adapter,
+not only an emulator's.
 
 ## What M21 delivers
 
 | Piece | Files | Summary |
 |---|---|---|
-| The probe | `boot/stage2_entry.S` (`vbe_probe`) | Real mode, before the switch to protected mode: VBE 2.0's INT 10h services find the biggest mode up to 1024x768 of the 32-bit XRGB kind fb.c already draws, with a linear framebuffer, and set it -- only with `gfx=auto` on the (by then final) command line |
+| The probe | `boot/stage2_entry.S` (`vbe_probe`) | Real mode, before the switch to protected mode: VBE 2.0's INT 10h services find the biggest mode up to 1024x768 (`gfx=auto`) or a requested size (`gfx=WxH`) of the 32-bit XRGB kind fb.c already draws, with a linear framebuffer, and set it -- only with `gfx=auto` or `gfx=WxH` on the (by then final) command line |
 | To the kernel | `boot/stage2.c`, `zkt/kernel/multiboot.h`/`.c` | The mode's address, size and format, as Multiboot 1's own framebuffer fields (flags bit 12); read once, at boot, and kept for `fb_init()` |
 | In the driver | `zkt/drivers/fb.c` | A third kind of graphics mode, `LFB`, fixed at whatever size the loader found; used only where there is no Bochs VBE adapter, which can do more (any size, changed at will) |
-| The message | `desktop/manide/main.c` | Mentions `gfx=auto` when there is truly no display ManiOS can drive |
+| The console | `zkt/drivers/lfb_console.c`, `zkt/kernel/kconsole.c` | A software text console that draws the kernel's own output into the framebuffer (8x16 font, ANSI colours), since a VESA mode has replaced the VGA text buffer the console used to write to (0.22.0) |
+| The message | `desktop/manide/main.c` | Mentions `gfx=auto` when there is truly no display ManiOS can drive; takes the current framebuffer's size as its default (0.22.0) |
 
 ## Design decisions
 
@@ -84,12 +87,13 @@ something ManiDE would be slow on.
   this; each boot's command line is baked into its own small boot area
   and ISO, `tools/mkbootarea.py --cmdline`) --
   - no `gfx=`: no probe, the usual boot, unchanged;
-  - `gfx=1024x768` (not `auto`, which is all M21 takes): also ignored;
   - `gfx=auto` with QEMU's own display (`-vga std`, Bochs VBE
     registers): a real mode still probed and set over genuine BIOS
     calls (SeaBIOS's own VBE, on the same hardware the registers also
     reach), but the registers still drive graphics -- `fb.c`'s LFB
     line is never printed;
+  - `gfx=1024x768`, `-vga qxl`: an explicit resolution is parsed,
+    probed, set, and the kernel draws to the resulting LFB;
   - `gfx=auto`, `-vga cirrus` (a different, real VESA BIOS with no
     32-bit linear-framebuffer mode): "no VESA linear framebuffer",
     boots as usual;
@@ -118,8 +122,9 @@ something ManiDE would be slow on.
 - Set once, at boot: no changing the mode (size or leaving it) once
   ManiOS is running, and no second display adapter tried if the first
   gives nothing.
-- 32-bit colour only (no 8-, 16- or 24-bit VESA modes); at most
-  1024x768, even where a card's BIOS offers more.
+- 32-bit colour only (no 8-, 16- or 24-bit VESA modes); with
+  `gfx=auto` the chosen mode is at most 1024x768. Larger modes can be
+  requested explicitly with `gfx=WxH`.
 - Leaving graphics (`manide`'s Alt+Q, or `gfxdemo`'s Enter) tries to
   restore text mode by writing VGA's own registers, exactly as the
   Bochs VBE path already does -- and on many real cards, whose VESA

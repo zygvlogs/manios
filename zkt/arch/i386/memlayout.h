@@ -46,6 +46,14 @@
 #define KERNEL_MMIO_START 0xE5000000
 #define KERNEL_MMIO_SIZE 0x01000000
 
+/* The kernel's own page tables (paging.c) live in the page directory
+ * entry just below the recursive one, so that a page table can never
+ * share a directory entry with a device mapping: a framebuffer or MMIO
+ * window that landed on the same entry would have its page table
+ * overwritten by the mapping, and the kernel would fault on the next
+ * instruction it fetched from it. */
+#define KERNEL_PT_AREA_START 0xFF800000
+
 /* User space is everything below the kernel. Page directory entries
  * from here up are the kernel's, identical in every address space. */
 #define USER_SPACE_TOP KERNEL_VIRT_BASE

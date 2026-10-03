@@ -1,6 +1,7 @@
 /* manide [-n | -s SESSION] [WIDTH HEIGHT] -- ManiDE, the ManiOS desktop
- * (DESIGN.md). 800x600 by default; needs a Bochs VBE display of at
- * least 640x480. It starts the programs its session file lists
+ * (DESIGN.md). Defaults to the current framebuffer's size, or 800x600
+ * if the screen is in text mode; needs a display of at least 640x480.
+ * It starts the programs its session file lists
  * (/boot/etc/manide, or SESSION; -n: none), and exits with Alt+Shift+Q
  * or from its menu, restoring the text console.
  *
@@ -288,12 +289,41 @@ static int mount_helper(void)
 	return 0;
 }
 
+/* If the kernel already has a graphics mode (gfx=auto/WxH or Bochs default),
+ * use its size as the default so ManiDE matches the screen. Otherwise fall
+ * back to the traditional 800x600 default. */
+static void default_size(int *width, int *height)
+{
+	int fd = open("/dev/fbctl", OREAD);
+	if (fd < 0) {
+		return;
+	}
+	char buf[64];
+	long n = read(fd, buf, sizeof(buf) - 1);
+	close(fd);
+	if (n <= 0) {
+		return;
+	}
+	buf[n] = '\0';
+	if (strncmp(buf, "text", 4) == 0) {
+		return;
+	}
+	char *p = buf;
+	long w = strtol(p, &p, 10);
+	long h = strtol(p, &p, 10);
+	if (w > 0 && h > 0) {
+		*width = (int)w;
+		*height = (int)h;
+	}
+}
+
 int main(int argc, char **argv)
 {
 	if (argc == 2 && !strcmp(argv[1], "-m")) {
 		return mount_helper();
 	}
 	int width = 800, height = 600, arg = 1;
+	default_size(&width, &height);
 	const char *session = SESSION;
 	if (arg < argc && !strcmp(argv[arg], "-n")) {
 		session = NULL;

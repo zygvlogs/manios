@@ -10,4 +10,7 @@ void sched_selftest_preemptive(void);
 /* Mutex mutual exclusion under forced interleaving. */
 void sched_selftest_sync(void);
 
+/* Kernel stack slots are released and reused. */
+void sched_selftest_stack_reuse(void);
+
 #endif

@@ -96,7 +96,7 @@ def main():
     try:
         plain = build_iso(build, workdir, "", "plain")
         auto = build_iso(build, workdir, "gfx=auto", "auto")
-        bogus = build_iso(build, workdir, "gfx=1024x768", "bogus")  # not "auto": not supported
+        explicit = build_iso(build, workdir, "gfx=1024x768", "explicit")
 
         def no_gfx():
             m = boot(plain, "std")
@@ -109,14 +109,32 @@ def main():
                 m.close()
         step("no gfx=: unchanged -- no probe, the usual boot", no_gfx)
 
-        def bogus_gfx():
-            m = boot(bogus, "std")
+        def explicit_gfx():
+            check(qemu_has_device("qxl-vga"),
+                  "this QEMU has no qxl-vga device (Debian/Ubuntu: apt install qemu-system-modules-spice)")
+            m = boot(explicit, "qxl")
             try:
                 out = m.expect(SHELL_PROMPT, timeout=120)
-                check("graphics:" not in out, f"an unsupported gfx= value still probed:\n{out}")
+                check("graphics: VESA 1024x768 found" in out,
+                      f"gfx=1024x768 didn't set the requested mode:\n{out}")
+                mo = re.search(r"fb: VESA linear framebuffer at (0x[0-9a-f]+), (\d+)x(\d+)", out)
+                check(mo, f"the kernel didn't take the loader's framebuffer:\n{out}")
+                check(f"{mo[2]}x{mo[3]}" == "1024x768",
+                      f"kernel saw {mo[2]}x{mo[3]}, expected 1024x768")
+                m.type_serial("gfxdemo\r")
+                m.expect(b"press Enter", timeout=15)
+                time.sleep(0.5)
+                s = screendump(m, workdir, "qxl-explicit")
+                check((s.w, s.h) == (1024, 768), f"the screen is {s.w}x{s.h}, not 1024x768")
+                check(any(s.pixel(x, y) != (0, 0, 0) for y in range(0, s.h, 8)
+                          for x in range(0, s.w, 8)),
+                      "the screen is black: the kernel never drew to the framebuffer")
+                m.type_serial("\r")
+                m.expect(b"back to text mode", timeout=15)
+                m.expect(SHELL_PROMPT, timeout=15)
             finally:
                 m.close()
-        step("gfx=1024x768 (not \"auto\"): ignored, like no gfx= at all", bogus_gfx)
+        step("gfx=1024x768: an explicit resolution is probed, set, and drawn to", explicit_gfx)
 
         def std_precedence():
             m = boot(auto, "std")
@@ -157,11 +175,8 @@ def main():
                 mo = re.search(r"fb: VESA linear framebuffer at (0x[0-9a-f]+), (\d+)x(\d+)", out)
                 check(mo, f"the kernel didn't take the loader's framebuffer:\n{out}")
                 check("fb: Bochs VBE" not in out, "QXL isn't Bochs VBE")
-                run_command(m, "serial", "cat /dev/fbctl", ["\r\ntext\r\n"], SHELL_PROMPT)
-                run_command(m, "serial", "cat /dev/fb", ["no such device or address"], SHELL_PROMPT)
-                # mode 640 480: on a fixed-size LFB, any size asked for
-                # is answered with the one there is (M21's own design;
-                # gfxdemo does the same through libgfx, exercised below).
+                run_command(m, "serial", "cat /dev/fbctl",
+                            ["\r\n1024 768 32 4096 xrgb8888 vesa\r\n"], SHELL_PROMPT)
                 m.type_serial("gfxdemo\r")
                 banner = m.expect(b"press Enter", timeout=15)
                 bm = re.search(r"(\d+)x(\d+)x(\d+) xrgb8888", banner)
@@ -174,13 +189,53 @@ def main():
                 check((s.w, s.h) == (w, h), f"the screen is {s.w}x{s.h}, gfxdemo says {w}x{h}")
                 check_swatches(s, w, 1, 0)
                 m.type_serial("\r")
-                m.expect(b"back to text mode", timeout=15)
+                # Back to the LFB console, not text mode, because the loader
+                # set a fixed VESA mode and there is no V86 monitor to undo it.
                 m.expect(SHELL_PROMPT, timeout=15)
-                run_command(m, "serial", "cat /dev/fbctl", ["\r\ntext\r\n"], SHELL_PROMPT)
             finally:
                 m.close()
         step("gfx=auto, a real linear framebuffer (QXL): drawn to, read back, exact colours",
              qxl_lfb)
+
+        def qxl_black_screen():
+            # A regression: the kernel's own page tables used to live in
+            # the directory entry a 1024x768x32 framebuffer's window
+            # reaches (0xE3000000..0xE3FFFFFF), so mapping the
+            # framebuffer overwrote a page table with device memory and
+            # the kernel faulted on the next instruction it fetched
+            # through it -- a black screen, with nothing on the serial
+            # line to say why. The tables now live in the entry below
+            # the recursive one (KERNEL_PT_AREA_START), out of every
+            # device window's way.
+            check(qemu_has_device("qxl-vga"),
+                  "this QEMU has no qxl-vga device (Debian/Ubuntu: apt install qemu-system-modules-spice)")
+            m = boot(auto, "qxl")
+            try:
+                out = m.expect(SHELL_PROMPT, timeout=120)
+                check("ZKT PANIC" not in out, f"the kernel panicked:\n{out}")
+                check("ManiOS " + VERSION + " is ready" in out,
+                      f"the machine didn't reach the shell:\n{out}")
+                check(re.search(r"fb: VESA linear framebuffer at 0x[0-9a-f]+, \d+x\d+", out),
+                      f"the kernel didn't take the loader's framebuffer:\n{out}")
+                # The screen must be the mode the loader set, and the
+                # kernel must be able to draw to it: gfxdemo paints the
+                # whole framebuffer, so a black screen means the mapping
+                # never took effect.
+                m.type_serial("gfxdemo\r")
+                m.expect(b"press Enter", timeout=15)
+                time.sleep(0.5)
+                s = screendump(m, workdir, "qxl-black")
+                check((s.w, s.h) == (1024, 768), f"the screen is {s.w}x{s.h}, not 1024x768")
+                check(any(s.pixel(x, y) != (0, 0, 0) for y in range(0, s.h, 8)
+                          for x in range(0, s.w, 8)),
+                      "the screen is black: the kernel never drew to the framebuffer")
+                m.type_serial("\r")
+                m.expect(b"back to text mode", timeout=15)
+                m.expect(SHELL_PROMPT, timeout=15)
+            finally:
+                m.close()
+        step("gfx=auto, QXL: the screen is drawn to, not black (page-table collision)",
+             qxl_black_screen)
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
 

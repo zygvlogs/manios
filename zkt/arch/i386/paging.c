@@ -6,6 +6,14 @@
  * RECURSIVE_PD_ADDR. That lets page tables live in any physical frame
  * the PMM hands out, not just the 4 MiB the boot mapping covers.
  *
+ * A page table is itself mapped at a kernel address, in the directory
+ * entry just below the recursive one (KERNEL_PT_AREA_START), so that
+ * every page directory can be given it. That entry is deliberately
+ * outside the range the kernel maps device memory into (memlayout.h):
+ * a framebuffer or MMIO window sharing a directory entry with a page
+ * table would overwrite the table with device memory, and the kernel
+ * would fault on the next instruction it fetched through it.
+ *
  * Every address space shares the kernel's page tables (directory entries
  * KERNEL_PD_FIRST..1022). A kernel page table created while any address
  * space is active is therefore written into every page directory: each
@@ -40,6 +48,10 @@ static struct address_space *active = &kernel_space;
 
 static uint32_t *const page_directory = (uint32_t *)RECURSIVE_PD_ADDR;
 
+/* The kernel's own page tables, one per directory entry, in the entry
+ * below the recursive one (KERNEL_PT_AREA_START). */
+static uint32_t *const kernel_page_tables = (uint32_t *)KERNEL_PT_AREA_START;
+
 static uint32_t *page_table(uint32_t pd_index)
 {
 	return (uint32_t *)(RECURSIVE_PT_BASE + pd_index * PAGE_SIZE);
@@ -60,6 +72,11 @@ void vmm_init(void)
 	kernel_space.pd = boot_page_directory;
 	kernel_space.pd_phys = V2P(boot_page_directory);
 	boot_page_directory[RECURSIVE_PD_INDEX] =
+	    kernel_space.pd_phys | PTE_PRESENT | PTE_WRITABLE;
+	/* The kernel's own page tables are mapped in the entry below the
+	 * recursive one (KERNEL_PT_AREA_START), so that a device mapping
+	 * can never share a directory entry with one (memlayout.h). */
+	boot_page_directory[KERNEL_PT_AREA_START >> 22] =
 	    kernel_space.pd_phys | PTE_PRESENT | PTE_WRITABLE;
 	cpu_flush_tlb();
 
@@ -87,14 +104,28 @@ static int map_page_locked(uintptr_t virt, uintptr_t phys, unsigned flags)
 		}
 		uint32_t pde = table | PTE_PRESENT | PTE_WRITABLE | (user ? PTE_USER : 0);
 		if (pdi >= KERNEL_PD_FIRST) {
+			/* The table is mapped at a kernel address of its own
+			 * (KERNEL_PT_AREA_START), so every address space can be
+			 * given it -- and the mapping is made before the entry
+			 * that uses it, so the table is reachable throughout.
+			 * The mapping is a call, so the compiler may not move the
+			 * zeroing below it: the table must be cleared before the
+			 * entry that uses it is published, or a fault taken in
+			 * between would walk a table of stale entries. */
+			if (vmm_map_page(KERNEL_PT_AREA_START + pdi * PAGE_SIZE, table,
+			                 VMM_WRITABLE) != 0) {
+				pmm_free_frame(table);
+				return -1;
+			}
+			memset(kernel_page_tables + pdi * (PAGE_SIZE / sizeof(uint32_t)), 0, PAGE_SIZE);
 			for (struct address_space *as = all_spaces; as; as = as->next) {
 				as->pd[pdi] = pde;
 			}
 		} else {
 			page_directory[pdi] = pde;
+			memset(page_table(pdi), 0, PAGE_SIZE);
 		}
 		cpu_flush_tlb();
-		memset(page_table(pdi), 0, PAGE_SIZE);
 	}
 
 	uint32_t *pt = page_table(pdi);
@@ -185,6 +216,8 @@ struct address_space *vmm_as_create(void)
 		as->pd[i] = kernel_space.pd[i];
 	}
 	as->pd[RECURSIVE_PD_INDEX] = as->pd_phys | PTE_PRESENT | PTE_WRITABLE;
+	as->pd[KERNEL_PT_AREA_START >> 22] =
+	    kernel_space.pd[KERNEL_PT_AREA_START >> 22];
 	as->next = all_spaces;
 	all_spaces = as;
 	cpu_irq_restore(flags);

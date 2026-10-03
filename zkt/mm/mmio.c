@@ -11,7 +11,10 @@ volatile void *mmio_map(uintptr_t phys, size_t len)
 	size_t pages = (phys - first + len + PAGE_SIZE - 1) / PAGE_SIZE;
 	uint32_t flags = cpu_irq_save();
 	uintptr_t base = next;
-	if (pages > (KERNEL_MMIO_START + KERNEL_MMIO_SIZE - base) / PAGE_SIZE) {
+	/* The window must not reach the kernel's own page tables, which
+	 * live in the directory entry below the recursive one: mapping
+	 * over them would overwrite a page table with device memory. */
+	if (pages > (KERNEL_PT_AREA_START - base) / PAGE_SIZE) {
 		cpu_irq_restore(flags);
 		return 0;
 	}

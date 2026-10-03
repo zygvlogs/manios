@@ -17,6 +17,7 @@
 # Editor / OS cruft
 .vscode/
 .idea/
+.abacusai/
 *.swp
 .DS_Store
 __pycache__/

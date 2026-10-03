@@ -3,6 +3,7 @@
 #include "cpu.h"
 #include "device.h"
 #include "kstring.h"
+#include "lfb_console.h"
 #include "mutex.h"
 #include "poll.h"
 #include "ring.h"
@@ -14,6 +15,7 @@ static const char HEX_DIGITS[] = "0123456789abcdef";
 
 static struct mutex output_lock = MUTEX_INIT;
 static volatile bool quiet;   /* the screen is left out */
+static bool use_lfb;
 
 static uint8_t input_storage[256];
 static struct ring input = RING_INIT(input_storage);
@@ -23,6 +25,24 @@ void kconsole_init(void)
 {
 	serial_init();
 	vga_clear();
+}
+
+/* Switch the kernel console to draw into a linear framebuffer.
+ * Called from fb.c once a VESA LFB is mapped. */
+void kconsole_use_lfb(uintptr_t base, uint32_t width, uint32_t height,
+                      uint32_t pitch)
+{
+	lfb_console_init(base, width, height, pitch);
+	use_lfb = true;
+}
+
+static void screen_write(const char *s, size_t len)
+{
+	if (use_lfb) {
+		lfb_console_write(s, len);
+	} else {
+		vga_write(s, len);
+	}
 }
 
 /* Two ways to keep a message whole. A thread that may block takes a
@@ -36,14 +56,14 @@ void kconsole_write_n(const char *s, size_t len)
 		mutex_lock(&output_lock);
 		serial_write_buffered(s, len);
 		if (!quiet) {
-			vga_write(s, len);
+			screen_write(s, len);
 		}
 		mutex_unlock(&output_lock);
 	} else {
 		uint32_t flags = cpu_irq_save();
 		serial_write_polled(s, len);
 		if (!quiet) {
-			vga_write(s, len);
+			screen_write(s, len);
 		}
 		cpu_irq_restore(flags);
 	}
@@ -58,7 +78,7 @@ void kconsole_progress(const char *s)
 {
 	if (quiet) {
 		uint32_t flags = cpu_irq_save();
-		vga_write(s, strlen(s));
+		screen_write(s, strlen(s));
 		cpu_irq_restore(flags);
 	}
 }

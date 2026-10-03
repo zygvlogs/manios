@@ -107,9 +107,10 @@ the card asks a DHCP server for an address.
 
 `manide` and `gfxdemo` need a display adapter with the Bochs VBE
 registers (QEMU's, VirtualBox's, VMware's SVGA II) -- emulators, so
-far, not real cards. `gfx=auto` on the boot line has the boot loader
-itself ask the display's own VESA BIOS for a linear framebuffer before
-ManiOS starts (M21, [docs/install.md](install.md#gfxauto-a-real-adapters-own-linear-framebuffer)):
+far, not real cards. `gfx=auto` or `gfx=WxH` on the boot line has the
+boot loader itself ask the display's own VESA BIOS for a linear
+framebuffer before ManiOS starts (M21,
+[docs/install.md](install.md#gfxauto-a-real-adapters-own-linear-framebuffer)):
 
 ```
 graphics: VESA 1024x768 found
