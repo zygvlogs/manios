@@ -1,6 +1,6 @@
 # M22 — writing to a FAT volume: the kernel's own FAT writer
 
-**Status:** Achieved (2026-10-04), after 0.22.0; not yet released.
+**Status:** Achieved (2026-10-04). Released as **0.23.0**.
 Written for better DOS compatibility: until M22 ManiOS could read a FAT
 volume but not write one, so ManiDOS's `DEL`, `MD`, `RD`, `REN` and
 `COPY` onto a file answered "Access denied", `> FILE` refused, libc's
