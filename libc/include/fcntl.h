@@ -1,8 +1,9 @@
-/* POSIX open() and fcntl(). ManiOS opens existing files only: O_CREAT
- * of a file that isn't there fails (EROFS), and O_TRUNC is refused.
- * ManiOS's own open() (<manios.h>) takes OREAD/OWRITE/ORDWR, which are
- * O_RDONLY, O_WRONLY and O_RDWR; this one, under another link name,
- * also takes the flags below. */
+/* POSIX open() and fcntl(). O_CREAT makes the file and O_TRUNC empties
+ * it where the file system takes writes, and fail EROFS where it
+ * doesn't; O_CREAT with O_EXCL fails (EEXIST) on a file that is
+ * already there. ManiOS's own open() (<manios.h>) takes OREAD/OWRITE/
+ * ORDWR, which are O_RDONLY, O_WRONLY and O_RDWR; this one, under
+ * another link name, also takes the flags below. */
 #ifndef MANIOS_FCNTL_H
 #define MANIOS_FCNTL_H
 

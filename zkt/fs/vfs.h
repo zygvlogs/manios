@@ -39,6 +39,19 @@ struct vnode_ops {
 	long (*write)(struct vnode *v, uint32_t offset, const void *buf, size_t len);
 	/* Fills the index'th entry: 1, or 0 past the last entry, or an error. */
 	int (*readdir)(struct vnode *dir, uint32_t index, struct dirent *out);
+	/* Creates `name` in directory `dir` (VNODE_FILE or VNODE_DIR, never
+	 * anything else); stores a new reference. The name is the file
+	 * system's own to choose: a FAT volume may keep it as an 8.3 alias.
+	 * NULL: creation is refused (-EROFS). */
+	int (*create)(struct vnode *dir, const char *name, enum vnode_type type, struct vnode **out);
+	/* Removes `name` from `dir`: expect VNODE_FILE (a file, and a
+	 * directory is EISDIR) or VNODE_DIR (a directory, empty, and a file
+	 * is ENOTDIR). NULL: -EROFS. */
+	int (*remove)(struct vnode *dir, const char *name, enum vnode_type expect);
+	/* Renames `from` to `to`, both in `dir`. NULL: -EROFS. */
+	int (*rename)(struct vnode *dir, const char *from, const char *to);
+	/* Empties a file, or shrinks it. NULL: -EROFS. */
+	int (*truncate)(struct vnode *v, uint32_t size);
 	/* Called when the last reference goes; frees the vnode. */
 	void (*release)(struct vnode *v);
 	/* Whether a read would return without blocking: 1 or 0. Called with
@@ -60,8 +73,11 @@ void vnode_unref(struct vnode *v);
 /* Open files. Paths are absolute and resolved in the calling thread's
  * namespace. A directory opened on a union reads the entries of every
  * member, in union order, duplicates included (as in Plan 9). `mode` is
- * OREAD, OWRITE or ORDWR (zkt_abi.h); asking to write something that
- * can't be written fails at open (EISDIR, EROFS). */
+ * OREAD, OWRITE or ORDWR (zkt_abi.h), or'd with O_CREAT (make the file
+ * if it isn't there), O_TRUNC (empty it) and O_EXCL (with O_CREAT: it
+ * must not be there yet). Asking to write something that can't be
+ * written fails at open (EISDIR, EROFS); creating one on a file system
+ * without a create operation fails the same way (EROFS). */
 struct file;
 int vfs_open(const char *path, int mode, struct file **out);
 /* An open file for a vnode that no path reaches (a pipe end); takes
@@ -93,6 +109,16 @@ int vfs_poll(struct file *f);
 uint32_t vfs_size(const struct file *f);
 /* Drops a reference; the file closes with the last one. */
 void vfs_close(struct file *f);
+
+/* Making, removing and renaming files. Each resolves the path in the
+ * calling thread's namespace and hands the change to the first member
+ * of a union directory, as Plan 9's create does; a file system without
+ * the operation refuses with EROFS. `type` is VNODE_FILE or VNODE_DIR. */
+int vfs_create(const char *path, enum vnode_type type, struct vnode **out);
+int vfs_unlink(const char *path);
+int vfs_rmdir(const char *path);
+/* Both paths must be in the same directory (EXDEV otherwise). */
+int vfs_rename(const char *from, const char *to);
 
 /* Namespace changes in the calling thread's namespace. Like Plan 9's
  * bind(2): `old` then resolves to `new` (BIND_REPLACE), or to a union of

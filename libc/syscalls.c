@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <manios.h>
+#include <sys/types.h>
 
 int errno;
 
@@ -63,6 +64,18 @@ int bind(const char *new_path, const char *old_path, int flag)
 int unbind(const char *old_path)                { return (int)SC1(SYS_UNBIND, old_path); }
 int nsfork(void)                                { return (int)SC0(SYS_NSFORK); }
 int chdir(const char *path)                     { return (int)SC1(SYS_CHDIR, path); }
+
+/* Naming files (M22): the calls below the library's POSIX layer is on
+ * top of. mode of mkdir is the caller's permission bits, which ManiOS's
+ * file systems don't have. */
+int mkdir(const char *path, mode_t mode)
+{
+	(void)mode;
+	return (int)SC1(SYS_MKDIR, path);
+}
+int unlink(const char *path)                    { return (int)SC1(SYS_UNLINK, path); }
+int rmdir(const char *path)                     { return (int)SC1(SYS_RMDIR, path); }
+int rename(const char *from, const char *to)    { return (int)SC2(SYS_RENAME, from, to); }
 
 int mountfd(int fd, const char *old_path, int flag, const char *aname)
 {

@@ -193,12 +193,65 @@ def dos(m, command, needles, prompt="C:\\>"):
     return out
 
 
+def written(disk, chkdsk):
+    """What ManiDOS left on C: after its EXIT: the bytes mtools reads,
+    the root directory as the FAT holds it, and the free space CHKDSK
+    reported while the disk was mounted."""
+    with open(disk, "rb") as f:
+        img = bytearray(f.read())
+    vol = Volume(img, C_START)
+    offset = f"{disk}@@{C_START * 512}"
+
+    def entry(name83):
+        o = vol.base + vol.root_start * vol.bps
+        for i in range(vol.root_entries):
+            if img[o + 32 * i:o + 32 * i + 11] == name83:
+                return o + 32 * i
+        return None
+
+    def mtype(name):
+        r = subprocess.run(["mtype", "-i", offset, "::/" + name], capture_output=True)
+        if r.returncode:
+            raise TestFailure(f"mtype {name}: {r.stderr.decode('latin-1').strip()}")
+        return r.stdout
+
+    def exists(name):
+        r = subprocess.run(["mtype", "-i", offset, "::/" + name], capture_output=True)
+        return r.returncode == 0
+
+    fat1 = vol.fat_offset(0)
+    fat2 = vol.fat_offset(1)
+    size = vol.fat_sectors * vol.bps
+    if bytes(img[fat1:fat1 + size]) != bytes(img[fat2:fat2 + size]):
+        raise TestFailure("C:'s two copies of the FAT differ")
+    if entry(b"NEW     TXT") or entry(b"OLDER  TXT") or entry(b"NEWDIR     "):
+        raise TestFailure("a name that was deleted is still in the root directory")
+    if not entry(b"LIST    TXT"):
+        raise TestFailure("LIST.TXT, from \"DIR > LIST.TXT\", isn't in the root directory")
+    listing = mtype("LIST.TXT")
+    if b"Volume in drive C is MANIDOS" not in listing or b"appended" not in listing:
+        raise TestFailure("LIST.TXT doesn't hold what was redirected into it")
+    if b"Welcome to ManiDOS." not in mtype("README.TXT"):
+        raise TestFailure("README.TXT changed")
+    if exists("DOCS/README.TXT"):
+        raise TestFailure("DOCS\\README.TXT, copied into DOCS and deleted, is still there")
+    if b"Dear reader," not in mtype("DOCS/LETTER.TXT"):
+        raise TestFailure("DOCS\\LETTER.TXT is gone")
+    free = re.search(r"([\d,]+) bytes available on disk", chkdsk)
+    if not free:
+        raise TestFailure(f"CHKDSK after the writes said nothing about free space:\n{chkdsk}")
+    want = f"{vol.free() * vol.cluster_size:,}"
+    if free.group(1) != want:
+        raise TestFailure(f"CHKDSK said {free.group(1)} bytes free, the disk has {want}")
+
+
 def main():
     kernel = sys.argv[1] if len(sys.argv) > 1 else "build/manios-zkt.elf"
     workdir = tempfile.mkdtemp(prefix="zkt-dos-")
     disk = os.path.join(workdir, "dos.img")
     facts = build_disk(disk)
     c, d = facts["c"], facts["d"]
+    after = {}  # what CHKDSK said once the writes were made
     failures = 0
 
     def step(name, fn):
@@ -255,12 +308,14 @@ def main():
                       dos(m, "TYPE DOCS\\LETTER.TXT", ["Dear reader,"]),
                       dos(m, "TYPE NOPE.TXT", ["File not found - NOPE.TXT"]),
                       dos(m, "TYPE DOCS", ["Access denied - DOCS is a directory"]))),
-            ("COPY to CON; the drives are read-only for the rest",
+            ("COPY to CON; what the write commands say before they write",
              lambda: (dos(m, "COPY DOCS\\*.TXT CON", ["C:\\DOCS\\LETTER.TXT", "Dear reader,",
                                                       "C:\\DOCS\\NOTES.TXT", "2 file(s) copied"]),
-                      dos(m, "COPY README.TXT NEW.TXT", ["Access denied - ManiOS's drives are read-only"]),
-                      dos(m, "DEL README.TXT", ["Access denied", "DEL can't work yet"]),
-                      dos(m, "MD NEWDIR", ["Access denied"]),
+                      dos(m, "COPY README.TXT DOCS", ["Access denied - DOCS is a directory"]),
+                      dos(m, "MD DOCS", ["Unable to create directory"]),
+                      dos(m, "RD README.TXT",
+                          ["Invalid path, not directory, or directory is not empty"]),
+                      dos(m, "REN README.TXT", ["Required parameter missing"]),
                       dos(m, "FORMAT D:", ["FORMAT isn't in ManiDOS"]))),
             ("drive letters: D:, a drive that isn't there",
              lambda: (dos(m, "D:", [], "D:\\>"),
@@ -319,11 +374,45 @@ def main():
                       m.type_serial("\r"),
                       m.expect("line 40\r\n"),
                       m.expect("\r\nC:\\>"))),
-            ("redirection: to NUL, CON and a device; not to a file",
+            ("redirection: to NUL, CON, a device, and a file",
              lambda: (dos(m, "TYPE README.TXT > NUL", ["!Welcome"]),
                       dos(m, "ECHO to the screen > CON", ["\r\nto the screen\r\n"]),
                       dos(m, "TYPE README.TXT > Z:\\DEV\\NULL", ["!Welcome", "!denied"]),
-                      dos(m, "DIR > LIST.TXT", ["Access denied - ManiOS's drives are read-only"]))),
+                      dos(m, "ECHO hi > Z:\\NOPE.TXT", ["Access denied - that drive is read-only"]),
+                      dos(m, "DIR > LIST.TXT", ["!Volume in drive C"]),
+                      dos(m, "TYPE LIST.TXT", [" Volume in drive C is MANIDOS", "README   TXT",
+                                               "!Access denied"]),
+                      dos(m, "ECHO appended >> LIST.TXT", []),
+                      dos(m, "TYPE LIST.TXT", ["appended"]))),
+            ("COPY, MD, REN, RD and DEL write to the drive",
+             lambda: (dos(m, "COPY README.TXT NEW.TXT", ["1 file(s) copied"]),
+                      dos(m, "TYPE NEW.TXT", ["Welcome to ManiDOS."]),
+                      dos(m, "COPY README.TXT", ["The file cannot be copied onto itself",
+                                                 "0 file(s) copied"]),
+                      dos(m, "MD NEWDIR", []),
+                      dos(m, "MD NEWDIR", ["Unable to create directory"]),
+                      dos(m, "COPY NEW.TXT NEWDIR\\INNER.TXT", ["1 file(s) copied"]),
+                      dos(m, "TYPE NEWDIR\\INNER.TXT", ["Welcome to ManiDOS."]),
+                      dos(m, "REN NEW.TXT OLDER.TXT", []),
+                      dos(m, "REN OLDER.TXT README.TXT",
+                          ["Duplicate file name or file not found"]),
+                      dos(m, "REN NOPE.TXT X.TXT", ["Duplicate file name or file not found"]),
+                      dos(m, "DEL NEWDIR", ["Access denied - NEWDIR is a directory"]),
+                      dos(m, "RD NEWDIR",
+                          ["Invalid path, not directory, or directory is not empty"]),
+                      dos(m, "DEL NEWDIR\\INNER.TXT", []),
+                      dos(m, "RD NEWDIR", []),
+                      dos(m, "RD NEWDIR",
+                          ["Invalid path, not directory, or directory is not empty"]),
+                      dos(m, "DEL OLDER.TXT", []),
+                      dos(m, "DEL OLDER.TXT", ["File not found - OLDER.TXT"]),
+                      dos(m, "CD DOCS", [], "C:\\DOCS>"),
+                      dos(m, "COPY ..\\README.TXT", ["1 file(s) copied"], "C:\\DOCS>"),
+                      dos(m, "DIR /B", ["LETTER.TXT", "NOTES.TXT", "README.TXT"], "C:\\DOCS>"),
+                      dos(m, "DEL README.TXT", [], "C:\\DOCS>"),
+                      dos(m, "DIR /B", ["LETTER.TXT", "NOTES.TXT", "!README"], "C:\\DOCS>"),
+                      dos(m, "CD\\", []),
+                      after.update(chkdsk=dos(m, "CHKDSK C:", ["!lost", "!problem", "!cross"])))),
             ("ManiOS programs: DOS paths in their arguments, and their errorlevel",
              lambda: (dos(m, "wc README.TXT", ["      2       9      56 /n/ata0p1/readme.txt"]),
                       dos(m, "grep -c line C:\\LONG.TXT", ["\r\n40\r\n"]),
@@ -380,6 +469,10 @@ def main():
                 break
     finally:
         m.close()
+
+    if not failures:
+        step("what ManiDOS wrote is on C:, as mtools and the FAT see it",
+             lambda: written(disk, after.get("chkdsk", "")))
 
     # shell=dos: the machine starts in ManiDOS; EXIT reaches the monitor.
     m = Machine(kernel, ["-append", "shell=dos"])

@@ -113,7 +113,12 @@ SHELL_CASES = [
     ("sed y/abc/ABC/ a.txt", "Apple\nBAnAnA\nCherry\n"),
     ("echo hello | sed 's/l*o/0/'", "he0\n"),
     ("sed = a.txt", "1\napple\n2\nbanana\n3\ncherry\n"),
-    ("sed -i s/a/b/ a.txt", "sed: a.txt: read-only file system\n"),
+    # -i edits in place: the tool makes a file of its own beside the
+    # original and renames it over, which the drive now takes (M22).
+    # a.txt is left as the rest of these cases expect it.
+    ("tee tmp.txt < a.txt", "apple\nbanana\ncherry\n"),
+    ("sed -i s/a/b/ tmp.txt", ""),
+    ("cat tmp.txt", "bpple\nbbnana\ncherry\n"),
     ("nl a.txt", "     1\tapple\n     2\tbanana\n     3\tcherry\n"),
     ("nl -b a text.txt", "     1\tThe quick brown fox\n     2\tjumps over\n     3\tthe lazy dog.\n"
                          "     4\t\n     5\tA second paragraph here.\n"),
@@ -137,8 +142,7 @@ SHELL_CASES = [
     ("lam a.txt -s : b.txt", "apple:banana\nbanana:cherry\ncherry:date\n"),
     ("unexpand spaces.txt", "\teight\n    four    x\n"),
     ("echo hi | tee /dev/null", "hi\n"),
-    ("tee /n/ata0p1/new.txt < a.txt",
-     "tee: /n/ata0p1/new.txt: read-only file system\napple\nbanana\ncherry\n"),
+    ("tee /n/ata0p1/new.txt < a.txt", "apple\nbanana\ncherry\n"),
     ("tail -n 3 lines.txt", "ten\neleven\ntwelve\n"),
     ("tail -3 lines.txt", "ten\neleven\ntwelve\n"),
     ("cat lines.txt | tail -n 2", "eleven\ntwelve\n"),  # a pipe: ESPIPE

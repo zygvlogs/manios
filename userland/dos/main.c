@@ -16,6 +16,7 @@
  * ManiOS directory it starts in. */
 #include "dos.h"
 #include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -361,8 +362,10 @@ struct stage {
 	bool append;
 };
 
-/* Opens a redirection's file: -1 (said why) if it can't be. */
-static int open_redirect(const char *name, bool output)
+/* Opens a redirection's file: -1 (said why) if it can't be. Writing
+ * makes the file if it isn't there, empties it for ">", and starts
+ * where it ends for ">>". */
+static int open_redirect(const char *name, bool output, bool append)
 {
 	char where[256];
 	if (!strcasecmp(name, "NUL")) {
@@ -383,9 +386,18 @@ static int open_redirect(const char *name, bool output)
 		}
 		return fd;
 	}
-	int fd = type == ZKT_TYPE_DEVICE ? open(where, OWRITE) : -1;
+	if (type == ZKT_TYPE_DIR) {
+		printf("Access denied - %s is a directory\n", name);
+		return -1;
+	}
+	int fd = open(where, type == ZKT_TYPE_DEVICE ? OWRITE
+	                                             : OWRITE | O_CREAT | (append ? 0 : O_TRUNC));
 	if (fd < 0) {
-		printf("Access denied - ManiOS's drives are read-only (redirect to CON, NUL or a device)\n");
+		printf("%s\n", denied(errno));
+		return -1;
+	}
+	if (append && type != ZKT_TYPE_DEVICE) {
+		lseek(fd, 0, SEEK_END);
 	}
 	return fd;
 }
@@ -627,13 +639,13 @@ int run_line(const char *line)
 			if (in != 0) {
 				close(in);
 			}
-			if ((in = open_redirect(s->in_file, false)) < 0) {
+			if ((in = open_redirect(s->in_file, false, false)) < 0) {
 				rc = 1;
 				break;
 			}
 		}
 		if (s->out_file) {
-			if ((out = open_redirect(s->out_file, true)) < 0) {
+			if ((out = open_redirect(s->out_file, true, s->append)) < 0) {
 				if (in != 0) {
 					close(in);
 				}

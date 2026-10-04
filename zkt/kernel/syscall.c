@@ -300,6 +300,47 @@ static long sys_unbind(struct process *p, const char *uold)
 	return rc ? rc : vfs_unbind(path);
 }
 
+/* Creating, removing and renaming (M22): the same paths, resolved in
+ * the caller's namespace as sys_open resolves them. */
+static long sys_mkdir(struct process *p, const char *upath)
+{
+	char path[VFS_PATH_MAX + 1];
+	struct vnode *v;
+	long rc = copy_path(p, path, upath);
+	if (rc) {
+		return rc;
+	}
+	rc = vfs_create(path, VNODE_DIR, &v);
+	if (!rc) {
+		vnode_unref(v); /* the directory stays: the directory tree holds it */
+	}
+	return rc;
+}
+
+static long sys_unlink(struct process *p, const char *upath)
+{
+	char path[VFS_PATH_MAX + 1];
+	long rc = copy_path(p, path, upath);
+	return rc ? rc : vfs_unlink(path);
+}
+
+static long sys_rmdir(struct process *p, const char *upath)
+{
+	char path[VFS_PATH_MAX + 1];
+	long rc = copy_path(p, path, upath);
+	return rc ? rc : vfs_rmdir(path);
+}
+
+static long sys_rename(struct process *p, const char *ufrom, const char *uto)
+{
+	char from[VFS_PATH_MAX + 1], to[VFS_PATH_MAX + 1];
+	long rc = copy_path(p, from, ufrom);
+	if (!rc) {
+		rc = copy_path(p, to, uto);
+	}
+	return rc ? rc : vfs_rename(from, to);
+}
+
 static long sys_mount(struct process *p, const char *udial, const char *uold, int flag,
                       const char *uaname)
 {
@@ -502,6 +543,10 @@ long syscall_dispatch(uint32_t num, uint32_t a0, uint32_t a1, uint32_t a2,
 	case SYS_SLEEP:  timer_sleep_ms(a0); return 0;
 	case SYS_BIND:   return sys_bind(p, (const char *)a0, (const char *)a1, (int)a2);
 	case SYS_UNBIND: return sys_unbind(p, (const char *)a0);
+	case SYS_UNLINK: return sys_unlink(p, (const char *)a0);
+	case SYS_MKDIR:  return sys_mkdir(p, (const char *)a0);
+	case SYS_RMDIR:  return sys_rmdir(p, (const char *)a0);
+	case SYS_RENAME: return sys_rename(p, (const char *)a0, (const char *)a1);
 	case SYS_NSFORK: return sys_nsfork();
 	case SYS_FSTAT:  return sys_fstat(p, (int)a0, (struct zkt_dirent *)a1);
 	case SYS_UPTIME: return (long)((uint32_t)timer_uptime_ms() & 0x7FFFFFFF);

@@ -68,8 +68,9 @@ int lstat(const char *path, struct stat *sb); /* no links: stat() */
 int fstat(int fd, struct stat *sb) __asm__("__posix_fstat");
 int fstatat(int dirfd, const char *path, struct stat *sb, int flag);
 
-/* ManiOS can't change permissions or create directories: these fail
- * with EROFS. umask() only remembers. */
+/* ManiOS can't change permissions: EROFS. mkdir() makes a directory
+ * where the file system takes writes, and fails EROFS where it
+ * doesn't. umask() only remembers. */
 int chmod(const char *path, mode_t mode);
 int fchmod(int fd, mode_t mode);
 int mkdir(const char *path, mode_t mode);

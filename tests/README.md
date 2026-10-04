@@ -99,8 +99,12 @@
   program to refuse, and D: (FAT12) with faults put in on purpose -- a
   lost chain, a cross-linked file, a file longer than its chain, FAT
   copies that differ. It checks DIR (label, serial number and free space
-  against the image and against mtools), CD, TYPE, COPY, the read-only
-  refusals, drive letters, VOL, CHKDSK on both (every fault found, the
+  against the image and against mtools), CD, TYPE, COPY (to the screen
+  and onto a file), the write commands -- DEL, MD, RD, REN and
+  redirection to a file -- each with its errors, and what they left on
+  the disk checked afterwards with mtools and with the FAT itself (the
+  two copies of it, the names there and gone, the free space CHKDSK
+  reported), drive letters, VOL, CHKDSK on both (every fault found, the
   figures right), TREE, FIND, SORT, MORE, pipelines, redirection, ManiOS
   programs with DOS paths, errorlevels, SET, PROMPT, a batch file using
   parameters, IF, GOTO, SHIFT, FOR and CALL, and a machine booted with

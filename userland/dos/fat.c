@@ -358,7 +358,7 @@ int fat_check(const char *device, char letter, bool verbose)
 		k.problems++;
 	}
 	if (k.problems) {
-		printf("\n%d problem%s found. ManiDOS doesn't correct them: ManiOS's drives are read-only.\n",
+		printf("\n%d problem%s found. ManiDOS doesn't correct them: it has no repair yet.\n",
 		       k.problems, k.problems == 1 ? "" : "s");
 	}
 

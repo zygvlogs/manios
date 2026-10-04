@@ -68,10 +68,16 @@ lists them; `TRUENAME PATH` shows where a DOS path is in ManiOS
 (`C:\DOCS = /n/ata0p1/docs`). Each drive has its own current directory,
 as in DOS (`CD D:\X` changes D:'s without leaving C:).
 
+The FAT volumes take writes: `DEL`, `MD`, `RD`, `REN`, `COPY` onto a
+file and `> FILE` make and change files on them. A: and Z: (the boot
+archive and ManiOS's own tree) and the CD drives take none, and say
+`Access denied - that drive is read-only`.
+
 Names are what DOS's are: case doesn't matter, `\` separates, and
 `*` and `?` are wildcards (`*.*` is everything). `..` goes up and never
 above a drive's root. ManiOS's FAT support reads long file names as
-their 8.3 aliases (`MANIOS~1.TXT`).
+their 8.3 aliases (`MANIOS~1.TXT`), and writes one under that alias:
+there is no long-name entry on a disk ManiDOS has written to.
 
 ## Commands
 
@@ -81,7 +87,11 @@ their 8.3 aliases (`MANIOS~1.TXT`).
 | `CD [D:][PATH]`, `CHDIR` | shows or changes the current directory (`CD..`, `CD\`) |
 | `D:` | makes drive D current |
 | `TYPE FILES` | shows files |
-| `COPY FILES CON\|NUL\|DEVICE` | copies files to the screen, to nothing, or to a device (`Z:\DEV\...`) |
+| `COPY FILES [DIR\|FILE\|CON\|NUL\|DEVICE]` | copies files: into a directory or onto a file, to the screen, to nothing, or to a device (`Z:\DEV\...`); one file alone is copied into the current directory |
+| `DEL FILES`, `ERASE FILES` | deletes files (no `/P`) |
+| `MD DIR`, `MKDIR DIR` | makes a directory |
+| `RD DIR`, `RMDIR DIR` | removes a directory, which must be empty (no `/S`, `/Q`) |
+| `REN OLD NEW`, `RENAME OLD NEW` | renames one name to another in its own directory (no wildcards) |
 | `VOL [D:]` | a disk's label and serial number |
 | `CHKDSK [D:] [/V]` | checks a FAT disk (below) |
 | `TREE [PATH] [/F]` | the directory tree, with the files (/F) |
@@ -122,15 +132,17 @@ programs. A `.COM` or `.EXE` is found, and refused by name.
 
 ## Pipes and redirection
 
-`|` joins commands; `< FILE` reads a file; `> FILE` and `>> FILE` write
-one. ManiOS's drives are read-only for now, so output goes to `CON`,
-`NUL` or a device (`> Z:\DEV\NULL`); to a file it is refused. An
-internal command in the middle of a pipeline runs in a second ManiDOS
-(`dos /C`), which starts in the same directory.
+`|` joins commands; `< FILE` reads a file; `> FILE` makes or empties a
+file and writes to it, `>> FILE` appends to one, making it if it isn't
+there. Output can also go to `CON`, `NUL` or a device (`> Z:\DEV\NULL`);
+on a drive that takes no writes the file is refused. An internal command
+in the middle of a pipeline runs in a second ManiDOS (`dos /C`), which
+starts in the same directory.
 
 ```
 C:\>TYPE NAMES.TXT | SORT /R | MORE
 C:\>DIR /B | FIND "BAT"
+C:\>DIR > LIST.TXT
 ```
 
 ## Batch files
@@ -181,8 +193,8 @@ it against the FAT. It reports:
 
 and then the figures: total disk space, bytes in directories, in user
 files, in lost chains, available; the allocation unit's size, their
-number, how many are free. ManiDOS doesn't correct what it finds:
-ManiOS's drives are read-only (`CHKDSK /F` says so, and checks).
+number, how many are free. ManiDOS doesn't correct what it finds: it
+has no repair yet (`CHKDSK /F` checks, and says so).
 
 ```
 C:\>CHKDSK D:
@@ -193,7 +205,7 @@ D:\SHORT.TXT  Allocation error: its size needs 3 allocation units, its chain has
 3 lost allocation units found in 2 chains.
 The copies of the file allocation table differ.
 
-5 problems found. ManiDOS doesn't correct them: ManiOS's drives are read-only.
+5 problems found. ManiDOS doesn't correct them: it has no repair yet.
 
     4,173,824 bytes total disk space
             0 bytes in 0 directories
@@ -208,9 +220,17 @@ The copies of the file allocation table differ.
 
 ## Differences from DOS
 
-- The drives are read-only: `DEL`, `REN`, `MD`, `RD`, `COPY` to a file
-  and `> FILE` say "Access denied"; `FORMAT`, `FDISK`, `LABEL` and
-  `SYS` aren't there. ManiOS can't write files yet.
+- `FORMAT`, `FDISK`, `LABEL` and `SYS` aren't there: they would write a
+  disk's own structures, which ManiDOS leaves alone. A: and Z:, and a
+  CD, take no writes, so on them the commands that write say
+  "Access denied - that drive is read-only".
+- A name written is 8.3: a long name goes in under its `~1` alias
+  (`NOTES2~1.TXT`), with no long-name entry beside it. Two long names
+  that begin with the same six letters and end the same
+  (`notes2024.txt`, `notes2025.txt`) are made as `~1` and `~2`, but
+  asking for either long name finds the first.
+- `REN` takes no wildcards (`REN *.TXT NEW.TXT` isn't there); `DEL` and
+  `RD` take no `/P`, `/S` or `/Q`.
 - No DOS programs (`.COM`, `.EXE`): ManiDOS runs ManiOS programs.
 - `DIR` shows no dates: ManiOS's files have no times yet.
 - `DATE` and `TIME` show the clock (UTC) but don't set it.

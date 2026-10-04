@@ -74,10 +74,11 @@ What ManiOS's libc provides for them (see [`libc/README.md`](../../libc/README.m
 - what ManiOS doesn't have, reported the way POSIX allows: `mmap` fails
   (ENODEV: `grep` and `cmp` read instead), `ioctl` fails (ENOTTY:
   `column` and `sed` use 80 columns), `kqueue` fails (ENOSYS: `tail -f`
-  says so and stops), creating, renaming and removing files fail
-  (EROFS: in ManiOS only devices and pipes take writes, so `sed -i` and
-  `tee FILE` say so), signals are recorded but never delivered, and
-  there is no environment;
+  says so and stops), creating, renaming and removing files go through
+  to the file system (M22): on a writable FAT volume `sed -i` and
+  `tee FILE` write, and on one that takes no writes -- the kernel root,
+  the boot archive -- they fail (EROFS), signals are recorded but never
+  delivered, and there is no environment;
 - `pledge()` and `unveil()`, which do nothing (ManiOS has neither; the
   programs call them to give up rights they won't use);
 - the "C" locale only: characters are bytes (`MB_CUR_MAX` is 1).

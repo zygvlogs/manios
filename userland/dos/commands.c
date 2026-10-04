@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define READ_ONLY "Access denied - ManiOS's drives are read-only"
+#define READ_ONLY "Access denied - that drive is read-only"
 
 int keyboard_fd;
 
@@ -640,11 +640,31 @@ static int cmd_type(int argc, char **argv)
 	return status;
 }
 
-/* COPY to CON, NUL or a device; files can't be written. */
+/* Why a write was refused, as ManiDOS says it: a read-only drive says
+ * so, and a disk that's full says that too. */
+const char *denied(int err)
+{
+	if (err == EROFS) {
+		return READ_ONLY;
+	}
+	if (err == ENOSPC) {
+		return "Insufficient disk space";
+	}
+	return "Access denied";
+}
+
+/* COPY: to CON, to NUL, to a device, to a file (made or emptied), or
+ * into the current directory when there's no destination at all. A
+ * file is made once a copy has something to put in it, so a source
+ * that isn't there leaves nothing behind. */
 struct copy_to {
-	int out;
+	int out;          /* a descriptor to write to, or -1 */
+	char dest[256];   /* the file to make, or "" */
+	int mode;         /* how to open it */
+	char into[256];   /* the directory to make each file in, or "" */
 	bool show_names;
 	int copied;
+	int err;          /* the first write that refused */
 };
 
 static int copy_one(const char *where, const char *shown, void *arg)
@@ -655,10 +675,42 @@ static int copy_one(const char *where, const char *shown, void *arg)
 	}
 	int fd = open(where, OREAD);
 	if (fd < 0) {
+		c->err = errno;
 		return 1;
 	}
-	int rc = c->out >= 0 ? copy_fd(fd, c->out) : 0;
+	int out = c->out;
+	if (c->dest[0] && out < 0) {
+		out = c->out = open(c->dest, c->mode);
+		if (out < 0) {
+			c->err = errno;
+			close(fd);
+			return 1;
+		}
+	}
+	if (c->into[0]) {
+		const char *name = strrchr(where, '/');
+		char made[sizeof(c->into) + ZKT_NAME_MAX + 2];
+		snprintf(made, sizeof(made), "%s/%s", c->into, name ? name + 1 : where);
+		if (!strcmp(made, where)) {
+			printf("The file cannot be copied onto itself\n");
+			close(fd);
+			return 1;
+		}
+		out = open(made, OWRITE | O_CREAT | O_TRUNC);
+		if (out < 0) {
+			c->err = errno;
+			close(fd);
+			return 1;
+		}
+	}
+	int rc = out >= 0 ? copy_fd(fd, out) : 0;
+	if (rc < 0) {
+		c->err = errno;
+	}
 	close(fd);
+	if (c->into[0]) {
+		close(out);
+	}
 	c->copied += rc == 0;
 	return rc < 0;
 }
@@ -677,18 +729,23 @@ static int cmd_copy(int argc, char **argv)
 	if (n > 1 && !strcasecmp(args[n - 1], "CON")) {
 		c.out = 1;
 	} else if (n > 1 && !to_null) {
-		/* A device (Z:\DEV\...) takes writes; files and directories don't. */
+		/* A file is made or emptied for what comes; a device takes
+		 * whatever is written to it. Neither is opened until a copy
+		 * has somewhere to read from. */
 		if (dos_manios(args[n - 1], dest, sizeof(dest)) < 0) {
 			printf("Invalid drive specification\n");
 			return 1;
 		}
-		if (dos_type(dest, NULL) != ZKT_TYPE_DEVICE || (c.out = open(dest, OWRITE)) < 0) {
-			printf("%s\n", READ_ONLY);
+		int type = dos_type(dest, NULL);
+		if (type == ZKT_TYPE_DIR) {
+			printf("Access denied - %s is a directory\n", upper(args[n - 1]));
 			return 1;
 		}
+		strlcpy(c.dest, dest, sizeof(c.dest));
+		c.mode = type == ZKT_TYPE_DEVICE ? OWRITE : OWRITE | O_CREAT | O_TRUNC;
 	} else if (n == 1) {
-		printf("%s\n", READ_ONLY);
-		return 1;
+		/* One name: each file is copied into the current directory. */
+		dos_to_manios(current, drives[current].cwd, c.into, sizeof(c.into));
 	}
 	int status = 0;
 	for (int i = 0; i < (n > 1 ? n - 1 : 1); i++) {
@@ -701,22 +758,163 @@ static int cmd_copy(int argc, char **argv)
 	if (c.out > 1) {
 		close(c.out);
 	}
+	if (c.err) {
+		printf("%s\n", denied(c.err));
+		status = 1;
+	}
 	printf("%9d file(s) copied\n", c.copied);
 	return status;
 }
 
-static int cmd_read_only(int argc, char **argv)
+/* --- DEL, MD, RD, REN: the file system's to grant (M22) --- */
+
+static int del_one(const char *where, const char *shown, void *arg)
 {
-	(void)argc;
-	printf("%s: %s can't work yet\n", READ_ONLY, argv[0]);
+	int *err = arg;
+	(void)shown;
+	if (unlink(where) < 0) {
+		*err = errno;
+		return 1;
+	}
+	return 0;
+}
+
+static int cmd_del(int argc, char **argv)
+{
+	char *args[ARGS_MAX_DOS];
+	int n;
+	if (bad_switch(argc, argv, "")) { /* /P is MS-DOS's, and not here */
+		return 1;
+	}
+	n = plain_args(argc, argv, args);
+	if (!n) {
+		printf("Required parameter missing\n");
+		return 1;
+	}
+	int status = 0;
+	for (int i = 0; i < n; i++) {
+		int rc = 0, err = 0;
+		int found = each_file(args[i], del_one, &err, &rc);
+		if (found < 0) {
+			printf("Invalid drive specification\n");
+			status = 1;
+		} else if (rc & 2) {
+			printf("Access denied - %s is a directory\n", upper(args[i]));
+			status = 1;
+		} else if (!found) {
+			printf("File not found - %s\n", upper(args[i]));
+			status = 1;
+		} else if (err) {
+			printf("%s\n", denied(err));
+			status = 1;
+		}
+	}
+	return status;
+}
+
+static int cmd_md(int argc, char **argv)
+{
+	char *args[ARGS_MAX_DOS];
+	int n = plain_args(argc, argv, args);
+	if (!n) {
+		printf("Required parameter missing\n");
+		return 1;
+	}
+	int status = 0;
+	for (int i = 0; i < n; i++) {
+		char where[256];
+		if (dos_manios(args[i], where, sizeof(where)) < 0) {
+			printf("Invalid drive specification\n");
+			status = 1;
+			continue;
+		}
+		if (mkdir(where, 0777) == 0) {
+			continue;
+		}
+		if (errno == EEXIST) {
+			printf("Unable to create directory\n");
+		} else if (errno == ENOENT) {
+			printf("Invalid path - %s\n", upper(args[i]));
+		} else {
+			printf("%s\n", denied(errno));
+		}
+		status = 1;
+	}
+	return status;
+}
+
+static int cmd_rd(int argc, char **argv)
+{
+	char *args[ARGS_MAX_DOS];
+	int n;
+	if (bad_switch(argc, argv, "")) { /* /S and /Q are MS-DOS's, and not here */
+		return 1;
+	}
+	n = plain_args(argc, argv, args);
+	if (!n) {
+		printf("Required parameter missing\n");
+		return 1;
+	}
+	int status = 0;
+	for (int i = 0; i < n; i++) {
+		char where[256];
+		if (dos_manios(args[i], where, sizeof(where)) < 0) {
+			printf("Invalid drive specification\n");
+			status = 1;
+			continue;
+		}
+		if (rmdir(where) < 0) {
+			/* One message for all of it, as DOS's has it: no such
+			 * directory, a file, or a directory still holding files. */
+			printf("%s\n",
+			       errno == EROFS ? READ_ONLY
+			                      : "Invalid path, not directory, or directory is not empty");
+			status = 1;
+		}
+	}
+	return status;
+}
+
+static int cmd_ren(int argc, char **argv)
+{
+	char *args[ARGS_MAX_DOS], from[256], to[256];
+	int n = plain_args(argc, argv, args);
+	if (n < 2) {
+		printf("Required parameter missing\n");
+		return 1;
+	}
+	/* DOS renames one name at a time, in the directory it is already in. */
+	if (has_wild(args[0]) || has_wild(args[1])) {
+		printf("Invalid parameter - %s\n", upper(has_wild(args[0]) ? args[0] : args[1]));
+		return 1;
+	}
+	if (dos_manios(args[0], from, sizeof(from)) < 0 || dos_manios(args[1], to, sizeof(to)) < 0) {
+		printf("Invalid drive specification\n");
+		return 1;
+	}
+	if (dos_type(from, NULL) != ZKT_TYPE_FILE || dos_type(to, NULL) >= 0) {
+		printf("Duplicate file name or file not found\n");
+		return 1;
+	}
+	if (rename(from, to) == 0) {
+		return 0;
+	}
+	if (errno == ENOENT) {
+		printf("Duplicate file name or file not found\n");
+	} else if (errno == EXDEV) {
+		printf("Invalid path - %s\n", upper(args[1]));
+	} else {
+		printf("%s\n", denied(errno));
+	}
 	return 1;
 }
 
+/* FORMAT, FDISK, LABEL and SYS rewrite a disk's own structures: ManiDOS
+ * leaves those alone (M22 made the drives writable, but not by these). */
 static int cmd_no_disk_writes(int argc, char **argv)
 {
 	(void)argc;
-	printf("%s isn't in ManiDOS: it would write to a disk, and ManiOS's drives are read-only\n",
-	       argv[0]);
+	printf("%s isn't in ManiDOS: it would rewrite a disk's own structures\n", argv[0]);
 	return 1;
 }
 
@@ -757,7 +955,7 @@ static int cmd_chkdsk(int argc, char **argv)
 		return 1;
 	}
 	if (opt(argc, argv, 'F')) {
-		printf("CHKDSK /F can't correct anything: ManiOS's drives are read-only. Checking only.\n\n");
+		printf("CHKDSK /F can't correct anything: ManiDOS has no repair yet. Checking only.\n\n");
 	}
 	if (!drives[d].device[0] || drive_is_cd(d)) {
 		printf("CHKDSK checks FAT disks; drive %c is the %s\n", 'A' + d, drives[d].kind);
@@ -1370,13 +1568,13 @@ const struct command COMMANDS[] = {
 	{ "CHDIR", cmd_cd, "-" },
 	{ "CHKDSK", cmd_chkdsk, "[D:] [/V]  checks a FAT disk: its chains, lost clusters, FAT copies" },
 	{ "CLS", cmd_cls, "clears the screen" },
-	{ "COPY", cmd_copy, "SOURCE CON|NUL|DEVICE  copies files to the screen or a device" },
+	{ "COPY", cmd_copy, "SOURCE [DEST]  copies files to a file, CON, NUL or a device" },
 	{ "DATE", cmd_date_time, "shows the date (UTC)" },
-	{ "DEL", cmd_read_only, "deletes files (not yet: the drives are read-only)" },
+	{ "DEL", cmd_del, "[D:][PATH]  deletes files (also ERASE)" },
 	{ "DIR", cmd_dir, "[PATH] [/W] [/B] [/P] [/S]  lists a directory" },
 	{ "DRIVES", cmd_drives, "lists the drives and where they are in ManiOS" },
 	{ "ECHO", cmd_echo, "[ON|OFF|TEXT]  shows text, or turns command echoing on or off" },
-	{ "ERASE", cmd_read_only, "-" },
+	{ "ERASE", cmd_del, "-" },
 	{ "EXIT", cmd_exit, "leaves ManiDOS" },
 	{ "FDISK", cmd_no_disk_writes, "-" },
 	{ "FIND", cmd_find, "[/V] [/C] [/N] [/I] \"TEXT\" [FILES]  finds lines with TEXT" },
@@ -1386,18 +1584,18 @@ const struct command COMMANDS[] = {
 	{ "HELP", cmd_help, "[COMMAND]  this list" },
 	{ "IF", cmd_if, "[NOT] ERRORLEVEL N|EXIST F|A==B COMMAND  runs a command if..." },
 	{ "LABEL", cmd_no_disk_writes, "-" },
-	{ "MD", cmd_read_only, "makes a directory (not yet)" },
+	{ "MD", cmd_md, "[D:][PATH]  makes a directory (also MKDIR)" },
 	{ "MEM", cmd_mem, "shows the memory in use" },
-	{ "MKDIR", cmd_read_only, "-" },
+	{ "MKDIR", cmd_md, "-" },
 	{ "MORE", cmd_more, "[FILES]  shows text a screen at a time (also: COMMAND | MORE)" },
 	{ "PATH", cmd_path, "[DIRS]  shows or sets where programs are looked for" },
 	{ "PAUSE", cmd_pause, "waits for Enter" },
 	{ "PROMPT", cmd_prompt, "[TEXT]  sets the prompt: $P path, $G >, $D date, $T time, $N drive" },
-	{ "RD", cmd_read_only, "removes a directory (not yet)" },
+	{ "RD", cmd_rd, "[D:][PATH]  removes an empty directory (also RMDIR)" },
 	{ "REM", cmd_rem, "a remark: does nothing" },
-	{ "REN", cmd_read_only, "renames files (not yet)" },
-	{ "RENAME", cmd_read_only, "-" },
-	{ "RMDIR", cmd_read_only, "-" },
+	{ "REN", cmd_ren, "[D:][PATH] NAME  renames a file (also RENAME)" },
+	{ "RENAME", cmd_ren, "-" },
+	{ "RMDIR", cmd_rd, "-" },
 	{ "SET", cmd_set, "[NAME=[VALUE]]  shows or sets environment variables" },
 	{ "SHIFT", cmd_shift, "moves a batch file's parameters down one" },
 	{ "SORT", cmd_sort, "[/R] [/+N] [FILE]  sorts lines" },

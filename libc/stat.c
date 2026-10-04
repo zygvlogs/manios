@@ -1,7 +1,7 @@
 /* POSIX file status and opening (<sys/stat.h>, <fcntl.h>, access(),
- * isatty()) over ManiOS's open() and fstat(). Regular files can't be
- * written, created or changed in ManiOS: only devices and pipes take
- * writes. */
+ * isatty()) over ManiOS's open() and fstat(). Opening may create and
+ * truncate what the file system lets it (zkt/fs/vfs.c): O_CREAT of a
+ * file that isn't there makes it, and O_TRUNC empties one. */
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -180,14 +180,6 @@ int fchmod(int fd, mode_t mode)
 	return -1;
 }
 
-int mkdir(const char *path, mode_t mode)
-{
-	struct stat sb;
-	(void)mode;
-	errno = stat(path, &sb) == 0 ? EEXIST : EROFS;
-	return -1;
-}
-
 static mode_t mask = 022;
 
 mode_t umask(mode_t m)
@@ -201,11 +193,11 @@ int __posix_open(const char *path, int flags, ...);
 
 int __posix_open(const char *path, int flags, ...)
 {
-	int fd = manios_open(path, flags & O_ACCMODE);
+	/* The kernel acts on the access mode and the flags it knows (it
+	 * refuses a file it can't give those: EROFS, EEXIST, EISDIR); the
+	 * rest are this library's to carry out. */
+	int fd = manios_open(path, flags & (O_ACCMODE | O_CREAT | O_TRUNC | O_EXCL));
 	if (fd < 0) {
-		if (errno == ENOENT && (flags & O_CREAT)) {
-			errno = EROFS; /* ManiOS can't create files */
-		}
 		return -1;
 	}
 	struct stat sb;
@@ -213,17 +205,9 @@ int __posix_open(const char *path, int flags, ...)
 		close(fd);
 		return -1;
 	}
-	int err = 0;
-	if ((flags & O_CREAT) && (flags & O_EXCL)) {
-		err = EEXIST;
-	} else if ((flags & O_DIRECTORY) && !S_ISDIR(sb.st_mode)) {
-		err = ENOTDIR;
-	} else if ((flags & O_TRUNC) && S_ISREG(sb.st_mode)) {
-		err = EROFS; /* a regular file can't be shortened */
-	}
-	if (err) {
+	if ((flags & O_DIRECTORY) && !S_ISDIR(sb.st_mode)) {
 		close(fd);
-		errno = err;
+		errno = ENOTDIR;
 		return -1;
 	}
 	if (flags & O_APPEND) {

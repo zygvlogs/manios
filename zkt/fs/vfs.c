@@ -46,9 +46,147 @@ static bool can_write(const struct file *f)
 	return f->mode == OWRITE || f->mode == ORDWR;
 }
 
+/* The directory a path's last element goes in, and that element. The
+ * path is cleaned first, so `leaf` is a plain name, never "." or "..",
+ * and never empty (the root itself holds nothing to change). `ppath`,
+ * when the caller wants it, is that directory's path. */
+static int parent_of(const char *path, struct location *loc, char *leaf, char *ppath)
+{
+	char clean[VFS_PATH_MAX + 1];
+	int rc = vfs_clean_path(path, clean);
+	if (rc) {
+		return rc;
+	}
+	char *slash = 0;
+	for (char *p = clean; *p; p++) {
+		if (*p == '/') {
+			slash = p;
+		}
+	}
+	if (!slash || !slash[1]) {
+		return -EINVAL; /* the root itself holds nothing to change */
+	}
+	*slash = '\0';
+	if (ppath) {
+		strlcpy(ppath, slash == clean ? "/" : clean, VFS_PATH_MAX + 1);
+	}
+	rc = ns_resolve(thread_namespace(), clean[0] ? clean : "/", loc, 0);
+	if (rc) {
+		return rc;
+	}
+	strlcpy(leaf, slash + 1, VFS_NAME_MAX + 1);
+	return 0;
+}
+
+/* The first member of a union directory is where changes go. */
+static struct vnode *writable_dir(struct location *loc)
+{
+	struct vnode *dir = loc->v[0];
+	return dir->type == VNODE_DIR ? dir : 0;
+}
+
+int vfs_create(const char *path, enum vnode_type type, struct vnode **out)
+{
+	struct location loc;
+	char leaf[VFS_NAME_MAX + 1];
+	*out = 0;
+	if (type != VNODE_FILE && type != VNODE_DIR) {
+		return -EINVAL;
+	}
+	int rc = parent_of(path, &loc, leaf, 0);
+	if (rc) {
+		return rc;
+	}
+	struct vnode *dir = writable_dir(&loc);
+	rc = !dir ? -ENOTDIR : !dir->ops->create ? -EROFS : dir->ops->create(dir, leaf, type, out);
+	location_release(&loc);
+	return rc;
+}
+
+/* Whether the name is in `dir` at all, for a file system that can't
+ * say for itself: POSIX gives ENOENT for a name that isn't there
+ * before its own answer (EROFS, for one it takes no writes on). */
+static int exists_for(struct vnode *dir, const char *leaf)
+{
+	struct vnode *found = 0;
+	int look = dir->ops->walk ? dir->ops->walk(dir, leaf, &found) : 0;
+	if (found) {
+		vnode_unref(found);
+	}
+	return look ? look : -EROFS;
+}
+
+/* Removes one name from its directory: a file (vfs_unlink) or an empty
+ * directory (vfs_rmdir). */
+static int vfs_remove(const char *path, enum vnode_type expect)
+{
+	struct location loc;
+	char leaf[VFS_NAME_MAX + 1];
+	int rc = parent_of(path, &loc, leaf, 0);
+	if (rc) {
+		return rc;
+	}
+	struct vnode *dir = writable_dir(&loc);
+	if (!dir) {
+		rc = -ENOTDIR;
+	} else if (dir->ops->remove) {
+		rc = dir->ops->remove(dir, leaf, expect);
+	} else {
+		rc = exists_for(dir, leaf);
+	}
+	location_release(&loc);
+	return rc;
+}
+
+int vfs_unlink(const char *path)
+{
+	return vfs_remove(path, VNODE_FILE);
+}
+
+int vfs_rmdir(const char *path)
+{
+	return vfs_remove(path, VNODE_DIR);
+}
+
+int vfs_rename(const char *from, const char *to)
+{
+	struct location a, b;
+	char leaf_a[VFS_NAME_MAX + 1], leaf_b[VFS_NAME_MAX + 1];
+	char pa[VFS_PATH_MAX + 1], pb[VFS_PATH_MAX + 1];
+	int rc = parent_of(from, &a, leaf_a, pa);
+	if (rc) {
+		return rc;
+	}
+	rc = parent_of(to, &b, leaf_b, pb);
+	if (rc) {
+		location_release(&a);
+		return rc;
+	}
+	struct vnode *dir = writable_dir(&a);
+	/* One directory by two routes: a walk hands out a vnode per call,
+	 * so the same directory resolved twice is two vnodes, and its path
+	 * says it (EXDEV only when the two paths really are two). */
+	bool same = dir == writable_dir(&b) || strcmp(pa, pb) == 0;
+	if (!same) {
+		rc = -EXDEV; /* one directory: FAT renames nothing across two */
+	} else if (!dir) {
+		rc = -ENOTDIR;
+	} else if (dir->ops->rename) {
+		rc = dir->ops->rename(dir, leaf_a, leaf_b);
+	} else {
+		rc = exists_for(dir, leaf_a);
+	}
+	location_release(&a);
+	location_release(&b);
+	return rc;
+}
+
 int vfs_open(const char *path, int mode, struct file **out)
 {
-	if (mode != OREAD && mode != OWRITE && mode != ORDWR) {
+	int access = mode & 3;
+	int flags = mode & ~3;
+	if ((access != OREAD && access != OWRITE && access != ORDWR)
+	    || (flags & ~(O_CREAT | O_TRUNC | O_EXCL))) {
 		return -EINVAL;
 	}
 	struct file *f = kmalloc(sizeof(*f));
@@ -57,18 +195,40 @@ int vfs_open(const char *path, int mode, struct file **out)
 	}
 	char canon[VFS_PATH_MAX + 1];
 	int rc = ns_resolve(thread_namespace(), path, &f->loc, canon);
+	bool existed = rc == 0;
+	if (rc == -ENOENT && (flags & O_CREAT)) {
+		struct vnode *v = 0;
+		rc = vfs_create(path, VNODE_FILE, &v);
+		if (!rc) {
+			f->loc.count = 1;
+			f->loc.v[0] = v;
+			f->loc.label[0][0] = '\0';
+			rc = vfs_clean_path(path, canon);
+		}
+	}
 	if (rc) {
 		kfree(f);
 		return rc;
 	}
-	f->refs = 1;
-	f->mode = mode;
 	struct vnode *v = f->loc.v[0];
-	if (can_write(f) && (v->type == VNODE_DIR || !v->ops->write)) {
+	if (((flags & (O_CREAT | O_EXCL)) == (O_CREAT | O_EXCL)) && existed) {
+		rc = -EEXIST;
+	} else if (access != OREAD && v->type == VNODE_DIR) {
+		rc = -EISDIR; /* a directory is listed, never written */
+	} else if ((flags & O_TRUNC) && access != OREAD && v->type == VNODE_FILE) {
+		/* Only a file shortens: POSIX leaves O_TRUNC on anything else
+		 * to the file system, and a device or pipe has no size. */
+		rc = !v->ops->truncate ? -EROFS : v->ops->truncate(v, 0);
+	} else if (access != OREAD && !v->ops->write) {
+		rc = -EROFS;
+	}
+	if (rc) {
 		location_release(&f->loc);
 		kfree(f);
-		return v->type == VNODE_DIR ? -EISDIR : -EROFS;
+		return rc;
 	}
+	f->refs = 1;
+	f->mode = access;
 	const char *slash = canon;
 	for (const char *c = canon; *c; c++) {
 		if (*c == '/') {

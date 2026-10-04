@@ -95,19 +95,33 @@ static FILE *make_file(int fd, unsigned mode)
 	return f;
 }
 
-static int parse_mode(const char *mode, unsigned *flags)
+/* The open() mode for `mode`, the stream's own flags in `flags`, and
+ * whether writes start at the file's end (`append`). */
+static int parse_mode(const char *mode, unsigned *flags, int *append)
 {
+	*append = 0;
 	if (!strcmp(mode, "r") || !strcmp(mode, "rb")) {
 		*flags = F_READ;
 		return OREAD;
 	}
-	if (!strcmp(mode, "w") || !strcmp(mode, "wb") || !strcmp(mode, "a")) {
+	/* "w" empties what's there and makes it if it isn't; "a" starts at
+	 * the end, making the file if it isn't there (POSIX). */
+	if (!strcmp(mode, "w") || !strcmp(mode, "wb")) {
 		*flags = F_WRITE;
-		return OWRITE;
+		return OWRITE | O_CREAT | O_TRUNC;
 	}
-	if (!strcmp(mode, "r+") || !strcmp(mode, "w+") || !strcmp(mode, "rb+")) {
+	if (!strcmp(mode, "a")) {
+		*flags = F_WRITE;
+		*append = 1;
+		return OWRITE | O_CREAT;
+	}
+	if (!strcmp(mode, "r+") || !strcmp(mode, "rb+")) {
 		*flags = F_READ | F_WRITE;
 		return ORDWR;
+	}
+	if (!strcmp(mode, "w+") || !strcmp(mode, "wb+")) {
+		*flags = F_READ | F_WRITE;
+		return ORDWR | O_CREAT | O_TRUNC;
 	}
 	return -1;
 }
@@ -115,7 +129,8 @@ static int parse_mode(const char *mode, unsigned *flags)
 FILE *fopen(const char *path, const char *mode)
 {
 	unsigned flags;
-	int omode = parse_mode(mode, &flags);
+	int append;
+	int omode = parse_mode(mode, &flags, &append);
 	if (omode < 0) {
 		errno = EINVAL;
 		return NULL;
@@ -123,6 +138,9 @@ FILE *fopen(const char *path, const char *mode)
 	int fd = open(path, omode);
 	if (fd < 0) {
 		return NULL;
+	}
+	if (append) {
+		lseek(fd, 0, SEEK_END);
 	}
 	FILE *f = make_file(fd, flags);
 	if (!f) {
@@ -136,7 +154,8 @@ FILE *fopen(const char *path, const char *mode)
 FILE *freopen(const char *path, const char *mode, FILE *f)
 {
 	unsigned flags;
-	int omode = parse_mode(mode, &flags);
+	int append;
+	int omode = parse_mode(mode, &flags, &append);
 	fflush(f);
 	if (omode < 0 || !path) {
 		errno = EINVAL;
@@ -152,6 +171,9 @@ FILE *freopen(const char *path, const char *mode, FILE *f)
 			return NULL;
 		}
 		close(fd);
+	}
+	if (append) {
+		lseek(f->fd, 0, SEEK_END);
 	}
 	f->flags = flags | (f->flags & (F_ALLOC | F_UNBUF));
 	f->rpos = f->rlen = f->wlen = 0;
@@ -197,9 +219,13 @@ void setbuf(FILE *f, char *buf)
 FILE *fdopen(int fd, const char *mode)
 {
 	unsigned flags;
-	if (parse_mode(mode, &flags) < 0) {
+	int append;
+	if (parse_mode(mode, &flags, &append) < 0) {
 		errno = EINVAL;
 		return NULL;
+	}
+	if (append) {
+		lseek(fd, 0, SEEK_END);
 	}
 	return make_file(fd, flags);
 }

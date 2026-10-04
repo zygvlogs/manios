@@ -16,7 +16,9 @@ The virtual filesystem and namespaces. Design and verification:
 - `devfs.c` — every registered device as a file under `/dev`; block
   devices can be written at any offset (partial blocks are read,
   changed and written back; M14)
-- `fat.c` — read-only FAT12/16, mounted at `/n/<device>`
+- `fat.c` — FAT12/16, mounted at `/n/<device>`; it writes to the
+  volume when the device can be written at (M22: creates, removals,
+  renames, both copies of the FAT) and is read-only when it can't
 - `pipe.c` — pipes: two connected ends, a message per write, both
   directions; also the channel a userspace ZRP server is mounted over
   ([M12 notes](../../docs/milestones/M12-desktop.md))

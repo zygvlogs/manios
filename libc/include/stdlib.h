@@ -38,7 +38,9 @@ void *recallocarray(void *ptr, size_t oldcount, size_t count, size_t size);
 
 /* ManiOS has no environment: always NULL. */
 char *getenv(const char *name);
-/* ManiOS can't create files: -1, EROFS. */
+/* The six X's at the end of the template become a name that is free
+ * (O_EXCL), or -1: EINVAL if they aren't there, EROFS if the file
+ * system takes no new files, EEXIST if no name was left. */
 int mkstemp(char *template);
 
 /* This program's name: the last part of argv[0] (err() prints it). */

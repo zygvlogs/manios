@@ -1,6 +1,6 @@
 # ADR-0008: ManiDOS, a DOS written for ManiOS -- not MS-DOS
 
-**Status:** Accepted; implemented at M19 ([guide](../dos.md), [notes](../milestones/M19-manidos.md))
+**Status:** Accepted; implemented at M19 ([guide](../dos.md), [notes](../milestones/M19-manidos.md)); the commands that write came with [M22](../milestones/M22-fat-writes.md)
 **Date:** 2026-09-26
 
 ## Context
@@ -37,9 +37,10 @@ from the disk itself. It runs ManiOS programs, not DOS programs.
 ## Consequences
 - ManiOS gains a second way to work, familiar to DOS users, that sees
   the same files as the first (a FAT volume is C:\ and `/n/ata0p1`).
-- Because the drives are read-only, the commands that write (`DEL`,
-  `REN`, `MD`, `RD`, `COPY` to a file) say so; they can follow ManiOS
-  when it can write files.
+- The commands that write (`DEL`, `REN`, `MD`, `RD`, `COPY` to a file,
+  `> FILE`) work on the FAT volumes, which M22 made writable from the
+  kernel's own FAT writer; on a drive that takes no writes (A:, Z:, a
+  CD) they say so.
 - `CHKDSK` reads the disk directly, so it checks what is on the disk,
   independently of ManiOS's FAT driver.
 

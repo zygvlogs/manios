@@ -18,6 +18,9 @@ const char *kstrerror(int err)
 	case EISDIR:       return "is a directory";
 	case EINVAL:       return "invalid argument";
 	case EROFS:        return "read-only file system";
+	case ENOSPC:       return "no space left on device";
+	case EXDEV:        return "cross-device rename";
+	case ENOTEMPTY:    return "directory not empty";
 	case ERANGE:       return "result too large";
 	case ENAMETOOLONG: return "name too long";
 	case E2BIG:        return "argument list too long";

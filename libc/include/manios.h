@@ -49,6 +49,17 @@ void *sbrk(intptr_t increment);
 int chdir(const char *path);
 char *getcwd(char *buf, size_t size);
 
+/* Naming files (M22): what the file system grants -- EROFS where it
+ * takes no writes, ENOSPC when a disk is full. mkdir's mode is the
+ * caller's permissions, which ManiOS's file systems don't have; rename
+ * puts `to` over what `from` named (POSIX), and EXDEV is for two
+ * directories rename() can't reach across. <unistd.h>, <stdio.h> and
+ * <sys/stat.h> declare the same calls for POSIX callers. */
+int mkdir(const char *path, uint32_t mode);
+int unlink(const char *path);
+int rmdir(const char *path);
+int rename(const char *from, const char *to);
+
 /* Namespaces (ADR-0003). flag: BIND_FLAG_REPLACE, _BEFORE or _AFTER. */
 int bind(const char *new_path, const char *old_path, int flag);
 int unbind(const char *old_path);

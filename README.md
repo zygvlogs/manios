@@ -38,6 +38,7 @@ is written anew for it.
 | M19 — ManiDOS: a disk operating system of ManiOS's own (`dos`): drive letters, DOS commands, batch files, CHKDSK | Achieved ([notes](docs/milestones/M19-manidos.md), [guide](docs/dos.md), [ADR-0008](docs/adr/0008-manidos.md)) |
 | M20 — drivers: floppy, CD-ROM (ISO 9660, Rock Ridge, Joliet), SATA, virtio, RTL8139, Tulip, PC speaker, Sound Blaster 16, AC'97, AdLib, serial and parallel ports, NVRAM, ACPI power | Achieved ([notes](docs/milestones/M20-drivers.md), [guide](docs/drivers.md)) |
 | M21 — `gfx=auto`: a real display adapter's own linear framebuffer, over its VESA BIOS, for ManiDE on real hardware | Achieved ([notes](docs/milestones/M21-vesa-lfb.md)) |
+| M22 — writing to a FAT volume: the kernel's FAT writer and the syscalls for creating, removing and renaming files; ManiDOS's `DEL`, `MD`, `RD`, `REN`, `COPY` onto a file and `> FILE` | Achieved ([notes](docs/milestones/M22-fat-writes.md), [guide](docs/dos.md)) |
 
 ## Download and install
 
@@ -140,10 +141,12 @@ name for it.
 MS-DOS, and no MS-DOS code: a `C:\>` prompt with drive letters (A: the
 boot disk, C: and on the FAT disks, Z: all of ManiOS), `DIR`, `CD`,
 `TYPE`, `FIND`, `SORT`, `MORE`, `TREE`, `VOL`, a `CHKDSK` that checks a
-FAT disk's chains cluster by cluster, batch files with `AUTOEXEC.BAT`,
-`GOTO`, `IF`, `FOR` and `CALL`, pipes and redirection, and ManiOS's
-programs on its PATH. `shell=dos` on the boot command line starts
-ManiOS in it ([guide](docs/dos.md)).
+FAT disk's chains cluster by cluster, `DEL`, `MD`, `RD`, `REN` and
+`COPY` writing to the FAT volumes (the kernel writes them itself),
+batch files with `AUTOEXEC.BAT`, `GOTO`, `IF`, `FOR` and `CALL`, pipes
+and redirection (to a file too), and ManiOS's programs on its PATH.
+`shell=dos` on the boot command line starts ManiOS in it
+([guide](docs/dos.md)).
 
 `fetch` shows the system at a glance and `top` the processes, busiest
 first; both work in any terminal, the text console included, which

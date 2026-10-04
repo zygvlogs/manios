@@ -101,6 +101,10 @@ int fat_check(const char *device, char letter, bool verbose);
 /* The raw text after an internal command's name. */
 extern const char *cmd_rest;
 
+/* Why a write was refused, as ManiDOS says it: a read-only drive says
+ * so, a disk that's full says that, and anything else is denied. */
+const char *denied(int err);
+
 struct command {
 	const char *name;
 	int (*run)(int argc, char **argv);

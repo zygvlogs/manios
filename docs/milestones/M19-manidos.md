@@ -58,13 +58,17 @@ from the partition's device (`/dev/ata0p1`) and walks every chain:
 cross-links (a cluster reached twice), files whose sizes don't match
 their chains, chains that run into free or bad clusters or out of the
 disk, lost clusters (used in the FAT, reached by nothing) counted in
-chains, and FAT copies that differ. It reports; it can't correct, the
-drives being read-only.
+chains, and FAT copies that differ. It reports; it can't correct --
+M19's reason was that the drives were read-only, and [M22](M22-fat-writes.md)
+made them writable while ManiDOS still has no repair.
 
-**Read-only, said plainly.** ManiOS can't write files yet, so `DEL`,
-`REN`, `MD`, `RD`, `COPY` to a file and `> FILE` answer "Access denied -
-ManiOS's drives are read-only", and `FORMAT`, `FDISK`, `LABEL` and `SYS`
-say they aren't in ManiDOS. Output can go to `CON`, `NUL` or a device.
+**Read-only, said plainly (what M19 answered).** ManiOS couldn't write
+files then, so `DEL`, `REN`, `MD`, `RD`, `COPY` to a file and `> FILE`
+answered "Access denied - ManiOS's drives are read-only", and `FORMAT`,
+`FDISK`, `LABEL` and `SYS` said they aren't in ManiDOS. Output went to
+`CON`, `NUL` or a device. M22 made the FAT volumes writable: those
+commands now write, `> FILE` now makes a file, and only a drive that
+takes no writes (A:, Z:, a CD) still refuses.
 
 **The terminal's size, only where asked.** `DIR /W`, `DIR /P` and
 `MORE` need the screen's size. In ManiDE's terminal ManiDOS asks it
@@ -135,6 +139,6 @@ checks that message on a 6 MiB one.
 
 ## Known limits
 
-See [docs/dos.md](../dos.md#differences-from-dos): read-only drives, no
-DOS programs, no dates in `DIR`, no Ctrl+C, and `PAUSE` and `MORE` wait
-for Enter.
+See [docs/dos.md](../dos.md#differences-from-dos): which drives take no
+writes, names on disk as 8.3, no DOS programs, no dates in `DIR`, no
+Ctrl+C, and `PAUSE` and `MORE` wait for Enter.

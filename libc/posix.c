@@ -1,7 +1,9 @@
 /* POSIX calls ManiOS has no counterpart for. Each says so the way POSIX
- * allows: mmap() and ioctl() fail, signals are never delivered, and
- * files can't be created, renamed or removed (EROFS: only devices and
- * pipes take writes). */
+ * allows: mmap() and ioctl() fail, signals are never delivered, hard
+ * links and ownership changes are refused (EROFS: only the file system
+ * itself would know how), and everything else -- creating, writing,
+ * renaming and removing files -- is the file system's to grant or deny
+ * (zkt/fs/vfs.c: writable only on FAT12/16). */
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -86,8 +88,9 @@ uid_t geteuid(void) { return 0; }
 gid_t getgid(void) { return 0; }
 gid_t getegid(void) { return 0; }
 
-/* Renaming, removing and changing files need a writable file system;
- * a file that isn't there says so first (ENOENT). */
+/* What ManiOS has no way to do on any file system: hard links (the
+ * tree's naming is its own, ADR-0003) and ownership (only root owns
+ * everything). A file that isn't there says so first (ENOENT). */
 static int read_only(const char *path)
 {
 	struct stat sb;
@@ -98,22 +101,52 @@ static int read_only(const char *path)
 	return -1;
 }
 
-int unlink(const char *path) { return read_only(path); }
-int rmdir(const char *path) { return read_only(path); }
 int link(const char *from, const char *to) { (void)to; return read_only(from); }
-int rename(const char *from, const char *to) { (void)to; return read_only(from); }
-int remove(const char *path) { return read_only(path); }
 int chown(const char *path, uid_t uid, gid_t gid) { (void)uid, (void)gid; return read_only(path); }
 int fchown(int fd, uid_t uid, gid_t gid) { (void)fd, (void)uid, (void)gid; return read_only(NULL); }
 
-int mkstemp(char *template)
+/* remove() takes a name off its file system: directories are rmdir()'s
+ * to remove, everything else unlink()'s (POSIX). */
+int remove(const char *path)
 {
-	(void)template;
-	errno = EROFS;
-	return -1;
+	struct stat sb;
+	if (stat(path, &sb) < 0) {
+		return -1;
+	}
+	return S_ISDIR(sb.st_mode) ? rmdir(path) : unlink(path);
 }
 
-int sleep_ms(uint32_t ms); /* <manios.h>, whose open() and fstat() clash */
+int sleep_ms(uint32_t ms);    /* <manios.h>, whose open() and fstat() clash */
+uint32_t uptime_ms(void);     /* ...the same for the two below */
+
+/* The six X's at the end of the template become letters and digits,
+ * with O_EXCL refusing a name the file system already holds, until one
+ * is free. What the caller gets back is the name as it was asked for:
+ * a name too long for an 8.3 entry is stored under the "~1" alias the
+ * file system gives it, and found again through it (zkt/fs/fat.c). */
+int mkstemp(char *template)
+{
+	static const char TAIL[] = "abcdefghijklmnopqrstuvwxyz0123456789";
+	size_t len = strlen(template);
+
+	if (len < 6 || memcmp(template + len - 6, "XXXXXX", 6) != 0) {
+		errno = EINVAL;
+		return -1;
+	}
+	uint32_t seed = uptime_ms() ^ (uint32_t)(uintptr_t)template;
+	for (int tries = 0; tries < 1000; tries++) {
+		for (int i = 0; i < 6; i++) {
+			seed = seed * 1103515245 + 12345;
+			template[len - 6 + i] = TAIL[(seed >> 16) % 36];
+		}
+		int fd = open(template, O_RDWR | O_CREAT | O_EXCL);
+		if (fd >= 0 || errno != EEXIST) {
+			return fd;
+		}
+	}
+	errno = EEXIST;
+	return -1;
+}
 
 int kqueue(void)
 {

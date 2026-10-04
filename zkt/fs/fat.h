@@ -5,9 +5,11 @@
 #include "device.h"
 #include "vfs.h"
 
-/* Read-only FAT12/FAT16, 512-byte sectors, 8.3 names (long-name
- * entries are skipped; such files appear under their short alias,
- * e.g. "manios~1.txt"). On success stores the root directory and a short
+/* FAT12/FAT16, 512-byte sectors, 8.3 names (long-name entries are
+ * skipped; such files appear under their short alias, e.g.
+ * "manios~1.txt", which is the name they are written back under too).
+ * Writable when the device can be written at, read-only when it can't.
+ * On success stores the root directory and a short
  * description ("FAT16, 8 MiB"). Returns -EINVAL if `dev` holds no
  * supported FAT volume (FAT32 included, for now). */
 int fat_mount(struct device *dev, struct vnode **root, char *desc, size_t desc_len);

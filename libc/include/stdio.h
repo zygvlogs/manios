@@ -25,7 +25,9 @@ FILE *fdopen(int fd, const char *mode);
 /* The stream, now on `path` (the old file closed). NULL on failure. */
 FILE *freopen(const char *path, const char *mode, FILE *f);
 int fclose(FILE *f);
-/* ManiOS can't rename or remove files (<unistd.h>): EROFS. */
+/* rename() and remove() are the file system's to grant (EROFS where it
+ * takes no writes); remove() is unlink() for a file, rmdir() for a
+ * directory. */
 int rename(const char *from, const char *to);
 int remove(const char *path);
 int fflush(FILE *f); /* NULL: every stream */

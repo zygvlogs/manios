@@ -251,6 +251,9 @@ char *strerror(int err)
 	case EINVAL:       return "invalid argument";
 	case EMFILE:       return "too many open files";
 	case EROFS:        return "read-only file system";
+	case ENOSPC:       return "no space left on device";
+	case EXDEV:        return "cross-device rename";
+	case ENOTEMPTY:    return "directory not empty";
 	case ERANGE:       return "result too large";
 	case ENAMETOOLONG: return "file name too long";
 	case ENOSYS:       return "function not implemented";

@@ -219,6 +219,12 @@ void dos_to_manios(int drive, const char *path, char *out, size_t size)
 	if (!out[0]) {
 		strlcpy(out, "/", size);
 	}
+	/* A drive's own directory ("\\") needs no trailing separator: two
+	 * spellings of one file would compare unequal. */
+	size_t len = strlen(out);
+	while (len > 1 && out[len - 1] == '/') {
+		out[--len] = '\0';
+	}
 }
 
 void dos_display(int drive, const char *path, char *out, size_t size)

@@ -15,7 +15,11 @@
  *   Version 1 (M9): the system calls below.
  *   Version 2 (0.17.1): SYS_SEEK on a pipe fails with ESPIPE. For a
  *   version-1 program it succeeds, as before, moving an offset that
- *   pipe reads ignore. */
+ *   pipe reads ignore. Version 2 also gained, additively (M22):
+ *   SYS_UNLINK, SYS_MKDIR, SYS_RMDIR and SYS_RENAME, and the O_CREAT,
+ *   O_TRUNC and O_EXCL flags SYS_OPEN takes in its mode. A program
+ *   built before them never calls them, and an open mode without the
+ *   flags means what it always did. */
 #define ZKT_ABI_VERSION 2
 #define ZKT_ABI_VERSION_MIN 1 /* the oldest the kernel still runs */
 #define ZKT_NOTE_NAME "ZKT"
@@ -64,6 +68,12 @@
                         * path, in this process's namespace, over ZRP as attach name
                         * `name` until the process exits; a NULL path takes the
                         * export back (M13) */
+#define SYS_UNLINK  26 /* (const char *path) -> 0: removes a file */
+#define SYS_MKDIR   27 /* (const char *path) -> 0: makes a directory */
+#define SYS_RMDIR   28 /* (const char *path) -> 0: removes a directory, which must be empty */
+#define SYS_RENAME  29 /* (const char *from, const char *to) -> 0: renames within one
+                        * directory; between two directories it is refused (EXDEV), not
+                        * done for you */
 
 /* Paths may be relative to the process's current directory ("/" for a
  * program the kernel starts; a child inherits its parent's). They are
@@ -97,10 +107,13 @@
 #define SEEK_CUR 1
 #define SEEK_END 2
 
-/* Open modes. */
+/* Open modes: the access mode, or'd with flags SYS_OPEN understands too. */
 #define OREAD  0
 #define OWRITE 1
 #define ORDWR  2
+#define O_CREAT 0x0200 /* make the file if it isn't there */
+#define O_TRUNC 0x0400 /* empty the file (on a directory: EISDIR) */
+#define O_EXCL  0x0800 /* with O_CREAT: fail if the file is already there */
 
 /* SYS_BIND flags, as Plan 9's bind: replace, or union with the new
  * directory searched before (-b) or after (-a) the old one. */
@@ -154,17 +167,20 @@ struct zkt_pollfd {
 #define EFAULT       14
 #define EBUSY        16
 #define EEXIST       17
+#define EXDEV         18  /* a rename between two directories */
 #define ENODEV       19
 #define ENOTDIR      20
 #define EISDIR       21
 #define EINVAL       22
 #define EMFILE       24
+#define ENOSPC        28  /* the disk is full */
 #define EROFS        30
 #define ERANGE       34
 #define ENAMETOOLONG 36
 #define ESPIPE       29  /* a seek on a pipe */
 #define EPIPE        32
 #define ENOSYS       38
+#define ENOTEMPTY    39  /* a directory that isn't empty */
 #define EPROTO       71  /* a malformed protocol message (ZRP) */
 #define EADDRINUSE   98
 #define ENETUNREACH 101

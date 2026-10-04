@@ -35,7 +35,10 @@ uid_t geteuid(void);
 gid_t getgid(void);
 gid_t getegid(void);
 
-/* Files can't be removed or linked, nor owners changed: EROFS. */
+/* What the file system grants (<manios.h> for the same call with no
+ * POSIX wrapping): unlink() and rmdir() work where it takes writes
+ * (FAT12/16) and fail EROFS where it doesn't. Hard links and ownership
+ * don't exist on any of them: EROFS. */
 int unlink(const char *path);
 int rmdir(const char *path);
 int link(const char *from, const char *to);
