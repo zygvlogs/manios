@@ -27,6 +27,14 @@ ManiDE gives windows their size. The first desktop was milestone M12
 - `libwin/` — the window library programs link: `win_open`,
   `win_flush`, `win_next` (with `WIN_RESIZE`), `win_resize`,
   `win_close`
+- `libui/` — the widget toolkit (M23): boxes and grids, labels,
+  buttons, check boxes, entries, lists, text areas, progress bars and
+  widgets a program draws itself, with layout, focus, the keyboard and
+  the pointer ([guide](../docs/gui.md),
+  [ADR-0009](../docs/adr/0009-libui-widget-toolkit.md); `ui.h` is the
+  interface, `ui_priv.h` describes its parts)
 - `apps/` — one program per file, installed in `/bin`: `term` (a
   terminal of any size running `sh`, with ANSI colours), `welcome`,
-  `clock`, `about`
+  `clock`, `about`, and the graphical programs written with libui:
+  `files` (a file browser), `view` (a text viewer), `calc`, `paint`,
+  `widgets` (every widget) and `greet` (the smallest program)

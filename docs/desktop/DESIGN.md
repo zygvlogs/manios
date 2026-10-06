@@ -2,6 +2,7 @@
 
 **Status:** ManiDE is milestone M18 ([notes](../milestones/M18-manide.md));
 it grew out of the M12 desktop ([notes](../milestones/M12-desktop.md)).
+Its programs have a widget toolkit since M23 ([guide](../gui.md)).
 Section 8 is direction, not commitments.
 **Date:** 2026-09-26
 **Decision records:** [ADR-0004](../adr/0004-window-system-as-a-file-server.md)
@@ -160,10 +161,12 @@ Why these choices:
 |-----------|--------|--------------|
 | `manide` | `desktop/manide/` | Mode set, `/dev/wsys` server, tiling, workspaces, status bar, menu, run prompt, compositor, pointer. `manide [-n \| -s SESSION] [WIDTH HEIGHT]`: 800×600 by default; `-n` starts no session. `desktop` is the same, by its old name. |
 | `libwin` | `desktop/libwin/` | `win_open`, `win_flush`, `win_next` (events, with a timeout; `WIN_RESIZE` after resizing the canvas), `win_resize`, `win_close`, and the event helper process. |
+| `libui` | `desktop/libui/` | The widget toolkit over libwin and libgfx (M23): boxes and grids that follow the size ManiDE gives, labels, buttons, check boxes, entries, lists, text areas, progress bars, widgets of the program's own, messages, a timer, and ManiDE's palette ([guide](../gui.md), [ADR-0009](../adr/0009-libui-widget-toolkit.md)). |
 | `term` | `desktop/apps/term.c` | A terminal of any size running `sh` through pipes, with local line editing, 256 lines of scroll-back (PgUp, PgDn), and the ANSI escapes full-screen programs use: SGR colours (16), cursor position and movement, erasing, hiding the cursor, and the size (`ESC [ 18 t`) and cursor (`ESC [ 6 n`) queries. `term COMMAND` types COMMAND into the shell once it is ready. |
 | `welcome` | `desktop/apps/welcome.c` | *Welcome to ManiDE*, its motto and its keys. |
 | `clock` | `desktop/apps/clock.c` | The time (UTC) from `/dev/time`, as large as its pane allows. |
 | `about` | `desktop/apps/about.c` | What this system is. |
+| `files`, `view`, `calc`, `paint`, `widgets`, `greet` | `desktop/apps/` | Graphical programs written with libui: a file browser, a text viewer, a calculator, a sketchpad, a gallery of every widget, and the smallest example ([guide](../gui.md)). |
 | `fetch`, `top` | `userland/bin/` | Text programs for any terminal (ManiDE's, the text console, a serial line): the system at a glance beside the ManiOS logo, and the processes, busiest first, with CPU and memory bars. |
 
 **The status bar**, left to right: *ManiDE* (click: the menu); the
@@ -189,7 +192,7 @@ focused window:
 | Alt+Space | the next layout |
 | Alt+q | close the focused window (it is sent `c`) |
 | Alt+Shift+Q | exit ManiDE |
-| F1 | the menu: Terminal, System info (`term fetch`), Processes (`term top`), ManiDOS (`term dos`), Welcome, Clock, About ManiOS, Exit ManiDE |
+| F1 | the menu: Terminal, System info (`term fetch`), Processes (`term top`), ManiDOS (`term dos`), Files, Calculator, Paint, Welcome, Clock, About ManiOS, Exit ManiDE |
 
 **The session**, `/boot/etc/manide` unless `-s` names another file:
 one command a line, each started once the one before has its window (or
@@ -246,7 +249,9 @@ gaps. An empty workspace shows the name and the main keys, dimly.
 In rough order: a `/dev/draw`-style protocol (images held by the
 server, draw operations sent instead of pixels); per-workspace sessions
 and a settings file for keys and colours; floating windows for dialogs;
-notifications; a file manager. Running programs on another node whose
+notifications; a clipboard, as a file; and, now that ManiOS can write a
+FAT volume (M22), a file manager that changes files and a settings
+program (the read-only `files` and the toolkit are M23). Running programs on another node whose
 windows appear here has worked since M13 without any change to the
 window system: `cpu`, typed in a terminal, exports ManiDE's namespace,
 and the program on the CPU server finds `/dev/wsys` in it.

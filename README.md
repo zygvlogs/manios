@@ -39,6 +39,7 @@ is written anew for it.
 | M20 — drivers: floppy, CD-ROM (ISO 9660, Rock Ridge, Joliet), SATA, virtio, RTL8139, Tulip, PC speaker, Sound Blaster 16, AC'97, AdLib, serial and parallel ports, NVRAM, ACPI power | Achieved ([notes](docs/milestones/M20-drivers.md), [guide](docs/drivers.md)) |
 | M21 — `gfx=auto`: a real display adapter's own linear framebuffer, over its VESA BIOS, for ManiDE on real hardware | Achieved ([notes](docs/milestones/M21-vesa-lfb.md)) |
 | M22 — writing to a FAT volume: the kernel's FAT writer and the syscalls for creating, removing and renaming files; ManiDOS's `DEL`, `MD`, `RD`, `REN`, `COPY` onto a file and `> FILE` | Achieved ([notes](docs/milestones/M22-fat-writes.md), [guide](docs/dos.md)) |
+| M23 — graphical software: libui, a widget toolkit; a file browser, viewer, calculator and sketchpad built with it | Achieved ([notes](docs/milestones/M23-gui-software.md), [guide](docs/gui.md), [ADR-0009](docs/adr/0009-libui-widget-toolkit.md)) |
 
 ## Download and install
 
@@ -47,7 +48,7 @@ page has a bootable ISO, `manios-VERSION.iso`. It boots from a CD, from
 a USB stick it is written to, or in QEMU or VirtualBox:
 
 ```
-qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.23.0.iso -boot d
+qemu-system-i386 -cpu 486 -m 32 -cdrom manios-0.24.0.iso -boot d
 ```
 
 and `install ata0` puts ManiOS on a hard disk. ManiOS boots with its own
@@ -137,6 +138,17 @@ windows, and `cat /dev/wsys/4/ctl` describes one
 ([design](docs/desktop/DESIGN.md)). `desktop` still works, as another
 name for it.
 
+ManiOS has **graphical software** and a toolkit for writing it,
+**libui** ([guide](docs/gui.md)): buttons, text fields, lists, text
+areas, laid out in whatever size ManiDE gives a window and drawn in its
+look. Start them from ManiDE's menu (F1) or its run prompt (Alt+d):
+`files` browses folders and opens files in `view`; `calc` is a calculator
+(click it or type); `paint` is a sketchpad (the right button erases);
+`widgets` shows every widget, and `greet` is the 34-line first example of
+the guide. They look at files and don't change them; none saves yet.
+
+![A calculator and the file browser in ManiDE](docs/gui/calc-files.png)
+
 `dos` starts **ManiDOS**, a disk operating system of ManiOS's own -- not
 MS-DOS, and no MS-DOS code: a `C:\>` prompt with drive letters (A: the
 boot disk, C: and on the FAT disks, Z: all of ManiOS), `DIR`, `CD`,
@@ -176,8 +188,9 @@ zkt/          ZygKernel Technology — the kernel
   abi/        the system call ABI header shared with userspace
 libc/         ManiOS's own C library (stdio, malloc, strings, file servers, ...)
 desktop/      the desktop environment: libgfx/ (2D graphics), libwin/ (windows),
-              manide/ (ManiDE, the window manager), apps/ (terminal, welcome,
-              clock, about)
+              libui/ (the widget toolkit), manide/ (ManiDE, the window manager),
+              apps/ (terminal, welcome, clock, about, and the graphical programs:
+              files, view, calc, paint, widgets, greet)
 userland/     user programs (bin/), ManiDOS (dos/), test programs (test/), boot
               files (etc/)
 tools/        cross-toolchain build script, boot area / ISO / disk image builders,

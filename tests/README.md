@@ -93,6 +93,24 @@
   back to the text console; and on a machine without Bochs VBE, that
   ManiDE explains and exits.
 
+
+- `gui_test.py` (also run by `make test`) — graphical software and its
+  toolkit, libui (M23, [guide](../docs/gui.md)). First with no desktop:
+  `/boot/test/uitest` (the toolkit's conformance test: a windowless ui
+  fed events by hand, checking layout, every widget's keys and mouse, the
+  focus, messages, custom widgets, resizing and the pixels drawn),
+  `calc -t` (the calculator's arithmetic, overflow included), and that
+  each graphical program started without ManiDE says `no window`. Then on
+  ManiDE under QEMU, driven by its emulated keyboard and mouse and read
+  back from the screen, pixel for pixel: the calculator (typed and clicked
+  sums, an error, its buttons following its pane when a terminal opens),
+  `greet`, the widget gallery (clicks, Space, Tab, the progress bar,
+  typing, messages, list clicks and double clicks, the text area), the
+  file browser (folders, a typed path, a file opening the viewer in a
+  second pane) and paint (strokes, colours, the right-button eraser, the
+  brush, Clear). Where a widget is on screen comes from a copy of
+  libui's layout arithmetic in the test. `--only WORD` runs the steps
+  whose names have WORD in them.
 - `dos_test.py` (also run by `make test`) — ManiDOS, at its own prompt
   over the serial line, on a disk made for it with mtools: C: (FAT16,
   labelled in its root directory) with text files, batch files and a DOS

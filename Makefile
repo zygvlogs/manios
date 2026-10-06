@@ -60,7 +60,7 @@ USER_CFLAGS := -std=gnu11 -ffreestanding -fno-asynchronous-unwind-tables -O2 -g 
                -ffunction-sections -fdata-sections \
                -DMANIOS_VERSION='"$(VERSION)"' \
                -Wall -Wextra -MMD -MP $(ARCHFLAGS) -Ilibc/include -Izkt/abi -Idesktop/libgfx \
-               -Idesktop/libwin -Iboot -Ithird_party/openbsd/include
+               -Idesktop/libwin -Idesktop/libui -Iboot -Ithird_party/openbsd/include
 USER_LDFLAGS := -nostdlib -static -T userland/user.ld -Wl,-n -Wl,--gc-sections
 
 LIBC := $(BUILD)/libc/libc.a
@@ -91,7 +91,10 @@ LIBGFX_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard desktop/libgfx/*.c))
 # (desktop/apps/, one per file), all installed in /bin.
 LIBWIN := $(BUILD)/desktop/libwin/libwin.a
 LIBWIN_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard desktop/libwin/*.c))
-USER_LIBS := $(LIBWIN) $(LIBGFX) $(LIBC)
+# The widget toolkit (M23, docs/gui.md), over libwin and libgfx.
+LIBUI := $(BUILD)/desktop/libui/libui.a
+LIBUI_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard desktop/libui/*.c))
+USER_LIBS := $(LIBUI) $(LIBWIN) $(LIBGFX) $(LIBC)
 MANIDE_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard desktop/manide/*.c))
 # ManiDOS (docs/dos.md): one program from userland/dos/, and its
 # AUTOEXEC.BAT at the root of the boot disk (A:, /boot).
@@ -173,6 +176,10 @@ $(LIBGFX): $(LIBGFX_OBJECTS)
 	$(AR) rcs $@ $^
 
 $(LIBWIN): $(LIBWIN_OBJECTS)
+	@rm -f $@
+	$(AR) rcs $@ $^
+
+$(LIBUI): $(LIBUI_OBJECTS)
 	@rm -f $@
 	$(AR) rcs $@ $^
 
@@ -347,6 +354,7 @@ test: $(KERNEL) test-images
 	python3 tests/gfx_test.py $(KERNEL)
 	python3 tests/vbe_test.py $(KERNEL)
 	python3 tests/desktop_test.py $(KERNEL)
+	python3 tests/gui_test.py $(KERNEL)
 	python3 tests/dos_test.py $(KERNEL)
 	python3 tests/driver_test.py $(KERNEL)
 	python3 tests/cluster_test.py $(KERNEL)
@@ -361,5 +369,5 @@ clean:
             $(BUILD)/userland/dos/dos.elf
 
 -include $(OBJECTS:.o=.d) $(LIBC_OBJECTS:.o=.d) $(CRT0:.o=.d) $(USER_OBJECTS:.o=.d) \
-         $(LIBGFX_OBJECTS:.o=.d) $(LIBWIN_OBJECTS:.o=.d) $(MANIDE_OBJECTS:.o=.d) $(DOS_OBJECTS:.o=.d) \
+         $(LIBGFX_OBJECTS:.o=.d) $(LIBWIN_OBJECTS:.o=.d) $(LIBUI_OBJECTS:.o=.d) $(MANIDE_OBJECTS:.o=.d) $(DOS_OBJECTS:.o=.d) \
          $(patsubst %,$(BUILD)/desktop/apps/%.d,$(DESKTOP_APPS))
