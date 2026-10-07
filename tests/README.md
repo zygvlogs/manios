@@ -128,6 +128,20 @@
   parameters, IF, GOTO, SHIFT, FOR and CALL, and a machine booted with
   `shell=dos`.
 
+- `dosrun_test.py` (also run by `make test`) — `dosrun`, the 8086
+  interpreter that runs DOS programs (M24,
+  [ADR-0010](../docs/adr/0010-running-dos-programs.md)). A disk is made
+  with mtools holding hand-assembled `.COM` and `.EXE` programs; from
+  ManiOS's shell it runs them and checks what they print: a `.COM`'s
+  string, a loop with `INC` and `LOOP`, an `.EXE`'s image and
+  relocations, an exit code, an instruction the interpreter can't run
+  (named, not run), and the usage message with no program.
+
+- `dosrun_host_test.py` — the same interpreter built for the host (gcc,
+  not the i686-elf toolchain) and driven directly, for what the QEMU
+  test can't see: the exit code, the flags after arithmetic, the stack,
+  and the `.EXE` relocations. Needs only Python 3 and gcc.
+
 - `driver_test.py` (also run by `make test`; needs mtools and xorriso;
   `tests/driver_test.py KERNEL storage|sound|misc` runs a part) — the
   drivers of M20 on QEMU's models of the hardware

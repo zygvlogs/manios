@@ -99,6 +99,9 @@ MANIDE_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard desktop/manide/*.c))
 # ManiDOS (docs/dos.md): one program from userland/dos/, and its
 # AUTOEXEC.BAT at the root of the boot disk (A:, /boot).
 DOS_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard userland/dos/*.c))
+# dosrun (docs/dosrun.md): the 8086 interpreter that runs DOS programs,
+# one program from userland/dosrun/.
+DOSRUN_OBJECTS := $(patsubst %.c,$(BUILD)/%.o,$(wildcard userland/dosrun/*.c))
 DESKTOP_APPS := $(patsubst desktop/apps/%.c,%,$(wildcard desktop/apps/*.c))
 DESKTOP_BOOTFS := $(patsubst %,$(BUILD)/bootfs/bin/%,$(DESKTOP_APPS))
 USER_PROGRAMS := $(patsubst userland/%.c,%,$(wildcard userland/bin/*.c userland/test/*.c)) \
@@ -110,6 +113,7 @@ BOOTFS_FILES := $(patsubst %,$(BUILD)/bootfs/%,$(USER_PROGRAMS)) \
                 $(patsubst userland/%,$(BUILD)/bootfs/%,$(wildcard userland/etc/*)) \
                 $(BUILD)/bootfs/bin/manide $(DESKTOP_BOOTFS) $(NOTICES) \
                 $(BUILD)/bootfs/bin/dos $(BUILD)/bootfs/autoexec.bat \
+                $(BUILD)/bootfs/bin/dosrun \
                 $(BUILD)/bootfs/test/pipeseek1
 BOOTFS_OBJECT := $(BUILD)/bootfs.o
 
@@ -199,6 +203,13 @@ $(BUILD)/bootfs/bin/dos: $(BUILD)/userland/dos/dos.elf
 
 $(BUILD)/userland/dos/dos.elf: $(DOS_OBJECTS) $(CRT0) $(USER_LIBS) userland/user.ld
 	$(CC) $(USER_LDFLAGS) -o $@ $(CRT0) $(DOS_OBJECTS) $(USER_LIBS)
+
+$(BUILD)/bootfs/bin/dosrun: $(BUILD)/userland/dosrun/dosrun.elf
+	@mkdir -p $(dir $@)
+	$(STRIP) -o $@ $<
+
+$(BUILD)/userland/dosrun/dosrun.elf: $(DOSRUN_OBJECTS) $(CRT0) $(USER_LIBS) userland/user.ld
+	$(CC) $(USER_LDFLAGS) -o $@ $(CRT0) $(DOSRUN_OBJECTS) $(USER_LIBS)
 
 $(BUILD)/bootfs/autoexec.bat: userland/dos/autoexec.bat
 	@mkdir -p $(dir $@)
@@ -356,6 +367,8 @@ test: $(KERNEL) test-images
 	python3 tests/desktop_test.py $(KERNEL)
 	python3 tests/gui_test.py $(KERNEL)
 	python3 tests/dos_test.py $(KERNEL)
+	python3 tests/dosrun_host_test.py
+	python3 tests/dosrun_test.py $(KERNEL)
 	python3 tests/driver_test.py $(KERNEL)
 	python3 tests/cluster_test.py $(KERNEL)
 
@@ -366,8 +379,8 @@ clean:
 .SECONDARY: $(patsubst %,$(BUILD)/userland/%.elf,$(USER_PROGRAMS)) $(USER_OBJECTS) $(CRT0) \
             $(patsubst %,$(BUILD)/desktop/apps/%.elf,$(DESKTOP_APPS)) \
             $(patsubst %,$(BUILD)/desktop/apps/%.o,$(DESKTOP_APPS)) $(BUILD)/desktop/manide/manide.elf \
-            $(BUILD)/userland/dos/dos.elf
+            $(BUILD)/userland/dos/dos.elf $(BUILD)/userland/dosrun/dosrun.elf
 
 -include $(OBJECTS:.o=.d) $(LIBC_OBJECTS:.o=.d) $(CRT0:.o=.d) $(USER_OBJECTS:.o=.d) \
-         $(LIBGFX_OBJECTS:.o=.d) $(LIBWIN_OBJECTS:.o=.d) $(LIBUI_OBJECTS:.o=.d) $(MANIDE_OBJECTS:.o=.d) $(DOS_OBJECTS:.o=.d) \
+         $(LIBGFX_OBJECTS:.o=.d) $(LIBWIN_OBJECTS:.o=.d) $(LIBUI_OBJECTS:.o=.d) $(MANIDE_OBJECTS:.o=.d) $(DOS_OBJECTS:.o=.d) $(DOSRUN_OBJECTS:.o=.d) \
          $(patsubst %,$(BUILD)/desktop/apps/%.d,$(DESKTOP_APPS))
