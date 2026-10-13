@@ -57,15 +57,23 @@ The console is the terminal `dosrun` runs on. Mode 13h (320x200, 256
 colours) is ManiOS's VGA mode 13h: the program's framebuffer at
 physical `0xA0000` is copied to ManiOS's screen as it runs.
 
-## What it doesn't do
+## What it does and doesn't do
 
-- **No protected mode, no 386 instructions.** It is an 8086: a program
-  that needs a 386 (or a DOS extender) won't run.
+- **8086 with common 386 instructions.** `dosrun` is a 16-bit
+  interpreter, but it implements the 386 instructions DOS programs and
+  their libraries commonly use: `MOVZX`, `MOVSX`, `SETcc`, the bit
+  operations, `CPUID`, the two-byte `Jcc`, `CMOVcc`, `XADD`,
+  `CMPXCHG`, `BSWAP`, and the double shifts. A program that needs a
+  full 386 protected-mode environment or a DOS extender still won't
+  run.
+- **XMS and EMS.** Extended memory (`INT 2Fh` AH=43h) and expanded
+  memory (`INT 67h`) are present, with modest pools (8 MiB and 4 MiB
+  by default). A program can allocate handles, move data between
+  conventional and extended memory, and map EMS pages into the page
+  frame.
 - **No sound, no mouse, no serial.** A program that needs them finds
   the services absent.
 - **No TSRs, no child processes.** `INT 21h` AH=4Bh (EXEC) isn't there.
-- **No EMS or XMS.** A program that asks for expanded or extended
-  memory gets a refusal.
 - **A single program at a time.** `dosrun` runs one program and returns
   to the shell when it ends.
 

@@ -42,6 +42,16 @@
  * ones; a program's own files start at 5. */
 #define HANDLES 20
 
+/* Extended memory (XMS) and expanded memory (EMS): the pools a DOS
+ * program asks for beyond the 1 MiB it can address. The sizes are
+ * modest, enough for a game's sound and music buffers. */
+#define XMS_BYTES   (8u * 1024 * 1024)
+#define XMS_HANDLES 32
+#define EMS_BYTES   (4u * 1024 * 1024)
+#define EMS_HANDLES 32
+#define EMS_PAGE    16384u /* a 16 KiB page, as EMS has it */
+#define EMS_FRAME   0xE000 /* where the 4-page window is mapped */
+
 struct dos_state {
 	struct cpu *cpu;
 	uint16_t psp_seg;
@@ -58,6 +68,33 @@ struct dos_state {
 	/* The open files, one per DOS handle: 0-4 are the standard ones, a
 	 * program's own files start at 5. */
 	int handle_fd[HANDLES];
+
+	/* Extended memory (XMS): a pool outside the 1 MiB the program can
+	 * address, which it copies to and from through a move call. */
+	uint8_t *xms;
+	uint32_t xms_size;
+	/* The XMS handles: 0 is free, otherwise the block's byte offset. */
+	uint32_t xms_handle[XMS_HANDLES];
+	uint32_t xms_len[XMS_HANDLES];
+	int xms_installed;
+	int xms_open; /* the driver is open (AH=43h AL=10h) */
+
+	/* Expanded memory (EMS): 64 KiB pages mapped into a window. */
+	uint8_t *ems;
+	uint32_t ems_pages;
+	uint32_t ems_handle[EMS_HANDLES];
+	uint32_t ems_pages_of[EMS_HANDLES];
+	uint16_t ems_frame; /* the segment of the 4-page window */
+	/* What each of the frame's 4 physical pages shows: the handle and
+	 * the logical page, or -1 for nothing. The frame is a window, so
+	 * its contents are written back to the page before a remap. */
+	int ems_map_h[4];
+	int ems_map_p[4];
+	int ems_open;
+
+	/* The last console character was a CR, so the LF after it doesn't
+	 * make a second line break. */
+	int last_cr;
 };
 
 struct dos_state *dos_new(struct cpu *c)
@@ -79,11 +116,30 @@ struct dos_state *dos_new(struct cpu *c)
 	d->handle_fd[2] = 2; /* stderr */
 	d->handle_fd[3] = 0; /* aux */
 	d->handle_fd[4] = 1; /* printer */
+
+	/* The extended and expanded memory pools. If they can't be had,
+	 * the services report themselves absent, which a program handles. */
+	d->xms = calloc(1, XMS_BYTES);
+	if (d->xms) {
+		d->xms_size = XMS_BYTES;
+		d->xms_installed = 1;
+	}
+	d->ems = calloc(1, EMS_BYTES);
+	if (d->ems) {
+		d->ems_pages = EMS_BYTES / EMS_PAGE;
+		d->ems_frame = EMS_FRAME;
+	}
+	for (int i = 0; i < 4; i++) {
+		d->ems_map_h[i] = -1;
+		d->ems_map_p[i] = -1;
+	}
 	return d;
 }
 
 void dos_free(struct dos_state *d)
 {
+	free(d->xms);
+	free(d->ems);
 	free(d);
 }
 
@@ -158,14 +214,22 @@ static void set_cf(struct cpu *c, int on)
 
 /* --- the console --- */
 
+/* Prints a character. DOS's programs write CR LF for a line break, so a
+ * CR is remembered and the LF that follows it makes the one break; a
+ * lone CR or LF also makes one. */
 static void con_putc(struct dos_state *d, uint8_t ch)
 {
-	if (ch == '\n') {
-		write(d->con_out, "\r\n", 2);
-	} else if (ch == '\r') {
-		write(d->con_out, "\r\n", 2);
+	if (ch == '\r') {
+		write(d->con_out, "\n", 1);
+		d->last_cr = 1;
+	} else if (ch == '\n') {
+		if (!d->last_cr) {
+			write(d->con_out, "\n", 1);
+		}
+		d->last_cr = 0;
 	} else {
 		write(d->con_out, &ch, 1);
+		d->last_cr = 0;
 	}
 }
 
@@ -578,6 +642,335 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 	return CPU_OK;
 }
 
+/* --- extended memory (XMS) --- */
+
+static enum cpu_stop dos_xms(struct dos_state *d, struct cpu *c);
+
+/* The XMS driver, INT 2Fh AH=43h: the entry point's address comes back
+ * in ES:BX, and the program calls it far. dosrun answers the entry
+ * point with a stub that sets AL=11h and does an INT 2Fh, which
+ * dos_xms() below serves -- the way a real driver works, without a
+ * separate code segment to build. */
+static void xms_entry(struct dos_state *d, struct cpu *c)
+{
+	/* A far call to a stub: mov al,11h; int 2Fh; retf. The XMS
+	 * function is already in AH. It goes near the top of the PSP's
+	 * segment, past where a .COM's code and data reach. */
+	uint16_t seg = d->psp_seg;
+	uint16_t off = 0xFE00;
+	wr8(c, seg, off, 0xB0);      /* mov al,11h */
+	wr8(c, seg, (uint16_t)(off + 1), 0x11);
+	wr8(c, seg, (uint16_t)(off + 2), 0xCD); /* INT */
+	wr8(c, seg, (uint16_t)(off + 3), 0x2F);
+	wr8(c, seg, (uint16_t)(off + 4), 0xCB); /* RETF */
+	c->sreg[0] = seg;
+	c->r[BX] = off;
+}
+
+/* INT 2Fh AH=43h: the XMS driver's installation check and entry point.
+ * AL=00h is the check; AL=10h asks for the entry point; AL=11h is the
+ * entry point itself (the stub above), which runs the XMS function in
+ * AH. */
+static enum cpu_stop int2f_xms(struct dos_state *d, struct cpu *c)
+{
+	uint8_t al = (uint8_t)(c->r[AX] & 0xFF);
+	if (al == 0x00) { /* the installation check */
+		c->r[AX] = (uint16_t)((c->r[AX] & 0xFF00) | (d->xms_installed ? 0x80 : 0x00));
+		return CPU_OK;
+	}
+	if (al == 0x10) { /* the entry point: ES:BX */
+		xms_entry(d, c);
+		return CPU_OK;
+	}
+	if (al == 0x11) { /* through the entry point: the XMS function is AH */
+		return dos_xms(d, c);
+	}
+	c->r[AX] = (uint16_t)(c->r[AX] & 0xFF00);
+	return CPU_OK;
+}
+
+/* The XMS function dispatcher, entered through the stub with AH the
+ * function. Returns CPU_OK; the program reads AX for the result. */
+static enum cpu_stop dos_xms(struct dos_state *d, struct cpu *c)
+{
+	uint8_t ah = (uint8_t)(c->r[AX] >> 8);
+	switch (ah) {
+	case 0x00: /* get the version: 3.00 */
+		c->r[AX] = 0x0300;
+		c->r[BX] = 0x0001; /* the driver's internal revision */
+		c->r[DX] = 0x0001; /* HMA exists */
+		return CPU_OK;
+	case 0x08: { /* query free extended memory: KB free, largest block */
+		uint32_t free_kb = d->xms_size / 1024;
+		c->r[AX] = (uint16_t)free_kb;
+		c->r[DX] = (uint16_t)free_kb;
+		return CPU_OK;
+	}
+	case 0x09: { /* allocate: DX = KB wanted, DX = the handle */
+		uint32_t kb = c->r[DX];
+		uint32_t bytes = kb * 1024;
+		for (int i = 1; i < XMS_HANDLES; i++) {
+			if (d->xms_handle[i] == 0) {
+				/* A simple bump: the handle is the byte offset. */
+				uint32_t used = 0;
+				for (int j = 1; j < XMS_HANDLES; j++) {
+					if (d->xms_handle[j] && d->xms_handle[j] + d->xms_len[j] > used) {
+						used = d->xms_handle[j] + d->xms_len[j];
+					}
+				}
+				if (bytes == 0 || used + bytes > d->xms_size) {
+					c->r[AX] = 0x0000; /* out of memory */
+					c->r[DX] = 0x0000;
+					return CPU_OK;
+				}
+				d->xms_handle[i] = used + 1; /* never 0 */
+				d->xms_len[i] = bytes;
+				c->r[AX] = 0x0001;
+				c->r[DX] = (uint16_t)i;
+				return CPU_OK;
+			}
+		}
+		c->r[AX] = 0x0000;
+		c->r[DX] = 0x0000;
+		return CPU_OK;
+	}
+	case 0x0A: { /* free: DX = the handle */
+		uint16_t h = c->r[DX];
+		if (h < XMS_HANDLES && d->xms_handle[h]) {
+			d->xms_handle[h] = 0;
+			d->xms_len[h] = 0;
+			c->r[AX] = 0x0001;
+		} else {
+			c->r[AX] = 0x0000;
+		}
+		return CPU_OK;
+	}
+	case 0x0B: { /* move: DS:SI the descriptor, DX the byte count */
+		/* The descriptor, as the XMS spec lays it out:
+		 *   +0  DWORD count
+		 *   +4  WORD  source handle
+		 *   +6  DWORD source offset (low word the offset, high the
+		 *             segment; a handle of 0 means the program's own
+		 *             memory)
+		 *   +10 WORD  dest handle
+		 *   +12 DWORD dest offset
+		 */
+		uint16_t ds = c->sreg[3];
+		uint16_t src_h = rd16(c, ds, (uint16_t)(c->r[SI] + 4));
+		uint16_t src_off = rd16(c, ds, (uint16_t)(c->r[SI] + 6));
+		uint16_t src_seg = rd16(c, ds, (uint16_t)(c->r[SI] + 8));
+		uint16_t dst_h = rd16(c, ds, (uint16_t)(c->r[SI] + 10));
+		uint16_t dst_off = rd16(c, ds, (uint16_t)(c->r[SI] + 12));
+		uint16_t dst_seg = rd16(c, ds, (uint16_t)(c->r[SI] + 14));
+		/* The source and destination, as byte pointers. */
+		uint8_t *src = src_h == 0 ? c->mem + lin(src_seg, src_off)
+		                          : d->xms + d->xms_handle[src_h] - 1 + src_off;
+		uint8_t *dst = dst_h == 0 ? c->mem + lin(dst_seg, dst_off)
+		                          : d->xms + d->xms_handle[dst_h] - 1 + dst_off;
+		uint32_t n = c->r[DX];
+		if (n > 0x10000) {
+			n = 0x10000; /* one move is at most 64 KiB */
+		}
+		memmove(dst, src, n);
+		c->r[AX] = 0x0001;
+		c->r[DX] = (uint16_t)n;
+		return CPU_OK;
+	}
+	case 0x0C: { /* lock: DX = the handle (nothing to lock here) */
+		c->r[AX] = 0x0001;
+		c->r[DX] = 0x0000;
+		return CPU_OK;
+	}
+	case 0x0D: { /* unlock */
+		c->r[AX] = 0x0001;
+		return CPU_OK;
+	}
+	case 0x0E: { /* get the handle's information: BH = the size in KB */
+		uint16_t h = c->r[DX];
+		if (h < XMS_HANDLES && d->xms_handle[h]) {
+			c->r[AX] = 0x0001;
+			c->r[BX] = (uint16_t)(d->xms_len[h] / 1024);
+			c->r[DX] = 0x0001; /* one lock */
+		} else {
+			c->r[AX] = 0x0000;
+		}
+		return CPU_OK;
+	}
+	case 0x0F: { /* reallocate: BX = the new size in KB */
+		uint16_t h = c->r[DX];
+		uint32_t kb = c->r[BX];
+		if (h < XMS_HANDLES && d->xms_handle[h] && kb * 1024 <= d->xms_size) {
+			d->xms_len[h] = kb * 1024;
+			c->r[AX] = 0x0001;
+		} else {
+			c->r[AX] = 0x0000;
+		}
+		return CPU_OK;
+	}
+	default:
+		c->r[AX] = 0x0000;
+		return CPU_OK;
+	}
+}
+
+/* --- expanded memory (EMS) --- */
+
+/* INT 67h: the EMS driver. The functions a program uses to get a page
+ * frame, allocate pages, and map them into the window. */
+static enum cpu_stop int67(struct dos_state *d, struct cpu *c)
+{
+	uint8_t ah = (uint8_t)(c->r[AX] >> 8);
+	if (!d->ems) {
+		c->r[AX] = (uint16_t)((c->r[AX] & 0x00FF) | 0x8400); /* no driver */
+		return CPU_OK;
+	}
+	switch (ah) {
+	case 0x40: /* the status */
+		c->r[AX] = (uint16_t)(c->r[AX] & 0x00FF); /* AH = 0: success */
+		return CPU_OK;
+	case 0x41: { /* get the page frame: BX the segment */
+		c->r[BX] = d->ems_frame;
+		c->r[AX] = (uint16_t)(c->r[AX] & 0x00FF); /* AH = 0: success */
+		return CPU_OK;
+	}
+	case 0x42: { /* the unallocated page count: BX free, DX total */
+		uint32_t used = 0;
+		for (int i = 0; i < EMS_HANDLES; i++) {
+			used += d->ems_pages_of[i];
+		}
+		c->r[BX] = (uint16_t)(d->ems_pages - used);
+		c->r[DX] = (uint16_t)d->ems_pages;
+		c->r[AX] = (uint16_t)(c->r[AX] & 0x00FF); /* AH = 0: success */
+		return CPU_OK;
+	}
+	case 0x43: { /* allocate: BX the pages wanted, DX the handle */
+		uint32_t want = c->r[BX];
+		uint32_t used = 0;
+		for (int i = 0; i < EMS_HANDLES; i++) {
+			used += d->ems_pages_of[i];
+		}
+		if (want == 0 || used + want > d->ems_pages) {
+			c->r[AX] = (uint16_t)((c->r[AX] & 0x00FF) | 0x8800); /* not enough */
+			return CPU_OK;
+		}
+		for (int i = 0; i < EMS_HANDLES; i++) {
+			if (d->ems_pages_of[i] == 0) {
+				d->ems_handle[i] = 1;
+				d->ems_pages_of[i] = want;
+				c->r[DX] = (uint16_t)i;
+				c->r[AX] = (uint16_t)(c->r[AX] & 0x00FF); /* AH = 0: success */
+				return CPU_OK;
+			}
+		}
+		c->r[AX] = (uint16_t)((c->r[AX] & 0x00FF) | 0x8500); /* no handles */
+		return CPU_OK;
+	}
+	case 0x44: { /* map: AL the physical page, BX the logical, DX the handle */
+		uint8_t phys = (uint8_t)(c->r[AX] & 0xFF);
+		uint16_t h = c->r[DX];
+		uint16_t logical = c->r[BX];
+		if (h >= EMS_HANDLES || d->ems_pages_of[h] == 0 || logical >= d->ems_pages_of[h] || phys > 3) {
+			c->r[AX] = (uint16_t)((c->r[AX] & 0x00FF) | 0x8A00); /* bad argument */
+			return CPU_OK;
+		}
+		uint32_t at = lin(d->ems_frame, (uint16_t)(phys * EMS_PAGE));
+		/* The frame is a window: write what it holds back to the page
+		 * it was showing, then copy the new page in. */
+		if (d->ems_map_h[phys] >= 0) {
+			uint32_t old = 0;
+			for (int i = 0; i < d->ems_map_h[phys]; i++) {
+				old += d->ems_pages_of[i];
+			}
+			old += (uint32_t)d->ems_map_p[phys];
+			uint8_t *back = d->ems + old * EMS_PAGE;
+			for (uint32_t i = 0; i < EMS_PAGE; i++) {
+				back[i] = c->mem[(at + i) & (MEM_SIZE - 1)];
+			}
+		}
+		uint32_t page = 0;
+		for (int i = 0; i < h; i++) {
+			page += d->ems_pages_of[i];
+		}
+		page += logical;
+		uint8_t *src = d->ems + page * EMS_PAGE;
+		for (uint32_t i = 0; i < EMS_PAGE; i++) {
+			c->mem[(at + i) & (MEM_SIZE - 1)] = src[i];
+		}
+		d->ems_map_h[phys] = h;
+		d->ems_map_p[phys] = logical;
+		c->r[AX] = (uint16_t)(c->r[AX] & 0x00FF); /* AH = 0: success */
+		return CPU_OK;
+	}
+	case 0x45: { /* free: DX the handle */
+		uint16_t h = c->r[DX];
+		if (h < EMS_HANDLES && d->ems_pages_of[h]) {
+			d->ems_pages_of[h] = 0;
+			d->ems_handle[h] = 0;
+			/* If the handle was in the window, the window is now
+			 * empty. */
+			for (int i = 0; i < 4; i++) {
+				if (d->ems_map_h[i] == h) {
+					d->ems_map_h[i] = -1;
+					d->ems_map_p[i] = -1;
+				}
+			}
+			c->r[AX] = (uint16_t)(c->r[AX] & 0x00FF); /* AH = 0: success */
+		} else {
+			c->r[AX] = (uint16_t)((c->r[AX] & 0x00FF) | 0x8300);
+		}
+		return CPU_OK;
+	}
+	case 0x47: /* save the mapping context: nothing to save */
+		c->r[AX] = (uint16_t)(c->r[AX] & 0x00FF); /* AH = 0: success */
+		return CPU_OK;
+	case 0x48: /* restore the mapping context */
+		c->r[AX] = (uint16_t)(c->r[AX] & 0x00FF); /* AH = 0: success */
+		return CPU_OK;
+	case 0x4B: { /* the handle count: BX the open handles */
+		uint16_t n = 0;
+		for (int i = 0; i < EMS_HANDLES; i++) {
+			if (d->ems_pages_of[i]) {
+				n++;
+			}
+		}
+		c->r[BX] = n;
+		c->r[AX] = (uint16_t)(c->r[AX] & 0x00FF); /* AH = 0: success */
+		return CPU_OK;
+	}
+	case 0x4C: { /* the pages of a handle: BX the count */
+		uint16_t h = c->r[DX];
+		c->r[BX] = h < EMS_HANDLES ? (uint16_t)d->ems_pages_of[h] : 0;
+		c->r[AX] = (uint16_t)(c->r[AX] & 0x00FF); /* AH = 0: success */
+		return CPU_OK;
+	}
+	case 0x4D: { /* all the handles: ES:DI the array, BX the count */
+		uint16_t n = 0;
+		for (int i = 0; i < EMS_HANDLES; i++) {
+			if (d->ems_pages_of[i]) {
+				wr16(c, c->sreg[0], (uint16_t)(c->r[DI] + n * 2), (uint16_t)i);
+				n++;
+			}
+		}
+		c->r[BX] = n;
+		c->r[AX] = (uint16_t)(c->r[AX] & 0x00FF); /* AH = 0: success */
+		return CPU_OK;
+	}
+	case 0x51: case 0x52: case 0x53: { /* the page map: BX the entries */
+		c->r[BX] = 4;
+		c->r[AX] = (uint16_t)(c->r[AX] & 0x00FF); /* AH = 0: success */
+		return CPU_OK;
+	}
+	case 0x58: { /* the hardware configuration: the frame's segment */
+		wr16(c, c->sreg[0], c->r[DI], d->ems_frame);
+		c->r[AX] = (uint16_t)(c->r[AX] & 0x00FF); /* AH = 0: success */
+		return CPU_OK;
+	}
+	default:
+		c->r[AX] = (uint16_t)((c->r[AX] & 0x00FF) | 0x8400); /* unsupported */
+		return CPU_OK;
+	}
+}
+
 /* --- the video --- */
 
 /* DOS's mode 13h framebuffer is 320x200 bytes at physical 0xA0000, one
@@ -721,6 +1114,10 @@ enum cpu_stop dos_int(struct dos_state *d, struct cpu *c, uint8_t vector)
 		return bios16(d, c);
 	case 0x1A:
 		return bios1a(d, c);
+	case 0x2F:
+		return int2f_xms(d, c);
+	case 0x67:
+		return int67(d, c);
 	case 0x11: case 0x12: case 0x14: case 0x15: case 0x17:
 		/* The equipment, memory size, serial, cassette and printer
 		 * services: a program that probes them gets a plain answer. */

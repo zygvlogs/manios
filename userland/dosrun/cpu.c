@@ -426,12 +426,333 @@ static int cond(struct cpu *c, int cc)
 	}
 }
 
+/* The 386's two-byte instructions (the 0F prefix). Only what a DOS
+ * program and its libraries use is here; the rest stops with a fault. */
+static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
+{
+	uint8_t op = rd8(c, c->sreg[1], c->ip++);
+	c->fault_opcode = op;
+
+	switch (op) {
+	case 0x00: case 0x01: { /* the group 6: SLDT, STR, LLDT, LTR, VERR,
+	                         * VERW -- protected mode, not for a DOS
+	                         * program; refuse rather than mis-run. */
+		return CPU_FAULT;
+	}
+	case 0x02: case 0x03: { /* LAR, LSL: also protected mode */
+		return CPU_FAULT;
+	}
+	case 0x06: c->flags &= ~FLAG_CF; return CPU_OK; /* CLTS: no-op */
+	case 0x08: case 0x09: /* INVD, WBINVD: no cache to flush */
+		return CPU_OK;
+	case 0x0B: return CPU_FAULT; /* UD2 */
+	case 0x20: case 0x21: case 0x22: case 0x23: /* MOV to/from CR/DR */
+		return CPU_FAULT;
+	case 0x30: case 0x31: /* WRMSR, RDTSC */
+		if (op == 0x31) { /* RDTSC: a monotonic count of instructions */
+			uint64_t t = c->insns;
+			c->r[AX] = (uint16_t)t;
+			c->r[DX] = (uint16_t)(t >> 16);
+			c->r[CX] = (uint16_t)(t >> 32);
+			c->r[BX] = (uint16_t)(t >> 48);
+		}
+		return CPU_OK;
+	case 0x40: case 0x41: case 0x42: case 0x43: /* CMOVcc */
+	case 0x44: case 0x45: case 0x46: case 0x47:
+	case 0x48: case 0x49: case 0x4A: case 0x4B:
+	case 0x4C: case 0x4D: case 0x4E: case 0x4F: {
+		int reg;
+		struct operand rm = decode_rm(c, &reg);
+		if (override) {
+			rm.seg = override;
+		}
+		uint16_t v = get16(c, &rm);
+		if (cond(c, op & 0x0F)) {
+			c->r[reg] = v;
+		}
+		return CPU_OK;
+	}
+	case 0x80: case 0x81: case 0x82: case 0x83: /* Jcc rel16 */
+	case 0x84: case 0x85: case 0x86: case 0x87:
+	case 0x88: case 0x89: case 0x8A: case 0x8B:
+	case 0x8C: case 0x8D: case 0x8E: case 0x8F: {
+		int16_t rel = (int16_t)rd16(c, c->sreg[1], c->ip);
+		c->ip += 2;
+		if (cond(c, op & 0x0F)) {
+			c->ip = (uint16_t)(c->ip + rel);
+		}
+		return CPU_OK;
+	}
+	case 0x90: case 0x91: case 0x92: case 0x93: /* SETcc rm8 */
+	case 0x94: case 0x95: case 0x96: case 0x97:
+	case 0x98: case 0x99: case 0x9A: case 0x9B:
+	case 0x9C: case 0x9D: case 0x9E: case 0x9F: {
+		int reg;
+		struct operand rm = decode_rm(c, &reg);
+		if (override) {
+			rm.seg = override;
+		}
+		put8_rm(c, &rm, cond(c, op & 0x0F) ? 1 : 0);
+		return CPU_OK;
+	}
+	case 0xA0: push16(c, c->sreg[2]); return CPU_OK; /* PUSH FS */
+	case 0xA1: c->sreg[2] = pop16(c); return CPU_OK;  /* POP FS */
+	case 0xA2: { /* CPUID: report a plain 486, which is what this
+	             * interpreter is close to. A program that checks for a
+	             * feature it needs gets an honest answer. */
+		switch (c->r[AX]) {
+		case 0x0000: /* the highest leaf, and the vendor string. The
+		             * registers are 16 bits, so each holds half of its
+		             * 32-bit part: "GenuineIntel" comes back in the
+		             * halves a program reassembles. */
+			c->r[AX] = 0x0001;
+			c->r[BX] = 0x6547; /* "Ge" */
+			c->r[DX] = 0x6E75; /* "nu" */
+			c->r[CX] = 0x6E69; /* "in" */
+			break;
+		case 0x0001: { /* the version and features */
+			c->r[AX] = 0x00000400; /* family 4, model 0, stepping 0 */
+			c->r[BX] = 0x00000000;
+			c->r[CX] = 0x00000000;
+			c->r[DX] = 0x00000010; /* the FPU, nothing else */
+			break;
+		}
+		default:
+			c->r[AX] = c->r[BX] = c->r[CX] = c->r[DX] = 0;
+			break;
+		}
+		return CPU_OK;
+	}
+	case 0xA3: { /* BT rm16, reg */
+		int reg;
+		struct operand rm = decode_rm(c, &reg);
+		if (override) {
+			rm.seg = override;
+		}
+		uint16_t v = get16(c, &rm);
+		int bit = c->r[reg] & 15;
+		set_cf(c, (v >> bit) & 1);
+		return CPU_OK;
+	}
+	case 0xA4: { /* SHLD rm16, reg, imm8 */
+		int reg;
+		struct operand rm = decode_rm(c, &reg);
+		if (override) {
+			rm.seg = override;
+		}
+		uint8_t n = rd8(c, c->sreg[1], c->ip++) & 31;
+		uint16_t v = get16(c, &rm);
+		if (n) {
+			uint32_t r = ((uint32_t)v << n) | ((uint32_t)c->r[reg] >> (16 - n));
+			set_cf(c, (v >> (16 - n)) & 1);
+			cpu_set_flags(c, (uint16_t)r, 16);
+			put16(c, &rm, (uint16_t)r);
+		}
+		return CPU_OK;
+	}
+	case 0xA5: { /* SHLD rm16, reg, CL */
+		int reg;
+		struct operand rm = decode_rm(c, &reg);
+		if (override) {
+			rm.seg = override;
+		}
+		uint8_t n = c->r[CX] & 31;
+		uint16_t v = get16(c, &rm);
+		if (n) {
+			uint32_t r = ((uint32_t)v << n) | ((uint32_t)c->r[reg] >> (16 - n));
+			set_cf(c, (v >> (16 - n)) & 1);
+			cpu_set_flags(c, (uint16_t)r, 16);
+			put16(c, &rm, (uint16_t)r);
+		}
+		return CPU_OK;
+	}
+	case 0xA8: push16(c, c->sreg[2]); return CPU_OK; /* PUSH GS */
+	case 0xA9: c->sreg[2] = pop16(c); return CPU_OK;  /* POP GS */
+	case 0xAB: { /* BTS rm16, reg */
+		int reg;
+		struct operand rm = decode_rm(c, &reg);
+		if (override) {
+			rm.seg = override;
+		}
+		uint16_t v = get16(c, &rm);
+		int bit = c->r[reg] & 15;
+		set_cf(c, (v >> bit) & 1);
+		put16(c, &rm, (uint16_t)(v | (1u << bit)));
+		return CPU_OK;
+	}
+	case 0xAC: { /* SHRD rm16, reg, imm8 */
+		int reg;
+		struct operand rm = decode_rm(c, &reg);
+		if (override) {
+			rm.seg = override;
+		}
+		uint8_t n = rd8(c, c->sreg[1], c->ip++) & 31;
+		uint16_t v = get16(c, &rm);
+		if (n) {
+			uint32_t r = ((uint32_t)v >> n) | ((uint32_t)c->r[reg] << (16 - n));
+			set_cf(c, (v >> (n - 1)) & 1);
+			cpu_set_flags(c, (uint16_t)r, 16);
+			put16(c, &rm, (uint16_t)r);
+		}
+		return CPU_OK;
+	}
+	case 0xAD: { /* SHRD rm16, reg, CL */
+		int reg;
+		struct operand rm = decode_rm(c, &reg);
+		if (override) {
+			rm.seg = override;
+		}
+		uint8_t n = c->r[CX] & 31;
+		uint16_t v = get16(c, &rm);
+		if (n) {
+			uint32_t r = ((uint32_t)v >> n) | ((uint32_t)c->r[reg] << (16 - n));
+			set_cf(c, (v >> (n - 1)) & 1);
+			cpu_set_flags(c, (uint16_t)r, 16);
+			put16(c, &rm, (uint16_t)r);
+		}
+		return CPU_OK;
+	}
+	case 0xAF: { /* IMUL reg16, rm16 */
+		int reg;
+		struct operand rm = decode_rm(c, &reg);
+		if (override) {
+			rm.seg = override;
+		}
+		int32_t r = (int16_t)c->r[reg] * (int16_t)get16(c, &rm);
+		c->r[reg] = (uint16_t)r;
+		set_cf(c, r != (int16_t)r);
+		set_of(c, r != (int16_t)r);
+		return CPU_OK;
+	}
+	case 0xB0: case 0xB1: { /* CMPXCHG rm8, reg */
+		int reg;
+		struct operand rm = decode_rm(c, &reg);
+		if (override) {
+			rm.seg = override;
+		}
+		uint8_t v = get8_rm(c, &rm);
+		uint8_t a = get8(c, 0);
+		if (a == v) {
+			c->flags |= FLAG_ZF;
+			put8_rm(c, &rm, get8(c, reg));
+		} else {
+			c->flags &= ~FLAG_ZF;
+			put8(c, 0, v);
+		}
+		return CPU_OK;
+	}
+	case 0xB6: case 0xB7: { /* MOVZX reg16, rm8/rm16 */
+		int reg;
+		struct operand rm = decode_rm(c, &reg);
+		if (override) {
+			rm.seg = override;
+		}
+		c->r[reg] = op == 0xB7 ? get16(c, &rm) : get8_rm(c, &rm);
+		return CPU_OK;
+	}
+	case 0xBA: { /* the group 8: BT/BTS/BTR/BTC rm16, imm8 */
+		int reg;
+		struct operand rm = decode_rm(c, &reg);
+		if (override) {
+			rm.seg = override;
+		}
+		uint8_t imm = rd8(c, c->sreg[1], c->ip++);
+		uint16_t v = get16(c, &rm);
+		int bit = imm & 15;
+		set_cf(c, (v >> bit) & 1);
+		if (reg == 5) {
+			put16(c, &rm, (uint16_t)(v | (1u << bit)));      /* BTS */
+		} else if (reg == 6) {
+			put16(c, &rm, (uint16_t)(v & ~(1u << bit)));     /* BTR */
+		} else if (reg == 7) {
+			put16(c, &rm, (uint16_t)(v ^ (1u << bit)));      /* BTC */
+		}
+		return CPU_OK;
+	}
+	case 0xBB: { /* BTC rm16, reg */
+		int reg;
+		struct operand rm = decode_rm(c, &reg);
+		if (override) {
+			rm.seg = override;
+		}
+		uint16_t v = get16(c, &rm);
+		int bit = c->r[reg] & 15;
+		set_cf(c, (v >> bit) & 1);
+		put16(c, &rm, (uint16_t)(v ^ (1u << bit)));
+		return CPU_OK;
+	}
+	case 0xBC: case 0xBD: { /* BSF/BSR reg16, rm16 */
+		int reg;
+		struct operand rm = decode_rm(c, &reg);
+		if (override) {
+			rm.seg = override;
+		}
+		uint16_t v = get16(c, &rm);
+		if (v == 0) {
+			c->flags |= FLAG_ZF;
+		} else {
+			c->flags &= ~FLAG_ZF;
+			int i = 0;
+			if (op == 0xBC) { /* BSF: the lowest set bit */
+				while (!((v >> i) & 1)) {
+					i++;
+				}
+			} else { /* BSR: the highest set bit */
+				for (i = 15; !((v >> i) & 1); i--) {
+				}
+			}
+			c->r[reg] = (uint16_t)i;
+		}
+		return CPU_OK;
+	}
+	case 0xBE: case 0xBF: { /* MOVSX reg16, rm8/rm16 */
+		int reg;
+		struct operand rm = decode_rm(c, &reg);
+		if (override) {
+			rm.seg = override;
+		}
+		c->r[reg] = op == 0xBF ? get16(c, &rm) : (uint16_t)(int16_t)(int8_t)get8_rm(c, &rm);
+		return CPU_OK;
+	}
+	case 0xC0: case 0xC1: { /* XADD rm8/rm16, reg */
+		int reg;
+		struct operand rm = decode_rm(c, &reg);
+		if (override) {
+			rm.seg = override;
+		}
+		if (op == 0xC1) {
+			uint16_t v = get16(c, &rm);
+			uint16_t r = alu16(c, ADD, v, c->r[reg]);
+			c->r[reg] = v;
+			put16(c, &rm, r);
+		} else {
+			uint8_t v = get8_rm(c, &rm);
+			uint8_t r = alu8(c, ADD, v, get8(c, reg));
+			put8(c, reg, v);
+			put8_rm(c, &rm, r);
+		}
+		return CPU_OK;
+	}
+	case 0xC8: case 0xC9: case 0xCA: case 0xCB: case 0xCC: case 0xCD:
+	case 0xCE: case 0xCF: { /* BSWAP reg32: the low 16 bits swap, the
+	                         * high 16 are zero in an 8086 view */
+		int reg = op & 7;
+		uint16_t v = c->r[reg];
+		c->r[reg] = (uint16_t)((v >> 8) | (v << 8));
+		return CPU_OK;
+	}
+	default:
+		return CPU_FAULT;
+	}
+}
+
 const char *cpu_fault_name(uint8_t opcode)
 {
 	static char buf[32];
 	/* A short mnemonic for the common ones, else the number. */
 	switch (opcode) {
 	case 0x0F: return "two-byte opcode (0F)";
+	case 0x0B: return "UD2";
 	case 0x27: return "DAA";
 	case 0x2F: return "DAS";
 	case 0x37: return "AAA";
@@ -498,8 +819,17 @@ enum cpu_stop cpu_step(struct cpu *c)
 		return CPU_OK;
 	}
 
-	/* The ALU group: 00-3F, with the direction and size bits. */
-	if (op < 0x40 && (op & 7) <= 5 && (op & 0xC0) == 0) {
+	/* The 386's two-byte instructions (0F xx): what DOS programs and
+	 * their libraries use -- MOVZX, MOVSX, SETcc, the bit operations,
+	 * the double shifts, XADD, CMPXCHG, BSWAP and CPUID. */
+	if (op == 0x0F) {
+		return op_0f(c, override);
+	}
+
+	/* The ALU group: 00-3F, with the direction and size bits. The low
+	 * three bits 0-3 are the rm,reg forms; 4-5 are the accumulator
+	 * forms (below), and 6-7 are the segment prefixes (already read). */
+	if (op < 0x40 && (op & 7) <= 3) {
 		int alu_op = (op >> 3) & 7;
 		int w = op & 1;
 		int dir = op & 2; /* 0: rm,reg  2: reg,rm */

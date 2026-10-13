@@ -99,9 +99,21 @@ def hello_exe():
 
 
 def unsupported_com():
-    # A 386 instruction (0F A2: CPUID), which the 8086 interpreter
-    # doesn't have: dosrun must name it, not run it.
-    return com(bytes([0x0F, 0xA2, 0xB8, 0x00, 0x4C, 0xCD, 0x21]))
+    # BOUND (62 /r), which the interpreter doesn't have: dosrun must
+    # name it, not run it.
+    return com(bytes([0x62, 0x00, 0xB8, 0x00, 0x4C, 0xCD, 0x21]))
+
+
+def movzx_com():
+    # movzx ax, byte [0x110]; mov ah,4Ch; int 21h. The .COM is at 0x100,
+    # so the byte at 0x110 is 16 bytes into the file: pad to there, put
+    # 5, and the program exits with AL = 5. (MOVZX is a 386
+    # instruction: the interpreter must run it.)
+    code = bytearray([0x0F, 0xB6, 0x06, 0x10, 0x01, 0xB4, 0x4C, 0xCD, 0x21])
+    while len(code) < 16:
+        code.append(0x00)
+    code.append(5)
+    return com(bytes(code))
 
 
 def build_disk(path):
@@ -120,6 +132,7 @@ def build_disk(path):
     put(path, "EXIT7.COM", exit7_com(), srcdir)
     put(path, "HELLO.EXE", hello_exe(), srcdir)
     put(path, "BAD386.COM", unsupported_com(), srcdir)
+    put(path, "MOVZX.COM", movzx_com(), srcdir)
     return srcdir
 
 
@@ -158,7 +171,10 @@ def main():
                                  ["!can't", "!error"], SHELL_PROMPT))
         step("dosrun BAD386.COM: an instruction it can't run is named",
              lambda: run_command(m, "serial", "dosrun C:/BAD386.COM",
-                                 ["can't run", "0F"], SHELL_PROMPT))
+                                 ["can't run", "BOUND"], SHELL_PROMPT))
+        step("dosrun MOVZX.COM: a 386 instruction runs",
+             lambda: run_command(m, "serial", "dosrun C:/MOVZX.COM",
+                                 ["!can't", "!error"], SHELL_PROMPT))
         step("dosrun with no program: a usage message",
              lambda: run_command(m, "serial", "dosrun",
                                  ["usage"], SHELL_PROMPT))

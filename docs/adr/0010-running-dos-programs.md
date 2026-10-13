@@ -52,9 +52,10 @@ table in `v4.0/src/DOS/DISPATCH.ASM` and the PSP layout in
 - A DOS program's files are ManiOS's, through the same drive letters
   ManiDOS uses, so the two see the same files.
 - Mode 13h is ManiOS's VGA mode 13h; the console is the terminal.
-- The interpreter is 8086 only: a program that needs a 386, a DOS
-  extender, EMS/XMS, sound, a mouse, or TSRs won't run. Those are
-  future work, and each is a separate decision.
+- The interpreter is 16-bit, with common 386 instructions and both
+  XMS and EMS implemented. A program that needs a full 386 protected
+  mode environment, a DOS extender, sound, a mouse, or TSRs still
+  won't run; those remain future work.
 - ManiOS now has a second, larger userspace program, and a place for
   the 8086 interpreter to grow.
 - ManiDOS's refusal message stays: ManiDOS still doesn't run DOS
