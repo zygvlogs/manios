@@ -78,6 +78,13 @@ int dos_path(char *path, size_t n)
 		d = toupper((unsigned char)in[0]) - 'A';
 		in += 2;
 	}
+	/* A ManiOS absolute path (e.g. /n/cd0/install.exe) is used as-is.
+	 * This happens when dosrun is invoked from the ManiOS shell, or
+	 * when ManiDOS has already translated a DOS path for it. */
+	if (in == path && in[0] == '/') {
+		(void)n;
+		return 0;
+	}
 	if (d < 0 || d >= 26 || !mounts[d].present) {
 		return -1;
 	}

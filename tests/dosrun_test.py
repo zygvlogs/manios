@@ -158,6 +158,9 @@ def main():
         step("dosrun HELLO.COM: a .COM prints its string",
              lambda: run_command(m, "serial", "dosrun C:/HELLO.COM",
                                  ["Hello from DOS!"], SHELL_PROMPT))
+        step("dosrun with an absolute ManiOS path",
+             lambda: run_command(m, "serial", "dosrun /n/ata0p1/HELLO.COM",
+                                 ["Hello from DOS!"], SHELL_PROMPT))
         step("dosrun DIGITS.COM: a loop, INC and LOOP",
              lambda: run_command(m, "serial", "dosrun C:/DIGITS.COM",
                                  ["0123456789"], SHELL_PROMPT))
