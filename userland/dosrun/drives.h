@@ -10,7 +10,7 @@
 #include <stddef.h>
 
 /* Maps the DOS path in `path` (in place) to a ManiOS path. Returns 0,
- * or -1 if the drive isn't mounted. */
+ * or -1 if the drive isn't mounted or the path is too long for `n`. */
 int dos_path(char *path, size_t n);
 
 /* Sets where a drive letter points (from the command line, or a
@@ -20,5 +20,10 @@ void dos_mount(char letter, const char *dir);
 /* Mounts the drives ManiDOS mounts: A: the boot disk, Z: ManiOS, and
  * C: onwards the disks under /n. */
 void dos_mount_defaults(void);
+
+/* The current default drive (0 = A:, 2 = C:, ...), and selecting it.
+ * dos_set_drive returns -1 if the drive isn't mounted. */
+int dos_get_drive(void);
+int dos_set_drive(int drive);
 
 #endif

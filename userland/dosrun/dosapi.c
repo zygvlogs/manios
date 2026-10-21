@@ -366,12 +366,16 @@ static enum cpu_stop dos21(struct dos_state *d, struct cpu *c)
 	case 0x0D: /* disk reset: nothing to do */
 		return CPU_OK;
 
-	case 0x0E: /* select the default drive */
+	case 0x0E: /* select the default drive: AL = 0 for A:, ... */
+		if (dos_set_drive((int)((uint8_t)(c->r[AX] & 0xFF))) < 0) {
+			c->r[AX] = 0x000F; /* invalid drive */
+			return CPU_OK;
+		}
 		c->r[AX] = (uint16_t)((c->r[AX] & 0xFF00) | 0x1F); /* 32 drives */
 		return CPU_OK;
 
-	case 0x19: /* the current drive */
-		c->r[AX] = (uint16_t)((c->r[AX] & 0xFF00) | 0x02); /* C: */
+	case 0x19: /* the current drive: AL = 0 for A:, 2 for C:, ... */
+		c->r[AX] = (uint16_t)((c->r[AX] & 0xFF00) | (uint16_t)dos_get_drive());
 		return CPU_OK;
 
 	case 0x1A: /* set the disk transfer area */
@@ -511,7 +515,10 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 		if (path_at(d, ds, dx, path, sizeof(path)) < 0) {
 			break;
 		}
-		fd = open(path, O_WRONLY | O_TRUNC);
+		/* O_CREAT: DOS creates the file when it isn't there. The mode
+		 * is 0644 rather than open's usual 0666 & ~umask, so a
+		 * program's files are not left world-writable. */
+		fd = open(path, O_WRONLY | O_TRUNC | O_CREAT, 0644);
 		if (fd < 0) {
 			break;
 		}
@@ -1044,8 +1051,7 @@ static enum cpu_stop bios10(struct dos_state *d, struct cpu *c)
 		}
 		return CPU_OK;
 	case 0x01: case 0x02: case 0x03: case 0x05: case 0x06:
-	case 0x07: case 0x08: case 0x09: case 0x0A: case 0x0C:
-	case 0x0D: case 0x0E: case 0x0F:
+	case 0x07: case 0x08: case 0x0E: case 0x0F:
 		return CPU_OK; /* text-mode cursor and character services */
 	case 0x10: case 0x11: case 0x12: case 0x1A: case 0x1B:
 		return CPU_OK; /* the palette, font and adapter services */
