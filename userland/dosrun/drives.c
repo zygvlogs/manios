@@ -31,6 +31,20 @@ void dos_mount(char letter, const char *dir)
 	mounts[i].present = 1;
 }
 
+int dos_get_drive(void)
+{
+	return current;
+}
+
+int dos_set_drive(int drive)
+{
+	if (drive < 0 || drive >= 26 || !mounts[drive].present) {
+		return -1; /* DOS reports invalid drive (AH=15h) */
+	}
+	current = drive;
+	return 0;
+}
+
 /* The drives ManiDOS would mount: A: the boot disk, Z: ManiOS itself,
  * and C: onwards the disks under /n. dosrun mounts the same ones so a
  * program's paths line up with ManiDOS's. */
@@ -85,6 +99,8 @@ int dos_path(char *path, size_t n)
 		(void)n;
 		return 0;
 	}
+	/* An unmounted drive is no drive: mapping it onto C: would quietly
+	 * read and write the wrong disk. */
 	if (d < 0 || d >= 26 || !mounts[d].present) {
 		return -1;
 	}
@@ -107,7 +123,22 @@ int dos_path(char *path, size_t n)
 			}
 			continue;
 		}
+		/* Room for "/%s" and the NUL: if the component doesn't fit,
+		 * stop rather than keep a half-truncated name that would open
+		 * the wrong file. */
+		if (len + 2 + strlen(p) >= sizeof(out)) {
+			return -1;
+		}
 		len += (size_t)snprintf(out + len, sizeof(out) - len, "/%s", p);
+	}
+	/* The whole result must fit the caller's buffer too; snprintf
+	 * reports how much it would have needed. */
+	{
+		int need = snprintf(NULL, 0, "%s%s",
+		                    strcmp(mounts[d].root, "/") ? mounts[d].root : "", out);
+		if (need < 0 || (size_t)need >= n) {
+			return -1;
+		}
 	}
 	/* The drive's root, then the path, lowercased. */
 	snprintf(path, n, "%s%s", strcmp(mounts[d].root, "/") ? mounts[d].root : "", out);
