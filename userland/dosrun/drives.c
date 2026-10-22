@@ -10,10 +10,12 @@
 #include <dirent.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 
 struct mount {
 	char letter;
 	char root[64];
+	char cwd[64]; /* relative to the drive root, without a leading slash */
 	int present;
 };
 
@@ -29,6 +31,7 @@ void dos_mount(char letter, const char *dir)
 	mounts[i].letter = (char)toupper((unsigned char)letter);
 	snprintf(mounts[i].root, sizeof(mounts[i].root), "%s", dir);
 	mounts[i].present = 1;
+	mounts[i].cwd[0] = 0;
 }
 
 int dos_get_drive(void)
@@ -106,7 +109,12 @@ int dos_path(char *path, size_t n)
 	}
 	/* The components, from the drive's root. */
 	char work[512];
-	snprintf(work, sizeof(work), "%s", in);
+	if (*in != '/' && *in != '\\' && mounts[d].cwd[0]) {
+		if (snprintf(work, sizeof(work), "%s/%s", mounts[d].cwd, in) >= (int)sizeof(work)) return -1;
+	} else {
+		if (strlen(in) >= sizeof(work)) return -1;
+		snprintf(work, sizeof(work), "%s", in);
+	}
 	char out[512];
 	size_t len = 0;
 	out[0] = '\0';
@@ -148,5 +156,35 @@ int dos_path(char *path, size_t n)
 	if (!path[0]) {
 		snprintf(path, n, "/");
 	}
+	return 0;
+}
+
+int dos_chdir(const char *path)
+{
+	int drive = current;
+	if (isalpha((unsigned char)path[0]) && path[1] == ':')
+		drive = toupper((unsigned char)path[0]) - 'A';
+	if (drive < 0 || drive >= 26 || !mounts[drive].present) return -1;
+	char mapped[512];
+	if (strlen(path) >= sizeof(mapped)) return -1;
+	snprintf(mapped, sizeof(mapped), "%s", path);
+	if (dos_path(mapped, sizeof(mapped)) < 0) return -1;
+	struct stat st;
+	if (stat(mapped, &st) < 0 || !S_ISDIR(st.st_mode)) return -1;
+	size_t rootlen = strlen(mounts[drive].root);
+	if (strncmp(mapped, mounts[drive].root, rootlen) ||
+	    (strcmp(mounts[drive].root, "/") && mapped[rootlen] && mapped[rootlen] != '/')) return -1;
+	const char *relative = mapped + rootlen;
+	while (*relative == '/') relative++;
+	if (strlen(relative) >= sizeof(mounts[drive].cwd)) return -1;
+	snprintf(mounts[drive].cwd, sizeof(mounts[drive].cwd), "%s", relative);
+	return 0;
+}
+
+int dos_getcwd(int drive, char *out, size_t n)
+{
+	if (drive < 0 || drive >= 26 || !mounts[drive].present || strlen(mounts[drive].cwd) >= n) return -1;
+	snprintf(out, n, "%s", mounts[drive].cwd);
+	for (char *p = out; *p; p++) *p = *p == '/' ? '\\' : (char)toupper((unsigned char)*p);
 	return 0;
 }

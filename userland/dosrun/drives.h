@@ -26,4 +26,8 @@ void dos_mount_defaults(void);
 int dos_get_drive(void);
 int dos_set_drive(int drive);
 
+/* DOS keeps a separate current directory for each mounted drive. */
+int dos_chdir(const char *path);
+int dos_getcwd(int drive, char *out, size_t n);
+
 #endif

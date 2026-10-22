@@ -13,6 +13,7 @@ host.HARNESS = r'''
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #define CHECK(x) do { if (!(x)) { fprintf(stderr,"line %d: %s\n",__LINE__,#x); exit(1); } } while(0)
 static struct cpu c;
 static struct dos_state *d;
@@ -110,6 +111,22 @@ int main(void) {
  c.r[BX]=19;call(0x21,0x4500);CHECK((c.flags&FLAG_CF)&&c.r[AX]==6);
  call(0x21,0x714E);CHECK((c.flags&FLAG_CF)&&c.r[AX]==0x7100);
  puts("PASS: DTA segments, independent searches, file sizes, shared duplicate offsets and LFN fallback");
+ /* Directory changes affect relative paths and remain independent by drive.
+  * A failed change must leave the previous directory usable. */
+ CHECK(mkdir("sub",0700)==0);CHECK(mkdir("sub/child",0700)==0);
+ dos_mount('D',".");CHECK(dos_set_drive(2)==0);
+ text(0x3000,0x100,"C:\\sub");c.sreg[3]=0x3000;c.r[DX]=0x100;call(0x21,0x3B00);CHECK(!(c.flags&FLAG_CF));
+ c.r[SI]=0x200;c.r[DX]=0;call(0x21,0x4700);CHECK(!(c.flags&FLAG_CF)&&rd8(&c,0x3000,0x200)=='S'&&rd8(&c,0x3000,0x203)==0);
+ char mapped[256]="C:child\\..\\data.txt";CHECK(dos_path(mapped,sizeof(mapped))==0&&!strcmp(mapped,"./sub/data.txt"));
+ text(0x3000,0x100,"missing");c.r[DX]=0x100;call(0x21,0x3B00);CHECK((c.flags&FLAG_CF)&&c.r[AX]==3);
+ text(0x3000,0x100,"D:\\sub\\child");call(0x21,0x3B00);CHECK(!(c.flags&FLAG_CF)&&dos_get_drive()==2);
+ char cwd[64];CHECK(dos_getcwd(3,cwd,sizeof(cwd))==0&&!strcmp(cwd,"SUB\\CHILD"));
+ CHECK(dos_getcwd(2,cwd,sizeof(cwd))==0&&!strcmp(cwd,"SUB"));
+ text(0x3000,0x100,"..\\..");call(0x21,0x3B00);CHECK(!(c.flags&FLAG_CF));
+ CHECK(dos_getcwd(2,cwd,sizeof(cwd))==0&&!cwd[0]);
+ c.r[DX]=26;call(0x21,0x4700);CHECK((c.flags&FLAG_CF)&&c.r[AX]==15);
+ CHECK(dos_chdir("D:\\")==0&&dos_set_drive(2)==0);
+ puts("PASS: DOS directory changes, relative paths, per-drive state, root clamping and failed changes");
  /* Legacy overlays use record-oriented FCB I/O rather than file handles. */
  c.sreg[3]=0x1600;
  for(int i=0;i<37;i++)wr8(&c,0x1600,0x400+i,0);

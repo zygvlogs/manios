@@ -657,7 +657,19 @@ static enum cpu_stop dos21(struct dos_state *d, struct cpu *c)
 		return CPU_OK;
 	}
 
-	case 0x3B: /* change directory */
+	case 0x3B: { /* change directory, without switching the default drive */
+		char path[256]; unsigned i;
+		for (i = 0; i + 1 < sizeof(path); i++) {
+			path[i] = rd8(c, ds, (uint16_t)(dx + i));
+			if (!path[i]) break;
+		}
+		if (i + 1 == sizeof(path) || !path[0]) {
+			c->r[AX] = 3; set_cf(c, 1); return CPU_OK;
+		}
+		int result = dos_chdir(path);
+		if (result < 0) c->r[AX] = 3;
+		set_cf(c, result < 0); return CPU_OK;
+	}
 	case 0x39: /* make directory */
 	case 0x3A: /* remove directory */
 		set_cf(c, 1);
@@ -695,14 +707,17 @@ static enum cpu_stop dos21(struct dos_state *d, struct cpu *c)
 	case 0x48: case 0x49: case 0x4A:
 		return dos_memory(d, c, ah);
 
-	case 0x47: { /* current directory: drive roots, without a leading slash */
+	case 0x47: { /* current directory, without drive or leading slash */
 		int drive = (dx & 255) ? (dx & 255) - 1 : dos_get_drive();
-		char check[8] = { (char)('A' + drive), ':', '/', 0 };
-		char mapped[256]; snprintf(mapped, sizeof(mapped), "%s", check);
-		if (drive >= 26 || dos_path(mapped, sizeof(mapped)) < 0) {
+		char cwd[64];
+		if (dos_getcwd(drive, cwd, sizeof(cwd)) < 0) {
 			c->r[AX] = 15; set_cf(c, 1); return CPU_OK;
 		}
-		wr8(c, ds, c->r[SI], 0); set_cf(c, 0); return CPU_OK;
+		for (unsigned i = 0; ; i++) {
+			wr8(c, ds, (uint16_t)(c->r[SI] + i), cwd[i]);
+			if (!cwd[i]) break;
+		}
+		set_cf(c, 0); return CPU_OK;
 	}
 	case 0x71: /* no Windows long-filename API; callers can use DOS 8.3 */
 		c->r[AX] = 0x7100; set_cf(c, 1); return CPU_OK;
