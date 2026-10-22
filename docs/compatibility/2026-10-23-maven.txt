@@ -1,0 +1,84 @@
+Maven DOS compatibility tests, 2026-10-23
+Tested fixed source: d1face7019392afae7a15a879ec041a42fd9ca01
+Kernel SHA256: 7f267b5102487506c3ca929fa6d75e661cb13c26039a632959eaed167f322bf3
+QEMU i386 CPU 486, 64 MiB; independent FAT16 snapshots
+Each program observation limit: 12 seconds. Fresh snapshot per case.
+
+BASELINE
+dm-help | /n/ata0p1/dmaven
+dosrun C:/DMAVEN/DM.EXE ?
+Returned: False
+dosrun C:/DMAVEN/DM.EXE ?
+
+dm-scan | /n/ata0p1/dmaven
+dosrun C:/DMAVEN/DM.EXE /sC
+Returned: False
+dosrun C:/DMAVEN/DM.EXE /sC
+
+fm-install | /n/ata0p1/fmaven
+dosrun C:/FMAVEN/INSTALL.EXE
+Returned: False
+dosrun C:/FMAVEN/INSTALL.EXE
+
+fm-main | /n/ata0p1/fmaven
+dosrun C:/FMAVEN/FMAVEN.EXE
+Returned: False
+dosrun C:/FMAVEN/FMAVEN.EXE
+
+fm-launcher | /n/ata0p1/fmaven
+dosrun C:/FMAVEN/FM3.EXE
+Returned: False
+dosrun C:/FMAVEN/FM3.EXE
+
+AFTER_CLOCK_FIX
+dm-help | /n/ata0p1/dmaven
+dosrun C:/DMAVEN/DM.EXE ?
+Returned: True
+dosrun C:/DMAVEN/DM.EXE ?
+dosrun: C:/DMAVEN/DM.EXE: can't run opcode EC (at 15F3:0603)
+
+dm-scan | /n/ata0p1/dmaven
+dosrun C:/DMAVEN/DM.EXE /sC
+Returned: True
+dosrun C:/DMAVEN/DM.EXE /sC
+dosrun: C:/DMAVEN/DM.EXE: can't run opcode 66 (at 1656:0C91)
+
+fm-install | /n/ata0p1/fmaven
+dosrun C:/FMAVEN/INSTALL.EXE
+Returned: True
+dosrun C:/FMAVEN/INSTALL.EXE
+dosrun: C:/FMAVEN/INSTALL.EXE: can't run opcode EC (at 1099:0603)
+
+fm-main | /n/ata0p1/fmaven
+dosrun C:/FMAVEN/FMAVEN.EXE
+Returned: True
+dosrun C:/FMAVEN/FMAVEN.EXE
+dosrun: C:/FMAVEN/FMAVEN.EXE: can't run opcode EC (at 36C9:0603)
+
+fm-launcher | /n/ata0p1/fmaven
+dosrun C:/FMAVEN/FM3.EXE
+Returned: True
+dosrun C:/FMAVEN/FM3.EXE
+dosrun: C:/FMAVEN/FM3.EXE: can't run opcode EC (at 1063:0603)
+
+Before: five bounded runs timed out without application output.
+After: five runs leave the clock wait and return opcode errors; no successful file-manager or indexing workflow.
+The host diagnostic found BIOS tick polling at IP=007E. Injected diagnostic time reaches EC with DX=0006; this does not establish a real hardware requirement.
+The scan case reaches opcode 66 instead. Neither program is Working.
+PASS: dosrun HELLO.COM: a .COM prints its string
+PASS: dosrun with an absolute ManiOS path
+PASS: dosrun DIGITS.COM: a loop, INC and LOOP
+PASS: dosrun HELLO.EXE: an .EXE loads and runs
+PASS: dosrun EXIT7.COM: it runs and returns to the prompt
+PASS: dosrun BAD386.COM: an instruction it can't run is named
+PASS: dosrun MOVZX.COM: a 386 instruction runs
+PASS: dosrun FLAGS.COM: DOS and BIOS results survive IRET
+PASS: a guest IRET restores its frame exactly once
+PASS: direct BIOS clock polling advances during a busy loop
+PASS: a short direct-VGA text program renders before exit
+PASS: a DOS extender is refused with its actual requirement
+PASS: a packed installation file is identified as an archive
+PASS: dosrun with no program: a usage message
+
+OK: 0 failure(s)
+

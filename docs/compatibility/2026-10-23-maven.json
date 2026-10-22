@@ -1,0 +1,162 @@
+{
+  "metadata": {
+    "kernel_sha256": "7f267b5102487506c3ca929fa6d75e661cb13c26039a632959eaed167f322bf3",
+    "environment": "QEMU i386 CPU 486, 64 MiB; independent FAT16 snapshots",
+    "archives": {
+      "dmav13.zip": "008bcd72e5fd7a7e60eb1de18983163cd01d5fb00cf1e3ea0115300b9b4e20d0",
+      "fmav35a.zip": "7aedb6a3e27a726034f955047db8ce2c1fdfc257f06cf7d52dcad4aa15d1685c"
+    },
+    "sources": {
+      "cpu.c": "ee87262789fa8aca97ee17bbe944dc66ffcc8750a83a17b9b3ee9ee4e8d94cbe",
+      "dosapi.c": "8bc55bda3d8f0c3dbbf3bc996098d481b92b73d8c1300529b781788fbf7caf9b",
+      "loader.c": "bb28746ad3657049c96107ea80167e2ac9ff0de304e5c1caba85e4b24e711cca",
+      "main.c": "3b021c74ad211b5c887babed7aa475bc99267f4d67682b8313d60c0fd06daca8"
+    },
+    "base_commit": "c800e4a9bec3c3a92bd0a3fd09a06ce534c995bb",
+    "tested_commit": "d1face7019392afae7a15a879ec041a42fd9ca01",
+    "download_urls": {
+      "fmav35a.zip": "https://www.briggsoft.com/download/fmav35a.zip",
+      "dmav13.zip": "https://www.briggsoft.com/download/dmav13.zip"
+    },
+    "program_sha256": {
+      "extracted/dmaven/DM.EXE": "f46707bdeaca320bcb451b7ab058d4b8edbf025f7b9c395c85901a8ee895f6a2",
+      "extracted/dmaven/DMCONFIG.EXE": "86b4fa3ff88652f6654889e85d3c7e2354f3bfdbcbda4f936f0bcd575fbce824",
+      "extracted/fmaven/INSTALL.EXE": "9b7d7e7f31f8dda1ca78b79cc24350fccde1298c2521b1b053d65de4157fc374",
+      "extracted/fmaven/INSTALL.DAT": "441b9a9ca5e061f9620e429462ef3ffeaad621b09a5861e1cc64031db278836d",
+      "unpacked/FM3.EXE": "8c82cf2b7f15b851d8a7916e9925a6b0c966907538e00f04cbfe8d0ed7dd1a60",
+      "unpacked/FMAVEN.EXE": "d34ac09a8500347fe9f24cf7211c23e6fcd2e844255e48c07330b18500d9f6d6",
+      "unpacked/FMHOST.EXE": "8c497076018041194cd3f92ed390982b730b9bcee2cd9e9a16f606e7ebd4bcc4",
+      "unpacked/FMARC.EXE": "d7744367ab440375eac7d9e708ae06c39a193a1879d0877cd38f75f845f43950"
+    }
+  },
+  "baseline_metadata": {
+    "commit": "c800e4a9bec3c3a92bd0a3fd09a06ce534c995bb",
+    "kernel_sha256": "7d20e5094c5b55c12feee59d7da8d40943259e522e46d28803a6237ad842977e",
+    "environment": "QEMU i386 CPU 486, 64 MiB; independent FAT16 snapshots",
+    "archives": {
+      "dmav13.zip": "008bcd72e5fd7a7e60eb1de18983163cd01d5fb00cf1e3ea0115300b9b4e20d0",
+      "fmav35a.zip": "7aedb6a3e27a726034f955047db8ce2c1fdfc257f06cf7d52dcad4aa15d1685c"
+    },
+    "sources": {
+      "cpu.c": "ee87262789fa8aca97ee17bbe944dc66ffcc8750a83a17b9b3ee9ee4e8d94cbe",
+      "dosapi.c": "449ded89443ac63f2cd24753cddcc459d97fe9f8ec611f3920ec6c27d2ab9ba8",
+      "loader.c": "bb28746ad3657049c96107ea80167e2ac9ff0de304e5c1caba85e4b24e711cca",
+      "main.c": "7c839f97a39d66eeb022fc97706a6ad8e038f8c6c72be4343fcdc7d9785e6f62"
+    }
+  },
+  "baseline": [
+    {
+      "case": "dm-help",
+      "cwd": "/n/ata0p1/dmaven",
+      "command": "dosrun C:/DMAVEN/DM.EXE ?",
+      "timeout_seconds": 12,
+      "output": "dosrun C:/DMAVEN/DM.EXE ?\r\n",
+      "returned": false
+    },
+    {
+      "case": "dm-scan",
+      "cwd": "/n/ata0p1/dmaven",
+      "command": "dosrun C:/DMAVEN/DM.EXE /sC",
+      "timeout_seconds": 12,
+      "output": "dosrun C:/DMAVEN/DM.EXE /sC\r\n",
+      "returned": false
+    },
+    {
+      "case": "fm-install",
+      "cwd": "/n/ata0p1/fmaven",
+      "command": "dosrun C:/FMAVEN/INSTALL.EXE",
+      "timeout_seconds": 12,
+      "output": "dosrun C:/FMAVEN/INSTALL.EXE\r\n",
+      "returned": false
+    },
+    {
+      "case": "fm-main",
+      "cwd": "/n/ata0p1/fmaven",
+      "command": "dosrun C:/FMAVEN/FMAVEN.EXE",
+      "timeout_seconds": 12,
+      "output": "dosrun C:/FMAVEN/FMAVEN.EXE\r\n",
+      "returned": false
+    },
+    {
+      "case": "fm-launcher",
+      "cwd": "/n/ata0p1/fmaven",
+      "command": "dosrun C:/FMAVEN/FM3.EXE",
+      "timeout_seconds": 12,
+      "output": "dosrun C:/FMAVEN/FM3.EXE\r\n",
+      "returned": false
+    }
+  ],
+  "after_clock_fix": [
+    {
+      "case": "dm-help",
+      "cwd": "/n/ata0p1/dmaven",
+      "command": "dosrun C:/DMAVEN/DM.EXE ?",
+      "timeout_seconds": 12,
+      "output": "dosrun C:/DMAVEN/DM.EXE ?\r\ndosrun: C:/DMAVEN/DM.EXE: can't run opcode EC (at 15F3:0603)\r\n",
+      "returned": true
+    },
+    {
+      "case": "dm-scan",
+      "cwd": "/n/ata0p1/dmaven",
+      "command": "dosrun C:/DMAVEN/DM.EXE /sC",
+      "timeout_seconds": 12,
+      "output": "dosrun C:/DMAVEN/DM.EXE /sC\r\ndosrun: C:/DMAVEN/DM.EXE: can't run opcode 66 (at 1656:0C91)\r\n",
+      "returned": true
+    },
+    {
+      "case": "fm-install",
+      "cwd": "/n/ata0p1/fmaven",
+      "command": "dosrun C:/FMAVEN/INSTALL.EXE",
+      "timeout_seconds": 12,
+      "output": "dosrun C:/FMAVEN/INSTALL.EXE\r\n\u001b[1;1H\u001b[1;26Hdosrun: C:/FMAVEN/INSTALL.EXE: can't run opcode EC (at 1099:0603)\r\n",
+      "returned": true
+    },
+    {
+      "case": "fm-main",
+      "cwd": "/n/ata0p1/fmaven",
+      "command": "dosrun C:/FMAVEN/FMAVEN.EXE",
+      "timeout_seconds": 12,
+      "output": "dosrun C:/FMAVEN/FMAVEN.EXE\r\ndosrun: C:/FMAVEN/FMAVEN.EXE: can't run opcode EC (at 36C9:0603)\r\n",
+      "returned": true
+    },
+    {
+      "case": "fm-launcher",
+      "cwd": "/n/ata0p1/fmaven",
+      "command": "dosrun C:/FMAVEN/FM3.EXE",
+      "timeout_seconds": 12,
+      "output": "dosrun C:/FMAVEN/FM3.EXE\r\ndosrun: C:/FMAVEN/FM3.EXE: can't run opcode EC (at 1063:0603)\r\n",
+      "returned": true
+    }
+  ],
+  "baseline_host_probe": [
+    {
+      "program": "dmaven/DM.EXE",
+      "stdout": "TOOLONG\n",
+      "stderr": "Final CS=15f3 IP=007e AX=0001\n5589e5b8ff009a160156165dc35589e5e82800bf8e8b1e570ee82d03bf8e8b1e579ac7055616bf8e8c1e570ee81a03bf8e8c1e579acc0556165dcbb40fe8e1053c07740a3c037606b80300e86000e8aa00b40832ffe8c9058ac4247fa28a8ba27e8b33c0a2798ba28b8ba28c8b40a2788b8e068800bf6c00268a1d263a1d74fb268a1db8e4ff99e84902f7d0f7d2b9370033db9392f7f193f7f1a3848b891e86\n"
+    },
+    {
+      "program": "fmaven/INSTALL.EXE",
+      "stdout": "TOOLONG\n",
+      "stderr": "Final CS=1099 IP=007e AX=0001\n5589e5b8ff009a16011d115dc35589e5e82800bf5a061e570ee82d03bf5a061e579a64031d11bf5a071e570ee81a03bf5a071e579a69031d115dcbb40fe8e1053c07740a3c037606b80300e86000e8aa00b40832ffe8c9058ac4247fa25006a2440633c0a23f06a25106a2520640a23e068e064400bf6c00268a1d263a1d74fb268a1db8e4ff99e84902f7d0f7d2b9370033db9392f7f193f7f1a34a06891e4c\n"
+    }
+  ],
+  "after_host_probe": [
+    {
+      "program": "dmaven/DM.EXE",
+      "stdout": "FAULT opcode EC\n",
+      "stderr": "CS=15f3 IP=0603 opcode=ec next=a8 01 75 fb DX=0006 AX=b844\n"
+    },
+    {
+      "program": "fmaven/INSTALL.EXE",
+      "stdout": "\u001b[1;1H\u001b[1;26HFAULT opcode EC\n",
+      "stderr": "CS=1099 IP=0603 opcode=ec next=a8 01 75 fb DX=0006 AX=b846\n"
+    }
+  ],
+  "diagnostic_note": "Host probes use 5 million instructions. The after probe injects 1 ms per 20,000 instructions only to diagnose the next fault; actual QEMU runner uses host uptime. DX=0006h at EC faults, not established as a genuine application hardware requirement.",
+  "regression_commands": {
+    "python3 tests/dosrun_host_test.py": "PASS: 31 checks",
+    "python3 tests/dosrun_string_test.py": "PASS",
+    "python3 tests/dosrun_runtime_test.py": "PASS including BIOS clock fractions, word carry, midnight rollover",
+    "python3 tests/dosrun_test.py <kernel>": "PASS: dosrun HELLO.COM: a .COM prints its string\nPASS: dosrun with an absolute ManiOS path\nPASS: dosrun DIGITS.COM: a loop, INC and LOOP\nPASS: dosrun HELLO.EXE: an .EXE loads and runs\nPASS: dosrun EXIT7.COM: it runs and returns to the prompt\nPASS: dosrun BAD386.COM: an instruction it can't run is named\nPASS: dosrun MOVZX.COM: a 386 instruction runs\nPASS: dosrun FLAGS.COM: DOS and BIOS results survive IRET\nPASS: a guest IRET restores its frame exactly once\nPASS: direct BIOS clock polling advances during a busy loop\nPASS: a short direct-VGA text program renders before exit\nPASS: a DOS extender is refused with its actual requirement\nPASS: a packed installation file is identified as an archive\nPASS: dosrun with no program: a usage message\n\nOK: 0 failure(s)\n"
+  }
+}

@@ -39,6 +39,8 @@ percentage. Checks & Balances and the SemWare editor are Partial. Warcraft, Visi
 | [Ability Plus](#ability-plus-30) | 3.0, `AB3.ZIP` | **Unsupported** | Main program stops on x87 `FNINIT`; installer stops on a 32-bit operand instruction. No application workflow completed. | 2026-10-23 |
 | [PEDIT](#pedit-400) | 4.00, standard and Light | **Unsupported** | Both stop on operand-size prefix `66h`; no editable document reached. | 2026-10-23 |
 | [uHex](#uhex-104) | 1.0.4 DOS | **Partial** | Help returns; opens 34-byte fixture and shows correct hex bytes, with display defects. Editing/save/reopen unverified. | 2026-10-23 |
+| [Directory Maven](#directory-maven-13) | 1.3 | **Unsupported** | BIOS clock wait fixed; scan now stops on `66h`. Help stops at `IN AL,DX`; no index verified. | 2026-10-23 |
+| [File Maven](#file-maven-35a) | 3.5a | **Broken** | Installer, main executable and launcher pass the clock wait, then fail on `IN AL,DX`; no usable file manager reached. | 2026-10-23 |
 
 ## Warcraft: Orcs & Humans
 
@@ -406,6 +408,72 @@ directory `/n/ata0p1/uhex`.
 Evidence for both applications: [transcripts](compatibility/2026-10-23-catalog.txt),
 [commands, exact output, fixture and SHA256 hashes](compatibility/2026-10-23-catalog.json),
 [uHex screenshot](compatibility/2026-10-23-catalog-uhex.png).
+
+## Directory Maven 1.3
+
+Discovered through the File Maven author's site linked from the catalogue;
+[Directory Maven](https://www.briggsoft.com/dmaven.htm) package `dmav13.zip`
+identifies version 1.3. Package files were copied unchanged to `C:/DMAVEN`.
+The guest working directory is `/n/ata0p1/dmaven`.
+
+| Command | Before clock fix | After clock fix |
+| --- | --- | --- |
+| `dosrun C:/DMAVEN/DM.EXE ?` | No application output or shell return within 12 seconds | Returns with opcode `EC`, `15F3:0603` |
+| `dosrun C:/DMAVEN/DM.EXE /sC` | No application output or shell return within 12 seconds | Returns with opcode `66`, `1656:0C91` |
+
+Status is Unsupported because the scanning path reaches the unsupported
+operand-size prefix. A successful directory index, quick directory change,
+configuration and tree navigation remain unverified. The help failure's host
+probe identifies `IN AL,DX` with `DX=0006h`; this may reflect missing BIOS display
+state and must not be treated as proof that the application actually requires
+hardware port 0006h. General port I/O is also unimplemented.
+
+## File Maven 3.5a
+
+The catalogue links to the [File Maven author](https://www.briggsoft.com/fmdos.htm).
+The original `fmav35a.zip` contains `INSTALL.EXE` and `INSTALL.DAT`, rather than
+an already installed main program. `INSTALL.DAT` is a self-extracting LHA archive
+(offset 1702); it was separately extracted with 7-Zip to obtain unchanged
+`FMAVEN.EXE`, launcher `FM3.EXE` and all five other payload files. Both original
+package files and the extracted payload were copied to `C:/FMAVEN`.
+This tests direct execution separately from successful installation.
+
+| Command | Before clock fix | After clock fix |
+| --- | --- | --- |
+| `dosrun C:/FMAVEN/INSTALL.EXE` | No application output or shell return within 12 seconds | Returns with opcode `EC`, `1099:0603` |
+| `dosrun C:/FMAVEN/FMAVEN.EXE` | No application output or shell return within 12 seconds | Returns with opcode `EC`, `36C9:0603` |
+| `dosrun C:/FMAVEN/FM3.EXE` | No application output or shell return within 12 seconds | Returns with opcode `EC`, `1063:0603` |
+
+Status is Broken: no usable manager, completed installation, copy/move/delete
+operation or viewer workflow was reached. The installer's diagnostic host probe
+also reports `IN AL,DX` with `DX=0006h`; the underlying display initialization
+needs investigation before assigning a genuine hardware requirement. Archive
+handling, editor, serial/parallel transfers and other features remain unverified.
+
+### Maven test setup and BIOS clock fix
+
+Baseline source is `c800e4a`; fixed source is `d1face7`. ManiOS 0.25.0 runs on
+QEMU i386, CPU 486, 64 MiB RAM, with independent disposable FAT16 snapshots and
+a 12-second limit per command. The File Maven working directory is
+`/n/ata0p1/fmaven`. Original archives and application binaries remain outside
+the repository and APK. The kernel and individual DOS sources are hashed in
+the evidence; existing Android APKs have not been rebuilt with this fix.
+
+Diagnostic instruction probes locate the pre-fix startup wait in a direct BIOS
+tick-memory polling loop. The runner now advances `0040:006C` from elapsed host
+uptime; `INT 1Ah/AH=00h` reads that same counter. Fractions survive small updates,
+word carry works and midnight wraps with a read-and-clear rollover flag. The
+counter starts at zero per execution. Timer interrupt delivery, PIT ports, DOS
+wall-clock time and BIOS RTC updates are not implemented by this change.
+
+All five real-program retests leave the former wait and return an explicit
+instruction error. This is runtime progress, not a successful application task.
+The 31 host checks, string suite, runtime suite (including new clock edge cases)
+and QEMU DOS runner suite pass. A new QEMU regression polls the BIOS memory tick
+without any guest interrupt calls and reaches `CLOCK OK` through the real runner.
+
+Evidence: [before/after transcripts and QEMU regressions](compatibility/2026-10-23-maven.txt),
+[commands, exact output, probes and hashes](compatibility/2026-10-23-maven.json).
 
 ## Adding or updating an entry
 
