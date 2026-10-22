@@ -1,0 +1,168 @@
+Search / utf8tocp / Bywater BASIC tests
+Date: 2026-10-23
+Fixed source: ee888791661f5cffae5ee5158856664812fe1684
+Kernel SHA256: 14a596dd1e816ec7f8d386be965ec8b40cd1b7418b1a0acd37319ba8a0267687
+ManiOS 0.25.0 QEMU i386 CPU 486, 64 MiB; fresh disposable FAT16 image copy per case; cwd /n/ata0p1
+Ten-second command limit; all runs returned to the shell.
+Disposable disk copies only; output files exported after guest termination.
+
+BASELINE
+search-help
+dosrun C:/SEARCH.EXE /?
+dosrun C:/SEARCH.EXE /?
+Searches for a file.
+
+Syntax: SEARCH [drive:][path]filename [/?]
+  [drive:][path]  The drive and path where to search
+  filename        The file to search for
+  /?              Displays this help message
+
+search-find
+dosrun C:/SEARCH.EXE TARGET.TXT
+dosrun C:/SEARCH.EXE TARGET.TXT
+C:\\TARGET.TXT
+C:\\TARGET.TXT
+C:\\TARGET.TXT
+C:\\TARGET.TXT
+C:\\TARGET.TXT
+C:\\TARGET.TXT
+C:\\TARGET.TXT
+C:\\TARGET.TXT
+8 files found
+
+search-missing
+dosrun C:/SEARCH.EXE ABSENT.ZZZ
+dosrun C:/SEARCH.EXE ABSENT.ZZZ
+No files found
+
+utf8-list
+dosrun C:/UTF8TOCP.COM -l
+dosrun C:/UTF8TOCP.COM -l
+ encid   codepage description
+ ---------------------------------------------------------------------
+  437    Original IBM PC codepage 437
+  775    CP 775 (a.k.a. 'MS-DOS Baltic Rim')
+  808    CP 808 (like 866, but with euro symbol)
+  850    CP 850 (a.k.a. 'Latin 1')
+  852    CP 852 (a.k.a. 'Latin 2')
+  857    CP 857 ('MS-DOS Turkish')
+  858    CP 858 (like 850, but with euro symbol)
+  866    CP 866
+ 1250    Windows-1250 codepage
+ 1252    Windows-1252 codepage
+  kam    Kamenicky encoding (a.k.a. CP867 or CP895)
+  maz    Mazovia (a.k.a. CP667, CP790 or CP991)
+
+utf8-encode
+dosrun C:/UTF8TOCP.COM 437 C:/UTF8.TXT C:/ENC.TXT
+dosrun C:/UTF8TOCP.COM 437 C:/UTF8.TXT C:/ENC.TXT
+Expected bytes: 436166653a206361668220812094209c0d0a
+Actual bytes: 436166653a206361668220812094209c0d0a
+Exact match: True
+
+utf8-decode
+dosrun C:/UTF8TOCP.COM -r 437 C:/CP437.TXT C:/DEC.TXT
+dosrun C:/UTF8TOCP.COM -r 437 C:/CP437.TXT C:/DEC.TXT
+Expected bytes: 436166653a20636166c3a920c3bc20c3b620c2a30d0a
+Actual bytes: 436166653a20636166c3a920c3bc20c3b620c2a30d0a
+Exact match: True
+
+basic-sum
+dosrun C:/BWBASIC.EXE C:/SUM.BAS
+dosrun C:/BWBASIC.EXE C:/SUM.BAS
+dosrun: /n/ata0p1/bwbasic.exe: requires 32-bit protected mode (LE/LX DOS extender); dosrun supports real mode only
+
+AFTER_DIRECTORY_FIX
+search-help
+dosrun C:/SEARCH.EXE /?
+dosrun C:/SEARCH.EXE /?
+Searches for a file.
+
+Syntax: SEARCH [drive:][path]filename [/?]
+  [drive:][path]  The drive and path where to search
+  filename        The file to search for
+  /?              Displays this help message
+
+search-find
+dosrun C:/SEARCH.EXE TARGET.TXT
+dosrun C:/SEARCH.EXE TARGET.TXT
+C:\\TARGET.TXT
+C:\NESTED\TARGET.TXT
+2 files found
+
+search-missing
+dosrun C:/SEARCH.EXE ABSENT.ZZZ
+dosrun C:/SEARCH.EXE ABSENT.ZZZ
+No files found
+
+utf8-list
+dosrun C:/UTF8TOCP.COM -l
+dosrun C:/UTF8TOCP.COM -l
+ encid   codepage description
+ ---------------------------------------------------------------------
+  437    Original IBM PC codepage 437
+  775    CP 775 (a.k.a. 'MS-DOS Baltic Rim')
+  808    CP 808 (like 866, but with euro symbol)
+  850    CP 850 (a.k.a. 'Latin 1')
+  852    CP 852 (a.k.a. 'Latin 2')
+  857    CP 857 ('MS-DOS Turkish')
+  858    CP 858 (like 850, but with euro symbol)
+  866    CP 866
+ 1250    Windows-1250 codepage
+ 1252    Windows-1252 codepage
+  kam    Kamenicky encoding (a.k.a. CP867 or CP895)
+  maz    Mazovia (a.k.a. CP667, CP790 or CP991)
+
+utf8-encode
+dosrun C:/UTF8TOCP.COM 437 C:/UTF8.TXT C:/ENC.TXT
+dosrun C:/UTF8TOCP.COM 437 C:/UTF8.TXT C:/ENC.TXT
+Expected bytes: 436166653a206361668220812094209c0d0a
+Actual bytes: 436166653a206361668220812094209c0d0a
+Exact match: True
+
+utf8-decode
+dosrun C:/UTF8TOCP.COM -r 437 C:/CP437.TXT C:/DEC.TXT
+dosrun C:/UTF8TOCP.COM -r 437 C:/CP437.TXT C:/DEC.TXT
+Expected bytes: 436166653a20636166c3a920c3bc20c3b620c2a30d0a
+Actual bytes: 436166653a20636166c3a920c3bc20c3b620c2a30d0a
+Exact match: True
+
+utf8-lt-encode
+dosrun C:/UTF8TOCP.COM 775 C:/LTUTF8.TXT C:/LTENC.TXT
+dosrun C:/UTF8TOCP.COM 775 C:/LTUTF8.TXT C:/LTENC.TXT
+Expected bytes: b5b6b7b8bdbec6c7cfd0d1d2d3d4d5d6d7d80d0a
+Actual bytes: b5b6b7b8bdbec6c7cfd0d1d2d3d4d5d6d7d80d0a
+Exact match: True
+
+utf8-lt-decode
+dosrun C:/UTF8TOCP.COM -r 775 C:/LT775.TXT C:/LTDEC.TXT
+dosrun C:/UTF8TOCP.COM -r 775 C:/LT775.TXT C:/LTDEC.TXT
+Expected bytes: c484c48cc498c496c4aec5a0c5b2c5aac5bdc485c48dc499c497c4afc5a1c5b3c5abc5be0d0a
+Actual bytes: c484c48cc498c496c4aec5a0c5b2c5aac5bdc485c48dc499c497c4afc5a1c5b3c5abc5be0d0a
+Exact match: True
+
+basic-sum
+dosrun C:/BWBASIC.EXE C:/SUM.BAS
+dosrun C:/BWBASIC.EXE C:/SUM.BAS
+dosrun: /n/ata0p1/bwbasic.exe: requires 32-bit protected mode (LE/LX DOS extender); dosrun supports real mode only
+
+Two matching paths and correct count; nonexistent pattern gives no files. Baseline incorrectly repeated root result eight times.
+Four independent conversions pass: CP437 encode/decode and Lithuanian CP775 encode/decode, including CRLF.
+LE signature at file offset 0x3700; protected-mode execution is refused before stub execution. No BASIC calculation completed.
+PASS: dosrun HELLO.COM: a .COM prints its string
+PASS: dosrun with an absolute ManiOS path
+PASS: dosrun DIGITS.COM: a loop, INC and LOOP
+PASS: dosrun HELLO.EXE: an .EXE loads and runs
+PASS: dosrun EXIT7.COM: it runs and returns to the prompt
+PASS: dosrun BAD386.COM: an instruction it can't run is named
+PASS: dosrun MOVZX.COM: a 386 instruction runs
+PASS: dosrun FLAGS.COM: DOS and BIOS results survive IRET
+PASS: a guest IRET restores its frame exactly once
+PASS: direct BIOS clock polling advances during a busy loop
+PASS: a short direct-VGA text program renders before exit
+PASS: a DOS extender is refused with its actual requirement
+PASS: a packed installation file is identified as an archive
+PASS: dosrun with no program: a usage message
+
+OK: 0 failure(s)
+

@@ -1,0 +1,225 @@
+{
+  "metadata": {
+    "kernel_sha256": "14a596dd1e816ec7f8d386be965ec8b40cd1b7418b1a0acd37319ba8a0267687",
+    "environment": "ManiOS 0.25.0 QEMU i386 CPU 486, 64 MiB; fresh disposable FAT16 image copy per case; cwd /n/ata0p1",
+    "packages": {
+      "utf8tocp.zip": "3789b95520f71beef414b1117d679b57d2efdd61114a9bb9b034d03cab823c30",
+      "search.zip": "7be67f1c1779e3e50ab1237e57c5d0d3a89cffd44fdb3ab238c9245bf416f792",
+      "bwbasic.zip": "e89e87732bbd10ac88f92f60604455b4f4cf29af7db8f899a39b9514bf24cb99"
+    },
+    "programs": {
+      "SEARCH.EXE": "c2ab662ee32aa1611033bb0f0a62b7d3cd579da503d8a225d5f9d462921c458c",
+      "UTF8TOCP.COM": "1c50cef6e628b34dac098a77bc6c4f767b43a014ae31164f0c6701dc0be778f5",
+      "BWBASIC.EXE": "0d948854bc74e93b88f54cc861f01915393142e87341fac76889885f462b3b3d",
+      "DOS4GW.EXE": "088c52bc13149a61443b4306b72d6962a326d05b7d8d093998283b8244e9b6fc"
+    },
+    "sources": {
+      "cpu.c": "ee87262789fa8aca97ee17bbe944dc66ffcc8750a83a17b9b3ee9ee4e8d94cbe",
+      "dosapi.c": "018e3c93cf7fa970aaf877abfd816a70a1e80f138ac8a5479137e5ae2317764e",
+      "loader.c": "bb28746ad3657049c96107ea80167e2ac9ff0de304e5c1caba85e4b24e711cca",
+      "main.c": "3b021c74ad211b5c887babed7aa475bc99267f4d67682b8313d60c0fd06daca8",
+      "drives.c": "9b9daefae29b17e874752b5a01affb32d51407d22712bb246628fccce33446bb",
+      "drives.h": "0007ca2c108f1d08b73fb3d449cb842b4a6c8f31887c524aa5506554e627dcba"
+    },
+    "fixtures_hex": {
+      "UTF8.TXT": "436166653a20636166c3a920c3bc20c3b620c2a30d0a",
+      "CP437.TXT": "436166653a206361668220812094209c0d0a",
+      "SUM.BAS": "3130205052494e542037202a20360d0a323020454e440d0a",
+      "TARGET.TXT": "66696e64206d650d0a",
+      "OTHER.TXT": "6e6f7420746865207461726765740d0a",
+      "LTUTF8.TXT": "c484c48cc498c496c4aec5a0c5b2c5aac5bdc485c48dc499c497c4afc5a1c5b3c5abc5be0d0a",
+      "LT775.TXT": "b5b6b7b8bdbec6c7cfd0d1d2d3d4d5d6d7d80d0a"
+    },
+    "oracle": "Independent Python cp437 and cp775 encoders; four exported output files compared byte-for-byte. Original archives and ISO unchanged.",
+    "base_commit": "565e8ee724e030db2fa72ac7e59a85464a1b4ab6",
+    "tested_commit": "ee888791661f5cffae5ee5158856664812fe1684",
+    "media": "User-supplied FD14-BonusCD.zip, FD14BNS.iso; /packages/util/search.zip, /packages/util/utf8tocp.zip, /packages/devel/bwbasic.zip"
+  },
+  "baseline_metadata": {
+    "source_commit": "565e8ee724e030db2fa72ac7e59a85464a1b4ab6",
+    "kernel_sha256": "7f267b5102487506c3ca929fa6d75e661cb13c26039a632959eaed167f322bf3",
+    "environment": "ManiOS 0.25.0 QEMU i386 CPU 486, 64 MiB; fresh disposable FAT16 image copy per case; cwd /n/ata0p1",
+    "packages": {
+      "utf8tocp.zip": "3789b95520f71beef414b1117d679b57d2efdd61114a9bb9b034d03cab823c30",
+      "search.zip": "7be67f1c1779e3e50ab1237e57c5d0d3a89cffd44fdb3ab238c9245bf416f792",
+      "bwbasic.zip": "e89e87732bbd10ac88f92f60604455b4f4cf29af7db8f899a39b9514bf24cb99"
+    },
+    "programs": {
+      "SEARCH.EXE": "c2ab662ee32aa1611033bb0f0a62b7d3cd579da503d8a225d5f9d462921c458c",
+      "UTF8TOCP.COM": "1c50cef6e628b34dac098a77bc6c4f767b43a014ae31164f0c6701dc0be778f5",
+      "BWBASIC.EXE": "0d948854bc74e93b88f54cc861f01915393142e87341fac76889885f462b3b3d",
+      "DOS4GW.EXE": "088c52bc13149a61443b4306b72d6962a326d05b7d8d093998283b8244e9b6fc"
+    },
+    "sources": {
+      "cpu.c": "ee87262789fa8aca97ee17bbe944dc66ffcc8750a83a17b9b3ee9ee4e8d94cbe",
+      "dosapi.c": "8bc55bda3d8f0c3dbbf3bc996098d481b92b73d8c1300529b781788fbf7caf9b",
+      "loader.c": "bb28746ad3657049c96107ea80167e2ac9ff0de304e5c1caba85e4b24e711cca",
+      "main.c": "3b021c74ad211b5c887babed7aa475bc99267f4d67682b8313d60c0fd06daca8"
+    },
+    "fixtures_hex": {
+      "UTF8.TXT": "436166653a20636166c3a920c3bc20c3b620c2a30d0a",
+      "CP437.TXT": "436166653a206361668220812094209c0d0a",
+      "SUM.BAS": "3130205052494e542037202a20360d0a323020454e440d0a",
+      "TARGET.TXT": "66696e64206d650d0a",
+      "OTHER.TXT": "6e6f7420746865207461726765740d0a"
+    },
+    "oracle": "Python cp437 codec; non-ASCII é ü ö £ and DOS CRLF"
+  },
+  "baseline": [
+    {
+      "case": "search-help",
+      "command": "dosrun C:/SEARCH.EXE /?",
+      "timeout_seconds": 10,
+      "output": "dosrun C:/SEARCH.EXE /?\r\nSearches for a file.\r\r\n\r\r\nSyntax: SEARCH [drive:][path]filename [/?]\r\r\n  [drive:][path]  The drive and path where to search\r\r\n  filename        The file to search for\r\r\n  /?              Displays this help message\r\r\n",
+      "returned": true
+    },
+    {
+      "case": "search-find",
+      "command": "dosrun C:/SEARCH.EXE TARGET.TXT",
+      "timeout_seconds": 10,
+      "output": "dosrun C:/SEARCH.EXE TARGET.TXT\r\nC:\\\\TARGET.TXT\r\r\nC:\\\\TARGET.TXT\r\r\nC:\\\\TARGET.TXT\r\r\nC:\\\\TARGET.TXT\r\r\nC:\\\\TARGET.TXT\r\r\nC:\\\\TARGET.TXT\r\r\nC:\\\\TARGET.TXT\r\r\nC:\\\\TARGET.TXT\r\r\n8 files found\r\r\n",
+      "returned": true
+    },
+    {
+      "case": "search-missing",
+      "command": "dosrun C:/SEARCH.EXE ABSENT.ZZZ",
+      "timeout_seconds": 10,
+      "output": "dosrun C:/SEARCH.EXE ABSENT.ZZZ\r\nNo files found\r\r\n",
+      "returned": true
+    },
+    {
+      "case": "utf8-list",
+      "command": "dosrun C:/UTF8TOCP.COM -l",
+      "timeout_seconds": 10,
+      "output": "dosrun C:/UTF8TOCP.COM -l\r\n encid   codepage description\r\r\n ---------------------------------------------------------------------\r\r\n  437    Original IBM PC codepage 437\r\r\n  775    CP 775 (a.k.a. 'MS-DOS Baltic Rim')\r\r\n  808    CP 808 (like 866, but with euro symbol)\r\r\n  850    CP 850 (a.k.a. 'Latin 1')\r\r\n  852    CP 852 (a.k.a. 'Latin 2')\r\r\n  857    CP 857 ('MS-DOS Turkish')\r\r\n  858    CP 858 (like 850, but with euro symbol)\r\r\n  866    CP 866\r\r\n 1250    Windows-1250 codepage\r\r\n 1252    Windows-1252 codepage\r\r\n  kam    Kamenicky encoding (a.k.a. CP867 or CP895)\r\r\n  maz    Mazovia (a.k.a. CP667, CP790 or CP991)\r\r\n\r\r\n",
+      "returned": true
+    },
+    {
+      "case": "utf8-encode",
+      "command": "dosrun C:/UTF8TOCP.COM 437 C:/UTF8.TXT C:/ENC.TXT",
+      "timeout_seconds": 10,
+      "output": "dosrun C:/UTF8TOCP.COM 437 C:/UTF8.TXT C:/ENC.TXT\r\n",
+      "returned": true,
+      "expected_hex": "436166653a206361668220812094209c0d0a",
+      "output_file": "ENC.TXT",
+      "export_returncode": 0,
+      "actual_hex": "436166653a206361668220812094209c0d0a",
+      "matches": true
+    },
+    {
+      "case": "utf8-decode",
+      "command": "dosrun C:/UTF8TOCP.COM -r 437 C:/CP437.TXT C:/DEC.TXT",
+      "timeout_seconds": 10,
+      "output": "dosrun C:/UTF8TOCP.COM -r 437 C:/CP437.TXT C:/DEC.TXT\r\n",
+      "returned": true,
+      "expected_hex": "436166653a20636166c3a920c3bc20c3b620c2a30d0a",
+      "output_file": "DEC.TXT",
+      "export_returncode": 0,
+      "actual_hex": "436166653a20636166c3a920c3bc20c3b620c2a30d0a",
+      "matches": true
+    },
+    {
+      "case": "basic-sum",
+      "command": "dosrun C:/BWBASIC.EXE C:/SUM.BAS",
+      "timeout_seconds": 10,
+      "output": "dosrun C:/BWBASIC.EXE C:/SUM.BAS\r\ndosrun: /n/ata0p1/bwbasic.exe: requires 32-bit protected mode (LE/LX DOS extender); dosrun supports real mode only\r\n",
+      "returned": true
+    }
+  ],
+  "after_directory_fix": [
+    {
+      "case": "search-help",
+      "command": "dosrun C:/SEARCH.EXE /?",
+      "timeout_seconds": 10,
+      "output": "dosrun C:/SEARCH.EXE /?\r\nSearches for a file.\r\r\n\r\r\nSyntax: SEARCH [drive:][path]filename [/?]\r\r\n  [drive:][path]  The drive and path where to search\r\r\n  filename        The file to search for\r\r\n  /?              Displays this help message\r\r\n",
+      "returned": true
+    },
+    {
+      "case": "search-find",
+      "command": "dosrun C:/SEARCH.EXE TARGET.TXT",
+      "timeout_seconds": 10,
+      "output": "dosrun C:/SEARCH.EXE TARGET.TXT\r\nC:\\\\TARGET.TXT\r\r\nC:\\NESTED\\TARGET.TXT\r\r\n2 files found\r\r\n",
+      "returned": true
+    },
+    {
+      "case": "search-missing",
+      "command": "dosrun C:/SEARCH.EXE ABSENT.ZZZ",
+      "timeout_seconds": 10,
+      "output": "dosrun C:/SEARCH.EXE ABSENT.ZZZ\r\nNo files found\r\r\n",
+      "returned": true
+    },
+    {
+      "case": "utf8-list",
+      "command": "dosrun C:/UTF8TOCP.COM -l",
+      "timeout_seconds": 10,
+      "output": "dosrun C:/UTF8TOCP.COM -l\r\n encid   codepage description\r\r\n ---------------------------------------------------------------------\r\r\n  437    Original IBM PC codepage 437\r\r\n  775    CP 775 (a.k.a. 'MS-DOS Baltic Rim')\r\r\n  808    CP 808 (like 866, but with euro symbol)\r\r\n  850    CP 850 (a.k.a. 'Latin 1')\r\r\n  852    CP 852 (a.k.a. 'Latin 2')\r\r\n  857    CP 857 ('MS-DOS Turkish')\r\r\n  858    CP 858 (like 850, but with euro symbol)\r\r\n  866    CP 866\r\r\n 1250    Windows-1250 codepage\r\r\n 1252    Windows-1252 codepage\r\r\n  kam    Kamenicky encoding (a.k.a. CP867 or CP895)\r\r\n  maz    Mazovia (a.k.a. CP667, CP790 or CP991)\r\r\n\r\r\n",
+      "returned": true
+    },
+    {
+      "case": "utf8-encode",
+      "command": "dosrun C:/UTF8TOCP.COM 437 C:/UTF8.TXT C:/ENC.TXT",
+      "timeout_seconds": 10,
+      "output": "dosrun C:/UTF8TOCP.COM 437 C:/UTF8.TXT C:/ENC.TXT\r\n",
+      "returned": true,
+      "expected_hex": "436166653a206361668220812094209c0d0a",
+      "output_file": "ENC.TXT",
+      "export_returncode": 0,
+      "actual_hex": "436166653a206361668220812094209c0d0a",
+      "matches": true
+    },
+    {
+      "case": "utf8-decode",
+      "command": "dosrun C:/UTF8TOCP.COM -r 437 C:/CP437.TXT C:/DEC.TXT",
+      "timeout_seconds": 10,
+      "output": "dosrun C:/UTF8TOCP.COM -r 437 C:/CP437.TXT C:/DEC.TXT\r\n",
+      "returned": true,
+      "expected_hex": "436166653a20636166c3a920c3bc20c3b620c2a30d0a",
+      "output_file": "DEC.TXT",
+      "export_returncode": 0,
+      "actual_hex": "436166653a20636166c3a920c3bc20c3b620c2a30d0a",
+      "matches": true
+    },
+    {
+      "case": "utf8-lt-encode",
+      "command": "dosrun C:/UTF8TOCP.COM 775 C:/LTUTF8.TXT C:/LTENC.TXT",
+      "timeout_seconds": 10,
+      "output": "dosrun C:/UTF8TOCP.COM 775 C:/LTUTF8.TXT C:/LTENC.TXT\r\n",
+      "returned": true,
+      "expected_hex": "b5b6b7b8bdbec6c7cfd0d1d2d3d4d5d6d7d80d0a",
+      "output_file": "LTENC.TXT",
+      "export_returncode": 0,
+      "actual_hex": "b5b6b7b8bdbec6c7cfd0d1d2d3d4d5d6d7d80d0a",
+      "matches": true
+    },
+    {
+      "case": "utf8-lt-decode",
+      "command": "dosrun C:/UTF8TOCP.COM -r 775 C:/LT775.TXT C:/LTDEC.TXT",
+      "timeout_seconds": 10,
+      "output": "dosrun C:/UTF8TOCP.COM -r 775 C:/LT775.TXT C:/LTDEC.TXT\r\n",
+      "returned": true,
+      "expected_hex": "c484c48cc498c496c4aec5a0c5b2c5aac5bdc485c48dc499c497c4afc5a1c5b3c5abc5be0d0a",
+      "output_file": "LTDEC.TXT",
+      "export_returncode": 0,
+      "actual_hex": "c484c48cc498c496c4aec5a0c5b2c5aac5bdc485c48dc499c497c4afc5a1c5b3c5abc5be0d0a",
+      "matches": true
+    },
+    {
+      "case": "basic-sum",
+      "command": "dosrun C:/BWBASIC.EXE C:/SUM.BAS",
+      "timeout_seconds": 10,
+      "output": "dosrun C:/BWBASIC.EXE C:/SUM.BAS\r\ndosrun: /n/ata0p1/bwbasic.exe: requires 32-bit protected mode (LE/LX DOS extender); dosrun supports real mode only\r\n",
+      "returned": true
+    }
+  ],
+  "observations": {
+    "search": "Two matching paths and correct count; nonexistent pattern gives no files. Baseline incorrectly repeated root result eight times.",
+    "utf8tocp": "Four independent conversions pass: CP437 encode/decode and Lithuanian CP775 encode/decode, including CRLF.",
+    "bwbasic": "LE signature at file offset 0x3700; protected-mode execution is refused before stub execution. No BASIC calculation completed."
+  },
+  "checks": {
+    "host": "31 checks PASS",
+    "strings": "PASS",
+    "runtime": "PASS including per-drive current directories, relative path resolution, missing directory preservation, root clamping and invalid-drive query",
+    "qemu": "PASS: dosrun HELLO.COM: a .COM prints its string\nPASS: dosrun with an absolute ManiOS path\nPASS: dosrun DIGITS.COM: a loop, INC and LOOP\nPASS: dosrun HELLO.EXE: an .EXE loads and runs\nPASS: dosrun EXIT7.COM: it runs and returns to the prompt\nPASS: dosrun BAD386.COM: an instruction it can't run is named\nPASS: dosrun MOVZX.COM: a 386 instruction runs\nPASS: dosrun FLAGS.COM: DOS and BIOS results survive IRET\nPASS: a guest IRET restores its frame exactly once\nPASS: direct BIOS clock polling advances during a busy loop\nPASS: a short direct-VGA text program renders before exit\nPASS: a DOS extender is refused with its actual requirement\nPASS: a packed installation file is identified as an archive\nPASS: dosrun with no program: a usage message\n\nOK: 0 failure(s)\n"
+  }
+}

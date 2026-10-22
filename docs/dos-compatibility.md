@@ -6,8 +6,8 @@ This list records tests of real DOS applications through `dosrun`. Results apply
 only to the identified program version, ManiOS revision and test setup. ManiDOS's
 built-in commands and synthetic interpreter tests are tracked separately.
 
-**Eight DOS utilities have verified Working results for the workflows
-listed below:** five FreeDOS tools and three utilities from the SemWare package. This is task-specific coverage, not a general DOS compatibility
+**Ten DOS utilities have verified Working results for the workflows
+listed below:** seven FreeDOS tools and three utilities from the SemWare package. This is task-specific coverage, not a general DOS compatibility
 percentage. Checks & Balances and the SemWare editor are Partial. Warcraft, VisiCalc and Ability Plus encounter unsupported runtime features.
 
 ## Status definitions
@@ -41,6 +41,9 @@ percentage. Checks & Balances and the SemWare editor are Partial. Warcraft, Visi
 | [uHex](#uhex-104) | 1.0.4 DOS | **Partial** | Help returns; opens 34-byte fixture and shows correct hex bytes, with display defects. Editing/save/reopen unverified. | 2026-10-23 |
 | [Directory Maven](#directory-maven-13) | 1.3 | **Unsupported** | BIOS clock wait fixed; scan now stops on `66h`. Help stops at `IN AL,DX`; no index verified. | 2026-10-23 |
 | [File Maven](#file-maven-35a) | 3.5a | **Broken** | Installer, main executable and launcher pass the clock wait, then fail on `IN AL,DX`; no usable file manager reached. | 2026-10-23 |
+| [Search](#search-10a) | 1.0a, FD14 BonusCD | **Working** | Finds both root/nested matches exactly once; correct total and missing-file result after directory fix. | 2026-10-23 |
+| [utf8tocp](#utf8tocp-20240918) | 20240918, FD14 BonusCD | **Working** | Exact UTF-8 ↔ CP437 and UTF-8 ↔ CP775 conversions, including Lithuanian letters and CRLF. | 2026-10-23 |
+| [Bywater BASIC](#bywater-basic-330) | 3.30, FD14 BonusCD binary | **Unsupported** | LE protected-mode executable rejected; the supplied arithmetic program was not executed. | 2026-10-23 |
 
 ## Warcraft: Orcs & Humans
 
@@ -474,6 +477,84 @@ without any guest interrupt calls and reaches `CLOCK OK` through the real runner
 
 Evidence: [before/after transcripts and QEMU regressions](compatibility/2026-10-23-maven.txt),
 [commands, exact output, probes and hashes](compatibility/2026-10-23-maven.json).
+
+## Search 1.0a
+
+The FreeDOS BonusCD package `/packages/util/search.zip` identifies Search 1.0a;
+its unchanged `BIN/SEARCH.EXE` is 14,461 bytes. This is a recursive **filename**
+search tool, rather than a text-content search tool.
+
+- `dosrun C:/SEARCH.EXE /?` prints usage and returns.
+- The fixture contains `C:\TARGET.TXT` and `C:\NESTED\TARGET.TXT`, with
+  `OTHER.TXT` as a nonmatching file. Before the fix (`565e8ee`), searching for
+  `TARGET.TXT` incorrectly prints the root result eight times and says
+  `8 files found`. Returning to the shell did not make that result Working.
+- With directory support (`ee88879`), `dosrun C:/SEARCH.EXE TARGET.TXT`
+  prints both matching paths once and reports `2 files found`. The program
+  prints an extra separator in the root path; the nested path and total are correct.
+- `dosrun C:/SEARCH.EXE ABSENT.ZZZ` correctly reports `No files found`.
+
+Status is Working for these searches. Deeper recursion, wildcard combinations,
+other drives and larger trees remain unverified. DOS directory changes now
+validate the destination, retain independent per-drive current directories and
+resolve relative paths there. Current-directory queries return the actual path;
+failed changes preserve it. Host regressions cover these cases and root clamping.
+Directory creation and removal are still unsupported.
+
+## utf8tocp 20240918
+
+The BonusCD `/packages/util/utf8tocp.zip` contains the unchanged 9,788-byte
+`UTF8TOCP.COM`; the supplied documentation identifies version 20240918.
+The codepage list (`-l`) displays successfully. Four conversion workflows were
+run independently, each with a fresh disposable disk copy:
+
+| Task | Input | Verified output |
+| --- | --- | --- |
+| UTF-8 → CP437 | `Cafe: café ü ö £` plus CRLF | Exact bytes from Python's independent `cp437` encoder |
+| CP437 → UTF-8 | Independently encoded fixture | Exact original UTF-8 bytes and CRLF |
+| UTF-8 → CP775 | `ĄČĘĖĮŠŲŪŽąčęėįšųūž` plus CRLF | Exact bytes from Python's independent `cp775` encoder |
+| CP775 → UTF-8 | Independently encoded Lithuanian fixture | Exact original UTF-8 bytes and CRLF |
+
+Commands use `dosrun C:/UTF8TOCP.COM 437 C:/UTF8.TXT C:/ENC.TXT` and
+`dosrun C:/UTF8TOCP.COM -r 437 C:/CP437.TXT C:/DEC.TXT`; CP775 cases use
+encoding `775` and separate Lithuanian fixture/output files. Output files are
+exported from the disposable FAT16 images after guest shutdown, then compared
+byte-for-byte. Status is Working for these conversions. Other encodings,
+invalid UTF-8 handling, unmappable characters, map dumps and large files are
+unverified. File-byte correctness does not establish correct terminal rendering
+of every Lithuanian glyph. The two CP437 tasks pass before and after the runtime
+fix; Lithuanian CP775 tasks were tested on the fixed build.
+
+## Bywater BASIC 3.30
+
+The BonusCD `/packages/devel/bwbasic.zip` identifies Bywater BASIC 3.30. Its
+`BWBASIC.EXE` is 142,318 bytes and contains an LE header at offset `0x3700`.
+The package describes a DOS extender; the tested loader reports the actual
+32-bit protected-mode requirement. Neither the interpreter nor its stub runs.
+
+`dosrun C:/BWBASIC.EXE C:/SUM.BAS` is attempted with the CRLF fixture
+`10 PRINT 7 * 6` / `20 END`, whose expected result is `42`. The loader rejects
+execution in both the baseline and fixed build. Status is Unsupported for this
+binary. Interactive BASIC, program execution, file I/O and arithmetic remain
+untested; this result does not apply to other real-mode BASIC interpreters.
+
+### Search / converter / BASIC test setup
+
+Baseline is `565e8ee`; fixed sources are `ee88879`. Tests run inside ManiOS
+0.25.0, QEMU i386, CPU 486, 64 MiB RAM, working directory `/n/ata0p1`.
+Each case uses a fresh disposable copy of the FAT16 disk, with a ten-second
+program observation limit. Seven baseline cases and nine fixed-build cases
+were run. The original BonusCD and archives are unchanged; no application
+binaries, media or generated conversion files are added to the repository/APK.
+Existing Android APKs were not rebuilt for this source change.
+
+The 31 host checks, string suite, runtime suite (including new directory-service
+regressions) and QEMU DOS runner suite pass. These two new Working entries bring
+the list to ten utilities with verified tasks; this is not a general DOS
+compatibility percentage.
+
+Evidence: [guest transcripts and exported-byte comparisons](compatibility/2026-10-23-search-utf8-basic.txt),
+[commands, exact output, fixtures, hashes and regression results](compatibility/2026-10-23-search-utf8-basic.json).
 
 ## Adding or updating an entry
 
