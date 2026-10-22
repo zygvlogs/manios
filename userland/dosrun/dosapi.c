@@ -1106,7 +1106,7 @@ static enum cpu_stop bios1a(struct dos_state *d, struct cpu *c)
 	}
 }
 
-enum cpu_stop dos_int(struct dos_state *d, struct cpu *c, uint8_t vector)
+static enum cpu_stop dispatch_int(struct dos_state *d, struct cpu *c, uint8_t vector)
 {
 	switch (vector) {
 	case 0x20: /* terminate */
@@ -1133,4 +1133,23 @@ enum cpu_stop dos_int(struct dos_state *d, struct cpu *c, uint8_t vector)
 		/* An unhandled interrupt: return as an IRET would. */
 		return CPU_IRET;
 	}
+}
+
+enum cpu_stop dos_int(struct dos_state *d, struct cpu *c, uint8_t vector)
+{
+	enum cpu_stop stop = dispatch_int(d, c, vector);
+	if (stop == CPU_OK) {
+		/* The caller returns through the INT frame. Updating only the
+		 * live FLAGS register loses service results (CF for DOS errors,
+		 * ZF for BIOS key polling) when IRET restores the saved word.
+		 * Copy status flags into that word, preserving control flags:
+		 * INT itself cleared IF and TF in the live register. */
+		const uint16_t status = FLAG_CF | FLAG_PF | FLAG_AF |
+		                        FLAG_ZF | FLAG_SF | FLAG_OF;
+		uint16_t off = (uint16_t)(c->r[SP] + 4);
+		uint16_t saved = rd16(c, c->sreg[2], off);
+		wr16(c, c->sreg[2], off,
+		     (uint16_t)((saved & ~status) | (c->flags & status)));
+	}
+	return stop;
 }

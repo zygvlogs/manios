@@ -23,7 +23,24 @@ the MIT License, is a *reference* for what each DOS function must do
 - **`.COM`**: the file's bytes at offset `0x100` of the program's
   segment, with the stack at the top of the segment.
 - **`.EXE`**: the MZ header, the image after it, and the relocation
-  table's entries added to the load segment.
+  table's entries added to the load segment. Real-mode images can span
+  several segments; they must fit below the conventional-memory limit.
+  Invalid or truncated headers and out-of-image relocations are rejected.
+
+### Warcraft: Orcs & Humans (1994)
+
+The tested installation disc contains `WAR.EXA` and `DOS4GW.EXA` as LHA
+archives. They need extraction; renaming `.EXA` to `.EXE` does not unpack
+them. The extracted `war.exe` contains a 32-bit LE executable for the
+DOS/4GW extender. This version of `dosrun` cannot run that protected-mode
+payload and reports the unsupported requirement before executing its stub.
+
+The disc's `INSTALL.EXE` also performs hardware port I/O (`OUT`, opcode
+`E6`), which the interpreter does not emulate. Extracting the archives
+therefore avoids the installer but does not make the game compatible.
+Running this game needs protected-mode CPU and extender support, further
+DOS services, and the game's graphics/input devices. The status-flag and
+MZ-loading fixes do not provide those capabilities.
 
 The program's memory is a 1 MiB 8086 address space. The interpreter
 runs the instructions DOS programs use: the full ALU, the shifts and

@@ -42,7 +42,12 @@ static int read_all(const char *path, uint8_t **out, long *len)
 			buf = big;
 		}
 		long got = read(fd, buf + n, (size_t)(cap - n));
-		if (got <= 0) {
+		if (got < 0) {
+			free(buf);
+			close(fd);
+			return -1;
+		}
+		if (got == 0) {
 			break;
 		}
 		n += got;
@@ -58,6 +63,11 @@ static uint16_t le16(const uint8_t *p)
 	return (uint16_t)(p[0] | (p[1] << 8));
 }
 
+static uint32_t le32(const uint8_t *p)
+{
+	return (uint32_t)le16(p) | ((uint32_t)le16(p + 2) << 16);
+}
+
 /* The PSP and the program's segment, shared with dosapi.c through
  * dos_set_program(). */
 int load_program(struct cpu *c, const char *path, const char *tail,
@@ -68,6 +78,13 @@ int load_program(struct cpu *c, const char *path, const char *tail,
 	long len = 0;
 	if (read_all(path, &file, &len) < 0) {
 		snprintf(err, errlen, "can't read %s", path);
+		return -1;
+	}
+	/* Warcraft's installation media uses LHA files named .EXA. They
+	 * contain executables, but are not COM programs themselves. */
+	if (len >= 7 && !memcmp(file + 2, "-lh", 3) && file[6] == '-') {
+		snprintf(err, errlen, "%s: LHA archive; extract it before running", path);
+		free(file);
 		return -1;
 	}
 
@@ -91,30 +108,52 @@ int load_program(struct cpu *c, const char *path, const char *tail,
 
 		long file_len = pages ? (long)(pages - 1) * 512 + (len_mod ? len_mod : 512) : 0;
 		long header_len = (long)header_paras * 16;
-		if (file_len > len) {
-			file_len = len;
+		if (!pages || len_mod > 511 || header_len < 28 ||
+		    header_len > file_len || file_len > len ||
+		    (reloc_n && (reloc_off < 28 ||
+		                  (long)reloc_off + (long)reloc_n * 4 > header_len))) {
+			snprintf(err, errlen, "%s: invalid or truncated MZ executable", path);
+			free(file);
+			return -1;
+		}
+		/* An MZ stub is also the front of a DOS extender executable.
+		 * Running only that stub cannot run its protected-mode payload. */
+		if (header_len >= 64 && len >= 64) {
+			uint32_t next = le32(file + 60);
+			if (next >= (uint32_t)header_len && next <= (uint32_t)len - 2 &&
+			    (!memcmp(file + next, "LE", 2) || !memcmp(file + next, "LX", 2))) {
+				snprintf(err, errlen,
+				         "%s: requires 32-bit protected mode (LE/LX DOS extender); dosrun supports real mode only",
+				         path);
+				free(file);
+				return -1;
+			}
 		}
 		long image_len = file_len - header_len;
-		if (image_len < 0) {
-			image_len = 0;
+		uint32_t base = lin(load_seg, 0);
+		if ((uint32_t)image_len > 0xA0000u - base) {
+			snprintf(err, errlen, "%s: EXE image exceeds conventional memory", path);
+			free(file);
+			return -1;
 		}
-		if (image_len > 0x10000 - 0x100) {
-			image_len = 0x10000 - 0x100;
-		}
-		/* The image goes at offset 0 of the program's segment. */
+		/* EXEs may span several segments. A 16-bit offset would wrap
+		 * after 64 KiB and overwrite code in the first segment. */
 		for (long i = 0; i < image_len; i++) {
-			wr8(c, load_seg, (uint16_t)i, file[header_len + i]);
+			mem_w8(c, base + (uint32_t)i, file[header_len + i]);
 		}
 		/* The relocations: each is an offset in the image; the word
 		 * there gets the load segment added. */
 		for (int i = 0; i < reloc_n; i++) {
 			long e = (long)reloc_off + i * 4;
-			if (e + 4 > len) {
-				break;
-			}
 			uint16_t off = le16(file + e);
 			uint16_t seg = le16(file + e + 2);
-			uint32_t at = lin((uint16_t)(load_seg + seg), off);
+			uint32_t relative = (uint32_t)seg * 16 + off;
+			if (relative + 1 >= (uint32_t)image_len) {
+				snprintf(err, errlen, "%s: EXE relocation is outside its image", path);
+				free(file);
+				return -1;
+			}
+			uint32_t at = base + relative;
 			mem_w16(c, at, (uint16_t)(mem_r16(c, at) + load_seg));
 		}
 		start_cs = (uint16_t)(load_seg + cs);

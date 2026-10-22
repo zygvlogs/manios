@@ -170,6 +170,35 @@ def cpuid_com():
     return com(bytes([0xB8, 0x01, 0x00, 0x0F, 0xA2, 0x88, 0xE0, 0xB4, 0x4C, 0xCD, 0x21]))
 
 
+def interrupt_flags_com(code, branch):
+    """Exit successfully only if a service's returned flags reach the caller."""
+    return bytes(code) + bytes([branch, 5, 0xB8, 1, 0x4C, 0xCD, 0x21,
+                               0xB8, 0, 0x4C, 0xCD, 0x21])
+
+
+def mz_image(image, cs=0, header_size=32):
+    header = bytearray(header_size)
+    total = len(header) + len(image)
+    struct.pack_into('<14H', header, 0, 0x5A4D, total % 512,
+                     (total + 511) // 512, 0, header_size // 16,
+                     0, 0xFFFF, 0, 0xFFFE, 0, 0, cs, 28, 0)
+    return bytes(header) + image
+
+
+def large_exe():
+    # Entry point is a second segment, beyond the loader's old 64 KiB cap.
+    return mz_image(bytes(65536) + bytes([0xB8, 42, 0x4C, 0xCD, 0x21]),
+                    cs=0x1000)
+
+
+def protected_exe():
+    # A real-mode stub followed by a DOS extender's LE executable.
+    data = bytearray(mz_image(bytes([0xB8, 0, 0x4C, 0xCD, 0x21]),
+                              header_size=64))
+    struct.pack_into('<I', data, 60, len(data))
+    return bytes(data) + b'LE\0\0' + bytes(60)
+
+
 def xms_com():
     # Ask for the XMS driver, get its entry point, call it: version,
     # allocate 1 KB, move a string into it, blank the string, move it
@@ -329,6 +358,18 @@ def main():
     check("an .EXE's relocation adds the load segment",
           run(exe, workdir, "reloc.exe", reloc_exe()),
           "EXIT 16\n")
+    check("a multi-segment EXE loads code beyond 64 KiB",
+          run(exe, workdir, "large.exe", large_exe()), "EXIT 42\n")
+    protected = run(exe, workdir, "protected.exe", protected_exe())
+    check("a protected-mode LE EXE is identified before its stub runs",
+          'LOADFAIL' in protected and 'protected mode' in protected, True)
+    truncated = run(exe, workdir, "truncated.exe", mz_image(bytes(600))[:-10])
+    check("a truncated MZ image is rejected instead of silently shortened",
+          'LOADFAIL' in truncated, True)
+    archive = run(exe, workdir, "packed.exa", b'\x1e\x00-lh5-' + bytes(40))
+    check("an LHA installation archive is identified as requiring extraction",
+          'LOADFAIL' in archive and 'archive' in archive and 'extract' in archive,
+          True)
     check("an instruction it doesn't have is named, not run",
           run(exe, workdir, "bad.com", com(bytes([0x0F, 0x0B, 0xCD, 0x21]))),
           "FAULT UD2\n")
@@ -341,6 +382,20 @@ def main():
     check("CPUID reports a 486",
           run(exe, workdir, "cpuid.com", cpuid_com()),
           "EXIT 4\n")
+    check("an unsupported DOS service returns carry set after IRET",
+          run(exe, workdir, "carry.com", interrupt_flags_com(
+              [0xF8, 0xB4, 0xFF, 0xCD, 0x21], 0x72)), "EXIT 0\n")
+    check("a successful DOS write clears carry after IRET",
+          run(exe, workdir, "nocarry.com", interrupt_flags_com(
+              [0x31, 0xC9, 0xBB, 1, 0, 0xBA, 0, 1, 0xF9,
+               0xB4, 0x40, 0xCD, 0x21], 0x73)), "EXIT 0\n")
+    check("BIOS keyboard polling returns zero set when no key is ready",
+          run(exe, workdir, "keyflags.com", interrupt_flags_com(
+              [0xB8, 1, 1, 0x08, 0xC0, 0xCD, 0x16], 0x74)), "EXIT 0\n")
+    check("a DOS interrupt preserves the caller's interrupt-enable flag",
+          run(exe, workdir, "iflags.com", interrupt_flags_com(
+              [0xFB, 0xB4, 0x30, 0xCD, 0x21, 0x9C, 0x58,
+               0x25, 0, 2, 0x3D, 0, 2], 0x74)), "EXIT 0\n")
     check("XMS: allocate, move to it and back",
           run(exe, workdir, "xms.com", xms_com()),
           "XMS OK\nEXIT 0\n")

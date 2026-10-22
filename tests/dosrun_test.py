@@ -19,6 +19,7 @@ import tempfile
 
 import console_test
 from console_test import SHELL_PROMPT, Machine, TestFailure, run_command
+from dosrun_host_test import protected_exe
 
 VERSION = console_test.VERSION
 DISK_SECTORS = 16384
@@ -71,6 +72,22 @@ def digits_com():
 def exit7_com():
     # mov ax,4C07; int 21h
     return com(bytes([0xB8, 0x07, 0x4C, 0xCD, 0x21]))
+
+
+def flags_com():
+    # Test service results with actual conditional branches after INT/IRET.
+    code = bytearray()
+    for service, branch in [
+        ([0xF8, 0xB4, 0xFF, 0xCD, 0x21], 0x72),  # unsupported: JC
+        ([0x31, 0xC9, 0xBB, 1, 0, 0xBA, 0, 1, 0xF9,
+          0xB4, 0x40, 0xCD, 0x21], 0x73),         # write: JNC
+        ([0xB8, 1, 1, 0x08, 0xC0, 0xCD, 0x16], 0x74),  # no key: JZ
+    ]:
+        code += bytes(service) + bytes([branch, 5, 0xB8, 1, 0x4C, 0xCD, 0x21])
+    msg = 0x100 + len(code) + 12
+    code += bytes([0xB4, 9, 0xBA, msg & 255, msg >> 8, 0xCD, 0x21,
+                   0xB8, 0, 0x4C, 0xCD, 0x21]) + b"FLAGS OK\r\n$"
+    return bytes(code)
 
 
 def hello_exe():
@@ -133,6 +150,9 @@ def build_disk(path):
     put(path, "HELLO.EXE", hello_exe(), srcdir)
     put(path, "BAD386.COM", unsupported_com(), srcdir)
     put(path, "MOVZX.COM", movzx_com(), srcdir)
+    put(path, "FLAGS.COM", flags_com(), srcdir)
+    put(path, "EXTENDER.EXE", protected_exe(), srcdir)
+    put(path, "PACKED.EXA", b'\x1e\x00-lh5-' + bytes(40), srcdir)
     return srcdir
 
 
@@ -178,6 +198,15 @@ def main():
         step("dosrun MOVZX.COM: a 386 instruction runs",
              lambda: run_command(m, "serial", "dosrun C:/MOVZX.COM",
                                  ["!can't", "!error"], SHELL_PROMPT))
+        step("dosrun FLAGS.COM: DOS and BIOS results survive IRET",
+             lambda: run_command(m, "serial", "dosrun C:/FLAGS.COM",
+                                 ["FLAGS OK"], SHELL_PROMPT))
+        step("a DOS extender is refused with its actual requirement",
+             lambda: run_command(m, "serial", "dosrun C:/EXTENDER.EXE",
+                                 ["requires 32-bit protected mode"], SHELL_PROMPT))
+        step("a packed installation file is identified as an archive",
+             lambda: run_command(m, "serial", "dosrun C:/PACKED.EXA",
+                                 ["LHA archive", "extract"], SHELL_PROMPT))
         step("dosrun with no program: a usage message",
              lambda: run_command(m, "serial", "dosrun",
                                  ["usage"], SHELL_PROMPT))
