@@ -44,6 +44,7 @@ percentage. Checks & Balances and the SemWare editor are Partial. Warcraft, Visi
 | [Search](#search-10a) | 1.0a, FD14 BonusCD | **Working** | Finds both root/nested matches exactly once; correct total and missing-file result after directory fix. | 2026-10-23 |
 | [utf8tocp](#utf8tocp-20240918) | 20240918, FD14 BonusCD | **Working** | Exact UTF-8 ↔ CP437 and UTF-8 ↔ CP775 conversions, including Lithuanian letters and CRLF. | 2026-10-23 |
 | [Bywater BASIC](#bywater-basic-330) | 3.30, FD14 BonusCD binary | **Unsupported** | LE protected-mode executable rejected; the supplied arithmetic program was not executed. | 2026-10-23 |
+| [Microsoft Windows](#microsoft-windows-101) | 1.01, five 360 KB floppy images | **Unsupported** | Setup stops at video-status port input `03DAh`; no completed installation or Windows desktop reached. | 2026-10-23 |
 
 ## Warcraft: Orcs & Humans
 
@@ -555,6 +556,51 @@ compatibility percentage.
 
 Evidence: [guest transcripts and exported-byte comparisons](compatibility/2026-10-23-search-utf8-basic.txt),
 [commands, exact output, fixtures, hashes and regression results](compatibility/2026-10-23-search-utf8-basic.json).
+
+## Microsoft Windows 1.01
+
+The user-supplied `Microsoft Windows 1.01 (5.25).7z` contains five 368,640-byte
+FAT12 floppy images: Setup, Build, Utility, Apps and Write. File timestamps in
+the media are mostly 1985-11-15. The package identifies Windows 1.01; that
+identification was not independently checked against a running Windows banner.
+
+- **Tested source:** `4685cf9`, ManiOS 0.25.0; kernel and DOS source hashes are
+  recorded in the evidence. No runtime changes were made for this batch.
+- **Environment:** QEMU i386, CPU 486, 64 MiB RAM; independent FAT16 snapshots,
+  guest working directory `/n/ata0p1`, DOS drive C: root, 12-second limit per case.
+- **Preparation:** floppy contents were read with host mtools and copied into
+  a disposable hard disk. Top-level files from all five disks were merged;
+  duplicate files were verified identical and the `PIF` subdirectory retained.
+  Original archive and images are unchanged. Original floppy mounting and
+  in-guest disk swapping were not tested.
+
+| Diagnostic command | Observed result |
+| --- | --- |
+| `dosrun C:/SETUP.EXE` | Returns with unsupported opcode `EC` at `1010:38A3`. Host instruction probe confirms `IN AL,DX`, `DX=03DAh`, followed by a status-bit test and polling loop. |
+| `dosrun C:/KERNEL.EXE` | Prints `Incorrect DOS version`, then NUL/binary-like output, and stops at `DB`, `10A6:65D1`. Probe identifies `DB E3` (`FNINIT`); this direct invocation is not an installed Windows startup and does not establish an application x87 requirement. |
+| `dosrun C:/NOTEPAD.EXE` | Its DOS stub says `This program requires Microsoft Windows.` and exits. The Windows editor itself did not run. |
+
+**Status: Unsupported.** The first confirmed installer blocker is video-status
+port input, which the current interpreter does not emulate. No usable installer
+workflow, completed installation, desktop or Windows application was reached.
+Removing this first blocker alone would not establish Windows compatibility.
+
+`KERNEL.EXE` and `NOTEPAD.EXE` have NE headers at `0x400`; this is not the
+LE/LX protected-mode diagnosis used for Warcraft or the tested Bywater BASIC.
+No 32-bit-mode requirement is inferred here. The media contain `WIN.CNF`, a
+1,936-byte bootstrap/template, but no installed `WIN.COM` was produced. The
+kernel and Notepad direct runs are diagnostics, not a substitute for the proper
+installation/bootstrapping process. Subsequent loader, DOS services, video,
+input and driver requirements remain untested.
+
+Next investigation: implement and test the relevant video-status port semantics,
+then repeat setup and determine its next concrete requirement. Runtime graphics
+support is currently limited and Windows GUI compatibility is not claimed.
+User binaries, floppy images and merged test disks remain outside the repository
+and APK; existing APKs were not rebuilt and no release was created.
+
+Evidence: [guest transcripts and instruction probes](compatibility/2026-10-23-windows101.txt),
+[exact outputs, media listings, source and input hashes](compatibility/2026-10-23-windows101.json).
 
 ## Adding or updating an entry
 

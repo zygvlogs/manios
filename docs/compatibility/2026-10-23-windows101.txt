@@ -1,0 +1,42 @@
+Microsoft Windows 1.01 test, 2026-10-23
+Source: 4685cf958e20c56bc01fc6b6ddfd88309658de69
+Kernel SHA256: 14a596dd1e816ec7f8d386be965ec8b40cd1b7418b1a0acd37319ba8a0267687
+Archive SHA256: 483b7aa0eb35d9de73c4d9e52385291eb332a16f65b929ee66f55211920ab516
+ManiOS 0.25.0, QEMU i386 CPU 486, 64 MiB, independent FAT16 snapshots; merged copies of top-level files from all five disks; PIF subdirectory preserved; duplicate files verified byte-identical
+Program limit: 12 seconds. All three returned to shell.
+
+CASE: setup
+COMMAND: dosrun C:/SETUP.EXE
+dosrun C:/SETUP.EXE
+dosrun: C:/SETUP.EXE: can't run opcode EC (at 1010:38A3)
+
+CASE: kernel-stub
+COMMAND: dosrun C:/KERNEL.EXE
+Incorrect DOS version
+[Further NUL/binary-like output omitted here; exact output in JSON.]
+dosrun: C:/KERNEL.EXE: can't run opcode DB (at 10A6:65D1)
+
+CASE: notepad-stub
+COMMAND: dosrun C:/NOTEPAD.EXE
+dosrun C:/NOTEPAD.EXE
+This program requires Microsoft Windows.
+
+HOST INSTRUCTION PROBES
+setup.exe
+CS=1010 IP=38a3 opcode=ec next=a8 01 75 fb DX=03da AX=0720
+kernel.exe
+CS=10a6 IP=65d1 opcode=db next=e3 d9 3c eb DX=6e92 AX=10a6
+notepad.exe
+(no CPU fault)
+
+SETUP EC at 1010:38A3 is IN AL,DX; DX=03DAh, video-status polling.
+Direct kernel diagnostic reaches DB E3 (FNINIT) after error/garbled output; this is not a valid installed Windows startup and does not establish a required x87 dependency.
+NOTEPAD executes only its DOS stub and reports that it needs Microsoft Windows.
+This test did not reach a usable Windows environment; first confirmed installer blocker is missing video port input support.
+NE signatures are not an LE/LX protected-mode diagnosis. No 32-bit requirement is inferred from the Windows NE format.
+
+Original 7z and floppy images unchanged. Images were inspected with mtools; copies of files were run from a FAT16 hard disk. This does not test original floppy mounting or disk swapping in ManiOS.
+All top-level files from five disks were merged into the disposable C: root; duplicate files were byte-identical and PIF directory was preserved. This is test preparation, not a completed Windows installation.
+No installed WIN.COM was produced. Direct KERNEL.EXE and NOTEPAD.EXE runs are startup diagnostics, not attempts through a fully installed Windows loader.
+Host probe injects 1 millisecond per 20,000 instructions, with a five-million-instruction cap, for diagnostic progress only; QEMU uses the normal elapsed-uptime clock.
+No Windows desktop, working installer workflow or Windows application was reached.

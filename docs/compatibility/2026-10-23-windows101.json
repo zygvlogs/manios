@@ -1,0 +1,105 @@
+{
+  "metadata": {
+    "source_commit": "4685cf958e20c56bc01fc6b6ddfd88309658de69",
+    "kernel_sha256": "14a596dd1e816ec7f8d386be965ec8b40cd1b7418b1a0acd37319ba8a0267687",
+    "archive_sha256": "483b7aa0eb35d9de73c4d9e52385291eb332a16f65b929ee66f55211920ab516",
+    "source_sha256": {
+      "cpu.c": "ee87262789fa8aca97ee17bbe944dc66ffcc8750a83a17b9b3ee9ee4e8d94cbe",
+      "dosapi.c": "018e3c93cf7fa970aaf877abfd816a70a1e80f138ac8a5479137e5ae2317764e",
+      "loader.c": "bb28746ad3657049c96107ea80167e2ac9ff0de304e5c1caba85e4b24e711cca",
+      "main.c": "3b021c74ad211b5c887babed7aa475bc99267f4d67682b8313d60c0fd06daca8",
+      "drives.c": "9b9daefae29b17e874752b5a01affb32d51407d22712bb246628fccce33446bb",
+      "drives.h": "0007ca2c108f1d08b73fb3d449cb842b4a6c8f31887c524aa5506554e627dcba"
+    },
+    "program_sha256": {
+      "SETUP.EXE": "afc04027f24815d5b89b09094c5a116d9d8e77d144889fb4bc64f8bdbd073257",
+      "KERNEL.EXE": "36dc24686fc6f3c61d2521f3406bb2fdfd0438abdb220055899f2dd82f9e4375",
+      "NOTEPAD.EXE": "71f5a1024e488b69ccd22d64b75a9fb83c8258502bc6e7892573f2b50b6d89e5",
+      "WIN.CNF": "e4d4b0a9ace92c5bb718d197569e4ab2b1d422eacdafe4f23a61bb0e834d8b27"
+    },
+    "environment": "ManiOS 0.25.0, QEMU i386 CPU 486, 64 MiB, independent FAT16 snapshots; merged copies of top-level files from all five disks; PIF subdirectory preserved; duplicate files verified byte-identical"
+  },
+  "media": {
+    "DISK2-BUILD.IMG": {
+      "sha256": "c27d869a948de6cf903a21e1a1292f09e6c77ce28d754df15de2019135915571",
+      "listing": " Volume in drive : is BUILD      \nDirectory for ::/\n\nBUILD    LBL         7 1985-11-15   5:42 \nGDI      EXE     94254 1985-11-15   5:42 \nUSER     EXE    122400 1985-11-15   5:42 \nMSDOSD   EXE      5934 1985-11-15   5:42 \nMSDOS    EXE     41904 1985-11-15   5:42 \nCGA      GRB      1350 1985-11-15   5:42 \nEGALORES GRB      1213 1985-11-15   5:42 \nEGAHIRES GRB        15 1985-11-15   5:42 \nEGAHIBW  GRB        15 1985-11-15   5:42 \nEGAMONO  GRB      1061 1985-11-15   5:42 \nHERCULES GRB      1250 1985-11-15   5:42 \nWIN      CNF      1936 1985-11-15   5:42 \nEGALORES LGO         9 1985-11-15   5:42 \nEGAHIRES LGO         9 1985-11-15   5:42 \nEGAHIBW  LGO         9 1985-11-15   5:42 \nEGAMONO  LGO      2930 1985-11-15   5:42 \nHERCULES LGO      3054 1985-11-15   5:42 \nCGA      LGO      2931 1985-11-15   5:42 \nWIN      INI      1801 1985-11-15   5:42 \nWINOLDAP MOD     19392 1985-11-15   5:42 \nSPOOLER  EXE     13216 1985-11-15   5:42 \n       21 files             314 690 bytes\n                             35 840 bytes free\n\n",
+      "returncode": 0
+    },
+    "DISK5-WRITE.IMG": {
+      "sha256": "0d3d20248bac6a7ad328dca9af04bea942f5c5357d081cc2ef840f789f8a9559",
+      "listing": " Volume in drive : is WRITE      \nDirectory for ::/\n\nREADME   DOC      2922 1985-11-15   5:44 \nWRITE    EXE    188464 1985-11-15   5:44 \nPRACTICE DOC      2944 1985-11-15   5:44 \n        3 files             194 330 bytes\n                            166 912 bytes free\n\n",
+      "returncode": 0
+    },
+    "DISK3-UTILITY.IMG": {
+      "sha256": "7aed3a1e53ba7367f010f4c192a6258792190f5462a52c0f1d69370374b1e4ed",
+      "listing": " Volume in drive : is UTILITY    \nDirectory for ::/\n\nUTILITY  LBL         9 1985-11-15   5:42 \nREADME   DOC      2922 1985-11-15   5:42 \nEPSON    DRV     12688 1985-11-15   5:42 \nNEC3550  DRV     21536 1985-11-15   5:42 \nHPLASER  DRV     15600 1985-11-15   5:42 \nHP747XA  DRV     21232 1985-11-15   5:42 \nIBMGRX   DRV     11392 1985-11-15   5:42 \nOKI92    DRV     11392 1985-11-15   5:42 \nCITOH    DRV     10976 1985-11-15   5:42 \nTI850    DRV     10704 1985-11-15   5:42 \nLQ1500   DRV     12992 1985-11-15   5:42 \nTOSH     DRV     11520 1985-11-15   5:42 \nNECP2    DRV     11312 1985-11-15   5:42 \nSG10     DRV     13264 1985-11-15   5:42 \nCOURA    FON      8720 1985-11-15   5:42 \nCOURB    FON     12304 1985-11-15   5:42 \nCOURC    FON      8784 1985-11-15   5:42 \nCOURD    FON     15136 1985-11-15   5:42 \nHELVA    FON      8032 1985-11-15   5:42 \nHELVB    FON     10480 1985-11-15   5:42 \nHELVC    FON      8656 1985-11-15   5:42 \nHELVD    FON     12224 1985-11-15   5:42 \nTMSRA    FON      8208 1985-11-15   5:42 \nTMSRB    FON     10784 1985-11-15   5:42 \nTMSRC    FON      8240 1985-11-15   5:42 \nTMSRD    FON     12608 1985-11-15   5:42 \nROMAN    FON     27264 1985-11-15   5:42 \nSCRIPT   FON      5744 1985-11-15   5:42 \nMODERN   FON      9680 1985-11-15   5:42 \n       29 files             334 403 bytes\n                             11 264 bytes free\n\n",
+      "returncode": 0
+    },
+    "DISK1-SETUP.IMG": {
+      "sha256": "e359f958bb90a97213e2cb5de63be978deca312c0f69665497c1267056c7b8e6",
+      "listing": " Volume in drive : is SETUP      \nDirectory for ::/\n\nPIF          <DIR>     1985-11-14  15:10 \nSETUP    LBL         7 1985-11-15   5:42 \nSETUP    EXE     33974 1985-11-15   5:42 \nKERNEL   EXE     33343 1985-11-15   5:42 \nSYSTEM   DRV      2594 1985-11-15   5:42 \nKEYBUS   DRV      3335 1985-11-15   5:42 \nNOMOUSE  DRV      1592 1985-11-15   5:42 \nMOUSE    DRV      3239 1985-11-15   5:42 \nMSMOUSE1 DRV      1966 1985-11-15   5:42 \nMSMOUSE2 DRV      1966 1985-11-15   5:42 \nLMOUSE   DRV      2484 1985-11-15   5:42 \nLPC      DRV      2438 1985-11-15   5:42 \nFTG      DRV      1961 1985-11-15   5:42 \nJOYMOUSE DRV      2114 1985-11-15   5:42 \nCGA      DRV     13008 1985-11-15   5:43 \nHERCULES DRV     15776 1985-11-15   5:42 \nEGAMONO  DRV     13952 1985-11-15   5:42 \nEGAHIBW  DRV     13952 1985-11-15   5:42 \nEGALORES DRV     15648 1985-11-15   5:42 \nEGAHIRES DRV     17536 1985-11-15   5:42 \nSOUND    DRV      5853 1985-11-15   5:42 \nCOMM     DRV      4860 1985-11-15   5:43 \nLOFONTS  FON      5552 1985-11-15   5:42 \nHIFONTS  FON      7472 1985-11-15   5:42 \nRAMDRIVE SYS      6459 1985-07-12  16:42 \nEMM      PC      12898 1985-07-30  17:15 \nEMM      AT      12874 1985-07-30  17:33 \nWRITE    DAT        43 1985-11-15   5:42 \n       28 files             236 896 bytes\n                             20 480 bytes free\n\n",
+      "returncode": 0
+    },
+    "DISK4-APPS.IMG": {
+      "sha256": "81f7569dd97095a97af38a58c4941819071670586c89d860bf2509eaad48f7c3",
+      "listing": " Volume in drive : is APPS       \nDirectory for ::/\n\nCALC     EXE     24992 1985-11-15   5:42 \nCALENDAR EXE     37360 1985-11-15   5:42 \nCARDFILE EXE     36528 1985-11-15   5:42 \nCLIPBRD  EXE      9696 1985-11-15   5:42 \nCLOCK    EXE      7920 1985-11-15   5:42 \nCONTROL  EXE     53360 1985-11-15   5:42 \nNOTEPAD  EXE     18544 1985-11-15   5:42 \nPAINT    EXE     89584 1985-11-15   5:42 \nREVERSI  EXE     14816 1985-11-15   5:42 \nTERMINAL EXE     43968 1985-11-15   5:42 \nABC      TXT        42 1985-11-15   5:42 \nDOTHIS   TXT       493 1985-11-15   5:42 \n       12 files             337 303 bytes\n                             18 432 bytes free\n\n",
+      "returncode": 0
+    }
+  },
+  "guest_results": [
+    {
+      "case": "setup",
+      "command": "dosrun C:/SETUP.EXE",
+      "timeout_seconds": 12,
+      "cwd": "/n/ata0p1 (DOS C: root)",
+      "output": "dosrun C:/SETUP.EXE\r\ndosrun: C:/SETUP.EXE: can't run opcode EC (at 1010:38A3)\r\n",
+      "returned": true
+    },
+    {
+      "case": "kernel-stub",
+      "command": "dosrun C:/KERNEL.EXE",
+      "timeout_seconds": 12,
+      "cwd": "/n/ata0p1 (DOS C: root)",
+      "output": "dosrun C:/KERNEL.EXE\r\nIncorrect DOS version\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0010\u0000\u0010\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\ufffd\ufffd\ufffd\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000WIN.INI\u0000Windows System\u0000Insert \u0000 disk in\u0000Change Disk\u0000\u0007\r\r\nFatalExit code = \u0000 stack overflow\r\r\n\u0000\ufffd\u0001\u0000\ufffdU\ufffd\ufffd\ufffd\b\ufffdV\u0006+\ufffd\ufffdF\ufffd\ufffdV\ufffd\ufffd^\ufffd&\ufffdG\u0014&\u000bG\u0016t+&\ufffd\u007f\u000e\u0000t\r\r\ndosrun: C:/KERNEL.EXE: can't run opcode DB (at 10A6:65D1)\r\n",
+      "returned": true
+    },
+    {
+      "case": "notepad-stub",
+      "command": "dosrun C:/NOTEPAD.EXE",
+      "timeout_seconds": 12,
+      "cwd": "/n/ata0p1 (DOS C: root)",
+      "output": "dosrun C:/NOTEPAD.EXE\r\nThis program requires Microsoft Windows.\r\r\n",
+      "returned": true
+    }
+  ],
+  "host_instruction_probe": [
+    {
+      "program": "setup.exe",
+      "stdout": "FAULT opcode EC\n",
+      "stderr": "CS=1010 IP=38a3 opcode=ec next=a8 01 75 fb DX=03da AX=0720\n"
+    },
+    {
+      "program": "kernel.exe",
+      "stdout": "Incorrect DOS version\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0010\u0000\u0010\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\ufffd\ufffd\ufffd\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000WIN.INI\u0000Windows System\u0000Insert \u0000 disk in\u0000Change Disk\u0000\u0007\r\nFatalExit code = \u0000 stack overflow\r\n\u0000\ufffd\u0001\u0000\ufffdU\ufffd\ufffd\ufffd\b\ufffdV\u0006+\ufffd\ufffdF\ufffd\ufffdV\ufffd\ufffd^\ufffd&\ufffdG\u0014&\u000bG\u0016t+&\ufffd\u007f\u000e\u0000t\r\nFAULT opcode DB\n",
+      "stderr": "CS=10a6 IP=65d1 opcode=db next=e3 d9 3c eb DX=6e92 AX=10a6\n"
+    },
+    {
+      "program": "notepad.exe",
+      "stdout": "This program requires Microsoft Windows.\r\nEXIT 1\n",
+      "stderr": ""
+    }
+  ],
+  "method_notes": [
+    "Original 7z and floppy images unchanged. Images were inspected with mtools; copies of files were run from a FAT16 hard disk. This does not test original floppy mounting or disk swapping in ManiOS.",
+    "All top-level files from five disks were merged into the disposable C: root; duplicate files were byte-identical and PIF directory was preserved. This is test preparation, not a completed Windows installation.",
+    "No installed WIN.COM was produced. Direct KERNEL.EXE and NOTEPAD.EXE runs are startup diagnostics, not attempts through a fully installed Windows loader.",
+    "Host probe injects 1 millisecond per 20,000 instructions, with a five-million-instruction cap, for diagnostic progress only; QEMU uses the normal elapsed-uptime clock.",
+    "No Windows desktop, working installer workflow or Windows application was reached."
+  ],
+  "formats": {
+    "KERNEL.EXE": "NE header at 0x400",
+    "NOTEPAD.EXE": "NE header at 0x400",
+    "SETUP.EXE": "MZ real-mode image; no valid extended-header pointer established",
+    "WIN.CNF": "1936-byte bootstrap/template, not an installed WIN.COM"
+  }
+}
