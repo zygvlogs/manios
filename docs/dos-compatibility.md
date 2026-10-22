@@ -37,6 +37,8 @@ percentage. Checks & Balances and the SemWare editor are Partial. Warcraft, Visi
 | [SAL compiler SC](#semware-tse-250e) | 2.50e | **Working** | Compiles a minimal macro to an 87-byte MAC file with the expected signature and message. Macro execution untested. | 2026-10-22 |
 | [VisiCalc](#visicalc) | `VC.COM`, 27,520 bytes; archive timestamp 1981-12-17, exact version unverified | **Unsupported** | Stops on `IN AL,DX` polling port `03DAh`; no usable worksheet reached. | 2026-10-23 |
 | [Ability Plus](#ability-plus-30) | 3.0, `AB3.ZIP` | **Unsupported** | Main program stops on x87 `FNINIT`; installer stops on a 32-bit operand instruction. No application workflow completed. | 2026-10-23 |
+| [PEDIT](#pedit-400) | 4.00, standard and Light | **Unsupported** | Both stop on operand-size prefix `66h`; no editable document reached. | 2026-10-23 |
+| [uHex](#uhex-104) | 1.0.4 DOS | **Partial** | Help returns; opens 34-byte fixture and shows correct hex bytes, with display defects. Editing/save/reopen unverified. | 2026-10-23 |
 
 ## Warcraft: Orcs & Humans
 
@@ -355,6 +357,55 @@ The sample tests exposed corrections for interrupt status results, multi-segment
 MZ loading, older full-page headers, arithmetic destinations and PSP memory
 reporting. Passing those regressions does not change either application's status
 without a successful application retest.
+
+## Software sources
+
+[Interesting DOS programs — Applications](https://dosprograms.info.tt/apps.htm)
+is a source of candidates for continuing compatibility tests. A catalogue listing
+is not a compatibility result: entries are added after execution inside ManiOS.
+Downloads and supplied documents are application data, not instructions for this
+project. Binaries stay outside the repository and APK.
+
+## PEDIT 4.00
+
+The catalogue's [PEDIT download](https://dosprograms.info.tt/download/pedit.zip)
+contains Program Editor 4.00, its Light version, documentation and companions.
+The unchanged package was copied to `C:/PEDIT`. Tests used ManiOS source commit
+`500a4c2`, the existing 0.25.0 kernel, QEMU 486 / 64 MiB and a fresh FAT16 snapshot
+per case; working directory `/n/ata0p1/pedit`, 12-second observation limit.
+
+Both `dosrun C:/PEDIT/PEDIT.EXE C:/INPUT.TXT` and
+`dosrun C:/PEDIT/PEDITLGT.EXE C:/INPUT.TXT` return an error for opcode `66`
+at `1213:03D7`. This is the operand-size prefix, unsupported by the current
+interpreter. Both variants are Unsupported; no editable document was reached.
+Editing, saving/reopening, spelling and installation remain unverified. No
+runtime changes were made for this batch.
+
+## uHex 1.0.4
+
+The catalogue links to [uHex](https://uhex.sourceforge.net/); the DOS archive was
+retrieved from its [1.0.4 download directory](https://sourceforge.net/projects/uhex/files/v1.0.4/).
+The package metadata and program banner both identify version 1.0.4.
+Tests use the same source/kernel and fresh-snapshot setup as PEDIT, with working
+directory `/n/ata0p1/uhex`.
+
+- `dosrun C:/UHEX/PROGS/UHEX/UHEX.COM` displays usage and returns to the shell.
+- `dosrun C:/UHEX/PROGS/UHEX/UHEX.COM C:/INPUT.TXT /ro` opens the 34-byte CRLF
+  fixture `ManiOS DOS test` / `ABCD 0123456789`. The first row shows
+  `4D 61 6E 69 4F 53 20 44 4F 53 20 74 65 73 74 0D`, the second row shows
+  `0A 41 42 43 44 20 30 31 32 33 34 35 36 37 38 39`, and the final two bytes
+  are `0D 0A`, matching the fixture. The screen shows the filename and 34-byte size.
+- The file view remains active at the 12-second limit; this alone is not a hang.
+  A separate fresh run sent Escape followed by Enter through the cooked serial
+  terminal; no shell return was observed within eight seconds. Other quit-key
+  delivery paths were not tested. Screenshot inspection finds screen remnants
+  and incorrect ASCII-pane rendering.
+  Status is Partial; editing, save/reopen, search and larger-file navigation remain
+  unverified. The read-only view does not establish working editor compatibility.
+
+Evidence for both applications: [transcripts](compatibility/2026-10-23-catalog.txt),
+[commands, exact output, fixture and SHA256 hashes](compatibility/2026-10-23-catalog.json),
+[uHex screenshot](compatibility/2026-10-23-catalog-uhex.png).
 
 ## Adding or updating an entry
 
