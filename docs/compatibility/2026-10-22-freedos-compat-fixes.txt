@@ -55,7 +55,7 @@ Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; s
 ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
 manios% cd /n/ata0p1
 manios% dosrun C:/MORE.EXE /?
-manios% 
+manios%
 === MORE-short-file ===
 ManiOS 0.25.0 / ZKT (ZygKernel Technology)
 Milestone M1: kernel console reached.
@@ -110,7 +110,7 @@ Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; s
 ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
 manios% cd /n/ata0p1
 manios% dosrun C:/MORE.EXE C:/INPUT.TXT
-manios% 
+manios%
 === FC-equal ===
 ManiOS 0.25.0 / ZKT (ZygKernel Technology)
 Milestone M1: kernel console reached.
@@ -287,7 +287,7 @@ manios% dosrun C:/FDBANNER.COM
 
 
 
-manios% 
+manios%
 === B64-help ===
 ManiOS 0.25.0 / ZKT (ZygKernel Technology)
 Milestone M1: kernel console reached.
@@ -342,7 +342,7 @@ Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; s
 ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
 manios% cd /n/ata0p1
 manios% dosrun C:/B64.EXE /?
-ERROR: NULL pointermanios% 
+ERROR: NULL pointermanios%
 === B64-encode ===
 ManiOS 0.25.0 / ZKT (ZygKernel Technology)
 Milestone M1: kernel console reached.
@@ -399,7 +399,7 @@ manios% cd /n/ata0p1
 manios% dosrun C:/B64.EXE -e C:/RAW.TXT C:/ENC.TXT
 ERROR: NULL pointermanios% cat /n/ata0p1/enc.txt
 cat: /n/ata0p1/enc.txt: no such file or directory
-manios% 
+manios%
 === BSUM-text ===
 ManiOS 0.25.0 / ZKT (ZygKernel Technology)
 Milestone M1: kernel console reached.
@@ -455,7 +455,7 @@ ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
 manios% cd /n/ata0p1
 manios% dosrun C:/BSUM.COM C:/INPUT.TXT
 3C36
-manios% 
+manios%
 === BSUM-modified ===
 ManiOS 0.25.0 / ZKT (ZygKernel Technology)
 Milestone M1: kernel console reached.
@@ -511,7 +511,7 @@ ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
 manios% cd /n/ata0p1
 manios% dosrun C:/BSUM.COM C:/OTHER.TXT
 2C14
-manios% 
+manios%
 === BSUM-empty ===
 ManiOS 0.25.0 / ZKT (ZygKernel Technology)
 Milestone M1: kernel console reached.
@@ -567,7 +567,7 @@ ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
 manios% cd /n/ata0p1
 manios% dosrun C:/BSUM.COM C:/EMPTY.TXT
 0000
-manios% 
+manios%
 === BSUM-binary-multiblock ===
 ManiOS 0.25.0 / ZKT (ZygKernel Technology)
 Milestone M1: kernel console reached.
@@ -623,7 +623,7 @@ ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
 manios% cd /n/ata0p1
 manios% dosrun C:/BSUM.COM C:/BINARY.DAT
 A000
-manios% 
+manios%
 === BSUM-missing ===
 ManiOS 0.25.0 / ZKT (ZygKernel Technology)
 Milestone M1: kernel console reached.
@@ -679,7 +679,7 @@ ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
 manios% cd /n/ata0p1
 manios% dosrun C:/BSUM.COM C:/MISSING.TXT
 ERROR
-manios% 
+manios%
 === BSUM-no-arguments ===
 ManiOS 0.25.0 / ZKT (ZygKernel Technology)
 Milestone M1: kernel console reached.
@@ -738,7 +738,7 @@ bsum v1.1 - computes BSD checksums of files (MIT license)
 Copyright (C) 2017 Mateusz Viste
 
 Usage: bsum file
-manios% 
+manios%
 === host-regression ===
 PASS: a .COM prints its string and exits 0
 PASS: a .COM's exit code comes back
@@ -823,4 +823,3 @@ PASS: EXIT: back to ManiOS
 PASS: what ManiDOS wrote is on C:, as mtools and the FAT see it
 PASS: shell=dos: ManiOS boots into ManiDOS (no FAT disk: A:)
 dos test: all passed
-

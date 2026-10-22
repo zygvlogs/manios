@@ -11,7 +11,7 @@ bb28746ad3657049c96107ea80167e2ac9ff0de304e5c1caba85e4b24e711cca  userland/dosru
 manios% cd /n/ata0p1
 manios% dosrun C:/CHECK.EXE
 dosrun: C:/CHECK.EXE: can't run opcode FF (at 1050:D865)
-manios% 
+manios%
 
 === BLUE.EXE ===
 manios% cd /n/ata0p1

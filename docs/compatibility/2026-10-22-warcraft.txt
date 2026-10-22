@@ -7,4 +7,4 @@ manios% dosrun /n/cd0/war.exa
 dosrun: /n/cd0/war.exa: LHA archive; extract it before running
 manios% dosrun C:/WAR.EXE
 dosrun: /n/ata0p1/war.exe: requires 32-bit protected mode (LE/LX DOS extender); dosrun supports real mode only
-manios% 
+manios%
