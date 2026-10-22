@@ -1,0 +1,97 @@
+FreeDOS 1.4 BonusCD sample tests, 2026-10-22
+ManiOS 0.25.0, base 5965873 plus local full-page MZ, arithmetic and PSP fixes.
+Fresh QEMU i386 guest, CPU 486, 64 MiB RAM, FAT16 snapshot per invocation.
+Six-second command limit. Returning to the shell does not imply task success.
+
+=== MORE-help ===
+Command: dosrun C:/MORE.EXE /?
+dosrun C:/MORE.EXE /?
+dosrun: C:/MORE.EXE: can't run opcode C1 (at 12A2:1142)
+
+=== MORE-short-file ===
+Command: dosrun C:/MORE.EXE C:/INPUT.TXT
+dosrun C:/MORE.EXE C:/INPUT.TXT
+dosrun: C:/MORE.EXE: can't run opcode C1 (at 12A2:1142)
+
+=== FC-equal ===
+Command: dosrun C:/FC.EXE C:/INPUT.TXT C:/INPUT.TXT
+dosrun C:/FC.EXE C:/INPUT.TXT C:/INPUT.TXT
+dosrun: C:/FC.EXE: can't run opcode E5 (at 16E5:01F9)
+
+=== FC-different ===
+Command: dosrun C:/FC.EXE C:/INPUT.TXT C:/OTHER.TXT
+dosrun C:/FC.EXE C:/INPUT.TXT C:/OTHER.TXT
+dosrun: C:/FC.EXE: can't run opcode E5 (at 16E5:01F9)
+
+=== FDBANNER-display ===
+Command: dosrun C:/FDBANNER.COM
+dosrun C:/FDBANNER.COM
+
+
+=== B64-help ===
+Command: dosrun C:/B64.EXE /?
+dosrun C:/B64.EXE /?
+dosrun: C:/B64.EXE: can't run opcode 64 (at 145C:0003)
+
+=== B64-encode ===
+Command: dosrun C:/B64.EXE -e C:/RAW.TXT C:/ENC.TXT
+Expected task result: QUJDRA==
+dosrun C:/B64.EXE -e C:/RAW.TXT C:/ENC.TXT
+dosrun: C:/B64.EXE: can't run opcode 64 (at 145C:0003)
+
+Follow-up: cat /n/ata0p1/enc.txt
+cat /n/ata0p1/enc.txt
+cat: /n/ata0p1/enc.txt: no such file or directory
+
+=== BSUM-text ===
+Command: dosrun C:/BSUM.COM C:/INPUT.TXT
+Expected task result: 3C36
+dosrun C:/BSUM.COM C:/INPUT.TXT
+bsum v1.1 - computes BSD checksums of files (MIT license)
+Copyright (C) 2017 Mateusz Viste
+
+Usage: bsum file
+
+=== BSUM-modified ===
+Command: dosrun C:/BSUM.COM C:/OTHER.TXT
+Expected task result: 2C14
+dosrun C:/BSUM.COM C:/OTHER.TXT
+bsum v1.1 - computes BSD checksums of files (MIT license)
+Copyright (C) 2017 Mateusz Viste
+
+Usage: bsum file
+
+=== BSUM-empty ===
+Command: dosrun C:/BSUM.COM C:/EMPTY.TXT
+Expected task result: 0000
+dosrun C:/BSUM.COM C:/EMPTY.TXT
+bsum v1.1 - computes BSD checksums of files (MIT license)
+Copyright (C) 2017 Mateusz Viste
+
+Usage: bsum file
+
+=== BSUM-help ===
+Command: dosrun C:/BSUM.COM
+dosrun C:/BSUM.COM
+bsum v1.1 - computes BSD checksums of files (MIT license)
+Copyright (C) 2017 Mateusz Viste
+
+Usage: bsum file
+
+=== BSUM-relative ===
+Command: dosrun C:/BSUM.COM INPUT.TXT
+dosrun C:/BSUM.COM INPUT.TXT
+bsum v1.1 - computes BSD checksums of files (MIT license)
+Copyright (C) 2017 Mateusz Viste
+
+Usage: bsum file
+
+=== BSUM-native-stdin ===
+Command: dosrun C:/BSUM.COM INPUT.TXT < /n/ata0p1/empty.txt
+dosrun C:/BSUM.COM INPUT.TXT < /n/ata0p1/empty.txt
+bsum v1.1 - computes BSD checksums of files (MIT license)
+Copyright (C) 2017 Mateusz Viste
+
+Usage: bsum file
+
+FDBANNER: serial output is only a blank line; VGA screenshot also has no FreeDOS banner.

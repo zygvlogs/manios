@@ -104,9 +104,7 @@ int main(int argc, char **argv)
 			break;
 		}
 		case CPU_IRET:
-			cpu.ip = pop16(&cpu);
-			cpu.sreg[1] = pop16(&cpu);
-			cpu.flags = pop16(&cpu);
+			/* cpu_step already restored the interrupt frame. */
 			break;
 		case CPU_EXIT:
 			status = cpu.exit_code;

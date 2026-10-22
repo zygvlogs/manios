@@ -1,0 +1,153 @@
+{
+  "metadata": {
+    "media": "FD14BNS.iso from user-supplied FD14-BonusCD.zip",
+    "base_commit": "5965873",
+    "local_changes": [
+      "full-page MZ headers",
+      "arithmetic destinations",
+      "PSP memory-ending segment"
+    ],
+    "qemu": "QEMU emulator version 10.0.13 (Debian 1:10.0.13+ds-0+deb13u1)",
+    "cpu": "486",
+    "ram_mib": 64,
+    "disk": "FAT16, fresh guest and snapshot per case",
+    "kernel_sha256": "83f43b25d20bdc4021390679d370927d852e7bd972b52ad1461ff85e51d7cfa8",
+    "source_sha256": {
+      "cpu.c": "3bdc2a925533392eeef6ba92ff3dbaf21ad9c23b20652cc6ed77f7fef9470bea",
+      "dosapi.c": "2882cc1b8171f35a2a291f8c017ada229922a681f3c50118281dfef6d91ddbae",
+      "loader.c": "bb28746ad3657049c96107ea80167e2ac9ff0de304e5c1caba85e4b24e711cca"
+    },
+    "program_sha256": {
+      "B64.EXE": "1ae523c3fd145178fae68a1f7ac1fd5bb29a1a2ff044a16c1bbf48e0aae38f48",
+      "BSUM.COM": "95d8e753cddca78ed8649728eb5f0f56684a27f803698c5b4ae98d40e1b8434d",
+      "FC.EXE": "f6f03ca1aaa4874049f05de1289f7a8b55e5a23ff94709345983f156ffb2f39f",
+      "FDBANNER.COM": "0c9c7d565c28416cf08133485ae717fab170dd495bb15415dcf5e1f9967d5ebf",
+      "MORE.EXE": "d57bba5d16674ed48f6bb5bf8634bc55f33d14d1171df9d52e4a425fc6a57239"
+    },
+    "fixture_hex": {
+      "INPUT.TXT": "6170706c65207265640d0a62616e616e612079656c6c6f770d0a4170706c6520677265656e0d0a",
+      "OTHER.TXT": "6170706c65207265640d0a62616e616e6120707572706c650d0a4170706c6520677265656e0d0a",
+      "RAW.TXT": "41424344",
+      "EMPTY.TXT": ""
+    },
+    "media_sha256": "e737a3b0baa0e93090da29c9c78134b82cb8415cbce29ce933d69ed02ab7712d",
+    "archive_sha256": "59ef3c2a3011862f408f2f5dba725c08532674b99f0e16451e06cb6de73defa8",
+    "iso_volume": "FD14-BONUS0",
+    "iso_program_paths": {
+      "MORE.EXE": "/FDOS-x86/FREEDOS/BIN/MORE.EXE",
+      "FC.EXE": "/FDOS-x86/FREEDOS/BIN/FC.EXE",
+      "FDBANNER.COM": "/FDOS-x86/FREEDOS/BIN/FDBANNER.COM",
+      "B64.EXE": "/packages/util/b64.zip -> UTIL/B64/B64.EXE",
+      "BSUM.COM": "/packages/util/bsum.zip -> bin/bsum.com"
+    },
+    "versions": {
+      "MORE.EXE": "not verified; CD binary dated 2007-09-24",
+      "FC.EXE": "not verified; CD binary dated 2005-01-09",
+      "FDBANNER.COM": "1.1 (package metadata)",
+      "B64.EXE": "0.06R (rev A), package 2025-03-16.0",
+      "BSUM.COM": "1.1a (package metadata); help prints 1.1"
+    }
+  },
+  "cases": [
+    {
+      "case": "MORE-help",
+      "command": "dosrun C:/MORE.EXE /?",
+      "expected": null,
+      "timeout_seconds": 6,
+      "returned": true,
+      "output": "dosrun C:/MORE.EXE /?\r\ndosrun: C:/MORE.EXE: can't run opcode C1 (at 12A2:1142)\r\n"
+    },
+    {
+      "case": "MORE-short-file",
+      "command": "dosrun C:/MORE.EXE C:/INPUT.TXT",
+      "expected": null,
+      "timeout_seconds": 6,
+      "returned": true,
+      "output": "dosrun C:/MORE.EXE C:/INPUT.TXT\r\ndosrun: C:/MORE.EXE: can't run opcode C1 (at 12A2:1142)\r\n"
+    },
+    {
+      "case": "FC-equal",
+      "command": "dosrun C:/FC.EXE C:/INPUT.TXT C:/INPUT.TXT",
+      "expected": null,
+      "timeout_seconds": 6,
+      "returned": true,
+      "output": "dosrun C:/FC.EXE C:/INPUT.TXT C:/INPUT.TXT\r\ndosrun: C:/FC.EXE: can't run opcode E5 (at 16E5:01F9)\r\n"
+    },
+    {
+      "case": "FC-different",
+      "command": "dosrun C:/FC.EXE C:/INPUT.TXT C:/OTHER.TXT",
+      "expected": null,
+      "timeout_seconds": 6,
+      "returned": true,
+      "output": "dosrun C:/FC.EXE C:/INPUT.TXT C:/OTHER.TXT\r\ndosrun: C:/FC.EXE: can't run opcode E5 (at 16E5:01F9)\r\n"
+    },
+    {
+      "case": "FDBANNER-display",
+      "command": "dosrun C:/FDBANNER.COM",
+      "expected": null,
+      "timeout_seconds": 6,
+      "returned": true,
+      "output": "dosrun C:/FDBANNER.COM\r\n\r\n"
+    },
+    {
+      "case": "B64-help",
+      "command": "dosrun C:/B64.EXE /?",
+      "expected": null,
+      "timeout_seconds": 6,
+      "returned": true,
+      "output": "dosrun C:/B64.EXE /?\r\ndosrun: C:/B64.EXE: can't run opcode 64 (at 145C:0003)\r\n"
+    },
+    {
+      "case": "B64-encode",
+      "command": "dosrun C:/B64.EXE -e C:/RAW.TXT C:/ENC.TXT",
+      "expected": "QUJDRA==",
+      "timeout_seconds": 6,
+      "returned": true,
+      "output": "dosrun C:/B64.EXE -e C:/RAW.TXT C:/ENC.TXT\r\ndosrun: C:/B64.EXE: can't run opcode 64 (at 145C:0003)\r\n",
+      "follow_command": "cat /n/ata0p1/enc.txt",
+      "follow_output": "cat /n/ata0p1/enc.txt\r\ncat: /n/ata0p1/enc.txt: no such file or directory\r\n"
+    },
+    {
+      "case": "BSUM-text",
+      "command": "dosrun C:/BSUM.COM C:/INPUT.TXT",
+      "expected": "3C36",
+      "timeout_seconds": 6,
+      "returned": true,
+      "output": "dosrun C:/BSUM.COM C:/INPUT.TXT\r\nbsum v1.1 - computes BSD checksums of files (MIT license)\r\nCopyright (C) 2017 Mateusz Viste\r\n\r\nUsage: bsum file\r\n"
+    },
+    {
+      "case": "BSUM-modified",
+      "command": "dosrun C:/BSUM.COM C:/OTHER.TXT",
+      "expected": "2C14",
+      "timeout_seconds": 6,
+      "returned": true,
+      "output": "dosrun C:/BSUM.COM C:/OTHER.TXT\r\nbsum v1.1 - computes BSD checksums of files (MIT license)\r\nCopyright (C) 2017 Mateusz Viste\r\n\r\nUsage: bsum file\r\n"
+    },
+    {
+      "case": "BSUM-empty",
+      "command": "dosrun C:/BSUM.COM C:/EMPTY.TXT",
+      "expected": "0000",
+      "timeout_seconds": 6,
+      "returned": true,
+      "output": "dosrun C:/BSUM.COM C:/EMPTY.TXT\r\nbsum v1.1 - computes BSD checksums of files (MIT license)\r\nCopyright (C) 2017 Mateusz Viste\r\n\r\nUsage: bsum file\r\n"
+    },
+    {
+      "case": "BSUM-help",
+      "command": "dosrun C:/BSUM.COM",
+      "returned": true,
+      "output": "dosrun C:/BSUM.COM\r\nbsum v1.1 - computes BSD checksums of files (MIT license)\r\nCopyright (C) 2017 Mateusz Viste\r\n\r\nUsage: bsum file\r\n"
+    },
+    {
+      "case": "BSUM-relative",
+      "command": "dosrun C:/BSUM.COM INPUT.TXT",
+      "returned": true,
+      "output": "dosrun C:/BSUM.COM INPUT.TXT\r\nbsum v1.1 - computes BSD checksums of files (MIT license)\r\nCopyright (C) 2017 Mateusz Viste\r\n\r\nUsage: bsum file\r\n"
+    },
+    {
+      "case": "BSUM-native-stdin",
+      "command": "dosrun C:/BSUM.COM INPUT.TXT < /n/ata0p1/empty.txt",
+      "returned": true,
+      "output": "dosrun C:/BSUM.COM INPUT.TXT < /n/ata0p1/empty.txt\r\nbsum v1.1 - computes BSD checksums of files (MIT license)\r\nCopyright (C) 2017 Mateusz Viste\r\n\r\nUsage: bsum file\r\n"
+    }
+  ]
+}

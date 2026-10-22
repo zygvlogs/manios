@@ -2,6 +2,9 @@
 
 `dosrun` runs a DOS program -- a `.COM` or an `.EXE` -- on ManiOS.
 
+See the [DOS software compatibility list](dos-compatibility.md) for tested
+applications, build-specific results and known failures.
+
 ```
 manios% dosrun HELLO.COM
 Hello from DOS!
@@ -53,14 +56,14 @@ than doing the wrong thing.
 
 | Interrupt | What it serves |
 |---|---|
-| `INT 21h` | DOS: the console (1, 2, 6-9, 0Ah, 0Bh), the date and time (2Ah, 2Ch), the version (30h), the interrupt vectors (25h, 35h), the PSP (51h, 62h), and the file functions (3Ch-43h) |
-| `INT 10h` | BIOS video: setting the mode, including mode 13h |
-| `INT 16h` | BIOS keyboard: reading a key |
+| `INT 21h` | DOS: the console (1, 2, 6-9, 0Ah, 0Bh), the date and time (2Ah, 2Ch), the version (30h), the interrupt vectors (25h, 35h), the PSP (51h, 62h), and file functions (3Ch-43h), duplication (45h/46h), MCB memory blocks (48h-4Ah), directory searches (4Eh/4Fh) and legacy FCB record I/O |
+| `INT 10h` | BIOS video: mode 13h and text character/attribute/cursor services |
+| `INT 16h` | BIOS keyboard: reading a key and non-consuming readiness queries |
 | `INT 1Ah` | BIOS clock: the tick count and the RTC time |
 
 A function `dosrun` doesn't have is refused the way DOS refuses it --
-carry set, `AX` an error code -- so a program that probes a service
-gets a sensible answer.
+carry set, `AX` an error code for handle services; FCB calls use `AL` status.
+The Windows LFN API reports `AX=7100h` so DOS callers can fall back to 8.3 names.
 
 ## The files and the screen
 
@@ -103,3 +106,28 @@ In [`userland/dosrun/`](../userland/dosrun/):
 - `loader.c`, `loader.h` -- the `.COM` and `.EXE` loader.
 - `drives.c`, `drives.h` -- DOS paths onto ManiOS paths.
 - `main.c` -- the program: load, run, serve interrupts.
+
+### String-instruction compatibility checks
+
+Run `python3 tests/dosrun_string_test.py` to check byte/word string operations,
+repeat conditions, zero counts, direction, segment overrides, accumulator TEST,
+immediate shifts and BSUM's DAS-based hexadecimal conversion. The host suite
+also checks PSP argument lengths. The [compatibility list](dos-compatibility.md)
+records real-program results; BSUM from the FD14 BonusCD completes the tested
+checksum tasks with this local build.
+
+### Runtime and service compatibility checks
+
+`python3 tests/dosrun_runtime_test.py` checks startup addressing/stack/flags,
+packed-decimal DAA additions, PSP/environment layout, DOS memory blocks and
+failure paths, file-handle duplication, independent directory searches, legacy
+FCB reads/writes and save/reopen, keyboard peeking, and BIOS text state.
+`tests/dosrun_test.py` also runs a guest IRET regression through the actual runner.
+The three host suites and the QEMU DOS suites are included in `make test`.
+
+FCB zero-count block writes cannot truncate through the current filesystem API
+and return an explicit failure. BIOS text scrolling is incomplete. Keyboard
+input uses the terminal's line discipline (Enter is needed); direct VGA writes,
+extended scan-code sequences and game input are not fully emulated. The fixed
+DOS date/time responses remain. FCB layout and record semantics follow the
+[MS-DOS Programmer's Reference](https://www.pcjs.org/documents/books/mspl13/msdos/dosref40/).

@@ -122,7 +122,7 @@ struct operand {
  * SS, everything else DS). */
 static uint16_t default_seg(struct cpu *c, int rm)
 {
-	return (rm == 4 || rm == 5 || rm == 6) ? c->sreg[2] : c->sreg[3];
+	return (rm == 2 || rm == 3 || rm == 6) ? c->sreg[2] : c->sreg[3];
 }
 
 /* Decodes the ModR/M byte at CS:IP, advancing IP past it and any
@@ -262,7 +262,7 @@ static uint16_t shift16(struct cpu *c, int op, uint16_t v, int count)
 	uint16_t r = v;
 	for (int i = 0; i < count; i++) {
 		switch (op) {
-		case 0: set_cf(c, r & 0x8000); r <<= 1; break;                 /* ROL */
+		case 0: set_cf(c, r & 0x8000); r = (uint16_t)((r << 1) | (r >> 15)); break;                 /* ROL */
 		case 1: set_cf(c, r & 1); r = (uint16_t)((r >> 1) | (r << 15)); break; /* ROR */
 		case 2: { int cf = (c->flags & FLAG_CF) != 0; set_cf(c, r & 0x8000); r = (uint16_t)((r << 1) | cf); break; } /* RCL */
 		case 3: { int cf = (c->flags & FLAG_CF) != 0; set_cf(c, r & 1); r = (uint16_t)((r >> 1) | (cf << 15)); break; } /* RCR */
@@ -319,27 +319,27 @@ void cpu_enter_interrupt(struct cpu *c, uint8_t vector, uint16_t *cs, uint16_t *
 /* --- the string operations --- */
 
 /* Runs one REP-prefixed string instruction. */
-static void do_string(struct cpu *c, uint8_t op)
+static void do_string(struct cpu *c, uint8_t op, uint8_t rep, uint16_t source)
 {
 	int df = (c->flags & FLAG_DF) ? -1 : 1;
 	int w = (op & 1) ? 2 : 1; /* the low bit: byte or word */
-	int rep = (op & 2) ? 1 : 0;
-	uint8_t sub = op >> 2;
+	uint8_t sub = op & 0xFE;
+	if (rep && !c->r[CX]) return;
 
 	do {
 		switch (sub) {
-		case 0: { /* MOVS */
+		case 0xA4: { /* MOVS */
 			if (w == 2) {
-				wr16(c, c->sreg[0], c->r[DI], rd16(c, c->sreg[3], c->r[SI]));
+				wr16(c, c->sreg[0], c->r[DI], rd16(c, source, c->r[SI]));
 			} else {
-				wr8(c, c->sreg[0], c->r[DI], rd8(c, c->sreg[3], c->r[SI]));
+				wr8(c, c->sreg[0], c->r[DI], rd8(c, source, c->r[SI]));
 			}
 			c->r[SI] = (uint16_t)(c->r[SI] + df * w);
 			c->r[DI] = (uint16_t)(c->r[DI] + df * w);
 			break;
 		}
-		case 1: { /* CMPS */
-			uint16_t a = w == 2 ? rd16(c, c->sreg[3], c->r[SI]) : rd8(c, c->sreg[3], c->r[SI]);
+		case 0xA6: { /* CMPS */
+			uint16_t a = w == 2 ? rd16(c, source, c->r[SI]) : rd8(c, source, c->r[SI]);
 			uint16_t b = w == 2 ? rd16(c, c->sreg[0], c->r[DI]) : rd8(c, c->sreg[0], c->r[DI]);
 			if (w == 2) {
 				alu16(c, CMP, a, b);
@@ -350,7 +350,7 @@ static void do_string(struct cpu *c, uint8_t op)
 			c->r[DI] = (uint16_t)(c->r[DI] + df * w);
 			break;
 		}
-		case 2: { /* STOS */
+		case 0xAA: { /* STOS */
 			if (w == 2) {
 				wr16(c, c->sreg[0], c->r[DI], c->r[AX]);
 			} else {
@@ -359,16 +359,16 @@ static void do_string(struct cpu *c, uint8_t op)
 			c->r[DI] = (uint16_t)(c->r[DI] + df * w);
 			break;
 		}
-		case 3: { /* LODS */
+		case 0xAC: { /* LODS */
 			if (w == 2) {
-				c->r[AX] = rd16(c, c->sreg[3], c->r[SI]);
+				c->r[AX] = rd16(c, source, c->r[SI]);
 			} else {
-				put8(c, 0, rd8(c, c->sreg[3], c->r[SI]));
+				put8(c, 0, rd8(c, source, c->r[SI]));
 			}
 			c->r[SI] = (uint16_t)(c->r[SI] + df * w);
 			break;
 		}
-		case 4: { /* SCAS */
+		case 0xAE: { /* SCAS */
 			uint16_t a = w == 2 ? c->r[AX] : get8(c, 0);
 			uint16_t b = w == 2 ? rd16(c, c->sreg[0], c->r[DI]) : rd8(c, c->sreg[0], c->r[DI]);
 			if (w == 2) {
@@ -385,8 +385,8 @@ static void do_string(struct cpu *c, uint8_t op)
 		}
 		uint16_t n = c->r[CX] - 1;
 		c->r[CX] = n;
-		if (sub == 1 || sub == 4) {
-			if (n == 0 || !(c->flags & FLAG_ZF)) { /* REPE/REPNE */
+		if (sub == 0xA6 || sub == 0xAE) {
+			if (n == 0 || ((c->flags & FLAG_ZF) != 0) != (rep == 0xF3)) { /* REPE/REPNE */
 				break;
 			}
 		} else if (n == 0) {
@@ -428,7 +428,7 @@ static int cond(struct cpu *c, int cc)
 
 /* The 386's two-byte instructions (the 0F prefix). Only what a DOS
  * program and its libraries use is here; the rest stops with a fault. */
-static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
+static enum cpu_stop op_0f(struct cpu *c, int override)
 {
 	uint8_t op = rd8(c, c->sreg[1], c->ip++);
 	c->fault_opcode = op;
@@ -463,7 +463,7 @@ static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
 	case 0x4C: case 0x4D: case 0x4E: case 0x4F: {
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		uint16_t v = get16(c, &rm);
@@ -489,7 +489,7 @@ static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
 	case 0x9C: case 0x9D: case 0x9E: case 0x9F: {
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		put8_rm(c, &rm, cond(c, op & 0x0F) ? 1 : 0);
@@ -526,7 +526,7 @@ static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
 	case 0xA3: { /* BT rm16, reg */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		uint16_t v = get16(c, &rm);
@@ -537,7 +537,7 @@ static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
 	case 0xA4: { /* SHLD rm16, reg, imm8 */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		uint8_t n = rd8(c, c->sreg[1], c->ip++) & 31;
@@ -553,7 +553,7 @@ static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
 	case 0xA5: { /* SHLD rm16, reg, CL */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		uint8_t n = c->r[CX] & 31;
@@ -571,7 +571,7 @@ static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
 	case 0xAB: { /* BTS rm16, reg */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		uint16_t v = get16(c, &rm);
@@ -583,7 +583,7 @@ static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
 	case 0xAC: { /* SHRD rm16, reg, imm8 */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		uint8_t n = rd8(c, c->sreg[1], c->ip++) & 31;
@@ -599,7 +599,7 @@ static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
 	case 0xAD: { /* SHRD rm16, reg, CL */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		uint8_t n = c->r[CX] & 31;
@@ -615,7 +615,7 @@ static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
 	case 0xAF: { /* IMUL reg16, rm16 */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		int32_t r = (int16_t)c->r[reg] * (int16_t)get16(c, &rm);
@@ -627,7 +627,7 @@ static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
 	case 0xB0: case 0xB1: { /* CMPXCHG rm8, reg */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		uint8_t v = get8_rm(c, &rm);
@@ -644,7 +644,7 @@ static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
 	case 0xB6: case 0xB7: { /* MOVZX reg16, rm8/rm16 */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		c->r[reg] = op == 0xB7 ? get16(c, &rm) : get8_rm(c, &rm);
@@ -653,7 +653,7 @@ static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
 	case 0xBA: { /* the group 8: BT/BTS/BTR/BTC rm16, imm8 */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		uint8_t imm = rd8(c, c->sreg[1], c->ip++);
@@ -672,7 +672,7 @@ static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
 	case 0xBB: { /* BTC rm16, reg */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		uint16_t v = get16(c, &rm);
@@ -684,7 +684,7 @@ static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
 	case 0xBC: case 0xBD: { /* BSF/BSR reg16, rm16 */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		uint16_t v = get16(c, &rm);
@@ -708,7 +708,7 @@ static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
 	case 0xBE: case 0xBF: { /* MOVSX reg16, rm8/rm16 */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		c->r[reg] = op == 0xBF ? get16(c, &rm) : (uint16_t)(int16_t)(int8_t)get8_rm(c, &rm);
@@ -717,7 +717,7 @@ static enum cpu_stop op_0f(struct cpu *c, uint16_t override)
 	case 0xC0: case 0xC1: { /* XADD rm8/rm16, reg */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		if (op == 0xC1) {
@@ -790,34 +790,27 @@ enum cpu_stop cpu_step(struct cpu *c)
 		}
 	}
 
-	/* Segment override prefixes: up to one each, then the instruction. */
-	uint16_t override = 0;
-	uint8_t op;
+	/* Segment and repeat prefixes may occur in either order. */
+	int override = -1;
+	uint8_t op, rep = 0;
+	int prefixes = 0;
 	for (;;) {
-		op = rd8(c, c->sreg[1], c->ip);
-		if (op == 0x26) { override = c->sreg[0]; c->ip++; continue; } /* ES */
-		if (op == 0x2E) { override = c->sreg[1]; c->ip++; continue; } /* CS */
-		if (op == 0x36) { override = c->sreg[2]; c->ip++; continue; } /* SS */
-		if (op == 0x3E) { override = c->sreg[3]; c->ip++; continue; } /* DS */
+		op = rd8(c, c->sreg[1], c->ip++);
+		if (++prefixes > 15) return CPU_FAULT;
+		if (op == 0x26) { override = c->sreg[0]; continue; }
+		if (op == 0x2E) { override = c->sreg[1]; continue; }
+		if (op == 0x36) { override = c->sreg[2]; continue; }
+		if (op == 0x3E) { override = c->sreg[3]; continue; }
+		if (op == 0xF2 || op == 0xF3) { rep = op; continue; }
 		break;
 	}
-	c->ip++;
 	c->insns++;
-	c->fault_opcode = op; /* what a CPU_FAULT reports */
-
-	/* The string instructions, with their REP prefixes. */
-	if (op == 0xF2 || op == 0xF3) {
-		uint8_t next = rd8(c, c->sreg[1], c->ip++);
-		if (next >= 0xA4 && next <= 0xAF) {
-			do_string(c, (uint8_t)((next - 0xA4) << 2 | (op == 0xF3 ? 2 : 0) | (next & 1)));
-			return CPU_OK;
-		}
-		return CPU_FAULT; /* REP on something else: not supported */
-	}
-	if (op >= 0xA4 && op <= 0xAF) {
-		do_string(c, (uint8_t)((op - 0xA4) << 2 | (op & 1)));
+	c->fault_opcode = op;
+	if ((op >= 0xA4 && op <= 0xA7) || (op >= 0xAA && op <= 0xAF)) {
+		do_string(c, op, rep, override >= 0 ? override : c->sreg[3]);
 		return CPU_OK;
 	}
+	if (rep) return CPU_FAULT;
 
 	/* The 386's two-byte instructions (0F xx): what DOS programs and
 	 * their libraries use -- MOVZX, MOVSX, SETcc, the bit operations,
@@ -835,7 +828,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 		int dir = op & 2; /* 0: rm,reg  2: reg,rm */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		if (w) {
@@ -844,9 +837,9 @@ enum cpu_stop cpu_step(struct cpu *c)
 			uint16_t r = alu16(c, alu_op, a, b);
 			if (alu_op != CMP) {
 				if (dir) {
-					put16(c, &rm, r);
-				} else {
 					c->r[reg] = r;
+				} else {
+					put16(c, &rm, r);
 				}
 			}
 		} else {
@@ -855,9 +848,9 @@ enum cpu_stop cpu_step(struct cpu *c)
 			uint8_t r = alu8(c, alu_op, a, b);
 			if (alu_op != CMP) {
 				if (dir) {
-					put8_rm(c, &rm, r);
-				} else {
 					put8(c, reg, r);
+				} else {
+					put8_rm(c, &rm, r);
 				}
 			}
 		}
@@ -896,6 +889,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 			cpu_set_flags(c, res, 16);
 			set_cf(c, cf);
 			set_of(c, res == 0x8000);
+			set_af(c, (v & 15) == 15);
 			c->r[r] = res;
 		} else if (op < 0x50) { /* DEC */
 			uint16_t v = c->r[r];
@@ -904,6 +898,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 			cpu_set_flags(c, res, 16);
 			set_cf(c, cf);
 			set_of(c, res == 0x7FFF);
+			set_af(c, (v & 15) == 0);
 			c->r[r] = res;
 		} else if (op < 0x58) { /* PUSH */
 			push16(c, c->r[r]);
@@ -931,7 +926,8 @@ enum cpu_stop cpu_step(struct cpu *c)
 	}
 	case 0x61: { /* POPA */
 		for (int i = 7; i >= 0; i--) {
-			c->r[i] = pop16(c);
+			uint16_t value = pop16(c);
+			if (i != SP) c->r[i] = value;
 		}
 		return CPU_OK;
 	}
@@ -940,7 +936,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 	case 0x69: case 0x6B: { /* IMUL r, rm, imm */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		uint16_t imm = op == 0x69 ? rd16(c, c->sreg[1], c->ip) : (uint16_t)(int16_t)(int8_t)rd8(c, c->sreg[1], c->ip);
@@ -964,7 +960,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 	case 0x80: case 0x81: case 0x82: case 0x83: { /* the ALU group with an immediate */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		if (op == 0x80 || op == 0x82) {
@@ -987,7 +983,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 	case 0x84: case 0x85: { /* TEST rm, reg */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		if (op == 0x85) {
@@ -1000,7 +996,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 	case 0x86: case 0x87: { /* XCHG rm, reg */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		if (op == 0x87) {
@@ -1017,7 +1013,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 	case 0x88: case 0x89: { /* MOV rm, reg */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		if (op == 0x89) {
@@ -1030,7 +1026,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 	case 0x8A: case 0x8B: { /* MOV reg, rm */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		if (op == 0x8B) {
@@ -1043,7 +1039,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 	case 0x8C: { /* MOV rm, sreg */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		put16(c, &rm, c->sreg[reg & 3]);
@@ -1058,7 +1054,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 	case 0x8E: { /* MOV sreg, rm */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		c->sreg[reg & 3] = get16(c, &rm);
@@ -1067,7 +1063,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 	case 0x8F: { /* POP rm */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		put16(c, &rm, pop16(c));
@@ -1082,16 +1078,55 @@ enum cpu_stop cpu_step(struct cpu *c)
 		c->r[r] = t;
 		return CPU_OK;
 	}
+	case 0x9A: { /* CALL ptr16:16 */
+		uint16_t off = rd16(c, c->sreg[1], c->ip);
+		uint16_t seg = rd16(c, c->sreg[1], c->ip + 2);
+		c->ip += 4;
+		push16(c, c->sreg[1]); push16(c, c->ip);
+		c->sreg[1] = seg; c->ip = off;
+		return CPU_OK;
+	}
 	case 0x98: c->r[AX] = (uint16_t)(int16_t)(int8_t)c->r[AX]; return CPU_OK; /* CBW */
 	case 0x99: c->r[DX] = (c->r[AX] & 0x8000) ? 0xFFFF : 0; return CPU_OK;    /* CWD */
 	case 0x9C: push16(c, c->flags); return CPU_OK;  /* PUSHF */
 	case 0x9D: c->flags = pop16(c); return CPU_OK;  /* POPF */
-	case 0x9E: c->r[AX] = (uint16_t)((c->r[AX] & 0xFF00) | (c->flags & 0xFF)); return CPU_OK; /* SAHF */
-	case 0x9F: c->flags = (uint16_t)((c->flags & 0xFF00) | (c->r[AX] & 0xFF) | 0x02); return CPU_OK; /* LAHF */
-	case 0xA0: c->r[AX] = (uint16_t)((c->r[AX] & 0xFF00) | rd8(c, override ? override : c->sreg[3], rd16(c, c->sreg[1], c->ip))); c->ip += 2; return CPU_OK; /* MOV AL, moffs */
-	case 0xA1: c->r[AX] = rd16(c, override ? override : c->sreg[3], rd16(c, c->sreg[1], c->ip)); c->ip += 2; return CPU_OK; /* MOV AX, moffs */
-	case 0xA2: wr8(c, override ? override : c->sreg[3], rd16(c, c->sreg[1], c->ip), get8(c, 0)); c->ip += 2; return CPU_OK; /* MOV moffs, AL */
-	case 0xA3: wr16(c, override ? override : c->sreg[3], rd16(c, c->sreg[1], c->ip), c->r[AX]); c->ip += 2; return CPU_OK; /* MOV moffs, AX */
+	case 0x9E: c->flags = (uint16_t)((c->flags & ~0x00D5) | ((c->r[AX] >> 8) & 0xD5) | 0x02); return CPU_OK; /* SAHF */
+	case 0x9F: c->r[AX] = (uint16_t)((c->r[AX] & 0x00FF) | (((c->flags & 0xD5) | 0x02) << 8)); return CPU_OK; /* LAHF */
+	case 0x27: { /* DAA: packed-decimal adjustment after addition. */
+		uint8_t old = get8(c, 0), value = old;
+		int old_cf = (c->flags & FLAG_CF) != 0;
+		int low = (old & 15) > 9 || (c->flags & FLAG_AF);
+		if (low) value = (uint8_t)(value + 6);
+		if (old > 0x99 || old_cf) value = (uint8_t)(value + 0x60);
+		set_cf(c, old > 0x99 || old_cf);
+		set_af(c, low);
+		put8(c, 0, value); cpu_set_flags(c, value, 8);
+		return CPU_OK;
+	}
+	case 0x2F: { /* DAS: decimal adjust AL after subtraction. OF is undefined. */
+		uint8_t old = get8(c, 0), value = old;
+		int old_cf = (c->flags & FLAG_CF) != 0;
+		int adjust_low = (old & 15) > 9 || (c->flags & FLAG_AF);
+		int carry = 0;
+		if (adjust_low) {
+			value = (uint8_t)(value - 6);
+			carry = old_cf || old < 6;
+		}
+		if (old > 0x99 || old_cf) {
+			value = (uint8_t)(value - 0x60);
+			carry = 1;
+		}
+		set_cf(c, carry);
+		if (adjust_low) c->flags |= FLAG_AF;
+		else c->flags &= ~FLAG_AF;
+		put8(c, 0, value);
+		cpu_set_flags(c, value, 8);
+		return CPU_OK;
+	}
+	case 0xA0: c->r[AX] = (uint16_t)((c->r[AX] & 0xFF00) | rd8(c, override >= 0 ? override : c->sreg[3], rd16(c, c->sreg[1], c->ip))); c->ip += 2; return CPU_OK; /* MOV AL, moffs */
+	case 0xA1: c->r[AX] = rd16(c, override >= 0 ? override : c->sreg[3], rd16(c, c->sreg[1], c->ip)); c->ip += 2; return CPU_OK; /* MOV AX, moffs */
+	case 0xA2: wr8(c, override >= 0 ? override : c->sreg[3], rd16(c, c->sreg[1], c->ip), get8(c, 0)); c->ip += 2; return CPU_OK; /* MOV moffs, AL */
+	case 0xA3: wr16(c, override >= 0 ? override : c->sreg[3], rd16(c, c->sreg[1], c->ip), c->r[AX]); c->ip += 2; return CPU_OK; /* MOV moffs, AX */
 	case 0xA8: alu8(c, AND, get8(c, 0), rd8(c, c->sreg[1], c->ip++)); return CPU_OK; /* TEST AL, imm */
 	case 0xA9: alu16(c, AND, c->r[AX], rd16(c, c->sreg[1], c->ip)); c->ip += 2; return CPU_OK; /* TEST AX, imm */
 	case 0xB0: case 0xB1: case 0xB2: case 0xB3: /* MOV r8, imm8 */
@@ -1113,7 +1148,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 	case 0xC4: case 0xC5: { /* LES/LDS */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		c->r[reg] = rd16(c, rm.seg, rm.off);
@@ -1123,7 +1158,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 	case 0xC6: case 0xC7: { /* MOV rm, imm */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		if (op == 0xC7) {
@@ -1176,15 +1211,15 @@ enum cpu_stop cpu_step(struct cpu *c)
 		c->flags = pop16(c);
 		return CPU_IRET;
 	}
-	case 0xD0: case 0xD1: case 0xD2: case 0xD3: { /* shifts by 1, CL, or imm */
+	case 0xC0: case 0xC1: case 0xD0: case 0xD1: case 0xD2: case 0xD3: { /* shifts by 1, CL, or imm */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		int count = (op == 0xD0 || op == 0xD1) ? 1
 		          : (op == 0xD2 || op == 0xD3) ? c->r[CX] : rd8(c, c->sreg[1], c->ip++);
-		if (op == 0xD1 || op == 0xD3) {
+		if (op == 0xC1 || op == 0xD1 || op == 0xD3) {
 			put16(c, &rm, shift16(c, reg, get16(c, &rm), count & 31));
 		} else {
 			put8_rm(c, &rm, shift8(c, reg, get8_rm(c, &rm), count & 31));
@@ -1240,7 +1275,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 	case 0xF6: case 0xF7: { /* the group 3: TEST/NOT/NEG/MUL/IMUL/DIV/IDIV */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		int w = op == 0xF7;
@@ -1359,7 +1394,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 	case 0xFE: { /* INC/DEC rm8 */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		uint8_t v = get8_rm(c, &rm);
@@ -1368,13 +1403,14 @@ enum cpu_stop cpu_step(struct cpu *c)
 		cpu_set_flags(c, r, 8);
 		set_cf(c, cf);
 		set_of(c, reg == 0 ? r == 0x80 : r == 0x7F);
+		set_af(c, reg == 0 ? (v & 15) == 15 : (v & 15) == 0);
 		put8_rm(c, &rm, r);
 		return CPU_OK;
 	}
 	case 0xFF: { /* INC/DEC/CALL/JMP/PUSH rm16 */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override) {
+		if (override >= 0) {
 			rm.seg = override;
 		}
 		switch (reg) {
@@ -1385,6 +1421,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 			cpu_set_flags(c, r, 16);
 			set_cf(c, cf);
 			set_of(c, reg == 0 ? r == 0x8000 : r == 0x7FFF);
+			set_af(c, reg == 0 ? (v & 15) == 15 : (v & 15) == 0);
 			put16(c, &rm, r);
 			break;
 		}

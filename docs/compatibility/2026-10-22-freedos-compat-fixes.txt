@@ -1,0 +1,826 @@
+ManiOS DOS compatibility retest, 2026-10-22
+Local changes atop 5965873; source and kernel hashes in accompanying JSON.
+
+=== MORE-help ===
+ManiOS 0.25.0 / ZKT (ZygKernel Technology)
+Milestone M1: kernel console reached.
+memory: 65020 KiB usable, 15622 frames free
+Milestone M2: memory manager online (self-test passed).
+Milestone M3: interrupts online (PIT timer at 100 Hz).
+Milestone M4: kernel threads online (cooperative + preemptive scheduling, self-test passed).
+ata0: QEMU HARDDISK, 8 MiB, LBA, CHS 16/16/63
+ata0: CHS cross-check passed
+ata0p1: type 0x06, sectors 2048-16383
+cd0: QEMU DVD-ROM, ATAPI, no disc
+fd0: 3.5" 2.88 MB drive, no disk, on the 82077 controller
+pci: 5 devices
+lpt1: parallel port at 0x378, printer ready
+acpi: BOCHS, PM1a at 0x604, S5 found, reset by keyboard controller
+fb: Bochs VBE at pci 00:02.0, framebuffer 0xfd000000, 16384 KiB
+rtc: 2026-10-22 13:52:02 UTC
+Milestone M5: driver framework online (keyboard + serial console input, mutex self-test passed).
+Milestone M6: ATA storage driver online.
+devices: cons com1 vga null sysname sysstat ps kbd mouse ata0 ata0p1 cd0 fd0 beep lpt1 nvram power fb fbctl time
+ata0p1: FAT16, 7 MiB, mounted at /n/ata0p1
+cd0: the disc in the drive, mounted at /n/cd0
+Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed).
+Hello from ManiOS userspace!
+Hello from ManiOS userspace!
+fault[5]: killed: Page fault at 0x00000000
+fault[6]: killed: Page fault at 0xc0100000
+fault[7]: killed: Page fault at 0xc0100000
+fault[8]: killed: Page fault at 0x080480b8
+fault[9]: killed: Page fault at 0xbffffff0
+fault[10]: killed: Page fault at 0xbffeeea0
+fault[11]: killed: General protection fault
+fault[12]: killed: General protection fault
+fault[13]: killed: General protection fault
+fault[14]: killed: Divide-by-zero
+Hello from ManiOS userspace!
+fault[20]: killed: Page fault at 0x0804b000
+utest: all 138 checks passed
+Milestone M8: userspace online (ring 3 processes, system calls; self-test passed).
+abort
+assertion failed: argc == 99, userland/test/fault.c:64
+abort
+ctest: all 104 checks passed
+Milestone M9: libc, ABI v2 and shell online (self-test passed).
+Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed).
+gtest: all 27 checks passed
+Milestone M11: graphics online (framebuffer, 2D library; self-test passed).
+ztest: all 30 checks passed
+Milestone M12: pipes, input devices and userspace file servers online (self-test passed).
+cltest: all 27 checks passed
+Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; self-test passed).
+ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
+manios% cd /n/ata0p1
+manios% dosrun C:/MORE.EXE /?
+manios% 
+=== MORE-short-file ===
+ManiOS 0.25.0 / ZKT (ZygKernel Technology)
+Milestone M1: kernel console reached.
+memory: 65020 KiB usable, 15622 frames free
+Milestone M2: memory manager online (self-test passed).
+Milestone M3: interrupts online (PIT timer at 100 Hz).
+Milestone M4: kernel threads online (cooperative + preemptive scheduling, self-test passed).
+ata0: QEMU HARDDISK, 8 MiB, LBA, CHS 16/16/63
+ata0: CHS cross-check passed
+ata0p1: type 0x06, sectors 2048-16383
+cd0: QEMU DVD-ROM, ATAPI, no disc
+fd0: 3.5" 2.88 MB drive, no disk, on the 82077 controller
+pci: 5 devices
+lpt1: parallel port at 0x378, printer ready
+acpi: BOCHS, PM1a at 0x604, S5 found, reset by keyboard controller
+fb: Bochs VBE at pci 00:02.0, framebuffer 0xfd000000, 16384 KiB
+rtc: 2026-10-22 13:52:06 UTC
+Milestone M5: driver framework online (keyboard + serial console input, mutex self-test passed).
+Milestone M6: ATA storage driver online.
+devices: cons com1 vga null sysname sysstat ps kbd mouse ata0 ata0p1 cd0 fd0 beep lpt1 nvram power fb fbctl time
+ata0p1: FAT16, 7 MiB, mounted at /n/ata0p1
+cd0: the disc in the drive, mounted at /n/cd0
+Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed).
+Hello from ManiOS userspace!
+Hello from ManiOS userspace!
+fault[5]: killed: Page fault at 0x00000000
+fault[6]: killed: Page fault at 0xc0100000
+fault[7]: killed: Page fault at 0xc0100000
+fault[8]: killed: Page fault at 0x080480b8
+fault[9]: killed: Page fault at 0xbffffff0
+fault[10]: killed: Page fault at 0xbffeeea0
+fault[11]: killed: General protection fault
+fault[12]: killed: General protection fault
+fault[13]: killed: General protection fault
+fault[14]: killed: Divide-by-zero
+Hello from ManiOS userspace!
+fault[20]: killed: Page fault at 0x0804b000
+utest: all 138 checks passed
+Milestone M8: userspace online (ring 3 processes, system calls; self-test passed).
+abort
+assertion failed: argc == 99, userland/test/fault.c:64
+abort
+ctest: all 104 checks passed
+Milestone M9: libc, ABI v2 and shell online (self-test passed).
+Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed).
+gtest: all 27 checks passed
+Milestone M11: graphics online (framebuffer, 2D library; self-test passed).
+ztest: all 30 checks passed
+Milestone M12: pipes, input devices and userspace file servers online (self-test passed).
+cltest: all 27 checks passed
+Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; self-test passed).
+ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
+manios% cd /n/ata0p1
+manios% dosrun C:/MORE.EXE C:/INPUT.TXT
+manios% 
+=== FC-equal ===
+ManiOS 0.25.0 / ZKT (ZygKernel Technology)
+Milestone M1: kernel console reached.
+memory: 65020 KiB usable, 15622 frames free
+Milestone M2: memory manager online (self-test passed).
+Milestone M3: interrupts online (PIT timer at 100 Hz).
+Milestone M4: kernel threads online (cooperative + preemptive scheduling, self-test passed).
+ata0: QEMU HARDDISK, 8 MiB, LBA, CHS 16/16/63
+ata0: CHS cross-check passed
+ata0p1: type 0x06, sectors 2048-16383
+cd0: QEMU DVD-ROM, ATAPI, no disc
+fd0: 3.5" 2.88 MB drive, no disk, on the 82077 controller
+pci: 5 devices
+lpt1: parallel port at 0x378, printer ready
+acpi: BOCHS, PM1a at 0x604, S5 found, reset by keyboard controller
+fb: Bochs VBE at pci 00:02.0, framebuffer 0xfd000000, 16384 KiB
+rtc: 2026-10-22 13:52:12 UTC
+Milestone M5: driver framework online (keyboard + serial console input, mutex self-test passed).
+Milestone M6: ATA storage driver online.
+devices: cons com1 vga null sysname sysstat ps kbd mouse ata0 ata0p1 cd0 fd0 beep lpt1 nvram power fb fbctl time
+ata0p1: FAT16, 7 MiB, mounted at /n/ata0p1
+cd0: the disc in the drive, mounted at /n/cd0
+Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed).
+Hello from ManiOS userspace!
+Hello from ManiOS userspace!
+fault[5]: killed: Page fault at 0x00000000
+fault[6]: killed: Page fault at 0xc0100000
+fault[7]: killed: Page fault at 0xc0100000
+fault[8]: killed: Page fault at 0x080480b8
+fault[9]: killed: Page fault at 0xbffffff0
+fault[10]: killed: Page fault at 0xbffeeea0
+fault[11]: killed: General protection fault
+fault[12]: killed: General protection fault
+fault[13]: killed: General protection fault
+fault[14]: killed: Divide-by-zero
+Hello from ManiOS userspace!
+fault[20]: killed: Page fault at 0x0804b000
+utest: all 138 checks passed
+Milestone M8: userspace online (ring 3 processes, system calls; self-test passed).
+abort
+assertion failed: argc == 99, userland/test/fault.c:64
+abort
+ctest: all 104 checks passed
+Milestone M9: libc, ABI v2 and shell online (self-test passed).
+Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed).
+gtest: all 27 checks passed
+Milestone M11: graphics online (framebuffer, 2D library; self-test passed).
+ztest: all 30 checks passed
+Milestone M12: pipes, input devices and userspace file servers online (self-test passed).
+cltest: all 27 checks passed
+Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; self-test passed).
+ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
+manios% cd /n/ata0p1
+manios% dosrun C:/FC.EXE C:/INPUT.TXT C:/INPUT.TXT
+
+=== FC-different ===
+ManiOS 0.25.0 / ZKT (ZygKernel Technology)
+Milestone M1: kernel console reached.
+memory: 65020 KiB usable, 15622 frames free
+Milestone M2: memory manager online (self-test passed).
+Milestone M3: interrupts online (PIT timer at 100 Hz).
+Milestone M4: kernel threads online (cooperative + preemptive scheduling, self-test passed).
+ata0: QEMU HARDDISK, 8 MiB, LBA, CHS 16/16/63
+ata0: CHS cross-check passed
+ata0p1: type 0x06, sectors 2048-16383
+cd0: QEMU DVD-ROM, ATAPI, no disc
+fd0: 3.5" 2.88 MB drive, no disk, on the 82077 controller
+pci: 5 devices
+lpt1: parallel port at 0x378, printer ready
+acpi: BOCHS, PM1a at 0x604, S5 found, reset by keyboard controller
+fb: Bochs VBE at pci 00:02.0, framebuffer 0xfd000000, 16384 KiB
+rtc: 2026-10-22 13:52:22 UTC
+Milestone M5: driver framework online (keyboard + serial console input, mutex self-test passed).
+Milestone M6: ATA storage driver online.
+devices: cons com1 vga null sysname sysstat ps kbd mouse ata0 ata0p1 cd0 fd0 beep lpt1 nvram power fb fbctl time
+ata0p1: FAT16, 7 MiB, mounted at /n/ata0p1
+cd0: the disc in the drive, mounted at /n/cd0
+Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed).
+Hello from ManiOS userspace!
+Hello from ManiOS userspace!
+fault[5]: killed: Page fault at 0x00000000
+fault[6]: killed: Page fault at 0xc0100000
+fault[7]: killed: Page fault at 0xc0100000
+fault[8]: killed: Page fault at 0x080480b8
+fault[9]: killed: Page fault at 0xbffffff0
+fault[10]: killed: Page fault at 0xbffeeea0
+fault[11]: killed: General protection fault
+fault[12]: killed: General protection fault
+fault[13]: killed: General protection fault
+fault[14]: killed: Divide-by-zero
+Hello from ManiOS userspace!
+fault[20]: killed: Page fault at 0x0804b000
+utest: all 138 checks passed
+Milestone M8: userspace online (ring 3 processes, system calls; self-test passed).
+abort
+assertion failed: argc == 99, userland/test/fault.c:64
+abort
+ctest: all 104 checks passed
+Milestone M9: libc, ABI v2 and shell online (self-test passed).
+Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed).
+gtest: all 27 checks passed
+Milestone M11: graphics online (framebuffer, 2D library; self-test passed).
+ztest: all 30 checks passed
+Milestone M12: pipes, input devices and userspace file servers online (self-test passed).
+cltest: all 27 checks passed
+Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; self-test passed).
+ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
+manios% cd /n/ata0p1
+manios% dosrun C:/FC.EXE C:/INPUT.TXT C:/OTHER.TXT
+
+=== FDBANNER-display ===
+ManiOS 0.25.0 / ZKT (ZygKernel Technology)
+Milestone M1: kernel console reached.
+memory: 65020 KiB usable, 15622 frames free
+Milestone M2: memory manager online (self-test passed).
+Milestone M3: interrupts online (PIT timer at 100 Hz).
+Milestone M4: kernel threads online (cooperative + preemptive scheduling, self-test passed).
+ata0: QEMU HARDDISK, 8 MiB, LBA, CHS 16/16/63
+ata0: CHS cross-check passed
+ata0p1: type 0x06, sectors 2048-16383
+cd0: QEMU DVD-ROM, ATAPI, no disc
+fd0: 3.5" 2.88 MB drive, no disk, on the 82077 controller
+pci: 5 devices
+lpt1: parallel port at 0x378, printer ready
+acpi: BOCHS, PM1a at 0x604, S5 found, reset by keyboard controller
+fb: Bochs VBE at pci 00:02.0, framebuffer 0xfd000000, 16384 KiB
+rtc: 2026-10-22 13:52:34 UTC
+Milestone M5: driver framework online (keyboard + serial console input, mutex self-test passed).
+Milestone M6: ATA storage driver online.
+devices: cons com1 vga null sysname sysstat ps kbd mouse ata0 ata0p1 cd0 fd0 beep lpt1 nvram power fb fbctl time
+ata0p1: FAT16, 7 MiB, mounted at /n/ata0p1
+cd0: the disc in the drive, mounted at /n/cd0
+Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed).
+Hello from ManiOS userspace!
+Hello from ManiOS userspace!
+fault[5]: killed: Page fault at 0x00000000
+fault[6]: killed: Page fault at 0xc0100000
+fault[7]: killed: Page fault at 0xc0100000
+fault[8]: killed: Page fault at 0x080480b8
+fault[9]: killed: Page fault at 0xbffffff0
+fault[10]: killed: Page fault at 0xbffeeea0
+fault[11]: killed: General protection fault
+fault[12]: killed: General protection fault
+fault[13]: killed: General protection fault
+fault[14]: killed: Divide-by-zero
+Hello from ManiOS userspace!
+fault[20]: killed: Page fault at 0x0804b000
+utest: all 138 checks passed
+Milestone M8: userspace online (ring 3 processes, system calls; self-test passed).
+abort
+assertion failed: argc == 99, userland/test/fault.c:64
+abort
+ctest: all 104 checks passed
+Milestone M9: libc, ABI v2 and shell online (self-test passed).
+Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed).
+gtest: all 27 checks passed
+Milestone M11: graphics online (framebuffer, 2D library; self-test passed).
+ztest: all 30 checks passed
+Milestone M12: pipes, input devices and userspace file servers online (self-test passed).
+cltest: all 27 checks passed
+Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; self-test passed).
+ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
+manios% cd /n/ata0p1
+manios% dosrun C:/FDBANNER.COM
+
+
+
+
+
+
+
+
+
+
+
+
+manios% 
+=== B64-help ===
+ManiOS 0.25.0 / ZKT (ZygKernel Technology)
+Milestone M1: kernel console reached.
+memory: 65020 KiB usable, 15622 frames free
+Milestone M2: memory manager online (self-test passed).
+Milestone M3: interrupts online (PIT timer at 100 Hz).
+Milestone M4: kernel threads online (cooperative + preemptive scheduling, self-test passed).
+ata0: QEMU HARDDISK, 8 MiB, LBA, CHS 16/16/63
+ata0: CHS cross-check passed
+ata0p1: type 0x06, sectors 2048-16383
+cd0: QEMU DVD-ROM, ATAPI, no disc
+fd0: 3.5" 2.88 MB drive, no disk, on the 82077 controller
+pci: 5 devices
+lpt1: parallel port at 0x378, printer ready
+acpi: BOCHS, PM1a at 0x604, S5 found, reset by keyboard controller
+fb: Bochs VBE at pci 00:02.0, framebuffer 0xfd000000, 16384 KiB
+rtc: 2026-10-22 13:52:40 UTC
+Milestone M5: driver framework online (keyboard + serial console input, mutex self-test passed).
+Milestone M6: ATA storage driver online.
+devices: cons com1 vga null sysname sysstat ps kbd mouse ata0 ata0p1 cd0 fd0 beep lpt1 nvram power fb fbctl time
+ata0p1: FAT16, 7 MiB, mounted at /n/ata0p1
+cd0: the disc in the drive, mounted at /n/cd0
+Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed).
+Hello from ManiOS userspace!
+Hello from ManiOS userspace!
+fault[5]: killed: Page fault at 0x00000000
+fault[6]: killed: Page fault at 0xc0100000
+fault[7]: killed: Page fault at 0xc0100000
+fault[8]: killed: Page fault at 0x080480b8
+fault[9]: killed: Page fault at 0xbffffff0
+fault[10]: killed: Page fault at 0xbffeeea0
+fault[11]: killed: General protection fault
+fault[12]: killed: General protection fault
+fault[13]: killed: General protection fault
+fault[14]: killed: Divide-by-zero
+Hello from ManiOS userspace!
+fault[20]: killed: Page fault at 0x0804b000
+utest: all 138 checks passed
+Milestone M8: userspace online (ring 3 processes, system calls; self-test passed).
+abort
+assertion failed: argc == 99, userland/test/fault.c:64
+abort
+ctest: all 104 checks passed
+Milestone M9: libc, ABI v2 and shell online (self-test passed).
+Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed).
+gtest: all 27 checks passed
+Milestone M11: graphics online (framebuffer, 2D library; self-test passed).
+ztest: all 30 checks passed
+Milestone M12: pipes, input devices and userspace file servers online (self-test passed).
+cltest: all 27 checks passed
+Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; self-test passed).
+ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
+manios% cd /n/ata0p1
+manios% dosrun C:/B64.EXE /?
+ERROR: NULL pointermanios% 
+=== B64-encode ===
+ManiOS 0.25.0 / ZKT (ZygKernel Technology)
+Milestone M1: kernel console reached.
+memory: 65020 KiB usable, 15622 frames free
+Milestone M2: memory manager online (self-test passed).
+Milestone M3: interrupts online (PIT timer at 100 Hz).
+Milestone M4: kernel threads online (cooperative + preemptive scheduling, self-test passed).
+ata0: QEMU HARDDISK, 8 MiB, LBA, CHS 16/16/63
+ata0: CHS cross-check passed
+ata0p1: type 0x06, sectors 2048-16383
+cd0: QEMU DVD-ROM, ATAPI, no disc
+fd0: 3.5" 2.88 MB drive, no disk, on the 82077 controller
+pci: 5 devices
+lpt1: parallel port at 0x378, printer ready
+acpi: BOCHS, PM1a at 0x604, S5 found, reset by keyboard controller
+fb: Bochs VBE at pci 00:02.0, framebuffer 0xfd000000, 16384 KiB
+rtc: 2026-10-22 13:52:46 UTC
+Milestone M5: driver framework online (keyboard + serial console input, mutex self-test passed).
+Milestone M6: ATA storage driver online.
+devices: cons com1 vga null sysname sysstat ps kbd mouse ata0 ata0p1 cd0 fd0 beep lpt1 nvram power fb fbctl time
+ata0p1: FAT16, 7 MiB, mounted at /n/ata0p1
+cd0: the disc in the drive, mounted at /n/cd0
+Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed).
+Hello from ManiOS userspace!
+Hello from ManiOS userspace!
+fault[5]: killed: Page fault at 0x00000000
+fault[6]: killed: Page fault at 0xc0100000
+fault[7]: killed: Page fault at 0xc0100000
+fault[8]: killed: Page fault at 0x080480b8
+fault[9]: killed: Page fault at 0xbffffff0
+fault[10]: killed: Page fault at 0xbffeeea0
+fault[11]: killed: General protection fault
+fault[12]: killed: General protection fault
+fault[13]: killed: General protection fault
+fault[14]: killed: Divide-by-zero
+Hello from ManiOS userspace!
+fault[20]: killed: Page fault at 0x0804b000
+utest: all 138 checks passed
+Milestone M8: userspace online (ring 3 processes, system calls; self-test passed).
+abort
+assertion failed: argc == 99, userland/test/fault.c:64
+abort
+ctest: all 104 checks passed
+Milestone M9: libc, ABI v2 and shell online (self-test passed).
+Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed).
+gtest: all 27 checks passed
+Milestone M11: graphics online (framebuffer, 2D library; self-test passed).
+ztest: all 30 checks passed
+Milestone M12: pipes, input devices and userspace file servers online (self-test passed).
+cltest: all 27 checks passed
+Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; self-test passed).
+ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
+manios% cd /n/ata0p1
+manios% dosrun C:/B64.EXE -e C:/RAW.TXT C:/ENC.TXT
+ERROR: NULL pointermanios% cat /n/ata0p1/enc.txt
+cat: /n/ata0p1/enc.txt: no such file or directory
+manios% 
+=== BSUM-text ===
+ManiOS 0.25.0 / ZKT (ZygKernel Technology)
+Milestone M1: kernel console reached.
+memory: 65020 KiB usable, 15622 frames free
+Milestone M2: memory manager online (self-test passed).
+Milestone M3: interrupts online (PIT timer at 100 Hz).
+Milestone M4: kernel threads online (cooperative + preemptive scheduling, self-test passed).
+ata0: QEMU HARDDISK, 8 MiB, LBA, CHS 16/16/63
+ata0: CHS cross-check passed
+ata0p1: type 0x06, sectors 2048-16383
+cd0: QEMU DVD-ROM, ATAPI, no disc
+fd0: 3.5" 2.88 MB drive, no disk, on the 82077 controller
+pci: 5 devices
+lpt1: parallel port at 0x378, printer ready
+acpi: BOCHS, PM1a at 0x604, S5 found, reset by keyboard controller
+fb: Bochs VBE at pci 00:02.0, framebuffer 0xfd000000, 16384 KiB
+rtc: 2026-10-22 13:52:52 UTC
+Milestone M5: driver framework online (keyboard + serial console input, mutex self-test passed).
+Milestone M6: ATA storage driver online.
+devices: cons com1 vga null sysname sysstat ps kbd mouse ata0 ata0p1 cd0 fd0 beep lpt1 nvram power fb fbctl time
+ata0p1: FAT16, 7 MiB, mounted at /n/ata0p1
+cd0: the disc in the drive, mounted at /n/cd0
+Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed).
+Hello from ManiOS userspace!
+Hello from ManiOS userspace!
+fault[5]: killed: Page fault at 0x00000000
+fault[6]: killed: Page fault at 0xc0100000
+fault[7]: killed: Page fault at 0xc0100000
+fault[8]: killed: Page fault at 0x080480b8
+fault[9]: killed: Page fault at 0xbffffff0
+fault[10]: killed: Page fault at 0xbffeeea0
+fault[11]: killed: General protection fault
+fault[12]: killed: General protection fault
+fault[13]: killed: General protection fault
+fault[14]: killed: Divide-by-zero
+Hello from ManiOS userspace!
+fault[20]: killed: Page fault at 0x0804b000
+utest: all 138 checks passed
+Milestone M8: userspace online (ring 3 processes, system calls; self-test passed).
+abort
+assertion failed: argc == 99, userland/test/fault.c:64
+abort
+ctest: all 104 checks passed
+Milestone M9: libc, ABI v2 and shell online (self-test passed).
+Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed).
+gtest: all 27 checks passed
+Milestone M11: graphics online (framebuffer, 2D library; self-test passed).
+ztest: all 30 checks passed
+Milestone M12: pipes, input devices and userspace file servers online (self-test passed).
+cltest: all 27 checks passed
+Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; self-test passed).
+ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
+manios% cd /n/ata0p1
+manios% dosrun C:/BSUM.COM C:/INPUT.TXT
+3C36
+manios% 
+=== BSUM-modified ===
+ManiOS 0.25.0 / ZKT (ZygKernel Technology)
+Milestone M1: kernel console reached.
+memory: 65020 KiB usable, 15622 frames free
+Milestone M2: memory manager online (self-test passed).
+Milestone M3: interrupts online (PIT timer at 100 Hz).
+Milestone M4: kernel threads online (cooperative + preemptive scheduling, self-test passed).
+ata0: QEMU HARDDISK, 8 MiB, LBA, CHS 16/16/63
+ata0: CHS cross-check passed
+ata0p1: type 0x06, sectors 2048-16383
+cd0: QEMU DVD-ROM, ATAPI, no disc
+fd0: 3.5" 2.88 MB drive, no disk, on the 82077 controller
+pci: 5 devices
+lpt1: parallel port at 0x378, printer ready
+acpi: BOCHS, PM1a at 0x604, S5 found, reset by keyboard controller
+fb: Bochs VBE at pci 00:02.0, framebuffer 0xfd000000, 16384 KiB
+rtc: 2026-10-22 13:52:58 UTC
+Milestone M5: driver framework online (keyboard + serial console input, mutex self-test passed).
+Milestone M6: ATA storage driver online.
+devices: cons com1 vga null sysname sysstat ps kbd mouse ata0 ata0p1 cd0 fd0 beep lpt1 nvram power fb fbctl time
+ata0p1: FAT16, 7 MiB, mounted at /n/ata0p1
+cd0: the disc in the drive, mounted at /n/cd0
+Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed).
+Hello from ManiOS userspace!
+Hello from ManiOS userspace!
+fault[5]: killed: Page fault at 0x00000000
+fault[6]: killed: Page fault at 0xc0100000
+fault[7]: killed: Page fault at 0xc0100000
+fault[8]: killed: Page fault at 0x080480b8
+fault[9]: killed: Page fault at 0xbffffff0
+fault[10]: killed: Page fault at 0xbffeeea0
+fault[11]: killed: General protection fault
+fault[12]: killed: General protection fault
+fault[13]: killed: General protection fault
+fault[14]: killed: Divide-by-zero
+Hello from ManiOS userspace!
+fault[20]: killed: Page fault at 0x0804b000
+utest: all 138 checks passed
+Milestone M8: userspace online (ring 3 processes, system calls; self-test passed).
+abort
+assertion failed: argc == 99, userland/test/fault.c:64
+abort
+ctest: all 104 checks passed
+Milestone M9: libc, ABI v2 and shell online (self-test passed).
+Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed).
+gtest: all 27 checks passed
+Milestone M11: graphics online (framebuffer, 2D library; self-test passed).
+ztest: all 30 checks passed
+Milestone M12: pipes, input devices and userspace file servers online (self-test passed).
+cltest: all 27 checks passed
+Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; self-test passed).
+ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
+manios% cd /n/ata0p1
+manios% dosrun C:/BSUM.COM C:/OTHER.TXT
+2C14
+manios% 
+=== BSUM-empty ===
+ManiOS 0.25.0 / ZKT (ZygKernel Technology)
+Milestone M1: kernel console reached.
+memory: 65020 KiB usable, 15622 frames free
+Milestone M2: memory manager online (self-test passed).
+Milestone M3: interrupts online (PIT timer at 100 Hz).
+Milestone M4: kernel threads online (cooperative + preemptive scheduling, self-test passed).
+ata0: QEMU HARDDISK, 8 MiB, LBA, CHS 16/16/63
+ata0: CHS cross-check passed
+ata0p1: type 0x06, sectors 2048-16383
+cd0: QEMU DVD-ROM, ATAPI, no disc
+fd0: 3.5" 2.88 MB drive, no disk, on the 82077 controller
+pci: 5 devices
+lpt1: parallel port at 0x378, printer ready
+acpi: BOCHS, PM1a at 0x604, S5 found, reset by keyboard controller
+fb: Bochs VBE at pci 00:02.0, framebuffer 0xfd000000, 16384 KiB
+rtc: 2026-10-22 13:53:03 UTC
+Milestone M5: driver framework online (keyboard + serial console input, mutex self-test passed).
+Milestone M6: ATA storage driver online.
+devices: cons com1 vga null sysname sysstat ps kbd mouse ata0 ata0p1 cd0 fd0 beep lpt1 nvram power fb fbctl time
+ata0p1: FAT16, 7 MiB, mounted at /n/ata0p1
+cd0: the disc in the drive, mounted at /n/cd0
+Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed).
+Hello from ManiOS userspace!
+Hello from ManiOS userspace!
+fault[5]: killed: Page fault at 0x00000000
+fault[6]: killed: Page fault at 0xc0100000
+fault[7]: killed: Page fault at 0xc0100000
+fault[8]: killed: Page fault at 0x080480b8
+fault[9]: killed: Page fault at 0xbffffff0
+fault[10]: killed: Page fault at 0xbffeeea0
+fault[11]: killed: General protection fault
+fault[12]: killed: General protection fault
+fault[13]: killed: General protection fault
+fault[14]: killed: Divide-by-zero
+Hello from ManiOS userspace!
+fault[20]: killed: Page fault at 0x0804b000
+utest: all 138 checks passed
+Milestone M8: userspace online (ring 3 processes, system calls; self-test passed).
+abort
+assertion failed: argc == 99, userland/test/fault.c:64
+abort
+ctest: all 104 checks passed
+Milestone M9: libc, ABI v2 and shell online (self-test passed).
+Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed).
+gtest: all 27 checks passed
+Milestone M11: graphics online (framebuffer, 2D library; self-test passed).
+ztest: all 30 checks passed
+Milestone M12: pipes, input devices and userspace file servers online (self-test passed).
+cltest: all 27 checks passed
+Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; self-test passed).
+ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
+manios% cd /n/ata0p1
+manios% dosrun C:/BSUM.COM C:/EMPTY.TXT
+0000
+manios% 
+=== BSUM-binary-multiblock ===
+ManiOS 0.25.0 / ZKT (ZygKernel Technology)
+Milestone M1: kernel console reached.
+memory: 65020 KiB usable, 15622 frames free
+Milestone M2: memory manager online (self-test passed).
+Milestone M3: interrupts online (PIT timer at 100 Hz).
+Milestone M4: kernel threads online (cooperative + preemptive scheduling, self-test passed).
+ata0: QEMU HARDDISK, 8 MiB, LBA, CHS 16/16/63
+ata0: CHS cross-check passed
+ata0p1: type 0x06, sectors 2048-16383
+cd0: QEMU DVD-ROM, ATAPI, no disc
+fd0: 3.5" 2.88 MB drive, no disk, on the 82077 controller
+pci: 5 devices
+lpt1: parallel port at 0x378, printer ready
+acpi: BOCHS, PM1a at 0x604, S5 found, reset by keyboard controller
+fb: Bochs VBE at pci 00:02.0, framebuffer 0xfd000000, 16384 KiB
+rtc: 2026-10-22 13:53:41 UTC
+Milestone M5: driver framework online (keyboard + serial console input, mutex self-test passed).
+Milestone M6: ATA storage driver online.
+devices: cons com1 vga null sysname sysstat ps kbd mouse ata0 ata0p1 cd0 fd0 beep lpt1 nvram power fb fbctl time
+ata0p1: FAT16, 7 MiB, mounted at /n/ata0p1
+cd0: the disc in the drive, mounted at /n/cd0
+Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed).
+Hello from ManiOS userspace!
+Hello from ManiOS userspace!
+fault[5]: killed: Page fault at 0x00000000
+fault[6]: killed: Page fault at 0xc0100000
+fault[7]: killed: Page fault at 0xc0100000
+fault[8]: killed: Page fault at 0x080480b8
+fault[9]: killed: Page fault at 0xbffffff0
+fault[10]: killed: Page fault at 0xbffeeea0
+fault[11]: killed: General protection fault
+fault[12]: killed: General protection fault
+fault[13]: killed: General protection fault
+fault[14]: killed: Divide-by-zero
+Hello from ManiOS userspace!
+fault[20]: killed: Page fault at 0x0804b000
+utest: all 138 checks passed
+Milestone M8: userspace online (ring 3 processes, system calls; self-test passed).
+abort
+assertion failed: argc == 99, userland/test/fault.c:64
+abort
+ctest: all 104 checks passed
+Milestone M9: libc, ABI v2 and shell online (self-test passed).
+Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed).
+gtest: all 27 checks passed
+Milestone M11: graphics online (framebuffer, 2D library; self-test passed).
+ztest: all 30 checks passed
+Milestone M12: pipes, input devices and userspace file servers online (self-test passed).
+cltest: all 27 checks passed
+Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; self-test passed).
+ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
+manios% cd /n/ata0p1
+manios% dosrun C:/BSUM.COM C:/BINARY.DAT
+A000
+manios% 
+=== BSUM-missing ===
+ManiOS 0.25.0 / ZKT (ZygKernel Technology)
+Milestone M1: kernel console reached.
+memory: 65020 KiB usable, 15622 frames free
+Milestone M2: memory manager online (self-test passed).
+Milestone M3: interrupts online (PIT timer at 100 Hz).
+Milestone M4: kernel threads online (cooperative + preemptive scheduling, self-test passed).
+ata0: QEMU HARDDISK, 8 MiB, LBA, CHS 16/16/63
+ata0: CHS cross-check passed
+ata0p1: type 0x06, sectors 2048-16383
+cd0: QEMU DVD-ROM, ATAPI, no disc
+fd0: 3.5" 2.88 MB drive, no disk, on the 82077 controller
+pci: 5 devices
+lpt1: parallel port at 0x378, printer ready
+acpi: BOCHS, PM1a at 0x604, S5 found, reset by keyboard controller
+fb: Bochs VBE at pci 00:02.0, framebuffer 0xfd000000, 16384 KiB
+rtc: 2026-10-22 13:53:47 UTC
+Milestone M5: driver framework online (keyboard + serial console input, mutex self-test passed).
+Milestone M6: ATA storage driver online.
+devices: cons com1 vga null sysname sysstat ps kbd mouse ata0 ata0p1 cd0 fd0 beep lpt1 nvram power fb fbctl time
+ata0p1: FAT16, 7 MiB, mounted at /n/ata0p1
+cd0: the disc in the drive, mounted at /n/cd0
+Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed).
+Hello from ManiOS userspace!
+Hello from ManiOS userspace!
+fault[5]: killed: Page fault at 0x00000000
+fault[6]: killed: Page fault at 0xc0100000
+fault[7]: killed: Page fault at 0xc0100000
+fault[8]: killed: Page fault at 0x080480b8
+fault[9]: killed: Page fault at 0xbffffff0
+fault[10]: killed: Page fault at 0xbffeeea0
+fault[11]: killed: General protection fault
+fault[12]: killed: General protection fault
+fault[13]: killed: General protection fault
+fault[14]: killed: Divide-by-zero
+Hello from ManiOS userspace!
+fault[20]: killed: Page fault at 0x0804b000
+utest: all 138 checks passed
+Milestone M8: userspace online (ring 3 processes, system calls; self-test passed).
+abort
+assertion failed: argc == 99, userland/test/fault.c:64
+abort
+ctest: all 104 checks passed
+Milestone M9: libc, ABI v2 and shell online (self-test passed).
+Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed).
+gtest: all 27 checks passed
+Milestone M11: graphics online (framebuffer, 2D library; self-test passed).
+ztest: all 30 checks passed
+Milestone M12: pipes, input devices and userspace file servers online (self-test passed).
+cltest: all 27 checks passed
+Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; self-test passed).
+ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
+manios% cd /n/ata0p1
+manios% dosrun C:/BSUM.COM C:/MISSING.TXT
+ERROR
+manios% 
+=== BSUM-no-arguments ===
+ManiOS 0.25.0 / ZKT (ZygKernel Technology)
+Milestone M1: kernel console reached.
+memory: 65020 KiB usable, 15622 frames free
+Milestone M2: memory manager online (self-test passed).
+Milestone M3: interrupts online (PIT timer at 100 Hz).
+Milestone M4: kernel threads online (cooperative + preemptive scheduling, self-test passed).
+ata0: QEMU HARDDISK, 8 MiB, LBA, CHS 16/16/63
+ata0: CHS cross-check passed
+ata0p1: type 0x06, sectors 2048-16383
+cd0: QEMU DVD-ROM, ATAPI, no disc
+fd0: 3.5" 2.88 MB drive, no disk, on the 82077 controller
+pci: 5 devices
+lpt1: parallel port at 0x378, printer ready
+acpi: BOCHS, PM1a at 0x604, S5 found, reset by keyboard controller
+fb: Bochs VBE at pci 00:02.0, framebuffer 0xfd000000, 16384 KiB
+rtc: 2026-10-22 13:53:52 UTC
+Milestone M5: driver framework online (keyboard + serial console input, mutex self-test passed).
+Milestone M6: ATA storage driver online.
+devices: cons com1 vga null sysname sysstat ps kbd mouse ata0 ata0p1 cd0 fd0 beep lpt1 nvram power fb fbctl time
+ata0p1: FAT16, 7 MiB, mounted at /n/ata0p1
+cd0: the disc in the drive, mounted at /n/cd0
+Milestone M7: VFS online (namespaces, union directories, FAT; self-test passed).
+Hello from ManiOS userspace!
+Hello from ManiOS userspace!
+fault[5]: killed: Page fault at 0x00000000
+fault[6]: killed: Page fault at 0xc0100000
+fault[7]: killed: Page fault at 0xc0100000
+fault[8]: killed: Page fault at 0x080480b8
+fault[9]: killed: Page fault at 0xbffffff0
+fault[10]: killed: Page fault at 0xbffeeea0
+fault[11]: killed: General protection fault
+fault[12]: killed: General protection fault
+fault[13]: killed: General protection fault
+fault[14]: killed: Divide-by-zero
+Hello from ManiOS userspace!
+fault[20]: killed: Page fault at 0x0804b000
+utest: all 138 checks passed
+Milestone M8: userspace online (ring 3 processes, system calls; self-test passed).
+abort
+assertion failed: argc == 99, userland/test/fault.c:64
+abort
+ctest: all 104 checks passed
+Milestone M9: libc, ABI v2 and shell online (self-test passed).
+Milestone M10: network online (IPv4/UDP, ZRP; loopback self-test passed).
+gtest: all 27 checks passed
+Milestone M11: graphics online (framebuffer, 2D library; self-test passed).
+ztest: all 30 checks passed
+Milestone M12: pipes, input devices and userspace file servers online (self-test passed).
+cltest: all 27 checks passed
+Milestone M13: cluster roles online (authenticated ZRP2, exports, cpu service; self-test passed).
+ManiOS 0.25.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos.
+manios% cd /n/ata0p1
+manios% dosrun C:/BSUM.COM
+bsum v1.1 - computes BSD checksums of files (MIT license)
+Copyright (C) 2017 Mateusz Viste
+
+Usage: bsum file
+manios% 
+=== host-regression ===
+PASS: a .COM prints its string and exits 0
+PASS: a .COM's exit code comes back
+PASS: sub-r16-rm16: result goes to the encoded destination
+PASS: sub-rm16-r16: result goes to the encoded destination
+PASS: sub-r8-rm8: result goes to the encoded destination
+PASS: sub-rm8-r8: result goes to the encoded destination
+PASS: sub-r16-mem: result goes to the encoded destination
+PASS: sub-mem-r16: result goes to the encoded destination
+PASS: sub-r8-mem: result goes to the encoded destination
+PASS: sub-mem-r8: result goes to the encoded destination
+PASS: a loop, INC and LOOP count 0 to 9
+PASS: an .EXE's relocation adds the load segment
+PASS: a multi-segment EXE loads code beyond 64 KiB
+PASS: an older MZ header may encode a complete final page as 512
+PASS: a protected-mode LE EXE is identified before its stub runs
+PASS: a truncated MZ image is rejected instead of silently shortened
+PASS: an LHA installation archive is identified as requiring extraction
+PASS: an instruction it doesn't have is named, not run
+PASS: MOVZX zero-extends a byte
+PASS: SETcc sets a byte from a condition
+PASS: CPUID reports a 486
+PASS: an unsupported DOS service returns carry set after IRET
+PASS: a successful DOS write clears carry after IRET
+PASS: BIOS keyboard polling returns zero set when no key is ready
+PASS: a DOS interrupt preserves the caller's interrupt-enable flag
+PASS: the PSP reports an ending segment with usable conventional memory
+PASS: an empty PSP tail excludes its terminating CR
+PASS: a PSP tail includes the leading space but excludes CR
+PASS: a PSP tail has CR immediately after its counted bytes
+PASS: XMS: allocate, move to it and back
+PASS: EMS: allocate a page and map it
+
+OK: 0 failure(s)
+
+=== string-regression ===
+PASS: byte/word strings, REP/REPE/REPNE, zero counts, direction, segment prefixes, TEST, shifts and DAS
+
+=== dosrun-regression ===
+PASS: dosrun HELLO.COM: a .COM prints its string
+PASS: dosrun with an absolute ManiOS path
+PASS: dosrun DIGITS.COM: a loop, INC and LOOP
+PASS: dosrun HELLO.EXE: an .EXE loads and runs
+PASS: dosrun EXIT7.COM: it runs and returns to the prompt
+PASS: dosrun BAD386.COM: an instruction it can't run is named
+PASS: dosrun MOVZX.COM: a 386 instruction runs
+PASS: dosrun FLAGS.COM: DOS and BIOS results survive IRET
+PASS: a DOS extender is refused with its actual requirement
+PASS: a packed installation file is identified as an archive
+PASS: dosrun with no program: a usage message
+
+OK: 0 failure(s)
+
+=== dos-regression ===
+PASS: dos /C: one command from ManiOS's shell
+PASS: dos /C DRIVES: the drives and where they are
+PASS: dos: the banner, AUTOEXEC.BAT quietly, and the C:\> prompt
+PASS: DIR: the label and serial number from the boot sector, bytes free as mtools says
+PASS: DIR with a pattern, /B, and a pattern matching nothing
+PASS: CD, the prompt following it, CD.. and CD\, and a bad directory
+PASS: TYPE, and TYPE of what isn't a file
+PASS: COPY to CON; what the write commands say before they write
+PASS: drive letters: D:, a drive that isn't there
+PASS: VOL: C:'s label, D:'s serial number
+PASS: CHKDSK C:: a sound disk, its figures as the FAT and mtools have them
+PASS: CHKDSK D:: the faults put there -- cross-link, sizes, a lost chain, FAT copies
+PASS: CHKDSK of the boot disk, which isn't FAT
+PASS: TREE /F
+PASS: FIND, its switches, and its errorlevel
+PASS: SORT from a file, and pipelines
+PASS: MORE: a screen, then Enter for the rest
+PASS: redirection: to NUL, CON, a device, and a file
+PASS: COPY, MD, REN, RD and DEL write to the drive
+PASS: ManiOS programs: DOS paths in their arguments, and their errorlevel
+PASS: what isn't a command, and a DOS program
+PASS: SET, %VARIABLES%, PROMPT and PATH
+PASS: a batch file: parameters, IF, GOTO, SHIFT, FOR, CALL, ERRORLEVEL
+PASS: FOR at the prompt, and ECHO OFF hiding the prompt
+PASS: A:, the boot disk: AUTOEXEC.BAT; Z:, all of ManiOS
+PASS: VER, MEM, DATE, TIME, HELP, TRUENAME
+PASS: EXIT: back to ManiOS
+PASS: what ManiDOS wrote is on C:, as mtools and the FAT see it
+PASS: shell=dos: ManiOS boots into ManiDOS (no FAT disk: A:)
+dos test: all passed
+

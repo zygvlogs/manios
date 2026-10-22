@@ -1,0 +1,10 @@
+Warcraft guest transcript, 2026-10-22
+ManiOS source matching 5965873; QEMU CPU 486, 64 MiB RAM.
+
+manios% dosrun /n/cd0/install.exe
+dosrun: /n/cd0/install.exe: can't run opcode E6 (at 1010:4A4C)
+manios% dosrun /n/cd0/war.exa
+dosrun: /n/cd0/war.exa: LHA archive; extract it before running
+manios% dosrun C:/WAR.EXE
+dosrun: /n/ata0p1/war.exe: requires 32-bit protected mode (LE/LX DOS extender); dosrun supports real mode only
+manios% 

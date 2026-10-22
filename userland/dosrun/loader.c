@@ -108,7 +108,8 @@ int load_program(struct cpu *c, const char *path, const char *tail,
 
 		long file_len = pages ? (long)(pages - 1) * 512 + (len_mod ? len_mod : 512) : 0;
 		long header_len = (long)header_paras * 16;
-		if (!pages || len_mod > 511 || header_len < 28 ||
+		/* Older linkers may encode a full last page as 512, not zero. */
+		if (!pages || len_mod > 512 || header_len < 28 ||
 		    header_len > file_len || file_len > len ||
 		    (reloc_n && (reloc_off < 28 ||
 		                  (long)reloc_off + (long)reloc_n * 4 > header_len))) {

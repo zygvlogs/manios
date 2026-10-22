@@ -368,6 +368,8 @@ test: $(KERNEL) test-images
 	python3 tests/gui_test.py $(KERNEL)
 	python3 tests/dos_test.py $(KERNEL)
 	python3 tests/dosrun_host_test.py
+	python3 tests/dosrun_string_test.py
+	python3 tests/dosrun_runtime_test.py
 	python3 tests/dosrun_test.py $(KERNEL)
 	python3 tests/driver_test.py $(KERNEL)
 	python3 tests/cluster_test.py $(KERNEL)

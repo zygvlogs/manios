@@ -40,6 +40,7 @@ int main(int argc, char **argv)
 	struct dos_state *d = dos_new(&c);
 	dos_set_program(d, 0x1000, 0x1010);
 	dos_build_psp(d);
+	dos_set_tail(d, argc > 2 ? argv[2] : "");
 
 	for (int i = 0; i < 5000000; i++) {
 		enum cpu_stop s = cpu_step(&c);
@@ -88,11 +89,12 @@ def build(workdir):
     return exe
 
 
-def run(exe, workdir, name, data):
+def run(exe, workdir, name, data, tail=None):
     path = os.path.join(workdir, name)
     with open(path, "wb") as f:
         f.write(data)
-    r = subprocess.run([exe, path], capture_output=True, text=True, errors="replace")
+    r = subprocess.run([exe, path] + ([tail] if tail is not None else []),
+                       capture_output=True, text=True, errors="replace")
     return r.stdout
 
 
@@ -189,6 +191,14 @@ def large_exe():
     # Entry point is a second segment, beyond the loader's old 64 KiB cap.
     return mz_image(bytes(65536) + bytes([0xB8, 42, 0x4C, 0xCD, 0x21]),
                     cs=0x1000)
+
+
+def full_page_exe():
+    # Older linkers (including Checks & Balances 4.0g) put 512 in
+    # e_cblp for a complete last page rather than the usual zero.
+    data = bytearray(mz_image(bytes([0xB8, 7, 0x4C, 0xCD, 0x21]) + bytes(475)))
+    struct.pack_into('<H', data, 2, 512)
+    return bytes(data)
 
 
 def protected_exe():
@@ -352,6 +362,23 @@ def main():
     check("a .COM's exit code comes back",
           run(exe, workdir, "exit7.com", exit7_com()),
           "EXIT 7\n")
+    for name, code in [
+        ('sub-r16-rm16', [0xB8, 10, 0, 0xBB, 3, 0, 0x2B, 0xC3]),
+        ('sub-rm16-r16', [0xB8, 10, 0, 0xBB, 3, 0, 0x29, 0xD8]),
+        ('sub-r8-rm8', [0xB0, 10, 0xB3, 3, 0x2A, 0xC3]),
+        ('sub-rm8-r8', [0xB0, 10, 0xB3, 3, 0x28, 0xD8]),
+        ('sub-r16-mem', [0xC7, 6, 0, 2, 3, 0, 0xB8, 10, 0,
+                         0x2B, 6, 0, 2]),
+        ('sub-mem-r16', [0xC7, 6, 0, 2, 10, 0, 0xBB, 3, 0,
+                         0x29, 0x1E, 0, 2, 0xA1, 0, 2]),
+        ('sub-r8-mem', [0xC6, 6, 0, 2, 3, 0xB0, 10,
+                        0x2A, 6, 0, 2]),
+        ('sub-mem-r8', [0xC6, 6, 0, 2, 10, 0xB3, 3,
+                        0x28, 0x1E, 0, 2, 0xA0, 0, 2]),
+    ]:
+        check(name + ': result goes to the encoded destination',
+              run(exe, workdir, name + '.com',
+                  bytes(code + [0xB4, 0x4C, 0xCD, 0x21])), 'EXIT 7\n')
     check("a loop, INC and LOOP count 0 to 9",
           run(exe, workdir, "digits.com", digits_com()),
           "0123456789EXIT 0\n")
@@ -360,6 +387,8 @@ def main():
           "EXIT 16\n")
     check("a multi-segment EXE loads code beyond 64 KiB",
           run(exe, workdir, "large.exe", large_exe()), "EXIT 42\n")
+    check("an older MZ header may encode a complete final page as 512",
+          run(exe, workdir, "fullpage.exe", full_page_exe()), "EXIT 7\n")
     protected = run(exe, workdir, "protected.exe", protected_exe())
     check("a protected-mode LE EXE is identified before its stub runs",
           'LOADFAIL' in protected and 'protected mode' in protected, True)
@@ -396,6 +425,19 @@ def main():
           run(exe, workdir, "iflags.com", interrupt_flags_com(
               [0xFB, 0xB4, 0x30, 0xCD, 0x21, 0x9C, 0x58,
                0x25, 0, 2, 0x3D, 0, 2], 0x74)), "EXIT 0\n")
+    check("the PSP reports an ending segment with usable conventional memory",
+          run(exe, workdir, "pspmem.com", interrupt_flags_com(
+              [0xA1, 2, 0, 0x8C, 0xDB, 0x2B, 0xC3,
+               0x3D, 0, 0x10], 0x73)), "EXIT 0\n")
+    check("an empty PSP tail excludes its terminating CR",
+          run(exe, workdir, "tail.com", interrupt_flags_com(
+              [0x80, 0x3E, 0x80, 0, 0], 0x74)), "EXIT 0\n")
+    check("a PSP tail includes the leading space but excludes CR",
+          run(exe, workdir, "tailarg.com", interrupt_flags_com(
+              [0x80, 0x3E, 0x80, 0, 4], 0x74), "abc"), "EXIT 0\n")
+    check("a PSP tail has CR immediately after its counted bytes",
+          run(exe, workdir, "tailcr.com", interrupt_flags_com(
+              [0x80, 0x3E, 0x85, 0, 13], 0x74), "abc"), "EXIT 0\n")
     check("XMS: allocate, move to it and back",
           run(exe, workdir, "xms.com", xms_com()),
           "XMS OK\nEXIT 0\n")

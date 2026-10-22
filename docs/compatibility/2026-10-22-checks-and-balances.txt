@@ -1,0 +1,34 @@
+Checks & Balances guest transcripts, 2026-10-22
+ManiOS 5965873 plus local EXE-header, arithmetic and PSP fixes.
+QEMU CPU 486, 64 MiB RAM; copied FAT disk in snapshot mode.
+
+Tested source SHA256:
+3bdc2a925533392eeef6ba92ff3dbaf21ad9c23b20652cc6ed77f7fef9470bea  userland/dosrun/cpu.c
+2882cc1b8171f35a2a291f8c017ada229922a681f3c50118281dfef6d91ddbae  userland/dosrun/dosapi.c
+bb28746ad3657049c96107ea80167e2ac9ff0de304e5c1caba85e4b24e711cca  userland/dosrun/loader.c
+
+=== CHECK.EXE ===
+manios% cd /n/ata0p1
+manios% dosrun C:/CHECK.EXE
+dosrun: C:/CHECK.EXE: can't run opcode FF (at 1050:D865)
+manios% 
+
+=== BLUE.EXE ===
+manios% cd /n/ata0p1
+manios% dosrun C:/BLUE.EXE
+
+Insufficient Memory
+
+=== BLACK.EXE ===
+manios% cd /n/ata0p1
+manios% dosrun C:/BLACK.EXE
+
+Insufficient Memory
+
+=== CPMV3TO4.EXE ===
+manios% cd /n/ata0p1
+manios% dosrun C:/CPMV3TO4.EXE
+
+Insufficient Memory
+
+Utility runs stopped after 5 seconds, Enter/Escape input and 3 more seconds.

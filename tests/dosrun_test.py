@@ -133,6 +133,14 @@ def movzx_com():
     return com(bytes(code))
 
 
+def iret_com():
+    # A guest IRET restores its own frame; the runner must not pop it again.
+    code = bytes([0x9C, 0x0E, 0x68, 0x06, 0x01, 0xCF,
+                  0xBA, 0x12, 0x01, 0xB4, 0x09, 0xCD, 0x21,
+                  0xB8, 0, 0x4C, 0xCD, 0x21])
+    return code + b"IRET OK\r\n$"
+
+
 def build_disk(path):
     """An MBR with one FAT16 partition, and the programs on it, built
     with mtools as dos_test.py builds its disk."""
@@ -151,6 +159,7 @@ def build_disk(path):
     put(path, "BAD386.COM", unsupported_com(), srcdir)
     put(path, "MOVZX.COM", movzx_com(), srcdir)
     put(path, "FLAGS.COM", flags_com(), srcdir)
+    put(path, "IRET.COM", iret_com(), srcdir)
     put(path, "EXTENDER.EXE", protected_exe(), srcdir)
     put(path, "PACKED.EXA", b'\x1e\x00-lh5-' + bytes(40), srcdir)
     return srcdir
@@ -201,6 +210,9 @@ def main():
         step("dosrun FLAGS.COM: DOS and BIOS results survive IRET",
              lambda: run_command(m, "serial", "dosrun C:/FLAGS.COM",
                                  ["FLAGS OK"], SHELL_PROMPT))
+        step("a guest IRET restores its frame exactly once",
+             lambda: run_command(m, "serial", "dosrun C:/IRET.COM",
+                                 ["IRET OK"], SHELL_PROMPT))
         step("a DOS extender is refused with its actual requirement",
              lambda: run_command(m, "serial", "dosrun C:/EXTENDER.EXE",
                                  ["requires 32-bit protected mode"], SHELL_PROMPT))

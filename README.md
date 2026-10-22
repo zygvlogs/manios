@@ -160,6 +160,10 @@ and redirection (to a file too), and ManiOS's programs on its PATH.
 `shell=dos` on the boot command line starts ManiOS in it
 ([guide](docs/dos.md)).
 
+DOS executables run through `dosrun`. The [DOS software compatibility
+list](docs/dos-compatibility.md) records tested applications, exact failures,
+test environments and evidence; compatibility is currently experimental.
+
 `fetch` shows the system at a glance and `top` the processes, busiest
 first; both work in any terminal, the text console included, which
 shows ANSI colours since 0.18. The shell does pipelines and redirection
