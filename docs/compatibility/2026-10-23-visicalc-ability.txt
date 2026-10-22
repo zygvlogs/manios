@@ -1,0 +1,44 @@
+ManiOS DOS compatibility: VisiCalc and Ability Plus
+Test date: 2026-10-23
+Source commit: 8446024739140e21e9e884e61cf6656f0bb09845
+Environment: QEMU i386, CPU 486, 64 MiB, fresh FAT16 snapshot per case
+Program observation limit: 12 seconds. All three returned to shell.
+Original files unchanged; application binaries and disk images excluded.
+
+CASE: visicalc
+CWD: /n/ata0p1/vc
+COMMAND: dosrun C:/VC/VC.COM
+dosrun C:/VC/VC.COM
+dosrun: C:/VC/VC.COM: can't run opcode EC (at 1000:6A3E)
+
+CASE: ability
+CWD: /n/ata0p1/ab3
+COMMAND: dosrun C:/AB3/AB30.EXE
+dosrun C:/AB3/AB30.EXE
+dosrun: C:/AB3/AB30.EXE: can't run opcode DB (at 10EA:2582)
+
+CASE: ability-install
+CWD: /n/ata0p1/ab3
+COMMAND: dosrun C:/AB3/INSTALL.EXE
+dosrun C:/AB3/INSTALL.EXE
+dosrun: C:/AB3/INSTALL.EXE: can't run opcode 66 (at 1010:165A)
+
+Diagnostic host probes (instruction bytes after the consumed fault opcode):
+vc/VC.COM
+FAULT opcode EC
+CS=1000 IP=6a3e opcode=ec next=a8 01 75 fb DX=03da AX=7043
+
+ab3/AB30.EXE
+FAULT opcode DB
+CS=10ea IP=2582 opcode=db next=e3 be e0 22 DX=a07c AX=0003
+
+ab3/INSTALL.EXE
+FAULT opcode 66
+CS=1010 IP=165a opcode=66 next=8b d4 83 e4 DX=10ee AX=f000
+
+Interpretation:
+VC.COM: EC = IN AL,DX; DX=03DAh, video input-status register polling. Hardware port I/O is unsupported.
+AB30.EXE: DB E3 = FNINIT, x87 initialization. No x87 emulation exists in this runtime. A later NE header and Phar Lap strings are also present; fixing this first instruction alone would not establish compatibility.
+INSTALL.EXE: 66 8B D4 = MOV EDX,ESP using an operand-size override; the runtime supports 16-bit operands only.
+No usable spreadsheet, integrated-suite or installation workflow was reached.
+Input and kernel/source SHA256 hashes are in the companion JSON.

@@ -1,6 +1,6 @@
 # DOS software compatibility
 
-Last updated: **2026-10-22**. ManiOS version: **0.25.0**.
+Last updated: **2026-10-23**. ManiOS version: **0.25.0**.
 
 This list records tests of real DOS applications through `dosrun`. Results apply
 only to the identified program version, ManiOS revision and test setup. ManiDOS's
@@ -8,7 +8,7 @@ built-in commands and synthetic interpreter tests are tracked separately.
 
 **Eight DOS utilities have verified Working results for the workflows
 listed below:** five FreeDOS tools and three utilities from the SemWare package. This is task-specific coverage, not a general DOS compatibility
-percentage. Checks & Balances and the SemWare editor are Partial; Warcraft remains Unsupported.
+percentage. Checks & Balances and the SemWare editor are Partial. Warcraft, VisiCalc and Ability Plus encounter unsupported runtime features.
 
 ## Status definitions
 
@@ -35,6 +35,8 @@ percentage. Checks & Balances and the SemWare editor are Partial; Warcraft remai
 | [SemWare GREP](#semware-tse-250e) | bundled in `tse250e.zip`; utility version unverified | **Working** | Finds exactly the two `apple` lines in the fixture. | 2026-10-22 |
 | [SemWare TSORT](#semware-tse-250e) | bundled in `tse250e.zip`; utility version unverified | **Working** | Sorts four input lines into a correctly ordered output file. | 2026-10-22 |
 | [SAL compiler SC](#semware-tse-250e) | 2.50e | **Working** | Compiles a minimal macro to an 87-byte MAC file with the expected signature and message. Macro execution untested. | 2026-10-22 |
+| [VisiCalc](#visicalc) | `VC.COM`, 27,520 bytes; archive timestamp 1981-12-17, exact version unverified | **Unsupported** | Stops on `IN AL,DX` polling port `03DAh`; no usable worksheet reached. | 2026-10-23 |
+| [Ability Plus](#ability-plus-30) | 3.0, `AB3.ZIP` | **Unsupported** | Main program stops on x87 `FNINIT`; installer stops on a 32-bit operand instruction. No application workflow completed. | 2026-10-23 |
 
 ## Warcraft: Orcs & Humans
 
@@ -291,6 +293,54 @@ Evidence: [transcripts](compatibility/2026-10-22-tse.txt),
 [commands, exact outputs and hashes](compatibility/2026-10-22-tse.json),
 [editor start screenshot](compatibility/2026-10-22-tse-editor-start.png),
 [file-opening failure screenshot](compatibility/2026-10-22-tse-editor-file.png).
+
+## VisiCalc
+
+- **Input:** user-supplied `visicalc-executable.zip`, containing an unchanged
+  27,520-byte `VC.COM`. The archive records 1981-12-17; exact version is unverified.
+- **Tested build:** ManiOS 0.25.0, commit `8446024`; DOS sources match the local
+  build tree. Kernel and source SHA256 hashes are recorded in the evidence.
+- **Environment:** QEMU i386, CPU 486, 64 MiB RAM, FAT16 disk; fresh snapshot
+  and working directory `/n/ata0p1/vc`. Program observation limit: 12 seconds.
+- **Command:** `dosrun C:/VC/VC.COM`.
+- **Observed result:** returns to the shell with unsupported opcode `EC` at
+  `1000:6A3E`. A separate host CPU probe confirms `IN AL,DX`, with `DX=03DAh`,
+  followed by `TEST AL,01h` and a conditional branch back to the input instruction.
+  This is video status-port polling, which the runtime does not emulate.
+- **Status:** Unsupported. No usable worksheet was reached; data entry,
+  formulas, calculation, saving and reopening remain unverified.
+- **Next work:** implement and test the relevant video-status port semantics,
+  then retest the application. Passing this first instruction would not establish
+  spreadsheet compatibility.
+- **Evidence:** [guest transcripts and instruction probes](compatibility/2026-10-23-visicalc-ability.txt),
+  [commands and archive/program/kernel/source hashes](compatibility/2026-10-23-visicalc-ability.json).
+
+## Ability Plus 3.0
+
+The supplied `AB3.ZIP` identifies Ability Plus version 3.0 in `AB3.BAT`.
+All package files, including `EXAMPLES` and `TUTORIAL`, were copied unchanged
+onto the test disk. The batch file invokes `AB30`; the tests launch that EXE
+and the installer directly, without requiring DOS batch execution.
+
+- **Tested build/environment:** the same source and QEMU setup as VisiCalc,
+  with a fresh snapshot per case and working directory `/n/ata0p1/ab3`.
+- **Main program:** `dosrun C:/AB3/AB30.EXE` returns to the shell at opcode
+  `DB`, `10EA:2582`. The host probe identifies the full instruction as `DB E3`
+  (`FNINIT`, x87 initialization). The runtime has no x87 instruction emulation.
+- **Installer:** `dosrun C:/AB3/INSTALL.EXE` returns at opcode `66`,
+  `1010:165A`. The next bytes identify `66 8B D4` (`MOV EDX,ESP`), requiring
+  32-bit operand support absent from the current interpreter.
+- **Packaging:** `AB30.EXE` is 1,346,672 bytes, with an MZ initial image,
+  a later NE signature at offset 242,032 and Phar Lap copyright strings.
+  These observations do not establish support for its later execution paths.
+- **Status:** Unsupported. Both cases terminate within the 12-second observation
+  limit. No usable suite or installation workflow was reached. Documents,
+  spreadsheets, databases, examples, printing and save/reopen remain unverified.
+- **Next work:** investigate the extender/runtime requirements alongside x87
+  and operand-size support, then repeat application tests. Suppressing `FNINIT`
+  alone would not demonstrate working floating-point operations or a working suite.
+- **Evidence:** [guest transcripts and instruction probes](compatibility/2026-10-23-visicalc-ability.txt),
+  [commands and archive/program/kernel/source hashes](compatibility/2026-10-23-visicalc-ability.json).
 
 ## Interpreter regression baseline
 

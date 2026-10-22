@@ -1,0 +1,73 @@
+{
+  "metadata": {
+    "commit": "8446024739140e21e9e884e61cf6656f0bb09845",
+    "kernel_sha256": "7d20e5094c5b55c12feee59d7da8d40943259e522e46d28803a6237ad842977e",
+    "environment": "QEMU i386, CPU 486, 64 MiB, fresh FAT16 snapshot per case",
+    "archives": {
+      "visicalc-executable.zip": "c346d6b166389ea6e7967bd4e804578c3cd0a4d58e8149ba02fde0a5eb32391e",
+      "AB3.ZIP": "017bf768c9756046737c11bf202e57f005c66ea2c58599fdce8d18e1ce88f890"
+    },
+    "programs": {
+      "vc/VC.COM": "06b80d1c56b69232fd85cf55dee0b3369c2af3197bfbda5c4c584490e0418495",
+      "ab3/AB30.EXE": "c64f86aba829d354c4f3ce623b2e7ee9fc9ae3ef398c29e8fdf4fa6e695b090a",
+      "ab3/INSTALL.EXE": "87f1e9222912feec34b95152e82af971e5d726569c3e62a23dd778d5b3199e83",
+      "ab3/EXAMPLES/DVRCMD.EXE": "834f3761c2dcad8d0b5c749133cdce632e30502f08b652d61995e709d74ad78a",
+      "ab3/EXAMPLES/RBXPF.EXE": "1c9e6211392813a37191dc86e84c7c01b99d22dc9e1cccb7983c75d514822128"
+    },
+    "sources": {
+      "cpu.c": "ee87262789fa8aca97ee17bbe944dc66ffcc8750a83a17b9b3ee9ee4e8d94cbe",
+      "dosapi.c": "449ded89443ac63f2cd24753cddcc459d97fe9f8ec611f3920ec6c27d2ab9ba8",
+      "loader.c": "bb28746ad3657049c96107ea80167e2ac9ff0de304e5c1caba85e4b24e711cca",
+      "main.c": "7c839f97a39d66eeb022fc97706a6ad8e038f8c6c72be4343fcdc7d9785e6f62"
+    }
+  },
+  "guest_results": [
+    {
+      "case": "visicalc",
+      "cwd": "/n/ata0p1/vc",
+      "command": "dosrun C:/VC/VC.COM",
+      "timeout_seconds": 12,
+      "output": "dosrun C:/VC/VC.COM\r\ndosrun: C:/VC/VC.COM: can't run opcode EC (at 1000:6A3E)\r\n",
+      "returned": true
+    },
+    {
+      "case": "ability",
+      "cwd": "/n/ata0p1/ab3",
+      "command": "dosrun C:/AB3/AB30.EXE",
+      "timeout_seconds": 12,
+      "output": "dosrun C:/AB3/AB30.EXE\r\ndosrun: C:/AB3/AB30.EXE: can't run opcode DB (at 10EA:2582)\r\n",
+      "returned": true
+    },
+    {
+      "case": "ability-install",
+      "cwd": "/n/ata0p1/ab3",
+      "command": "dosrun C:/AB3/INSTALL.EXE",
+      "timeout_seconds": 12,
+      "output": "dosrun C:/AB3/INSTALL.EXE\r\ndosrun: C:/AB3/INSTALL.EXE: can't run opcode 66 (at 1010:165A)\r\n",
+      "returned": true
+    }
+  ],
+  "host_instruction_probe": [
+    {
+      "program": "vc/VC.COM",
+      "stdout": "FAULT opcode EC\n",
+      "stderr": "CS=1000 IP=6a3e opcode=ec next=a8 01 75 fb DX=03da AX=7043\n"
+    },
+    {
+      "program": "ab3/AB30.EXE",
+      "stdout": "FAULT opcode DB\n",
+      "stderr": "CS=10ea IP=2582 opcode=db next=e3 be e0 22 DX=a07c AX=0003\n"
+    },
+    {
+      "program": "ab3/INSTALL.EXE",
+      "stdout": "FAULT opcode 66\n",
+      "stderr": "CS=1010 IP=165a opcode=66 next=8b d4 83 e4 DX=10ee AX=f000\n"
+    }
+  ],
+  "notes": [
+    "User archives extracted unchanged; originals were not modified.",
+    "Guest tests use independent disposable snapshots, with a 12-second program observation limit. All three runs returned to the shell with an opcode error.",
+    "Host probe is diagnostic only: same CPU/loader/services, 5 million instruction limit, no guest display. Confirms next instruction bytes and DX, not successful execution.",
+    "No application task, editing, calculation, saving or reopening was completed."
+  ]
+}
