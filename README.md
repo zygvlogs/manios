@@ -13,6 +13,11 @@ project. [ZygHosting.online](https://zyghosting.online/) and
 [Manikineko.nl](https://manikineko.nl/) decided to make ManiOS; its code
 is written anew for it.
 
+## DOS software compatibility
+
+[View the DOS compatibility list](docs/dos-compatibility.md) for tested
+applications, test results and known limitations.
+
 ## Status
 
 | Milestone | State |
