@@ -63,13 +63,23 @@ int main(void) {
     START(0xA9,0x00,0xFF); c.r[AX]=0x100; CHECK(cpu_step(&c)==CPU_OK); CHECK(c.ip==3 && !(c.flags&FLAG_ZF)); cpu_free(&c);
     START(0xC0,0xE0,4); c.r[AX]=3; CHECK(cpu_step(&c)==CPU_OK); CHECK(c.r[AX]==48 && c.ip==3); cpu_free(&c);
     START(0xC1,0xE0,4); c.r[AX]=0x123; CHECK(cpu_step(&c)==CPU_OK); CHECK(c.r[AX]==0x1230 && c.ip==3); cpu_free(&c);
+    START(0xD5,10); c.r[AX]=0x0909;
+    CHECK(cpu_step(&c)==CPU_OK); CHECK(c.r[AX]==99 && c.ip==2 && !(c.flags&FLAG_ZF)); cpu_free(&c);
+    START(0xD5,16); c.r[AX]=0x1000;
+    CHECK(cpu_step(&c)==CPU_OK); CHECK(c.r[AX]==0 && (c.flags&FLAG_ZF)); cpu_free(&c);
+    START(0xD5,0); c.r[AX]=0xAB80;
+    CHECK(cpu_step(&c)==CPU_OK); CHECK(c.r[AX]==0x80 && (c.flags&FLAG_SF)); cpu_free(&c);
+    START(0xD7); c.r[BX]=0xFFFE; c.r[AX]=0xAB03; c.flags=0xAD7; wr8(&c,0x200,1,7);
+    CHECK(cpu_step(&c)==CPU_OK); CHECK(c.r[AX]==0xAB07 && c.flags==0xAD7); cpu_free(&c);
+    START(0x26,0xD7); c.sreg[0]=0; c.r[BX]=0x20; c.r[AX]=0xAB02; wr8(&c,0,0x22,0x42);
+    CHECK(cpu_step(&c)==CPU_OK); CHECK(c.r[AX]==0xAB42); cpu_free(&c);
     /* BSUM's hexadecimal conversion sequence exercises DAS for every digit. */
     for(int digit=0;digit<16;digit++) {
         START(0x3C,0x0A,0x1C,0x69,0x2F); c.r[AX]=digit;
         CHECK(cpu_step(&c)==CPU_OK); CHECK(cpu_step(&c)==CPU_OK); CHECK(cpu_step(&c)==CPU_OK);
         CHECK(c.r[AX]==(digit<10?'0'+digit:'A'+digit-10)); cpu_free(&c);
     }
-    puts("PASS: byte/word strings, REP/REPE/REPNE, zero counts, direction, segment prefixes, TEST, shifts and DAS");
+    puts("PASS: byte/word strings, REP/REPE/REPNE, zero counts, direction, segment prefixes, TEST, shifts, XLAT, AAD and DAS");
     return 0;
 }
 '''

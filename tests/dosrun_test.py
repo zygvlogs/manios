@@ -141,6 +141,15 @@ def iret_com():
     return code + b"IRET OK\r\n$"
 
 
+def vga_text_com():
+    code = bytearray([0x06, 0xB8, 0, 0xB8, 0x8E, 0xC0,
+                      0xBE, 0x1B, 0x01, 0xBF, 0, 0, 0xB9, 6, 0,
+                      0xF3, 0xA5, 0x07, 0xB8, 0, 0x4C, 0xCD, 0x21])
+    # Table starts at the next byte after this code.
+    code[7:9] = (0x100 + len(code)).to_bytes(2, "little")
+    return bytes(code) + b"".join(bytes([ch, 0x1E]) for ch in b"VGA OK")
+
+
 def build_disk(path):
     """An MBR with one FAT16 partition, and the programs on it, built
     with mtools as dos_test.py builds its disk."""
@@ -160,6 +169,7 @@ def build_disk(path):
     put(path, "MOVZX.COM", movzx_com(), srcdir)
     put(path, "FLAGS.COM", flags_com(), srcdir)
     put(path, "IRET.COM", iret_com(), srcdir)
+    put(path, "VGA.COM", vga_text_com(), srcdir)
     put(path, "EXTENDER.EXE", protected_exe(), srcdir)
     put(path, "PACKED.EXA", b'\x1e\x00-lh5-' + bytes(40), srcdir)
     return srcdir
@@ -213,6 +223,9 @@ def main():
         step("a guest IRET restores its frame exactly once",
              lambda: run_command(m, "serial", "dosrun C:/IRET.COM",
                                  ["IRET OK"], SHELL_PROMPT))
+        step("a short direct-VGA text program renders before exit",
+             lambda: run_command(m, "serial", "dosrun C:/VGA.COM",
+                                 ["VGA OK"], SHELL_PROMPT))
         step("a DOS extender is refused with its actual requirement",
              lambda: run_command(m, "serial", "dosrun C:/EXTENDER.EXE",
                                  ["requires 32-bit protected mode"], SHELL_PROMPT))

@@ -131,3 +131,13 @@ input uses the terminal's line discipline (Enter is needed); direct VGA writes,
 extended scan-code sequences and game input are not fully emulated. The fixed
 DOS date/time responses remain. FCB layout and record semantics follow the
 [MS-DOS Programmer's Reference](https://www.pcjs.org/documents/books/mspl13/msdos/dosref40/).
+
+### SemWare-driven compatibility fixes
+
+XLAT and AAD are covered by the string/instruction test suite. Direct writes to
+the active 80x25 colour text page at B800 are now rendered as changed spans.
+DOS/BIOS output updates the shadow to keep ordinary console text from being
+redrawn, and a final frame is flushed even for short programs. The runtime suite
+checks unchanged cells are not emitted twice; the QEMU runner suite checks a
+short direct-VGA COM actually appears before exit. This does not emulate arbitrary
+ports, monochrome/high-row text modes or full hardware keyboard handling.

@@ -1211,6 +1211,16 @@ enum cpu_stop cpu_step(struct cpu *c)
 		c->flags = pop16(c);
 		return CPU_IRET;
 	}
+	case 0xD5: { /* AAD imm8: fold unpacked digits into AL, clear AH. */
+		uint8_t base = rd8(c, c->sreg[1], c->ip++);
+		c->r[AX] = (uint8_t)(get8(c, 0) + get8(c, 4) * base);
+		cpu_set_flags(c, c->r[AX], 8); /* CF/AF/OF are undefined. */
+		return CPU_OK;
+	}
+	case 0xD7: /* XLAT: unsigned AL indexes the table at DS:BX. */
+		put8(c, 0, rd8(c, override >= 0 ? override : c->sreg[3],
+		              (uint16_t)(c->r[BX] + get8(c, 0))));
+		return CPU_OK;
 	case 0xC0: case 0xC1: case 0xD0: case 0xD1: case 0xD2: case 0xD3: { /* shifts by 1, CL, or imm */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);

@@ -127,6 +127,7 @@ int main(int argc, char **argv)
 	}
 
 done:
+	dos_video_present(dos); /* flush direct text writes even for short programs */
 	dos_video_text(dos); /* back to text, if a program left mode 13h on */
 	dos_free(dos);
 	cpu_free(&cpu);

@@ -6,9 +6,9 @@ This list records tests of real DOS applications through `dosrun`. Results apply
 only to the identified program version, ManiOS revision and test setup. ManiDOS's
 built-in commands and synthetic interpreter tests are tracked separately.
 
-**Five FreeDOS applications have verified Working results for the workflows
-listed below.** This is task-specific coverage, not a general DOS compatibility
-percentage. Checks & Balances is Partial; Warcraft remains Unsupported.
+**Eight DOS utilities have verified Working results for the workflows
+listed below:** five FreeDOS tools and three utilities from the SemWare package. This is task-specific coverage, not a general DOS compatibility
+percentage. Checks & Balances and the SemWare editor are Partial; Warcraft remains Unsupported.
 
 ## Status definitions
 
@@ -31,6 +31,10 @@ percentage. Checks & Balances is Partial; Warcraft remains Unsupported.
 | [FDBanner](#fdbanner) | 1.1, FD14 BonusCD | **Working** | BIOS text cells and cursor services draw the coloured FreeDOS banner; screenshot verified. | 2026-10-22 |
 | [B64](#b64) | 0.06R (rev A), FD14 BonusCD | **Working** | Help (`-h`), Base64 encoding `ABCD` and decoding `QUJDRA==` produce correct files. | 2026-10-22 |
 | [BSUM](#bsum) | 1.1a, FD14 BonusCD; help says 1.1 | **Working** | Correct checksums for two text files, an empty file and a 20 KiB binary file; missing-file error and help also verified. | 2026-10-22 |
+| [SemWare Editor Professional](#semware-tse-250e) | 2.50e, `tse250e.zip` | **Partial** | Welcome dialog and input-file text render; file-opening run then stops on `IN AL,61h`. Editing/save/reopen unverified. | 2026-10-22 |
+| [SemWare GREP](#semware-tse-250e) | bundled in `tse250e.zip`; utility version unverified | **Working** | Finds exactly the two `apple` lines in the fixture. | 2026-10-22 |
+| [SemWare TSORT](#semware-tse-250e) | bundled in `tse250e.zip`; utility version unverified | **Working** | Sorts four input lines into a correctly ordered output file. | 2026-10-22 |
+| [SAL compiler SC](#semware-tse-250e) | 2.50e | **Working** | Compiles a minimal macro to an 87-byte MAC file with the expected signature and message. Macro execution untested. | 2026-10-22 |
 
 ## Warcraft: Orcs & Humans
 
@@ -237,6 +241,56 @@ These are source changes following `5965873`. A local Android APK packages the
 same DOS runtime (versionCode `25004`, versionName `0.25.0-manios4`). It boots into
 ManiDE in the Android 10/API 29 x86_64 emulator; physical ARM hardware is untested.
 No GitHub release was created.
+
+## SemWare TSE 2.50e
+
+The supplied `tse250e.zip` identifies The SemWare Editor Professional 2.5;
+SC's banner reports SAL Compiler v2.50e. The main `E.EXE` is 143,608 bytes.
+The extracted package is copied unchanged to `C:/TSE` on a disposable FAT16
+image. Tests run inside ManiOS on QEMU 486 / 64 MiB, with the guest working
+directory `/n/ata0p1/tse`. Each normal case gets a fresh disk snapshot.
+
+The previous runtime (`647f504`) stops on missing XLAT: editor at `1070:F64B`,
+TSORT at `1000:0484` / `1000:0D4E`, and SC at `1010:A7DB`. Adding XLAT enables
+SC compilation and advances TSORT to missing AAD. XLAT now preserves AH and flags,
+supports source-segment overrides and wraps BX+AL to 16 bits; AAD folds the two
+bytes using its immediate base and updates SF/ZF/PF.
+
+The editor also writes directly to emulated B800 text memory. The new renderer
+copies changed spans of the active 80x25 colour page to the terminal, retaining
+attributes and cursor position. DOS/BIOS character writes update the shadow to
+avoid redrawing ordinary console output. Pending direct writes flush before a
+blocking BIOS key read and before program exit. Monochrome/high-row modes,
+text-mode scrolling and hardware keyboard integration are not completed here.
+
+| Test | Verified result |
+| --- | --- |
+| `dosrun C:/TSE/E.EXE` | Welcome and file-selection dialog visible; still active after eight seconds. This is a bounded observation of a prompt, not proof of a hang. |
+| `dosrun C:/TSE/E.EXE C:/INPUT.TXT` | Input text becomes visible, then fails at `E4`, `1070:F8A7`. A host CPU probe reads the next operand as `61`, identifying `IN AL,61h`. Port I/O remains unsupported. |
+| `dosrun C:/TSE/GREP.COM apple C:/INPUT.TXT` | Returns `apple` and `apple pie`, excluding `pear` and `banana`. No regex/recursive-search claim is made. |
+| `dosrun C:/TSE/TSORT.COM C:INPUT.TXT C:SORTED.TXT` | Output reads exactly `apple`, `apple pie`, `banana`, `pear`, in that order. The `C:/...` argument form produced `Bad!! /INPUT.TXT`; the successful case uses DOS drive-relative names. |
+| `dosrun C:/TSE/SC.EXE C:/HELLO.S` | Compiles the fixture and announces `c:/hello.mac`. A separate run on a disposable persistent image exports and verifies the 87-byte result, signature `FFFF426F62626900`, and embedded `ManiOS macro test` string. |
+
+The source fixture is `proc Main()` / `Message("ManiOS macro test")` / `end`,
+with DOS CRLF endings. SC without arguments reaches its interactive choice menu;
+no compiler-menu workflow is claimed beyond that. Eight package cases plus a
+separate persisted-output check were run. Main-editor editing, save/reopen,
+macros, help, spelling and interactive key bindings remain unverified. The editor
+stays Partial even though companion utilities complete their tested tasks.
+
+The 31 host checks, string/runtime state suites, both QEMU DOS suites and a new
+short direct-VGA program regression pass. Five representative FreeDOS tasks were
+also rerun successfully. Results apply to source/kernel hashes in the evidence,
+not every DOS program. A local Android APK with these changes uses versionCode
+25005 / `0.25.0-manios5`; signature, embedded ISO and clean Android 10 x86_64
+startup were verified. Physical ARM hardware and TSE inside Android were not
+tested. No release was created. User executables, media and generated MAC binaries are
+kept outside the repository and APK.
+
+Evidence: [transcripts](compatibility/2026-10-22-tse.txt),
+[commands, exact outputs and hashes](compatibility/2026-10-22-tse.json),
+[editor start screenshot](compatibility/2026-10-22-tse-editor-start.png),
+[file-opening failure screenshot](compatibility/2026-10-22-tse-editor-file.png).
 
 ## Interpreter regression baseline
 

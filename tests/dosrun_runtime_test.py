@@ -156,6 +156,11 @@ int main(void) {
  call(0x10,0x0800);CHECK(c.r[AX]==0x1E58);
  call(0x10,0x0F00);CHECK(c.r[AX]==0x5003&&(c.r[BX]>>8)==0);
  puts("PASS: BIOS text attributes, repeated output, cursor position, readback and mode queries");
+ fflush(stdout);int saved_out=dup(1), capture[2];CHECK(pipe(capture)==0);CHECK(dup2(capture[1],1)>=0);close(capture[1]);
+ mem_w16(&c,0xB8000,0x1E58);dos_video_present(d);dos_video_present(d);
+ CHECK(dup2(saved_out,1)>=0);close(saved_out);char rendered[256];long size_out=read(capture[0],rendered,sizeof(rendered));close(capture[0]);
+ CHECK(size_out>0&&size_out<(long)sizeof(rendered));int xs=0;for(long i=0;i<size_out;i++)if(rendered[i]=='X')xs++;CHECK(xs==1);
+ puts("PASS: direct VGA text writes render once; unchanged cells are not redrawn");
  dos_free(d);cpu_free(&c);return 0;
 }
 '''

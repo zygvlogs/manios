@@ -76,6 +76,7 @@ struct dos_state {
 	int video_mode;
 	uint16_t cursor[8], cursor_shape;
 	uint8_t active_page;
+	uint16_t text_seen[80 * 25];
 	/* Mode 13h: ManiOS's screen, and whether it is open. */
 	struct gfx_screen screen;
 	int screen_open;
@@ -256,6 +257,7 @@ static void con_putc(struct dos_state *d, uint8_t ch)
 	else if (ch == '\b') { if (col) col--; }
 	else if (ch >= 32) {
 		mem_w16(d->cpu, 0xB8000 + d->active_page * 4096 + (row * 80 + col) * 2, ch | 0x0700);
+		d->text_seen[row * 80 + col] = ch | 0x0700;
 		if (++col >= 80) { col = 0; if (row < 24) row++; }
 	}
 	d->cursor[d->active_page] = (row << 8) | col;
@@ -1315,12 +1317,45 @@ void dos_video_text(struct dos_state *d)
 	}
 }
 
+static void text_position(struct dos_state *d, uint16_t pos);
+static void text_colour(struct dos_state *d, uint8_t attr);
+
+/* Mirror direct writes to the active 80x25 colour text page. DOS/BIOS
+ * output updates text_seen itself, so ordinary terminal output is not
+ * redrawn at absolute screen coordinates. Only changed spans are sent. */
+static void text_present(struct dos_state *d)
+{
+	if (d->video_mode != 3) return;
+	uint32_t base = 0xB8000 + d->active_page * 4096;
+	int changed = 0;
+	for (unsigned at = 0; at < 80 * 25;) {
+		uint16_t cell = mem_r16(d->cpu, base + at * 2);
+		if (cell == d->text_seen[at]) { at++; continue; }
+		unsigned start = at, end = (at / 80 + 1) * 80;
+		uint8_t attr = cell >> 8;
+		char run[80]; unsigned n = 0;
+		while (at < end) {
+			cell = mem_r16(d->cpu, base + at * 2);
+			if (cell == d->text_seen[at] || (cell >> 8) != attr) break;
+			run[n++] = (cell & 255) ? (char)cell : ' ';
+			d->text_seen[at++] = cell;
+		}
+		text_position(d, ((start / 80) << 8) | (start % 80));
+		text_colour(d, attr); write(d->con_out, run, n); changed = 1;
+	}
+	if (changed) {
+		write(d->con_out, "\033[0m", 4);
+		text_position(d, d->cursor[d->active_page]);
+	}
+}
+
 /* Copies the program's mode 13h framebuffer to ManiOS's screen. The
  * program's pixels are one byte each (RGB 3-3-2); ManiOS's canvas is
  * 32-bit, so each byte is expanded to a colour. */
 void dos_video_present(struct dos_state *d)
 {
 	if (!d->screen_open) {
+		text_present(d);
 		return;
 	}
 	static uint32_t pixels[VGA_W * VGA_H];
@@ -1402,6 +1437,7 @@ static enum cpu_stop bios10(struct dos_state *d, struct cpu *c)
 			uint32_t at = 0xB8000 + page * 4096 + (start + i) * 2;
 			mem_w8(c, at, al);
 			if (ah == 0x09) mem_w8(c, at + 1, c->r[BX] & 255);
+			if (page == d->active_page) d->text_seen[start + i] = mem_r16(c, at);
 		}
 		if (page == d->active_page) {
 			text_position(d, pos);
@@ -1502,6 +1538,7 @@ static enum cpu_stop dispatch_int(struct dos_state *d, struct cpu *c, uint8_t ve
 
 enum cpu_stop dos_int(struct dos_state *d, struct cpu *c, uint8_t vector)
 {
+	if (vector == 0x16 && ((c->r[AX] >> 8) == 0 || (c->r[AX] >> 8) == 0x10)) dos_video_present(d);
 	enum cpu_stop stop = dispatch_int(d, c, vector);
 	if (stop == CPU_OK) {
 		/* The caller returns through the INT frame. Updating only the
