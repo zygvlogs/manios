@@ -30,6 +30,9 @@ void dos_set_tail(struct dos_state *d, const char *tail);
 /* Builds the PSP at the segment dos_set_program() was given. */
 void dos_build_psp(struct dos_state *d);
 
+/* Advance the BIOS data-area clock by elapsed host milliseconds. */
+void dos_clock_advance(struct dos_state *d, uint32_t elapsed_ms);
+
 /* The file services (INT 21h AH=3C..43, 4E, 4F), in dosapi.c. */
 enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah);
 

@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <manios.h>
 
 /* How many instructions between checks of the clock and the keyboard,
  * so a program in a tight loop still sees input. */
@@ -79,10 +80,14 @@ int main(int argc, char **argv)
 	/* Run until the program ends, faults, or runs away. */
 	int status = 0;
 	unsigned long since_present = 0;
+	uint32_t last_clock = uptime_ms();
 	for (;;) {
 		/* Every so often, show a mode 13h program's framebuffer. */
 		if (++since_present >= 20000) {
 			since_present = 0;
+			uint32_t now = uptime_ms();
+			dos_clock_advance(dos, now - last_clock);
+			last_clock = now;
 			dos_video_present(dos);
 		}
 		enum cpu_stop stop = cpu_step(&cpu);

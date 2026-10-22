@@ -141,3 +141,15 @@ redrawn, and a final frame is flushed even for short programs. The runtime suite
 checks unchanged cells are not emitted twice; the QEMU runner suite checks a
 short direct-VGA COM actually appears before exit. This does not emulate arbitrary
 ports, monochrome/high-row text modes or full hardware keyboard handling.
+
+### BIOS clock polling
+
+The runner advances the BIOS tick counter at `0040:006C` using elapsed host
+uptime, approximately 18.2 ticks per second. `INT 1Ah/AH=00h` reads the same
+counter and clears its midnight rollover flag. Fractional updates are retained;
+the counter starts at zero for each program, rather than the host time of day.
+This lets startup routines that poll BIOS memory progress during busy loops.
+It does not deliver timer interrupts to guest handlers or implement the PIT's
+hardware ports. DOS date/time and BIOS RTC responses still use fixed values.
+The host runtime suite checks fractions, word carry and midnight rollover; the
+QEMU suite checks a direct-memory polling loop through the actual runner.

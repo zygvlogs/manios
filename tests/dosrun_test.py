@@ -90,6 +90,18 @@ def flags_com():
     return bytes(code)
 
 
+def clock_com():
+    # Poll the BIOS tick in memory without calling any interrupt. The runner
+    # must advance it even while the guest is spinning in ordinary CPU code.
+    code = bytearray([0xB8, 0x40, 0, 0x8E, 0xC0,
+                      0x26, 0x8B, 0x1E, 0x6C, 0,
+                      0x26, 0x3B, 0x1E, 0x6C, 0, 0x74, 0xF9])
+    msg = 0x100 + len(code) + 12
+    code += bytes([0xBA, msg & 255, msg >> 8, 0xB4, 9, 0xCD, 0x21,
+                   0xB8, 0, 0x4C, 0xCD, 0x21]) + b"CLOCK OK\r\n$"
+    return bytes(code)
+
+
 def hello_exe():
     # The same as hello_com, as an .EXE: CS:IP = 0:0, so the image is
     # the code with the message's offset within the image.
@@ -168,6 +180,7 @@ def build_disk(path):
     put(path, "BAD386.COM", unsupported_com(), srcdir)
     put(path, "MOVZX.COM", movzx_com(), srcdir)
     put(path, "FLAGS.COM", flags_com(), srcdir)
+    put(path, "CLOCK.COM", clock_com(), srcdir)
     put(path, "IRET.COM", iret_com(), srcdir)
     put(path, "VGA.COM", vga_text_com(), srcdir)
     put(path, "EXTENDER.EXE", protected_exe(), srcdir)
@@ -223,6 +236,9 @@ def main():
         step("a guest IRET restores its frame exactly once",
              lambda: run_command(m, "serial", "dosrun C:/IRET.COM",
                                  ["IRET OK"], SHELL_PROMPT))
+        step("direct BIOS clock polling advances during a busy loop",
+             lambda: run_command(m, "serial", "dosrun C:/CLOCK.COM",
+                                 ["CLOCK OK"], SHELL_PROMPT))
         step("a short direct-VGA text program renders before exit",
              lambda: run_command(m, "serial", "dosrun C:/VGA.COM",
                                  ["VGA OK"], SHELL_PROMPT))

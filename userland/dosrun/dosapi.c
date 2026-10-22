@@ -63,6 +63,7 @@ extern int poll(struct zkt_pollfd *, int, int);
 
 struct dos_state {
 	struct cpu *cpu;
+	uint32_t clock_fraction;
 	uint16_t psp_seg;
 	uint16_t prog_seg;
 	uint16_t dta, dta_seg; /* disk transfer area, independent of later DS */
@@ -1486,6 +1487,24 @@ static enum cpu_stop bios16(struct dos_state *d, struct cpu *c)
 	}
 }
 
+/* The PIT runs at approximately 1,193,182 Hz, divided by 65,536.
+ * Keep fractional milliseconds so frequent updates do not lose ticks.
+ * Programs such as Turbo Pascal's CRT poll 0040:006C directly. */
+void dos_clock_advance(struct dos_state *d, uint32_t elapsed_ms)
+{
+	uint64_t units = (uint64_t)elapsed_ms * 1193182u + d->clock_fraction;
+	uint32_t added = (uint32_t)(units / 65536000u);
+	d->clock_fraction = (uint32_t)(units % 65536000u);
+	if (!added) return;
+	struct cpu *c = d->cpu;
+	uint32_t ticks = mem_r16(c, 0x46C) | ((uint32_t)mem_r16(c, 0x46E) << 16);
+	uint64_t total = (uint64_t)ticks + added;
+	if (total >= 0x1800B0u) mem_w8(c, 0x470, 1);
+	ticks = (uint32_t)(total % 0x1800B0u);
+	mem_w16(c, 0x46C, (uint16_t)ticks);
+	mem_w16(c, 0x46E, (uint16_t)(ticks >> 16));
+}
+
 /* INT 1Ah: the clock. */
 static enum cpu_stop bios1a(struct dos_state *d, struct cpu *c)
 {
@@ -1493,9 +1512,10 @@ static enum cpu_stop bios1a(struct dos_state *d, struct cpu *c)
 	uint8_t ah = (uint8_t)(c->r[AX] >> 8);
 	switch (ah) {
 	case 0x00: /* read the tick count: CX:DX, AL rolled over */
-		c->r[CX] = 0;
-		c->r[DX] = 0;
-		c->r[AX] = (uint16_t)(c->r[AX] & 0xFF00);
+		c->r[CX] = mem_r16(c, 0x46E);
+		c->r[DX] = mem_r16(c, 0x46C);
+		c->r[AX] = (uint16_t)((c->r[AX] & 0xFF00) | mem_r8(c, 0x470));
+		mem_w8(c, 0x470, 0);
 		return CPU_OK;
 	case 0x02: /* read the RTC time: CH=hour, CL=minute, DH=second */
 		c->r[CX] = (uint16_t)((12 << 8) | 0);

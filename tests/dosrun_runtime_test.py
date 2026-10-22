@@ -63,6 +63,20 @@ int main(void) {
  puts("PASS: DAA packed-decimal addition for all 10,000 pairs from 00 to 99");
  puts("PASS: addressing segments, POPA, LAHF/SAHF, far CALL, IRET, ROL and INC/DEC flags");
  init();d=dos_new(&c);CHECK(d);dos_set_program(d,0x1000,0x1010);dos_build_psp(d);dos_mount('C',".");
+ /* Real elapsed time must advance both direct BDA polls and INT 1Ah.
+  * Sub-tick updates retain their fraction, and midnight is read/cleared. */
+ dos_clock_advance(d,54);CHECK(mem_r16(&c,0x46C)==0);
+ dos_clock_advance(d,1);CHECK(mem_r16(&c,0x46C)==1);
+ for(int ms=0;ms<945;ms++)dos_clock_advance(d,1);
+ call(0x1A,0);CHECK(c.r[CX]==0&&c.r[DX]==18&&c.r[AX]==0);
+ mem_w16(&c,0x46C,0xFFFF);mem_w16(&c,0x46E,0);
+ dos_clock_advance(d,1000);call(0x1A,0);
+ CHECK(c.r[CX]==1&&c.r[DX]==17&&c.r[AX]==0);
+ mem_w16(&c,0x46C,0x00AF);mem_w16(&c,0x46E,0x18);
+ dos_clock_advance(d,55);call(0x1A,0);
+ CHECK(c.r[CX]==0&&c.r[DX]==0&&c.r[AX]==1&&mem_r8(&c,0x470)==0);
+ call(0x1A,0);CHECK(c.r[AX]==0);
+ puts("PASS: BIOS ticks, fractional updates, word carry and midnight rollover");
  CHECK(rd8(&c,0x1000,0x50)==0xCD&&rd8(&c,0x1000,0x51)==0x21&&rd8(&c,0x1000,0x52)==0xCB);
  CHECK(rd16(&c,0x1000,0x16)==0xFFFF&&rd8(&c,0x1000,0x18)==0);
  uint16_t env=rd16(&c,0x1000,0x2C);CHECK(env!=0&&rd8(&c,env,0)=='P');
