@@ -1,0 +1,113 @@
+Minimal video input-status emulation retest, 2026-10-23
+Tested source: 4eaaa5c7d028a37c96f9b3965f36f61ae1c22ee7
+Kernel SHA256: 922ed6df006b1d8632ccfc951c7bea2b59b586a7e8537dd15a7bef86d51e36c9
+QEMU i386 CPU 486, 64 MiB; independent FAT16 snapshots; Windows files merged from all original floppies, same disk as previous baseline
+
+CASE windows-setup
+dosrun C:/SETUP.EXE
+Returned within 12 seconds: False
+dosrun C:/SETUP.EXE
+                                                                                                                                                                    Setup prepares Microsoft Windows to run on your computer.                       It also helps you set up your disks in the most efficient way for:                                                                                                  - starting Microsoft Windows                                                    - running Windows applications                                                  - printing from Microsoft Windows                                                                                                                           When you're   ��������������������������������������ͻ                          ready:        � TO                          PRESS    �                                        ��������������������������������������Ķ                                        � Continue                      C      �                                        � Quit                          Q      �                                        ��������������������������������������ͼ
+
+CASE visicalc
+dosrun C:/VC/VC.COM
+Returned within 12 seconds: False
+dosrun C:/VC/VC.COM
+
+WINDOWS CONTINUE
+Input: c + Enter over cooked serial. Reaches full-path directory selection, default C:\WINDOWS.
+WINDOWS ACCEPT DIRECTORY
+Input: Enter after default C:\WINDOWS appears.
+
+dosrun: C:/SETUP.EXE: can't run opcode E6 (at 1010:167B)
+SETUP.EXE image bytes at 1010:167A are E6 43 B8 33 05 E6; fault at IP=167B follows E6, identifying OUT 43h,AL. Further instructions are not emulated or skipped.
+
+VISICALC HOST PROBE
+5 million instruction cap; diagnostic 1 ms per 20,000 instructions. Ends at a BIOS keyboard-status polling path, not an EC fault; this is diagnostic progress, not a worksheet or successful calculation.
+CS=1000 IP=5ff1 DX=0080 AX=0200
+cd 16 24 10 3a 06 02 75 74 09 88 06 02 75 74 03 e9 63 00 b4 
+
+REGRESSIONS
+host
+PASS: a .COM prints its string and exits 0
+PASS: a .COM's exit code comes back
+PASS: sub-r16-rm16: result goes to the encoded destination
+PASS: sub-rm16-r16: result goes to the encoded destination
+PASS: sub-r8-rm8: result goes to the encoded destination
+PASS: sub-rm8-r8: result goes to the encoded destination
+PASS: sub-r16-mem: result goes to the encoded destination
+PASS: sub-mem-r16: result goes to the encoded destination
+PASS: sub-r8-mem: result goes to the encoded destination
+PASS: sub-mem-r8: result goes to the encoded destination
+PASS: a loop, INC and LOOP count 0 to 9
+PASS: an .EXE's relocation adds the load segment
+PASS: a multi-segment EXE loads code beyond 64 KiB
+PASS: an older MZ header may encode a complete final page as 512
+PASS: a protected-mode LE EXE is identified before its stub runs
+PASS: a truncated MZ image is rejected instead of silently shortened
+PASS: an LHA installation archive is identified as requiring extraction
+PASS: an instruction it doesn't have is named, not run
+PASS: MOVZX zero-extends a byte
+PASS: SETcc sets a byte from a condition
+PASS: CPUID reports a 486
+PASS: an unsupported DOS service returns carry set after IRET
+PASS: a successful DOS write clears carry after IRET
+PASS: BIOS keyboard polling returns zero set when no key is ready
+PASS: a DOS interrupt preserves the caller's interrupt-enable flag
+PASS: the PSP reports an ending segment with usable conventional memory
+PASS: an empty PSP tail excludes its terminating CR
+PASS: a PSP tail includes the leading space but excludes CR
+PASS: a PSP tail has CR immediately after its counted bytes
+PASS: XMS: allocate, move to it and back
+PASS: EMS: allocate a page and map it
+
+OK: 0 failure(s)
+
+strings
+PASS: byte/word strings, REP/REPE/REPNE, zero counts, direction, segment prefixes, TEST, shifts, XLAT, AAD and DAS
+
+runtime
+PASS: DAA packed-decimal addition for all 10,000 pairs from 00 to 99
+PASS: addressing segments, POPA, LAHF/SAHF, far CALL, IRET, ROL and INC/DEC flags
+PASS: BIOS ticks, fractional updates, word carry and midnight rollover
+PASS: PSP/environment, memory shrink, allocate, exhaustion, growth, coalescing and invalid free
+PASS: DTA segments, independent searches, file sizes, shared duplicate offsets and LFN fallback
+PASS: DOS directory changes, relative paths, per-drive state, root clamping and failed changes
+PASS: FCB open, sequential/random/block reads, partial-record padding, EOF and DTA bounds
+PASS: FCB create, block write, save/reopen, random overwrite and explicit truncation failure
+PASS: exhausted FCB slots preserve an existing file on failed create
+PASS: nonblocking keyboard readiness, non-consuming BIOS peek, scan code, DOS status and flush
+PASS: BIOS text attributes, repeated output, cursor position, readback and mode queries
+PASS: direct VGA text writes render once; unchanged cells are not redrawn
+
+ports
+PASS: active display, horizontal blank and recurring vertical retrace; IN preserves AH/flags/registers
+PASS: both-polarity bit 0/3 polling loops terminate with interrupts disabled, including counter wrap
+PASS: unknown ports, word input, all output and truncated immediate ports remain unsupported
+
+qemu
+PASS: dosrun HELLO.COM: a .COM prints its string
+PASS: dosrun with an absolute ManiOS path
+PASS: dosrun DIGITS.COM: a loop, INC and LOOP
+PASS: dosrun HELLO.EXE: an .EXE loads and runs
+PASS: dosrun EXIT7.COM: it runs and returns to the prompt
+PASS: dosrun BAD386.COM: an instruction it can't run is named
+PASS: dosrun MOVZX.COM: a 386 instruction runs
+PASS: dosrun FLAGS.COM: DOS and BIOS results survive IRET
+PASS: a guest IRET restores its frame exactly once
+PASS: direct BIOS clock polling advances during a busy loop
+PASS: video status polling crosses both bit edges with interrupts disabled
+PASS: a short direct-VGA text program renders before exit
+PASS: a DOS extender is refused with its actual requirement
+PASS: a packed installation file is identified as an archive
+PASS: dosrun with no program: a usage message
+
+OK: 0 failure(s)
+
+LIMITATIONS
+Only IN AL,DX at full 16-bit port 03DAh is handled. No native I/O.
+Bit 0 is inactive-display status, bit 3 is vertical retrace, other bits zero. Synthetic phase follows instructions, not wall-clock or port-read count.
+No programmable CRTC, attribute-controller effects, monochrome ports, word input or output implemented.
+Windows setup UI/Continue/directory prompt are Partial, not a completed installation or working Windows desktop.
+VisiCalc does not fault at EC during the 12-second retest but shows no usable worksheet.
+Original executables unchanged. Existing APKs not rebuilt; no release.

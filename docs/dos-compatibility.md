@@ -8,7 +8,7 @@ built-in commands and synthetic interpreter tests are tracked separately.
 
 **Ten DOS utilities have verified Working results for the workflows
 listed below:** seven FreeDOS tools and three utilities from the SemWare package. This is task-specific coverage, not a general DOS compatibility
-percentage. Checks & Balances and the SemWare editor are Partial. Warcraft, VisiCalc and Ability Plus encounter unsupported runtime features.
+percentage. Checks & Balances, the SemWare editor and Windows 1.01 setup are Partial. Warcraft and Ability Plus encounter unsupported runtime features; VisiCalc still has no usable worksheet.
 
 ## Status definitions
 
@@ -35,7 +35,7 @@ percentage. Checks & Balances and the SemWare editor are Partial. Warcraft, Visi
 | [SemWare GREP](#semware-tse-250e) | bundled in `tse250e.zip`; utility version unverified | **Working** | Finds exactly the two `apple` lines in the fixture. | 2026-10-22 |
 | [SemWare TSORT](#semware-tse-250e) | bundled in `tse250e.zip`; utility version unverified | **Working** | Sorts four input lines into a correctly ordered output file. | 2026-10-22 |
 | [SAL compiler SC](#semware-tse-250e) | 2.50e | **Working** | Compiles a minimal macro to an 87-byte MAC file with the expected signature and message. Macro execution untested. | 2026-10-22 |
-| [VisiCalc](#visicalc) | `VC.COM`, 27,520 bytes; archive timestamp 1981-12-17, exact version unverified | **Unsupported** | Stops on `IN AL,DX` polling port `03DAh`; no usable worksheet reached. | 2026-10-23 |
+| [VisiCalc](#visicalc) | `VC.COM`, 27,520 bytes; archive timestamp 1981-12-17, exact version unverified | **Broken** | Initial `03DAh` fault resolved; no worksheet or shell return during the 12-second retest. | 2026-10-23 |
 | [Ability Plus](#ability-plus-30) | 3.0, `AB3.ZIP` | **Unsupported** | Main program stops on x87 `FNINIT`; installer stops on a 32-bit operand instruction. No application workflow completed. | 2026-10-23 |
 | [PEDIT](#pedit-400) | 4.00, standard and Light | **Unsupported** | Both stop on operand-size prefix `66h`; no editable document reached. | 2026-10-23 |
 | [uHex](#uhex-104) | 1.0.4 DOS | **Partial** | Help returns; opens 34-byte fixture and shows correct hex bytes, with display defects. Editing/save/reopen unverified. | 2026-10-23 |
@@ -44,7 +44,7 @@ percentage. Checks & Balances and the SemWare editor are Partial. Warcraft, Visi
 | [Search](#search-10a) | 1.0a, FD14 BonusCD | **Working** | Finds both root/nested matches exactly once; correct total and missing-file result after directory fix. | 2026-10-23 |
 | [utf8tocp](#utf8tocp-20240918) | 20240918, FD14 BonusCD | **Working** | Exact UTF-8 ↔ CP437 and UTF-8 ↔ CP775 conversions, including Lithuanian letters and CRLF. | 2026-10-23 |
 | [Bywater BASIC](#bywater-basic-330) | 3.30, FD14 BonusCD binary | **Unsupported** | LE protected-mode executable rejected; the supplied arithmetic program was not executed. | 2026-10-23 |
-| [Microsoft Windows](#microsoft-windows-101) | 1.01, five 360 KB floppy images | **Unsupported** | Setup stops at video-status port input `03DAh`; no completed installation or Windows desktop reached. | 2026-10-23 |
+| [Microsoft Windows](#microsoft-windows-101) | 1.01, five 360 KB floppy images | **Partial** | Setup welcome, Continue and directory selection work; accepting directory stops on `OUT 43h,AL`. No completed installation or desktop. | 2026-10-23 |
 
 ## Warcraft: Orcs & Humans
 
@@ -304,6 +304,8 @@ Evidence: [transcripts](compatibility/2026-10-22-tse.txt),
 
 ## VisiCalc
 
+These are the pre-fix observations. See the [video-status retest](#video-status-emulation-and-retest) for the current Broken result.
+
 - **Input:** user-supplied `visicalc-executable.zip`, containing an unchanged
   27,520-byte `VC.COM`. The archive records 1981-12-17; exact version is unverified.
 - **Tested build:** ManiOS 0.25.0, commit `8446024`; DOS sources match the local
@@ -315,7 +317,7 @@ Evidence: [transcripts](compatibility/2026-10-22-tse.txt),
   `1000:6A3E`. A separate host CPU probe confirms `IN AL,DX`, with `DX=03DAh`,
   followed by `TEST AL,01h` and a conditional branch back to the input instruction.
   This is video status-port polling, which the runtime does not emulate.
-- **Status:** Unsupported. No usable worksheet was reached; data entry,
+- **Status before video-status fix:** Unsupported. No usable worksheet was reached; data entry,
   formulas, calculation, saving and reopening remain unverified.
 - **Next work:** implement and test the relevant video-status port semantics,
   then retest the application. Passing this first instruction would not establish
@@ -559,6 +561,8 @@ Evidence: [guest transcripts and exported-byte comparisons](compatibility/2026-1
 
 ## Microsoft Windows 1.01
 
+These are pre-fix observations. See the [video-status retest](#video-status-emulation-and-retest) for the current Partial installer result.
+
 The user-supplied `Microsoft Windows 1.01 (5.25).7z` contains five 368,640-byte
 FAT12 floppy images: Setup, Build, Utility, Apps and Write. File timestamps in
 the media are mostly 1985-11-15. The package identifies Windows 1.01; that
@@ -580,7 +584,7 @@ identification was not independently checked against a running Windows banner.
 | `dosrun C:/KERNEL.EXE` | Prints `Incorrect DOS version`, then NUL/binary-like output, and stops at `DB`, `10A6:65D1`. Probe identifies `DB E3` (`FNINIT`); this direct invocation is not an installed Windows startup and does not establish an application x87 requirement. |
 | `dosrun C:/NOTEPAD.EXE` | Its DOS stub says `This program requires Microsoft Windows.` and exits. The Windows editor itself did not run. |
 
-**Status: Unsupported.** The first confirmed installer blocker is video-status
+**Status before video-status fix: Unsupported.** The first confirmed installer blocker is video-status
 port input, which the current interpreter does not emulate. No usable installer
 workflow, completed installation, desktop or Windows application was reached.
 Removing this first blocker alone would not establish Windows compatibility.
@@ -601,6 +605,64 @@ and APK; existing APKs were not rebuilt and no release was created.
 
 Evidence: [guest transcripts and instruction probes](compatibility/2026-10-23-windows101.txt),
 [exact outputs, media listings, source and input hashes](compatibility/2026-10-23-windows101.json).
+
+## Video-status emulation and retest
+
+Fixed source: `4eaaa5c`, following baseline `dea2d01`. A DOS device callback
+now handles byte `IN AL,DX` at `03DAh`. Bit 0 reports an inactive display
+interval; bit 3 reports vertical retrace. Other status bits are zero. The model
+uses deterministic guest-instruction phase (4,096-instruction frame, 64-instruction
+line, final 16 instructions blank, final 256 instructions in vertical retrace).
+It does not claim a real refresh rate or cycle-accurate CGA/EGA hardware.
+Unknown ports, word reads, immediate reads and all writes remain unsupported.
+No native machine ports are accessed. See the [runtime documentation](dosrun.md#minimal-cgaega-compatible-video-status)
+for the register reference and exact scope.
+
+The dedicated `dosrun_port_test.py` verifies active/inactive/retrace states,
+repeated transitions, bit 0 during vertical retrace, preserved AH/flags/registers,
+both-polarity bit 0/3 wait loops with interrupts disabled, instruction-counter
+wrap and rejection of unsupported I/O. Same-phase reads are stable; the model
+does not simply flip a bit per read. It is wired into `make test`. A new QEMU COM
+regression completes the same edge waits and prints `VIDEO STATUS OK` through
+the actual runner. The host, string, runtime, port and QEMU DOS runner suites pass.
+
+### Windows 1.01 after video status
+
+Using the same merged-file FAT16 snapshot and unmodified `SETUP.EXE`, QEMU
+486 / 64 MiB now renders the welcome screen and Continue/Quit menu. A fresh
+interactive run sends `c` followed by Enter through the cooked serial terminal;
+it reaches directory selection with default `C:\WINDOWS`. A further fresh run
+accepts that default with Enter and returns a new instruction error:
+
+```text
+dosrun: C:/SETUP.EXE: can't run opcode E6 (at 1010:167B)
+```
+
+Unmodified executable bytes at `1010:167A` are `E6 43`, identifying
+`OUT 43h,AL` (timer control). This is outside the read-only video-status model.
+No timer command was ignored or forwarded. The new result is **Partial** for the
+installer interface. Installation, driver configuration, produced `WIN.COM`,
+Windows desktop, application execution, mouse and GUI graphics remain unverified.
+The directory screen has display remnants; full screen rendering is not claimed.
+
+### VisiCalc after video status
+
+The unchanged `VC.COM` no longer reports the previous `EC` error at `1000:6A3E`.
+In the 12-second QEMU observation it displays no usable worksheet and does not
+return to the shell. A separate bounded host probe ends in a BIOS keyboard-status
+polling path at `1000:5FF1`; this identifies a later execution path, not a
+successful spreadsheet workflow or proof of an infinite hang. Current status
+is **Broken**. Input, worksheet rendering, calculations, save/reopen and the
+cause of the remaining blank screen need further investigation.
+
+All tests use independent snapshots and original program hashes. Kernel/source
+hashes, exact inputs/outputs and regression logs are retained in the evidence.
+Existing Android APKs were not rebuilt; no release was created.
+
+Evidence: [transcripts and regression results](compatibility/2026-10-23-video-status.txt),
+[exact outputs, inputs, source/program hashes and test logs](compatibility/2026-10-23-video-status.json),
+[Windows setup welcome](compatibility/2026-10-23-video-status-windows-start.png),
+[Windows directory prompt](compatibility/2026-10-23-video-status-windows-directory.png).
 
 ## Adding or updating an entry
 
