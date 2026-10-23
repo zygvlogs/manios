@@ -1473,3 +1473,12 @@ The full transcript and hashes are in
 [2026-10-23-text-adventures.json](2026-10-23-text-adventures.json).
 
 No application binaries, ZIP archives or disk images are committed.
+
+## 0.26.0-10232026 PIC and PIT follow-up
+
+The DOS runner now models the master PIC mask at port `21h` and PIT channel 0
+modes 0, 2 and 3 with count latching. These are bounded software models driven
+by guest instruction count; they do not deliver hardware interrupts. Costa GUI,
+DATES and Cash Register now pass their earlier PIC/timer port faults but still
+stop on unrelated runtime or instruction gaps. Life2 enters RUN mode, though a
+generation was not verified. See the [retest record](2026-10-23-10232026-retest.txt).

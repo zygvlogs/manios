@@ -2,9 +2,9 @@
   "schema": 1,
   "updated": "2026-10-23",
   "build": {
-    "version": "0.26.0",
-    "commit": "55a788a",
-    "kernel_sha256": "8599009f47058371966bf01f622ce6991fccf7229de26742bc43c72639cdd7cd",
+    "version": "0.26.0-10232026",
+    "commit": "62bfebf",
+    "kernel_sha256": "76bc80d0d674bb4c0826f4b4ac1b7d88d80bace9ba3098006e4c8ab6d0a84aae",
     "environment": "QEMU i386, CPU 486, 64 MiB RAM, serial console; disposable FAT16 images and 6-12 s observations unless a longer setup run is recorded"
   },
   "details": "details.md",
@@ -257,9 +257,9 @@
       "version": "1.8.0, `costa180.zip`",
       "status": "Unsupported",
       "kind": "application",
-      "summary": "Launcher reports `DESKTOP.EXE not found.`; direct `DESKTOP.EXE` stops on `IN AL,21h`.",
+      "summary": "After PIC support, `DESKTOP.EXE` reaches COSTALIB but stops with `Illegal function call` at `15CA:2E00`; no usable desktop.",
       "anchor": "costa-gui-180",
-      "evidence": "2026-10-23-dosprograms-apps.txt",
+      "evidence": "2026-10-23-10232026-retest.txt",
       "last_tested": "2026-10-23"
     },
     {
@@ -290,9 +290,9 @@
       "version": "2002.08, `DATE0208.ZIP`",
       "status": "Unsupported",
       "kind": "application",
-      "summary": "Startup stops on `IN AL,21h` (port `0021h`); no date list or usage text.",
+      "summary": "After PIC support, startup faults on opcode `FF` at `0A34:5CD8`; no date list or usage screen.",
       "anchor": "dates-200208",
-      "evidence": "2026-10-23-dosprograms-apps.txt",
+      "evidence": "2026-10-23-10232026-retest.txt",
       "last_tested": "2026-10-23"
     },
     {
@@ -301,9 +301,9 @@
       "version": "7.1j, `POS71J.ZIP`",
       "status": "Unsupported",
       "kind": "application",
-      "summary": "`POS.EXE` startup stops on `IN AL,21h`; no register screen.",
+      "summary": "After PIC and PIT0 support, some text renders before unsupported `ARPL` at `6DCC:0293`; no register operation.",
       "anchor": "cash-register-71j",
-      "evidence": "2026-10-23-dosprograms-apps.txt",
+      "evidence": "2026-10-23-10232026-retest.txt",
       "last_tested": "2026-10-23"
     },
     {
@@ -466,9 +466,9 @@
       "version": "text-mode Conway Life, `life2.zip`",
       "status": "Partial",
       "kind": "game",
-      "summary": "Instructions and EDIT mode render; starting RUN mode stops on `OUT` port `0040h` (PIT channel 0) before a generation.",
+      "summary": "RUN mode now starts past the PIT channel-0 write; no evolving generation was confirmed in the bounded run.",
       "anchor": "life2",
-      "evidence": "2026-10-23-compat4-games.txt",
+      "evidence": "2026-10-23-10232026-retest.txt",
       "last_tested": "2026-10-23"
     },
     {

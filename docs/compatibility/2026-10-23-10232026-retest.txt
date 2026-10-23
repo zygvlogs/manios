@@ -1,0 +1,26 @@
+# Compatibility follow-up: 0.26.0-10232026
+
+Tested source commit: `62bfebf`.
+Kernel SHA-256: `76bc80d0d674bb4c0826f4b4ac1b7d88d80bace9ba3098006e4c8ab6d0a84aae`.
+Environment: QEMU i386, CPU 486, 64 MiB RAM, serial console. Existing
+FAT16 application images from the 2026-10-23 DOS compatibility batches were
+copied for each run. Tests ran through `dosrun` in ManiOS.
+
+## Results
+
+- Costa GUI 1.8.0: the former port `21h` fault is passed. `DESKTOP.EXE` then
+  prints `Illegal function call in line 0 of module COSTALIB at address
+  15CA:2E00` and returns to the shell. No usable desktop was reached.
+- DATES 2002.08: the former port `21h` fault is passed. Startup then faults on
+  opcode `FF` at `0A34:5CD8`; no date list or usage screen was reached.
+- Cash Register 7.1j: the former PIC and PIT channel-0 port faults are passed.
+  It renders part of its text UI, then faults on unsupported `ARPL` at
+  `6DCC:0293`; no register operation was completed.
+- Life2: the former PIT channel-0 port fault is passed. The program enters RUN
+  mode and stays active, but the bounded observation did not confirm an
+  evolving generation. Its status remains Partial.
+
+The DOS regression suite also covers the master PIC mask at port `21h` and
+PIT channel 0 modes 0, 2 and 3, count latching and byte-pair reloads. Full
+protected-mode/DPMI, x87, general hardware IRQ delivery and arbitrary port I/O
+remain outside this compatibility update.
