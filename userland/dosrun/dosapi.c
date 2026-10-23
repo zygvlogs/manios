@@ -109,6 +109,18 @@ struct dos_state {
 	uint16_t child_status;
 	struct cpu *cpu;
 	uint32_t clock_fraction;
+	/* The master 8259's interrupt mask register (I/O port 21h).  We
+	 * model the readable/writable mask for DOS programs that save and
+	 * restore it; this runner does not deliver hardware IRQs. */
+	uint8_t pic1_mask;
+	/* PIT channel 0, used by BIOS and by DOS programs which poll the
+	 * system timer.  This is an instruction-clock model; it raises no IRQs. */
+	struct {
+		uint32_t last_insns, phase, divisor;
+		uint16_t latch;
+		uint8_t low, write_high, read_high, latched, latch_high;
+		uint8_t loaded, mode;
+	} pit0;
 	struct {
 		uint32_t last_insns, phase, divisor;
 		uint16_t latch;
@@ -196,10 +208,84 @@ static uint16_t pit2_count(struct dos_state *d)
 	return (uint16_t)(n + ((n & 1) && p ? 1 : 0) - 2 * p);
 }
 
+static void pit0_sync(struct dos_state *d)
+{
+	uint32_t now = d->cpu->insns, elapsed = now - d->pit0.last_insns;
+	d->pit0.last_insns = now;
+	if (!d->pit0.loaded) return;
+	if (d->pit0.mode == 0) {
+		uint32_t remaining = d->pit0.divisor - d->pit0.phase;
+		d->pit0.phase += elapsed < remaining ? elapsed : remaining;
+	} else {
+		d->pit0.phase = (uint32_t)(((uint64_t)d->pit0.phase + elapsed) % d->pit0.divisor);
+	}
+}
+
+static uint16_t pit0_count(struct dos_state *d)
+{
+	if (!d->pit0.loaded) return 0;
+	uint32_t n = d->pit0.divisor, p = d->pit0.phase;
+	if (d->pit0.mode == 3) {
+		if (p >= (n + 1) / 2) return (uint16_t)(2 * (n - p));
+		return (uint16_t)(n + ((n & 1) && p ? 1 : 0) - 2 * p);
+	}
+	return (uint16_t)(p < n ? n - p : 0);
+}
+
+static int pit0_command(struct dos_state *d, uint8_t value)
+{
+	/* Channel 0, low/high byte access, binary count. Modes 0, 2 and 3 are
+	 * enough for system ticks, baud-rate generators and common delay loops. */
+	if (value == 0x00) {
+		pit0_sync(d);
+		if (!d->pit0.latched) {
+			d->pit0.latch = pit0_count(d);
+			d->pit0.latched = 1;
+			d->pit0.latch_high = 0;
+		}
+		return 0;
+	}
+	if (value != 0x30 && value != 0x34 && value != 0x36) return -1;
+	pit0_sync(d);
+	d->pit0.mode = value == 0x30 ? 0 : value == 0x34 ? 2 : 3;
+	d->pit0.phase = 0;
+	d->pit0.loaded = 0;
+	d->pit0.write_high = d->pit0.read_high = d->pit0.latched = 0;
+	return 0;
+}
+
+static int pit0_out(struct dos_state *d, uint8_t value)
+{
+	pit0_sync(d);
+	if (!d->pit0.write_high) d->pit0.low = value;
+	else {
+		uint16_t reload = d->pit0.low | ((uint16_t)value << 8);
+		d->pit0.divisor = reload ? reload : 65536u;
+		d->pit0.phase = 0;
+		d->pit0.loaded = 1;
+	}
+	d->pit0.write_high ^= 1;
+	return 0;
+}
+
+static int pit0_in(struct dos_state *d, uint8_t *value)
+{
+	if (!d->pit0.loaded) return -1;
+	pit0_sync(d);
+	uint16_t count = d->pit0.latched ? d->pit0.latch : pit0_count(d);
+	uint8_t *high = d->pit0.latched ? &d->pit0.latch_high : &d->pit0.read_high;
+	*value = (uint8_t)(*high ? count >> 8 : count);
+	*high ^= 1;
+	if (d->pit0.latched && !*high) d->pit0.latched = 0;
+	return 0;
+}
+
 static int dos_port_in8(struct cpu *c, uint16_t port, uint8_t *value)
 {
 	struct dos_state *d = c->port_context;
 	if (port == 0x3DA) return video_status_in8(c, port, value);
+	if (port == 0x21) { *value = d->pic1_mask; return 0; }
+	if (port == 0x40) return pit0_in(d, value);
 	if (port != 0x42 && port != 0x61) return -1;
 	if (port == 0x42 && !d->pit2.configured) return -1;
 	pit2_sync(d);
@@ -220,6 +306,12 @@ static int dos_port_in8(struct cpu *c, uint16_t port, uint8_t *value)
 static int dos_port_out8(struct cpu *c, uint16_t port, uint8_t value)
 {
 	struct dos_state *d = c->port_context;
+	/* The master PIC mask is ordinary state.  A mask write changes which
+	 * IRQs real DOS would accept, but no IRQ source is currently delivered. */
+	if (port == 0x21) { d->pic1_mask = value; return 0; }
+	if (port == 0x40) return pit0_out(d, value);
+	if (port == 0x43 && value <= 0x36 && (value == 0 || value == 0x30 || value == 0x34 || value == 0x36))
+		return pit0_command(d, value);
 	/* Reject commands before changing any device state. Other channels,
 	 * modes, BCD and 8254 read-back are not implemented. */
 	if (port == 0x43) {
@@ -267,6 +359,12 @@ struct dos_state *dos_new(struct cpu *c)
 		return NULL;
 	}
 	d->cpu = c;
+	/* PC BIOS normally leaves IRQ0 (timer) and IRQ1 (keyboard) unmasked. */
+	d->pic1_mask = 0xFC;
+	/* BIOS programs channel 0 in mode 3 with a zero divisor (65536). */
+	d->pit0.divisor = 65536u;
+	d->pit0.loaded = 1;
+	d->pit0.mode = 3;
 	d->pending_key = -1;
 	for (int i = 0; i < 16; i++) d->fcb_fd[i] = -1;
 	d->con_in = 0;

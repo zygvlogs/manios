@@ -147,6 +147,10 @@ void vga_restore_text(void)
 	if (!saved) {
 		return;
 	}
+	/* Return to text mode before touching plane 2: while mode 13h's
+	 * CRTC is still active, writes to the font plane do not land where
+	 * text mode reads them. */
+	write_regs(&text_regs);
 	select_font_plane();
 	memcpy(P2V(0xA0000), text_font, FONT_BYTES);
 	write_regs(&text_regs);

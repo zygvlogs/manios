@@ -231,7 +231,7 @@ class Scenario:
         stamp = read_text(s, 800 - 6 - 19 * CELL_W, TEXT_Y, 19, TEXT)
         check(re.fullmatch(r"20\d\d-\d\d-\d\d \d\d:\d\d:\d\d", stamp), f"the date and time: {stamp!r}")
         # (The | between the facts are dimmer: they read as spaces here.)
-        facts = read_text(s, FACTS_X, TEXT_Y, (800 - 6 - 19 * CELL_W - 12 - FACTS_X) // CELL_W, TEXT)
+        facts = read_text(s, FACTS_X, TEXT_Y, (800 - 6 - 19 * CELL_W - 6 - FACTS_X) // CELL_W, TEXT)
         check(re.fullmatch(rf"manios +ZKT {re.escape(VERSION)} +up \d+[smhd]( \d+[mh])? +cpu \d+% +mem \d+%"
                            r" +no network",
                            facts), f"host, kernel, uptime, cpu, memory, network: {facts!r}")

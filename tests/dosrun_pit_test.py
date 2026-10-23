@@ -17,11 +17,23 @@ static void out(unsigned port,unsigned v) { CHECK(c.port_out8(&c,port,v)==0); }
 static unsigned in(unsigned port) { uint8_t v;CHECK(c.port_in8(&c,port,&v)==0);return v; }
 static void load(unsigned n) { out(0x42,n&255);out(0x42,n>>8); }
 static unsigned latched(void) { out(0x43,0x80);unsigned lo=in(0x42);return lo|(in(0x42)<<8); }
+static void load0(unsigned n) { out(0x40,n&255);out(0x40,n>>8); }
+static unsigned latched0(void) { out(0x43,0x00);unsigned lo=in(0x40);return lo|(in(0x40)<<8); }
 static void code(unsigned op,unsigned operand) {
  c.sreg[1]=0x1000;c.ip=0;wr8(&c,0x1000,0,op);wr8(&c,0x1000,1,operand);
 }
 int main(void) {
  cpu_init(&c);d=dos_new(&c);CHECK(d&&c.port_context&&c.port_out8);
+ /* BIOS channel 0 begins in mode 3 with the conventional zero/65536
+  * divisor. Programs can reprogram, latch and poll its count. */
+ CHECK(latched0()==0);
+ out(0x43,0x36);load0(6);CHECK(latched0()==6);
+ c.insns+=2;CHECK(latched0()==2);c.insns++;CHECK(latched0()==6);
+ out(0x43,0x34);load0(6);c.insns+=5;CHECK(latched0()==1);
+ c.insns++;CHECK(latched0()==6);
+ out(0x43,0x30);load0(6);c.insns+=7;CHECK(latched0()==0);
+ unsigned ch0_count=latched0();CHECK(c.port_out8(&c,0x43,0x32)<0&&latched0()==ch0_count);
+ puts("PASS: PIT channel 0 BIOS default, mode 3/mode 2 periodic counts, mode 0 completion and latching");
  /* A control word is required, not simply swallowed. */
  CHECK(c.port_out8(&c,0x42,0x33)<0);uint8_t v;CHECK(c.port_in8(&c,0x42,&v)<0);
  out(0x43,0xB6);out(0x42,0x33);CHECK(dos_speaker_frequency(d)==0);
@@ -50,10 +62,10 @@ int main(void) {
  c.insns=0xFFFFFFFEu;out(0x61,0);load(6);out(0x61,3);c.insns+=3;CHECK(!(in(0x61)&0x20));
  puts("PASS: mode-3 odd/even counts, OUT2 status, frozen/rising gate, latching, zero=65536 and wrap");
  /* Unsupported commands must fail without corrupting a live timer. */
- unsigned bad[]={0x36,0x76,0xB4,0xB7,0x96,0xD6,0xFF};
+ unsigned bad[]={0x76,0xB4,0xB7,0x96,0xD6,0xFF};
  unsigned hz=dos_speaker_frequency(d);
  for(unsigned i=0;i<sizeof(bad)/sizeof(bad[0]);i++)CHECK(c.port_out8(&c,0x43,bad[i])<0&&dos_speaker_frequency(d)==hz);
- CHECK(c.port_out8(&c,0x40,7)<0&&c.port_out8(&c,0x41,7)<0&&c.port_out8(&c,0x3DA,7)<0);
+ CHECK(c.port_out8(&c,0x41,7)<0&&c.port_out8(&c,0x3DA,7)<0);
  out(0x61,0x0F);CHECK((in(0x61)&15)==15);out(0x61,in(0x61));CHECK((in(0x61)&15)==15);
  /* Actual immediate/DX opcodes consume exactly their operands and preserve
   * flags, AX on OUT, AH on IN, and unrelated registers. */

@@ -168,7 +168,7 @@ static void draw_bar(struct gfx_canvas *c)
 	const char *right = bar_right();
 	int rx = D.width - 6 - gfx_text_width(right, 1);
 	gfx_text(c, rx, TEXT_Y, right, C_TEXT, 1);
-	int fx = FACTS_X, fw = rx - 12 - FACTS_X;
+	int fx = FACTS_X, fw = rx - 6 - FACTS_X;
 	if (D.prompt_open) {
 		char line[PROMPT_MAX + 8];
 		snprintf(line, sizeof(line), "run: %s", D.prompt);

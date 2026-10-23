@@ -209,11 +209,13 @@ a new ledger entry, saving and reopening it, reports and printing are unverified
 BLUE.EXE still reaches unsupported port output (`EE`, `1050:004D`). The original
 360 KB floppy mounting issue was not addressed.
 
-Known limits remain: no protected mode/DOS extender, arbitrary hardware port I/O,
-child EXEC or TSR support; FCB zero-count block-write truncation returns an error;
-text scrolling and direct video-memory rendering are incomplete. Keyboard tests
-use the existing cooked terminal and require Enter. DOS date/time services still
-return the existing fixed values. Wildcard searches are limited to short names.
+Known limits remain: no protected mode/DOS extender, general hardware port I/O
+(the master PIC mask at `21h` and PIT channels 0 and 2 are modeled, but IRQ
+delivery is not), or TSR support; FCB zero-count block-write truncation returns
+an error; direct video-memory rendering beyond the supported text and mode 13h
+paths is incomplete. Keyboard tests use the existing cooked terminal and
+require Enter. DOS date/time services still return the existing fixed values.
+Wildcard searches are limited to short names.
 No compatibility is claimed for other programs on the CD.
 
 Evidence: [guest transcripts and regression results](2026-10-22-dos-compat-runtime.txt),

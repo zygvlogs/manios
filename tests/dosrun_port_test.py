@@ -19,8 +19,18 @@ int main(void) {
  cpu_init(&c);unsigned char in[]={0xEC};code(in,sizeof(in));c.r[DX]=0x3DA;
  CHECK(cpu_step(&c)==CPU_FAULT); /* No implicit device on a bare CPU. */
  struct dos_state *d=dos_new(&c);CHECK(d&&c.port_in8);
+ /* The master PIC mask register is persistent software state; it does not
+  * imply that the runner delivers the corresponding hardware interrupts. */
+ uint8_t mask=0;CHECK(c.port_in8(&c,0x21,&mask)==0&&mask==0xFC);
+ code(in,sizeof(in));c.r[DX]=0x21;c.r[AX]=0xAB00;c.flags=0xAD7;
+ CHECK(cpu_step(&c)==CPU_OK&&c.ip==1&&c.r[AX]==0xABFC&&c.flags==0xAD7);
+ unsigned char outpic[]={0xEE};code(outpic,sizeof(outpic));c.r[DX]=0x21;c.r[AX]=0xA5F9;c.flags=0xAD7;
+ enum cpu_stop out_stop=cpu_step(&c);
+ CHECK(out_stop==CPU_OK&&c.ip==1&&c.r[AX]==0xA5F9&&c.flags==0xAD7);
+ CHECK(c.port_in8(&c,0x21,&mask)==0&&mask==0xF9);
+ CHECK(c.port_out8(&c,0x21,0xFC)==0);
  unsigned seen=0,previous=0,vertical_edges=0;
- c.insns=0;c.flags=0xAD7;c.r[DX]=0x3DA;c.r[BX]=0x1234;
+ code(in,sizeof(in));c.insns=0;c.flags=0xAD7;c.r[DX]=0x3DA;c.r[BX]=0x1234;
  for(int i=0;i<16384;i++) {
   c.ip=0;c.r[AX]=0xABFF;CHECK(cpu_step(&c)==CPU_OK);
   unsigned v=c.r[AX]&255;
