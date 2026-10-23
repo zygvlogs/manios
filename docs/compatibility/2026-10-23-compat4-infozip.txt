@@ -1,0 +1,195 @@
+Info-ZIP UnZip 6.0 and Zip 2.32 on ManiOS 0.26.0
+================================================
+
+Date: 2026-10-23
+ManiOS: 0.26.0
+Source commit: dac810849902cb27eabdaa99b027d316fe29a2b0
+Kernel SHA256: 5553a1934d19165f34dcea365ffcb4aaec0d11b81877521da23ec889726fc88c
+Environment: QEMU i386, CPU 486, 64 MiB RAM, serial console; fresh 16 MiB FAT16 image per case
+
+Inputs:
+  zip232x.zip            355271  7b939f2f2192193ea95a5c6d65465b5262951c37422077d7730ca873c458887e
+  unz600x3.exe           354797  93127a9b114ed171209a8f2ac4e71d766d3b968bc0106265fa763c47dbcb40f8
+  dosstart.zip           383096  0dc8558fc3cf5f926e18ab4cbe7d076838b4bf5305059db6257216e7daaaeae9
+  spec10.zip            1239181  d25d46a912ffe1ebfca4b2661f1537ce8d2a72a0ccd9afda391c49c8cb40057c
+  pbox011-dos.zip         96932  cd24cdf0e37fe506f900e2baad8d6be9e13efb2ebe8409f05b751dddac1dc266
+  zip16.exe               47129  5abd88ee0d7f184b888a3d6c3a2e32ec7046a0e690744f6995e50766ba909fbd
+  zip16-sm.exe            47144  193be8d2a2e84f2d71b67328e63a02c43de2bb1ed47e041c247262f3a8c70a98
+  zip.exe                 83620  aca80a65715826772364d5f008636440c5c09de60ea1ac52e9d8d532a1c33348
+  unzip.exe               57437  c3d2eb5322ed896f34efde8b1a7e4bb2ce0d9f26c28fc14c6d5ad7db75f6f3fb
+  funzip.exe              14558  8a829a76fe060afc1426c2f35d627796458c547fe90e6fa981def4d3d2e27db9
+  DANSHELL.EXE           413469  bf1fbf209b663ef336cd8a1a14472f5505a0bfeb71b35cdf82dfc90ec0da3bec
+  HITECH.EXE              29583  87bed2dd78df75824d9d4f406c3d39b7a89811916a1f4ef79f5494a425c4ac31
+  PBOX.EXE                81384  9e7efc9b8d6fc24a8bcfc7ff7fa04bb0bbc2dd207616b289e41ee346ce00719c
+  KNOWN.ZIP                 737  a03a37ce1fc6b60b1b4dac5f3b66a2c2ab72eed9f096be53774a937544f7bd99
+  ONE.TXT                    24  41d1f5fd934e1e0d09735fa00a61a725b7efd7b46edcff1670f3b4f1c7324310
+  TWO.TXT                    11  d306b47f27852937d3bb3c9f494ef2cdf51e51e4697263a0b7b4e316c48ff1c0
+  DATA.BIN                 1024  785b0751fc2c53dc14a4ce3d800e69ef9ce1009eb327ccf458afe09c242c26c9
+  SUB/THREE.TXT              23  aff64ec99a92a1814df1954c2edc0aabeb3ee078a4018684bc3a090de4f7bfc0
+
+Cases:
+
+--- zip-create ---
+command: dosrun C:/ZIP16.EXE -q C:/TEST.ZIP C:/ONE.TXT C:/TWO.TXT
+returned: True
+expect: ''
+expect_seen: True
+output:
+  dosrun C:/ZIP16.EXE -q C:/TEST.ZIP C:/ONE.TXT C:/TWO.TXT
+  dosrun: C:/ZIP16.EXE: can't run opcode E5 (at 0000:0001)
+  dosrun: unsupported IN port 0000, AL=80 AX=0080; bytes at 0000:FFF8: 00 00 00 00 00 00 00 00 E5 00 24 1D 00 00 00 00
+checks:
+  {
+    "archive": {
+      "copied": false,
+      "error": "mcopy: File \"::/TEST.ZIP\" not found"
+    }
+  }
+
+--- zip-recursive ---
+command: dosrun C:/ZIP16.EXE -q -r C:/TREE.ZIP C:/SUB
+returned: True
+expect: ''
+expect_seen: True
+output:
+  dosrun C:/ZIP16.EXE -q -r C:/TREE.ZIP C:/SUB
+  dosrun: C:/ZIP16.EXE: can't run opcode E5 (at 0000:0001)
+  dosrun: unsupported IN port 0000, AL=80 AX=0080; bytes at 0000:FFF8: 00 00 00 00 00 00 00 00 E5 00 24 1D 00 00 00 00
+checks:
+  {
+    "archive": {
+      "copied": false,
+      "error": "mcopy: File \"::/TREE.ZIP\" not found"
+    }
+  }
+
+--- unzip-list ---
+command: dosrun C:/UNZIP.EXE -l C:/KNOWN.ZIP
+returned: True
+expect: 'ONE.TXT'
+expect_seen: True
+output:
+  dosrun C:/UNZIP.EXE -l C:/KNOWN.ZIP
+  Warning: TZ environment variable not found, cannot use UTC times!!
+  Archive:  C:/KNOWN.ZIP
+    Length      Date    Time    Name
+  ---------  ---------- -----   ----
+         24  10-23-2026 16:10   ONE.TXT
+         11  10-23-2026 16:10   TWO.TXT
+       1024  10-23-2026 16:10   DATA.BIN
+         23  10-23-2026 16:10   SUB/THREE.TXT
+  ---------                     -------
+       1082                     4 files
+
+--- unzip-test ---
+command: dosrun C:/UNZIP.EXE -t C:/KNOWN.ZIP
+returned: True
+expect: 'No errors detected'
+expect_seen: True
+output:
+  dosrun C:/UNZIP.EXE -t C:/KNOWN.ZIP
+  Warning: TZ environment variable not found, cannot use UTC times!!
+  Archive:  C:/KNOWN.ZIP
+      testing: ONE.TXT                  OK
+      testing: TWO.TXT                  OK
+      testing: DATA.BIN                 OK
+      testing: SUB/THREE.TXT            OK
+  No errors detected in compressed data of C:/KNOWN.ZIP.
+
+--- unzip-extract ---
+command: dosrun C:/UNZIP.EXE -o C:/KNOWN.ZIP -d C:/OUT
+returned: True
+expect: 'ONE.TXT'
+expect_seen: True
+output:
+  dosrun C:/UNZIP.EXE -o C:/KNOWN.ZIP -d C:/OUT
+  Warning: TZ environment variable not found, cannot use UTC times!!
+  Archive:  C:/KNOWN.ZIP
+    inflating: C:/OUT/ONE.TXT          
+    inflating: C:/OUT/TWO.TXT          
+    inflating: C:/OUT/DATA.BIN         
+    inflating: C:/OUT/SUB/THREE.TXT    
+checks:
+  {
+    "OUT-ONE.TXT": {
+      "copied": true,
+      "size": 24,
+      "sha256": "41d1f5fd934e1e0d09735fa00a61a725b7efd7b46edcff1670f3b4f1c7324310",
+      "head": "b'alpha one\\r\\nsecond line\\r\\n'"
+    },
+    "OUT-TWO.TXT": {
+      "copied": true,
+      "size": 11,
+      "sha256": "d306b47f27852937d3bb3c9f494ef2cdf51e51e4697263a0b7b4e316c48ff1c0",
+      "head": "b'bravo two\\r\\n'"
+    },
+    "OUT-DATA.BIN": {
+      "copied": true,
+      "size": 1024,
+      "sha256": "785b0751fc2c53dc14a4ce3d800e69ef9ce1009eb327ccf458afe09c242c26c9",
+      "head": "b'\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\x08\\t\\n\\x0b\\x0c\\r\\x0e\\x0f\\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17\\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f !\"#$%&\\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\\\]^_`abc'"
+    },
+    "OUT-SUB-THREE.TXT": {
+      "copied": true,
+      "size": 23,
+      "sha256": "aff64ec99a92a1814df1954c2edc0aabeb3ee078a4018684bc3a090de4f7bfc0",
+      "head": "b'charlie three\\r\\nnested\\r\\n'"
+    }
+  }
+
+--- unzip-print ---
+command: dosrun C:/UNZIP.EXE -p C:/KNOWN.ZIP ONE.TXT
+returned: True
+expect: 'alpha one'
+expect_seen: True
+output:
+  dosrun C:/UNZIP.EXE -p C:/KNOWN.ZIP ONE.TXT
+  Warning: TZ environment variable not found, cannot use UTC times!!
+  alpha one
+  second line
+
+--- funzip ---
+command: dosrun C:/FUNZIP.EXE C:/KNOWN.ZIP
+returned: True
+expect: 'alpha one'
+expect_seen: True
+output:
+  dosrun C:/FUNZIP.EXE C:/KNOWN.ZIP
+  alpha one
+  second line
+  funzip warning: zipfile has more than one entry--rest ignored
+
+--- unzip-version ---
+command: dosrun C:/UNZIP.EXE -v
+returned: True
+expect: 'UnZip 6.0'
+expect_seen: True
+output:
+  dosrun C:/UNZIP.EXE -v
+  UnZip 6.00 of 20 April 2009, by Info-ZIP.  Maintained by C. Spieler.  Send
+  bug reports using http://www.info-zip.org/zip-bug.html; see README for details.
+  Latest sources and executables are at ftp://ftp.info-zip.org/pub/infozip/ ;
+  see ftp://ftp.info-zip.org/pub/infozip/UnZip.html for other sites.
+  Compiled with Microsoft C 8.0/8.0c (Visual C++ 1.0/1.5) for 
+  MS-DOS (16-bit, large) on Apr 20 2009.
+  UnZip special compilation options:
+          ASM_CRC
+          COPYRIGHT_CLEAN (PKZIP 0.9x unreducing method not supported)
+          TIMESTAMP
+          USE_EF_UT_TIME
+          USE_UNSHRINK (PKZIP/Zip 1.x unshrinking method supported)
+          USE_DEFLATE64 (PKZIP 4.x Deflate64(tm) supported)
+          VMS_TEXT_CONV
+          [decryption, version 2.11 of 05 Jan 2007]
+  UnZip and ZipInfo environment options:
+             UNZIP:  [none]
+          UNZIPOPT:  [none]
+           ZIPINFO:  [none]
+        ZIPINFOOPT:  [none]
+
+Notes:
+  UnZip 6.00 lists, tests, prints and extracts the four-member KNOWN.ZIP, including the nested SUB/THREE.TXT directory.
+  Extracted files match the fixture bytes: ONE.TXT, TWO.TXT, DATA.BIN and SUB/THREE.TXT hashes are recorded in checks.
+  FUNZIP prints the first member and warns that the archive has more entries; this is expected.
+  Zip 2.32 creates no archive: the 16-bit builds stop at 0000:0001 before startup, and the 32-bit build reports no DPMI.
+  The TZ warning from UnZip is harmless; dates are still listed and CRC tests pass.

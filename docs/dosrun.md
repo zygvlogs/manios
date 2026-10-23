@@ -168,8 +168,9 @@ and rejection of unsupported ports. It is also included in `make test`.
 FCB zero-count block writes cannot truncate through the current filesystem API
 and return an explicit failure. BIOS text scrolling is incomplete. Keyboard
 input uses the terminal's line discipline (Enter is needed); direct VGA writes,
-extended scan-code sequences and game input are not fully emulated. The fixed
-DOS date/time responses remain. FCB layout and record semantics follow the
+extended scan-code sequences and game input are not fully emulated. UPX-packed
+MZ startup stubs are not supported. The fixed DOS date/time responses remain.
+FCB layout and record semantics follow the
 [MS-DOS Programmer's Reference](https://www.pcjs.org/documents/books/mspl13/msdos/dosref40/).
 
 ### SemWare-driven compatibility fixes

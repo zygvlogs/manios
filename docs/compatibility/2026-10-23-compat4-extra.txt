@@ -1,0 +1,84 @@
+DOSStart, Spectra, PasswordBox and Zip alternates on ManiOS 0.26.0
+==================================================================
+
+Date: 2026-10-23
+ManiOS: 0.26.0
+Source commit: dac810849902cb27eabdaa99b027d316fe29a2b0
+Kernel SHA256: 5553a1934d19165f34dcea365ffcb4aaec0d11b81877521da23ec889726fc88c
+Environment: QEMU i386, CPU 486, 64 MiB RAM, serial console; fresh 16 MiB FAT16 image per case
+
+Inputs:
+  zip232x.zip            355271  7b939f2f2192193ea95a5c6d65465b5262951c37422077d7730ca873c458887e
+  unz600x3.exe           354797  93127a9b114ed171209a8f2ac4e71d766d3b968bc0106265fa763c47dbcb40f8
+  dosstart.zip           383096  0dc8558fc3cf5f926e18ab4cbe7d076838b4bf5305059db6257216e7daaaeae9
+  spec10.zip            1239181  d25d46a912ffe1ebfca4b2661f1537ce8d2a72a0ccd9afda391c49c8cb40057c
+  pbox011-dos.zip         96932  cd24cdf0e37fe506f900e2baad8d6be9e13efb2ebe8409f05b751dddac1dc266
+  zip16.exe               47129  5abd88ee0d7f184b888a3d6c3a2e32ec7046a0e690744f6995e50766ba909fbd
+  zip16-sm.exe            47144  193be8d2a2e84f2d71b67328e63a02c43de2bb1ed47e041c247262f3a8c70a98
+  zip.exe                 83620  aca80a65715826772364d5f008636440c5c09de60ea1ac52e9d8d532a1c33348
+  unzip.exe               57437  c3d2eb5322ed896f34efde8b1a7e4bb2ce0d9f26c28fc14c6d5ad7db75f6f3fb
+  funzip.exe              14558  8a829a76fe060afc1426c2f35d627796458c547fe90e6fa981def4d3d2e27db9
+  DANSHELL.EXE           413469  bf1fbf209b663ef336cd8a1a14472f5505a0bfeb71b35cdf82dfc90ec0da3bec
+  HITECH.EXE              29583  87bed2dd78df75824d9d4f406c3d39b7a89811916a1f4ef79f5494a425c4ac31
+  PBOX.EXE                81384  9e7efc9b8d6fc24a8bcfc7ff7fa04bb0bbc2dd207616b289e41ee346ce00719c
+  KNOWN.ZIP                 737  a03a37ce1fc6b60b1b4dac5f3b66a2c2ab72eed9f096be53774a937544f7bd99
+  ONE.TXT                    24  41d1f5fd934e1e0d09735fa00a61a725b7efd7b46edcff1670f3b4f1c7324310
+  TWO.TXT                    11  d306b47f27852937d3bb3c9f494ef2cdf51e51e4697263a0b7b4e316c48ff1c0
+  DATA.BIN                 1024  785b0751fc2c53dc14a4ce3d800e69ef9ce1009eb327ccf458afe09c242c26c9
+  SUB/THREE.TXT              23  aff64ec99a92a1814df1954c2edc0aabeb3ee078a4018684bc3a090de4f7bfc0
+
+Cases:
+
+--- dosstart ---
+command: dosrun C:/DANSHELL.EXE
+returned: True
+expect: None
+expect_seen: None
+output:
+  dosrun C:/DANSHELL.EXE
+  dosrun: C:/DANSHELL.EXE: can't run opcode EC (at 1FBB:6B78)
+  dosrun: unsupported IN port 0021, AL=24 AX=0024; bytes at 1FBB:6B6F: 88 26 5F A8 BA 21 00 FA EC 80 FC FC 75 03 24 FB
+
+--- spectra ---
+command: dosrun C:/HITECH.EXE
+returned: True
+expect: None
+expect_seen: None
+output:
+  dosrun C:/HITECH.EXE
+  dosrun: C:/HITECH.EXE: can't run opcode EC (at 1345:2710)
+  dosrun: unsupported IN port 0021, AL=24 AX=0024; bytes at 1345:2707: 88 26 0B 86 BA 21 00 FA EC 80 FC FC 75 03 24 FB
+
+--- pbox-help ---
+command: dosrun C:/PBOX.EXE --help
+returned: True
+expect: None
+expect_seen: None
+output:
+  dosrun C:/PBOX.EXE --help
+  Load error: no DPMI - Get csdpmi*b.zip
+
+--- zip16-sm ---
+command: dosrun C:/ZIP16SM.EXE -q C:/SM.ZIP C:/ONE.TXT
+returned: True
+expect: None
+expect_seen: None
+output:
+  dosrun C:/ZIP16SM.EXE -q C:/SM.ZIP C:/ONE.TXT
+  dosrun: C:/ZIP16SM.EXE: can't run opcode EF (at 0000:0001)
+  dosrun: unsupported OUT port 3FCE, AL=80 AX=0080; bytes at 0000:FFF8: 00 00 00 00 00 00 00 00 EF 00 23 1D 00 00 00 00
+
+--- zip32 ---
+command: dosrun C:/ZIP32.EXE -q C:/Z32.ZIP C:/ONE.TXT
+returned: True
+expect: None
+expect_seen: None
+output:
+  dosrun C:/ZIP32.EXE -q C:/Z32.ZIP C:/ONE.TXT
+  Load error: no DPMI - Get csdpmi*b.zip
+
+Notes:
+  DOSStart 1.9b and Spectra 1.0 stop during startup on IN AL,21h (port 0021h); no launcher or GUI is reached.
+  PasswordBox 0.11 is a 32-bit DJGPP/go32 build and reports no DPMI host.
+  The alternate Info-ZIP Zip builds confirm the same class: 16-bit builds fail at 0000:0001; the 32-bit build reports no DPMI.
+  Screenshots show the serial console after the failed startup; they are evidence of the error text, not of a GUI.

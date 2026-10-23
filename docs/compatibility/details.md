@@ -17,8 +17,9 @@ are in the red/yellow/green [overview](../dos-compatibility.md) and the
 machine-readable [database](database.json). The sections are kept in test order
 and include earlier builds, so a section can predate the current result; use it
 for commands, timings, hashes and exact failure addresses. The 2026-10-23
-[dosprograms.info.tt catalog](https://dosprograms.info.tt/apps.htm) batch is at
-the end.
+[dosprograms.info.tt catalog](https://dosprograms.info.tt/apps.htm) batch is
+followed by the compat4 Info-ZIP, DOSStart, Spectra and PasswordBox batch at the
+end.
 
 ## Warcraft: Orcs & Humans
 
@@ -1025,5 +1026,158 @@ Input hashes, command lines, cleaned transcripts and per-case checks:
 [EDITV](2026-10-23-dosprograms-editv.png),
 [EDITV typed](2026-10-23-dosprograms-editv-typed.png),
 [Figlet](2026-10-23-dosprograms-figlet.png).
+
+No application binaries, ZIP archives or disk images are committed.
+
+## compat4 batch: Info-ZIP, DOSStart, Spectra, PasswordBox (2026-10-23)
+
+Tested source tree: `dac8108`, ManiOS 0.26.0; kernel SHA256
+`5553a1934d19165f34dcea365ffcb4aaec0d11b81877521da23ec889726fc88c`. The
+kernel is the same build recorded for `c10d9f0`; `dac8108` is the
+compatibility-documentation reorganization. Each case booted a fresh 16 MiB
+FAT16 image in QEMU i386 (CPU 486, 64 MiB RAM) with the serial console.
+Downloads and disk images remain outside the repository.
+
+| Application | Version / media | Status | Observed result | Last tested |
+| --- | --- | --- | --- | --- |
+| Info-ZIP UnZip | 6.00 (20 Apr 2009), `unz600x3.exe` | **Working** | `-l`, `-t`, `-p`, `FUNZIP` and extraction of all four members, including nested `SUB/THREE.TXT`, succeed; extracted hashes match the fixtures. | 2026-10-23 |
+| Info-ZIP Zip | 2.32, `zip232x.zip` | **Unsupported** | 16-bit `ZIP16.EXE` stops at `0000:0001` (`E5`); `ZIP16-SM.EXE` at `0000:0001` (`EF`); 32-bit `ZIP.EXE` reports no DPMI. No archive is created. | 2026-10-23 |
+| DOSStart | 1.9b build 9.2.2002, `dosstart.zip` | **Unsupported** | `DANSHELL.EXE` stops on `IN AL,21h` at `1FBB:6B78`; no launcher screen. | 2026-10-23 |
+| Spectra | 1.0, `spec10.zip` | **Unsupported** | `HITECH.EXE` stops on `IN AL,21h` at `1345:2710`; no GUI. | 2026-10-23 |
+| PasswordBox | 0.11 DOS build, `pbox011-dos.zip` | **Unsupported** | DJGPP/go32 stub reports `Load error: no DPMI`; no password database. | 2026-10-23 |
+
+### Info-ZIP UnZip 6.00
+
+`dosrun C:/UNZIP.EXE -v` identifies `UnZip 6.00 of 20 April 2009`, compiled
+for MS-DOS as a 16-bit large-model executable. The command-line tasks are
+fully exercised:
+
+- `dosrun C:/UNZIP.EXE -l C:/KNOWN.ZIP` lists the four members (`ONE.TXT`,
+  `TWO.TXT`, `DATA.BIN`, `SUB/THREE.TXT`) with their sizes and dates.
+- `dosrun C:/UNZIP.EXE -t C:/KNOWN.ZIP` tests all four CRCs and prints
+  `No errors detected in compressed data of C:/KNOWN.ZIP.`
+- `dosrun C:/UNZIP.EXE -o C:/KNOWN.ZIP -d C:/OUT` creates `OUT` and inflates
+  all four files. The exported `ONE.TXT`, `TWO.TXT`, `DATA.BIN` and
+  `SUB/THREE.TXT` match the fixture SHA-256 values in the transcript.
+- `dosrun C:/UNZIP.EXE -p C:/KNOWN.ZIP ONE.TXT` prints `alpha one` and
+  `second line`; `dosrun C:/FUNZIP.EXE C:/KNOWN.ZIP` prints the first member
+  and warns that the remaining entries are ignored.
+
+UnZip prints `Warning: TZ environment variable not found, cannot use UTC
+times!!`; listing, CRC checking and extraction are unaffected. Input
+`unzip.exe` SHA-256:
+`c3d2eb5322ed896f34efde8b1a7e4bb2ce0d9f26c28fc14c6d5ad7db75f6f3fb`.
+
+### Info-ZIP Zip 2.32
+
+The package's 16-bit builds do not reach their own startup code:
+
+```text
+dosrun C:/ZIP16.EXE -q C:/TEST.ZIP C:/ONE.TXT C:/TWO.TXT
+dosrun: C:/ZIP16.EXE: can't run opcode E5 (at 0000:0001)
+dosrun: unsupported IN port 0000, AL=80 AX=0080; bytes at 0000:FFF8:
+00 00 00 00 00 00 00 00 E5 00 24 1D 00 00 00 00
+```
+
+The small-model build fails the same way with `EF` and `OUT 3FCE` at
+`0000:0001`. The `TEST.ZIP` and `TREE.ZIP` commands create no archive, and the
+separate small-model check leaves `SM.ZIP` absent. The 32-bit `ZIP.EXE` is a
+DJGPP/go32 build and prints:
+
+```text
+Load error: no DPMI - Get csdpmi*b.zip
+```
+
+The 16-bit binaries are UPX-packed startup stubs that the current MZ loader
+does not unpack; the 32-bit build additionally needs a DPMI host. Input `zip16.exe`
+SHA-256:
+`5abd88ee0d7f184b888a3d6c3a2e32ec7046a0e690744f6995e50766ba909fbd`.
+
+### DOSStart 1.9b
+
+`dosrun C:/DANSHELL.EXE` stops during startup:
+
+```text
+dosrun: C:/DANSHELL.EXE: can't run opcode EC (at 1FBB:6B78)
+dosrun: unsupported IN port 0021, AL=24 AX=0024; bytes at 1FBB:6B6F:
+88 26 5F A8 BA 21 00 FA EC 80 FC FC 75 03 24 FB
+```
+
+The README requires a 286, a VGA screen and a mouse driver. The run does not
+reach the mouse check or the launcher: the PIC-mask read at port `0021h` stops
+it first. Input `DANSHELL.EXE` SHA-256:
+`bf1fbf209b663ef336cd8a1a14472f5505a0bfeb71b35cdf82dfc90ec0da3bec`.
+See the [startup screenshot](2026-10-23-compat4-dosstart.png).
+
+### Spectra 1.0
+
+`dosrun C:/HITECH.EXE` stops in the same startup pattern:
+
+```text
+dosrun: C:/HITECH.EXE: can't run opcode EC (at 1345:2710)
+dosrun: unsupported IN port 0021, AL=24 AX=0024; bytes at 1345:2707:
+88 26 0B 86 BA 21 00 FA EC 80 FC FC 75 03 24 FB
+```
+
+No Spectra window or menu is reached. Input `HITECH.EXE` SHA-256:
+`87bed2dd78df75824d9d4f406c3d39b7a89811916a1f4ef79f5494a425c4ac31`.
+See the [startup screenshot](2026-10-23-compat4-spectra.png).
+
+### PasswordBox 0.11
+
+`dosrun C:/PBOX.EXE --help` starts the DJGPP/go32 stub and stops before the
+program:
+
+```text
+Load error: no DPMI - Get csdpmi*b.zip
+```
+
+PasswordBox is a 32-bit build; no password database is opened. Input
+`PBOX.EXE` SHA-256:
+`9e7efc9b8d6fc24a8bcfc7ff7fa04bb0bbc2dd207616b289e41ee346ce00719c`.
+
+### Interactive input limitation (EDITV)
+
+A separate 2026-10-23 probe tried to save and exit EDITV with QEMU monitor
+key events. It sent `Z`, `F2` and `Alt+X`; the editor did not return, `Z` was
+not inserted (the line was never completed with Enter), and `INPUT.TXT`
+remained 37 bytes with SHA-256
+`c30a4d57cc62616d8e95765ee079a45b66057f9ce71e4b1de5b7c0cdeee65eab` before
+and after. This is consistent with the console's cooked line discipline:
+printable text is delivered a line at a time, the probe sent no Enter, and
+function and Alt keys have no ASCII representation. An earlier serial test
+that sent `Z` followed by Enter did insert text, so this probe confirms the
+existing EDITV **Partial** result rather than a new EDITV failure. Details:
+[interactive probe JSON](2026-10-23-compat4-editv-interactive.json); screenshots:
+[start](2026-10-23-compat4-editv-start.png),
+[typed](2026-10-23-compat4-editv-typed.png),
+[save attempt](2026-10-23-compat4-editv-saved.png),
+[exit attempt](2026-10-23-compat4-editv-exit-failed.png),
+[reopen](2026-10-23-compat4-editv-reopened.png).
+
+### Runtime gaps exposed
+
+- **PIC mask read (`IN AL,21h`).** DOSStart and Spectra join Costa's desktop,
+  DATES and Cash Register in stopping on the same startup sequence. Five
+  unrelated programs now fail before their own code because the port model
+  does not answer this hardware read.
+- **16-bit UPX startup.** Both Info-ZIP Zip 16-bit builds are UPX-packed and
+  stop at `0000:0001` on the first instruction or port access. This is a
+  loader gap distinct from missing DOS services.
+- **DPMI/32-bit extender.** MinEd, PasswordBox and the 32-bit Info-ZIP Zip
+  build all stop in their go32 stubs with `Load error: no DPMI`.
+- **Keyboard scan codes.** EDITV, TSE, VIEW and Directory Freedom cannot be
+  driven through function, cursor or Alt keys because the console input path
+  is line-oriented. Printable text plus Enter still reaches DOS programs.
+
+### Evidence and inputs
+
+Command lines, cleaned transcripts and per-case checks:
+[Info-ZIP transcript](2026-10-23-compat4-infozip.txt) and
+[JSON records](2026-10-23-compat4-infozip.json); [startup batch transcript](2026-10-23-compat4-extra.txt)
+and [JSON records](2026-10-23-compat4-extra.json). Screenshots:
+[DOSStart](2026-10-23-compat4-dosstart.png),
+[Spectra](2026-10-23-compat4-spectra.png). The transcript lists SHA-256
+values for the downloaded archives, the executables and the fixture files.
 
 No application binaries, ZIP archives or disk images are committed.

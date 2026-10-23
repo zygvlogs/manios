@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-23",
+  "application": "EDITV 4.1 US",
+  "command": "dosrun C:/EDITV.EXE C:/INPUT.TXT",
+  "actions": [
+    "keyboard Z",
+    "F2",
+    "Alt+X"
+  ],
+  "result": {
+    "returned": false,
+    "contains_Zalpha": false,
+    "reopened_exit": false,
+    "input_file_size": 37,
+    "input_file_sha256_before": "c30a4d57cc62616d8e95765ee079a45b66057f9ce71e4b1de5b7c0cdeee65eab",
+    "input_file_sha256_after": "c30a4d57cc62616d8e95765ee079a45b66057f9ce71e4b1de5b7c0cdeee65eab"
+  },
+  "screenshots": {
+    "start": "2026-10-23-compat4-editv-start.png",
+    "typed": "2026-10-23-compat4-editv-typed.png",
+    "saved": "2026-10-23-compat4-editv-saved.png",
+    "exit_failed": "2026-10-23-compat4-editv-exit-failed.png",
+    "reopened": "2026-10-23-compat4-editv-reopened.png"
+  },
+  "cause": "The ManiOS console uses a cooked line discipline. QEMU monitor sendkey delivered Z without Enter (so the line was not completed), and F2/Alt+X have no ASCII representation in the console input path. This confirms the existing EDITV Partial result; it is not evidence that EDITV save itself is broken.",
+  "note": "Earlier serial input of Z followed by Enter did insert text; function-key scan codes remain undeliverable."
+}

@@ -360,6 +360,61 @@
       "anchor": "viewseek-31-auxiliary",
       "evidence": "2026-10-23-dosprograms-apps.txt",
       "last_tested": "2026-10-23"
+    },
+    {
+      "id": "info-zip-unzip",
+      "name": "Info-ZIP UnZip",
+      "version": "6.00 (20 Apr 2009), DOS 16-bit large, `unz600x3.exe`",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Lists and CRC-tests `KNOWN.ZIP`; extracts all four members including `SUB/THREE.TXT` with exact hashes; `-p` and `FUNZIP` print the correct text.",
+      "anchor": "info-zip-unzip-600",
+      "evidence": "2026-10-23-compat4-infozip.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "info-zip-zip",
+      "name": "Info-ZIP Zip",
+      "version": "2.32, 16-bit and 32-bit DOS builds, `zip232x.zip`",
+      "status": "Unsupported",
+      "kind": "utility",
+      "summary": "16-bit builds stop at `0000:0001` (`E5`/`EF`); the 32-bit build reports `no DPMI`; no archive is created.",
+      "anchor": "info-zip-zip-232",
+      "evidence": "2026-10-23-compat4-infozip.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "dosstart",
+      "name": "DOSStart",
+      "version": "1.9b build 9.2.2002, `dosstart.zip`",
+      "status": "Unsupported",
+      "kind": "application",
+      "summary": "`DANSHELL.EXE` stops on `IN AL,21h` at `1FBB:6B78`; no launcher screen.",
+      "anchor": "dosstart-19b",
+      "evidence": "2026-10-23-compat4-extra.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "spectra",
+      "name": "Spectra",
+      "version": "1.0, `spec10.zip`",
+      "status": "Unsupported",
+      "kind": "application",
+      "summary": "`HITECH.EXE` stops on `IN AL,21h` at `1345:2710`; no GUI.",
+      "anchor": "spectra-10",
+      "evidence": "2026-10-23-compat4-extra.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "passwordbox",
+      "name": "PasswordBox",
+      "version": "0.11 DOS build, `pbox011-dos.zip`",
+      "status": "Unsupported",
+      "kind": "utility",
+      "summary": "DJGPP/go32 stub reports `Load error: no DPMI`; no password database.",
+      "anchor": "passwordbox-011",
+      "evidence": "2026-10-23-compat4-extra.txt",
+      "last_tested": "2026-10-23"
     }
   ],
   "status_colors": {

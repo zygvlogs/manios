@@ -2,7 +2,7 @@
 
 Last updated: **2026-10-23**. ManiOS version: **0.26.0**.
 
-**32 programs:** 🟢 **11 Working** · 🟡 **7 Partial** · 🔴 **14 Broken/unsupported** · ⚪ **0 Untested**
+**37 programs:** 🟢 **12 Working** · 🟡 **7 Partial** · 🔴 **18 Broken/unsupported** · ⚪ **0 Untested**
 
 This is task-specific coverage, not a compatibility percentage: a green
 entry means the listed task completed, not that every feature of the
@@ -18,7 +18,7 @@ program works. The full test history is in
 | 🔴 | Unsupported | A required CPU mode, subsystem or interface is missing. |
 | ⚪ | Untested | No current result. |
 
-## 🟢 Working (11)
+## 🟢 Working (12)
 
 | Application | Version / media | Verified task | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
@@ -28,6 +28,7 @@ program works. The full test history is in
 | [Figlet](compatibility/details.md#figlet-22) | 2.2 DOS port, `figdos22.zip` | Correct `ManiOS` standard-font banner; `-I 1` prints `20200`. | [screenshot](compatibility/2026-10-23-dosprograms-figlet.png) | 2026-10-23 |
 | [FreeDOS FC](compatibility/details.md#freedos-fc) | FD14 BonusCD; version unverified | Equal/different text and `/B` binary comparisons produce the correct results. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [FreeDOS MORE](compatibility/details.md#freedos-more) | 4.3, FD14 BonusCD | Help, exact short-file text, redirected stdin and 24-line paging/quit verified. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
+| [Info-ZIP UnZip](compatibility/details.md#info-zip-unzip-600) | 6.00 (20 Apr 2009), DOS 16-bit large, `unz600x3.exe` | Lists and CRC-tests `KNOWN.ZIP`; extracts all four members including `SUB/THREE.TXT` with exact hashes; `-p` and `FUNZIP` print the correct text. | [transcript](compatibility/2026-10-23-compat4-infozip.txt) | 2026-10-23 |
 | [SAL compiler SC](compatibility/details.md#semware-tse-250e) | 2.50e, bundled with TSE | Compiles a minimal macro to an 87-byte MAC with the expected signature and message. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [Search](compatibility/details.md#search-10a) | 1.0a, FD14 BonusCD | Finds both root and nested matches once; totals and the missing-file result are correct. | [transcript](compatibility/2026-10-23-search-utf8-basic.txt) | 2026-10-23 |
 | [SemWare GREP](compatibility/details.md#semware-tse-250e) | bundled with TSE 2.50e | Finds exactly the two `apple` lines in the fixture. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
@@ -46,7 +47,7 @@ program works. The full test history is in
 | [uHex](compatibility/details.md#uhex-104) | 1.0.4 DOS | Help and the 34-byte read-only view work, with display defects; editing, save and reopen are unverified. | [screenshot](compatibility/2026-10-23-retest-026-uhex.png) | 2026-10-23 |
 | [VIEW](compatibility/details.md#view-172) | 17.2, `view.zip` | Opens the 23-page `VIEW.DOC` and a short file; Esc exits. Header overlap and screen remnants remain; paging is untested. | [screenshot](compatibility/2026-10-23-dosprograms-view-doc.png) | 2026-10-23 |
 
-## 🔴 Broken and unsupported (14)
+## 🔴 Broken and unsupported (18)
 
 | Application | Version / media | Status | Blocker | Evidence | Last tested |
 | --- | --- | --- | --- | --- | --- |
@@ -58,9 +59,13 @@ program works. The full test history is in
 | [Costa GUI](compatibility/details.md#costa-gui-180) | 1.8.0, `costa180.zip` | 🔴 **Unsupported** | Launcher reports `DESKTOP.EXE not found.`; direct `DESKTOP.EXE` stops on `IN AL,21h`. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
 | [DATES](compatibility/details.md#dates-200208) | 2002.08, `DATE0208.ZIP` | 🔴 **Unsupported** | Startup stops on `IN AL,21h` (port `0021h`); no date list or usage text. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
 | [Directory Maven](compatibility/details.md#directory-maven-13) | 1.3 | 🔴 **Unsupported** | The scan path stops on `66h`; help stops at `IN AL,DX`. | [transcript](compatibility/2026-10-23-maven.txt) | 2026-10-23 |
+| [DOSStart](compatibility/details.md#dosstart-19b) | 1.9b build 9.2.2002, `dosstart.zip` | 🔴 **Unsupported** | `DANSHELL.EXE` stops on `IN AL,21h` at `1FBB:6B78`; no launcher screen. | [transcript](compatibility/2026-10-23-compat4-extra.txt) | 2026-10-23 |
 | [File Maven](compatibility/details.md#file-maven-35a) | 3.5a | 🔴 **Broken** | Installer, main executable and launcher pass the clock wait, then fail on `IN AL,DX`; no usable manager. | [transcript](compatibility/2026-10-23-maven.txt) | 2026-10-23 |
+| [Info-ZIP Zip](compatibility/details.md#info-zip-zip-232) | 2.32, 16-bit and 32-bit DOS builds, `zip232x.zip` | 🔴 **Unsupported** | 16-bit builds stop at `0000:0001` (`E5`/`EF`); the 32-bit build reports `no DPMI`; no archive is created. | [transcript](compatibility/2026-10-23-compat4-infozip.txt) | 2026-10-23 |
 | [MinEd](compatibility/details.md#mined-202227) | 2022.27, `mined-2022.27-dos.zip` | 🔴 **Unsupported** | DJGPP/go32 loader reports `Load error: no DPMI`; no editor screen. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
+| [PasswordBox](compatibility/details.md#passwordbox-011) | 0.11 DOS build, `pbox011-dos.zip` | 🔴 **Unsupported** | DJGPP/go32 stub reports `Load error: no DPMI`; no password database. | [transcript](compatibility/2026-10-23-compat4-extra.txt) | 2026-10-23 |
 | [PEDIT](compatibility/details.md#pedit-400) | 4.00 standard and Light | 🔴 **Unsupported** | Both variants stop on the operand-size prefix `66h`; no editable document. | [transcript](compatibility/2026-10-23-catalog.txt) | 2026-10-23 |
+| [Spectra](compatibility/details.md#spectra-10) | 1.0, `spec10.zip` | 🔴 **Unsupported** | `HITECH.EXE` stops on `IN AL,21h` at `1345:2710`; no GUI. | [transcript](compatibility/2026-10-23-compat4-extra.txt) | 2026-10-23 |
 | [VIEWSEEK](compatibility/details.md#viewseek-31-auxiliary) | 3.1, VIEW package (auxiliary) | 🔴 **Broken** | Search reports no match for text that is present, then exits with `run-time error R6001`. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
 | [VisiCalc](compatibility/details.md#visicalc) | `VC.COM`, 27,520 bytes; version unverified | 🔴 **Broken** | No usable worksheet or shell return during the retest; the blank screen remains. | [screenshot](compatibility/2026-10-23-retest-026-visicalc.png) | 2026-10-23 |
 | [Warcraft: Orcs & Humans](compatibility/details.md#warcraft-orcs--humans) | 1994 DOS CD; exact patch unverified | 🔴 **Unsupported** | Extracted `war.exe` needs a DOS/4GW protected-mode payload; the installer stops on `OUT 43h` (`E6`). | [transcript](compatibility/2026-10-22-warcraft.txt) | 2026-10-23 |
