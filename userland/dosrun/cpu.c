@@ -1253,15 +1253,23 @@ enum cpu_stop cpu_step(struct cpu *c)
 		}
 		return CPU_OK;
 	}
-	case 0xEC: { /* IN AL,DX: only an explicitly emulated byte port */
+	case 0xE4: case 0xEC: { /* IN AL,imm8 / IN AL,DX */
+		uint16_t port = op == 0xE4 ? rd8(c, c->sreg[1], c->ip) : c->r[DX];
 		uint8_t value;
-		if (!c->port_in8 || c->port_in8(c, c->r[DX], &value) < 0)
+		if (!c->port_in8 || c->port_in8(c, port, &value) != 0)
 			return CPU_FAULT;
+		if (op == 0xE4) c->ip++;
 		c->r[AX] = (uint16_t)((c->r[AX] & 0xFF00) | value);
 		return CPU_OK;
 	}
-	case 0xE4: case 0xE5: case 0xE6: case 0xE7: /* IN/OUT imm8 */
-	case 0xED: case 0xEE: case 0xEF: /* word IN or OUT DX */
+	case 0xE6: case 0xEE: { /* OUT imm8,AL / OUT DX,AL */
+		uint16_t port = op == 0xE6 ? rd8(c, c->sreg[1], c->ip) : c->r[DX];
+		if (!c->port_out8 || c->port_out8(c, port, (uint8_t)c->r[AX]) != 0)
+			return CPU_FAULT;
+		if (op == 0xE6) c->ip++;
+		return CPU_OK;
+	}
+	case 0xE5: case 0xE7: case 0xED: case 0xEF: /* word I/O */
 		return CPU_FAULT;
 	case 0xE8: { /* CALL rel16 */
 		int16_t rel = (int16_t)rd16(c, c->sreg[1], c->ip);

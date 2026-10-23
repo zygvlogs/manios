@@ -49,7 +49,7 @@ int main(void) {
   CHECK(done&&!(c.flags&FLAG_IF));
  }
  puts("PASS: both-polarity bit 0/3 polling loops terminate with interrupts disabled, including counter wrap");
- uint16_t ports[]={0,6,0x61,0x3BA,0x3DB,0xFFFF};
+ uint16_t ports[]={0,6,0x60,0x3BA,0x3DB,0xFFFF};
  for(unsigned k=0;k<sizeof(ports)/sizeof(ports[0]);k++) {
   code(in,sizeof(in));c.r[DX]=ports[k];c.r[AX]=0xBEEF;c.flags=0xAD7;
   CHECK(cpu_step(&c)==CPU_FAULT&&c.fault_opcode==0xEC&&c.r[AX]==0xBEEF&&c.flags==0xAD7);
@@ -60,7 +60,7 @@ int main(void) {
   CHECK(cpu_step(&c)==CPU_FAULT&&c.fault_opcode==refused[k]&&c.r[AX]==0xBEEF&&c.flags==0xAD7);
  }
  dos_free(d);CHECK(!c.port_in8);code(in,sizeof(in));c.r[DX]=0x3DA;CHECK(cpu_step(&c)==CPU_FAULT);
- cpu_free(&c);puts("PASS: unknown ports, word input, all output and truncated immediate ports remain unsupported");
+ cpu_free(&c);puts("PASS: unknown/read-only ports, word I/O and truncated immediate port aliases remain unsupported");
  return 0;
 }
 '''

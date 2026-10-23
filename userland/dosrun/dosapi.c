@@ -64,6 +64,12 @@ extern int poll(struct zkt_pollfd *, int, int);
 struct dos_state {
 	struct cpu *cpu;
 	uint32_t clock_fraction;
+	struct {
+		uint32_t last_insns, phase, divisor;
+		uint16_t latch;
+		uint8_t low, write_high, read_high, latched, latch_high;
+		uint8_t configured, loaded, control;
+	} pit2;
 	uint16_t psp_seg;
 	uint16_t prog_seg;
 	uint16_t dta, dta_seg; /* disk transfer area, independent of later DS */
@@ -125,6 +131,89 @@ static int video_status_in8(struct cpu *c, uint16_t port, uint8_t *value)
 	return 0;
 }
 
+/* A bounded PIT channel-2 model: binary mode 3, low/high-byte programming
+ * and count latch. Like video status, one guest instruction is a synthetic
+ * input clock. No timer IRQs or native hardware access are involved. */
+static void pit2_sync(struct dos_state *d)
+{
+	uint32_t now = d->cpu->insns, elapsed = now - d->pit2.last_insns;
+	d->pit2.last_insns = now;
+	if (d->pit2.loaded && (d->pit2.control & 1))
+		d->pit2.phase = (uint32_t)(((uint64_t)d->pit2.phase + elapsed) % d->pit2.divisor);
+}
+
+static uint16_t pit2_count(struct dos_state *d)
+{
+	if (!d->pit2.loaded) return 0;
+	uint32_t n = d->pit2.divisor, p = d->pit2.phase;
+	if (p >= (n + 1) / 2) return (uint16_t)(2 * (n - p));
+	return (uint16_t)(n + ((n & 1) && p ? 1 : 0) - 2 * p);
+}
+
+static int dos_port_in8(struct cpu *c, uint16_t port, uint8_t *value)
+{
+	struct dos_state *d = c->port_context;
+	if (port == 0x3DA) return video_status_in8(c, port, value);
+	if (port != 0x42 && port != 0x61) return -1;
+	if (port == 0x42 && !d->pit2.configured) return -1;
+	pit2_sync(d);
+	if (port == 0x61) {
+		int out = !d->pit2.loaded || !(d->pit2.control & 1) ||
+		          d->pit2.phase < (d->pit2.divisor + 1) / 2;
+		*value = (uint8_t)((d->pit2.control & 15) | (out ? 0x20 : 0));
+		return 0;
+	}
+	uint16_t count = d->pit2.latched ? d->pit2.latch : pit2_count(d);
+	uint8_t *high = d->pit2.latched ? &d->pit2.latch_high : &d->pit2.read_high;
+	*value = (uint8_t)(*high ? count >> 8 : count);
+	*high ^= 1;
+	if (d->pit2.latched && !*high) d->pit2.latched = 0;
+	return 0;
+}
+
+static int dos_port_out8(struct cpu *c, uint16_t port, uint8_t value)
+{
+	struct dos_state *d = c->port_context;
+	/* Reject commands before changing any device state. Other channels,
+	 * modes, BCD and 8254 read-back are not implemented. */
+	if (port == 0x43) {
+		if (value != 0xB6 && value != 0x80) return -1;
+		if (value == 0x80 && !d->pit2.configured) return -1;
+	} else if (port == 0x42) {
+		if (!d->pit2.configured) return -1;
+	} else if (port != 0x61) return -1;
+	pit2_sync(d);
+	if (port == 0x43) {
+		if (value == 0x80) {
+			if (!d->pit2.latched) {
+				d->pit2.latch = pit2_count(d); d->pit2.latched = 1; d->pit2.latch_high = 0;
+			}
+		} else {
+			d->pit2.configured = 1; d->pit2.loaded = 0; d->pit2.phase = 0;
+			d->pit2.write_high = d->pit2.read_high = d->pit2.latched = 0;
+		}
+	} else if (port == 0x42) {
+		if (!d->pit2.write_high) d->pit2.low = value;
+		else {
+			uint16_t reload = d->pit2.low | ((uint16_t)value << 8);
+			d->pit2.divisor = reload ? reload : 65536u;
+			d->pit2.loaded = 1; d->pit2.phase = 0;
+		}
+		d->pit2.write_high ^= 1;
+	} else {
+		/* Low four bits are writable latches; bits 4..7 are read-only.
+		 * Gate rising restarts the count; gate falling forces OUT2 high. */
+		if (!(d->pit2.control & 1) && (value & 1)) d->pit2.phase = 0;
+		d->pit2.control = value & 15;
+	}
+	return 0;
+}
+
+unsigned dos_speaker_frequency(struct dos_state *d)
+{
+	return d->pit2.loaded && (d->pit2.control & 3) == 3 ? 1193182u / d->pit2.divisor : 0;
+}
+
 struct dos_state *dos_new(struct cpu *c)
 {
 	struct dos_state *d = calloc(1, sizeof(*d));
@@ -164,13 +253,17 @@ struct dos_state *dos_new(struct cpu *c)
 		d->ems_map_h[i] = -1;
 		d->ems_map_p[i] = -1;
 	}
-	c->port_in8 = video_status_in8;
+	c->port_context = d;
+	c->port_in8 = dos_port_in8;
+	c->port_out8 = dos_port_out8;
 	return d;
 }
 
 void dos_free(struct dos_state *d)
 {
-	if (d->cpu->port_in8 == video_status_in8) d->cpu->port_in8 = NULL;
+	if (d->cpu->port_context == d) {
+		d->cpu->port_in8 = NULL; d->cpu->port_out8 = NULL; d->cpu->port_context = NULL;
+	}
 	for (int i = 0; i < 16; i++) if (d->fcb_fd[i] >= 0) close(d->fcb_fd[i]);
 	for (int i = 0; i < 8; i++) if (d->find[i].dir) closedir(d->find[i].dir);
 	for (int i = 0; i < HANDLES; i++) if (d->handle_fd[i] > 2) close(d->handle_fd[i]);

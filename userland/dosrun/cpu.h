@@ -61,6 +61,8 @@ struct cpu {
 	/* Optional emulated byte-input device. Return 0 only for a handled
 	 * port; unsupported ports still fault. Never accesses host hardware. */
 	int (*port_in8)(struct cpu *c, uint16_t port, uint8_t *value);
+	int (*port_out8)(struct cpu *c, uint16_t port, uint8_t value);
+	void *port_context;
 
 	/* Interrupts the caller has raised (a key is ready, the timer
 	 * ticked): a bit per IRQ line, checked between instructions when

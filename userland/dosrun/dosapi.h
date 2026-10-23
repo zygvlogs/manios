@@ -33,6 +33,9 @@ void dos_build_psp(struct dos_state *d);
 /* Advance the BIOS data-area clock by elapsed host milliseconds. */
 void dos_clock_advance(struct dos_state *d, uint32_t elapsed_ms);
 
+/* Logical PC-speaker tone (0 when gated/disconnected). No audio backend. */
+unsigned dos_speaker_frequency(struct dos_state *d);
+
 /* The file services (INT 21h AH=3C..43, 4E, 4F), in dosapi.c. */
 enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah);
 

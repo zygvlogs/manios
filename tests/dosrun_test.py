@@ -117,6 +117,22 @@ def video_status_com():
     return bytes(code)
 
 
+def pit_speaker_com():
+    # Program channel 2 as Windows setup does, enable its gate, then wait
+    # for both OUT2 edges through port 61h. Change divisor and restore it.
+    code = bytearray([0xB0, 0xB6, 0xE6, 0x43,
+                      0xB0, 0x33, 0xE6, 0x42, 0xB0, 5, 0xE6, 0x42,
+                      0xE4, 0x61, 0x88, 0xC3, 0x0C, 3, 0xE6, 0x61,
+                      0xE4, 0x61, 0xA8, 0x20, 0x75, 0xFA,
+                      0xE4, 0x61, 0xA8, 0x20, 0x74, 0xFA,
+                      0xB0, 0x33, 0xE6, 0x42, 0xB0, 6, 0xE6, 0x42,
+                      0x88, 0xD8, 0xE6, 0x61])
+    msg = 0x100 + len(code) + 12
+    code += bytes([0xBA, msg & 255, msg >> 8, 0xB4, 9, 0xCD, 0x21,
+                   0xB8, 0, 0x4C, 0xCD, 0x21]) + b"PIT SPEAKER OK\r\n$"
+    return bytes(code)
+
+
 def hello_exe():
     # The same as hello_com, as an .EXE: CS:IP = 0:0, so the image is
     # the code with the message's offset within the image.
@@ -197,6 +213,8 @@ def build_disk(path):
     put(path, "FLAGS.COM", flags_com(), srcdir)
     put(path, "CLOCK.COM", clock_com(), srcdir)
     put(path, "VIDSTAT.COM", video_status_com(), srcdir)
+    put(path, "PIT.COM", pit_speaker_com(), srcdir)
+    put(path, "BADIO.COM", bytes([0xB0, 0xB7, 0xE6, 0x43, 0xF4]), srcdir)
     put(path, "IRET.COM", iret_com(), srcdir)
     put(path, "VGA.COM", vga_text_com(), srcdir)
     put(path, "EXTENDER.EXE", protected_exe(), srcdir)
@@ -258,6 +276,12 @@ def main():
         step("video status polling crosses both bit edges with interrupts disabled",
              lambda: run_command(m, "serial", "dosrun C:/VIDSTAT.COM",
                                  ["VIDEO STATUS OK"], SHELL_PROMPT))
+        step("PIT channel 2 programming and speaker OUT2 polling",
+             lambda: run_command(m, "serial", "dosrun C:/PIT.COM",
+                                 ["PIT SPEAKER OK"], SHELL_PROMPT))
+        step("unsupported PIT command faults with port and AL diagnostics",
+             lambda: run_command(m, "serial", "dosrun C:/BADIO.COM",
+                                 ["can't run opcode E6", "OUT port 0043", "AL=B7"], SHELL_PROMPT))
         step("a short direct-VGA text program renders before exit",
              lambda: run_command(m, "serial", "dosrun C:/VGA.COM",
                                  ["VGA OK"], SHELL_PROMPT))

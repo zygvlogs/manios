@@ -98,8 +98,8 @@ physical `0xA0000` is copied to ManiOS's screen as it runs.
   by default). A program can allocate handles, move data between
   conventional and extended memory, and map EMS pages into the page
   frame.
-- **No sound, no mouse, no serial.** A program that needs them finds
-  the services absent.
+- **No audio playback, mouse or serial.** The limited PIT channel-2/PC-speaker
+  register model below supplies timer state, not an audio output backend.
 - **No TSRs, no child processes.** `INT 21h` AH=4Bh (EXEC) isn't there.
 - **A single program at a time.** `dosrun` runs one program and returns
   to the shell when it ends.
@@ -172,8 +172,9 @@ indicates an inactive horizontal or vertical display interval; bit 3 indicates
 vertical retrace. Their meanings follow the
 [FreeVGA register reference](https://web.stanford.edu/~ouster/cgi-bin/cs140-spring18/pintos/specs/freevga/vga/extreg.htm).
 Other status bits return zero. The CPU delegates byte input to the DOS device
-model; it never reads host hardware. Unsupported ports, word input, immediate
-input and all output instructions still fault.
+model; it never reads host hardware. Other devices must explicitly handle each
+port access; unsupported ports and word I/O still fault. The PIT/speaker byte
+ports implemented below also support immediate-address and DX-address I/O.
 
 The synthetic scan has a 4,096-instruction frame, 64-instruction lines, the
 last 16 instructions of each line inactive, and the last 256 instructions of
@@ -185,3 +186,42 @@ cycle-accurate CGA/EGA emulation. CRTC programming, graphics modes, attribute
 controller side effects, monochrome ports and other hardware registers are
 outside this model. The QEMU runner suite also executes a COM program that
 waits for both edges of both bits before printing `VIDEO STATUS OK`.
+
+### PIT channel 2 and PC speaker
+
+Windows 1.01 setup's error at `1010:167B` points to the immediate port byte
+following opcode `E6` at `1010:167A`. The captured state is port `43h`, `AL=B6h`:
+channel 2, low-byte/high-byte count loading, binary mode 3 (square wave).
+The routine loads `0533h` then `0633h` at port `42h`, enables gate/speaker bits
+0/1 at `61h`, and restores the previous control bits. This is a two-tone PC
+speaker routine, nominally 896 Hz and 751 Hz. Register meanings follow
+[Intel's 8254 timer description, section 11](https://cdrdv2-public.intel.com/332995/332995-skl-io-platform-datasheet-vol1_rev004.pdf#page=86).
+
+The DOS device model accepts these byte ports through `IN`/`OUT` immediate and
+DX forms, preserving CPU flags and unaffected registers:
+
+- `43h`: `B6h` programs channel 2, binary mode 3, low/high-byte transfers;
+  `80h` latches its count. Other channels, modes, BCD and read-back commands fault.
+- `42h`: loads a divisor after both bytes have arrived; zero means 65,536.
+  Reads return the mode-3 down-counter in low/high order. A count latch remains
+  stable until both bytes are read; repeated latch requests preserve an unread latch.
+- `61h`: retains the writable low four bits, with bit 0 gating the counter and
+  bit 1 connecting the logical speaker. Bit 5 reports OUT2, including even/odd
+  square-wave duty. Falling gate freezes counting and forces OUT2 high; rising
+  gate reloads/restarts it. Bits 4/6/7 return zero; refresh, parity and NMI events
+  are not modeled. Read-only bits in writes have no effect, as for hardware.
+
+One interpreted instruction is a synthetic PIT input clock. Completed divisor
+writes restart the modeled period immediately; cycle-boundary reload delays
+are not modeled. This supports deterministic polling and tone/gate state,
+not cycle-accurate timing or audible sound. `dos_speaker_frequency()` reports
+the nominal logical tone or zero when gated/disconnected; there is no playback
+backend. Channel 0/1 and timer IRQ programming remain unsupported, and the
+existing elapsed-uptime BIOS clock is independent of this device.
+
+Unsupported I/O reports the port, AL/AX and a guest-byte context window, retaining
+the existing opcode/CS:IP error. `tests/dosrun_pit_test.py` covers partial/full
+loads, both tone divisors, gate/enable behavior, odd/even counts, count latching,
+zero divisors, wrap, CPU IN/OUT semantics and rejection without state corruption.
+It is included in `make test`. QEMU regressions execute a channel-2 polling COM
+and check that an unsupported BCD command faults with port/value diagnostics.

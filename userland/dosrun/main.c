@@ -121,6 +121,17 @@ int main(int argc, char **argv)
 			fprintf(stderr, "dosrun: %s: can't run %s (at %04X:%04X)\n",
 			        argv[1], cpu_fault_name(cpu.fault_opcode),
 			        cpu.sreg[1], cpu.ip);
+			if ((cpu.fault_opcode >= 0xE4 && cpu.fault_opcode <= 0xE7) ||
+			    (cpu.fault_opcode >= 0xEC && cpu.fault_opcode <= 0xEF)) {
+				uint16_t port = cpu.fault_opcode < 0xEC ?
+				                rd8(&cpu, cpu.sreg[1], cpu.ip) : cpu.r[DX];
+				fprintf(stderr, "dosrun: unsupported %s port %04X, AL=%02X AX=%04X; bytes at %04X:%04X:",
+				        cpu.fault_opcode & 2 ? "OUT" : "IN", port,
+				        cpu.r[AX] & 255, cpu.r[AX], cpu.sreg[1], (uint16_t)(cpu.ip - 9));
+				for (int j = -9; j < 7; j++)
+					fprintf(stderr, " %02X", rd8(&cpu, cpu.sreg[1], (uint16_t)(cpu.ip + j)));
+				fprintf(stderr, "\n");
+			}
 			status = 1;
 			goto done;
 		}
