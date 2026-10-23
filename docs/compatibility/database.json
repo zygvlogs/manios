@@ -386,7 +386,7 @@
     {
       "id": "dosstart",
       "name": "DOSStart",
-      "version": "1.9b build 9.2.2002, `dosstart.zip`",
+      "version": "1.9b build 7.08.2002, `dosstart.zip`",
       "status": "Unsupported",
       "kind": "application",
       "summary": "`DANSHELL.EXE` stops on `IN AL,21h` at `1FBB:6B78`; no launcher screen.",

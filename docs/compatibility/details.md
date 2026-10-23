@@ -1042,7 +1042,7 @@ Downloads and disk images remain outside the repository.
 | --- | --- | --- | --- | --- |
 | Info-ZIP UnZip | 6.00 (20 Apr 2009), `unz600x3.exe` | **Working** | `-l`, `-t`, `-p`, `FUNZIP` and extraction of all four members, including nested `SUB/THREE.TXT`, succeed; extracted hashes match the fixtures. | 2026-10-23 |
 | Info-ZIP Zip | 2.32, `zip232x.zip` | **Unsupported** | 16-bit `ZIP16.EXE` stops at `0000:0001` (`E5`); `ZIP16-SM.EXE` at `0000:0001` (`EF`); 32-bit `ZIP.EXE` reports no DPMI. No archive is created. | 2026-10-23 |
-| DOSStart | 1.9b build 9.2.2002, `dosstart.zip` | **Unsupported** | `DANSHELL.EXE` stops on `IN AL,21h` at `1FBB:6B78`; no launcher screen. | 2026-10-23 |
+| DOSStart | 1.9b build 7.08.2002, `dosstart.zip` | **Unsupported** | `DANSHELL.EXE` stops on `IN AL,21h` at `1FBB:6B78`; no launcher screen. | 2026-10-23 |
 | Spectra | 1.0, `spec10.zip` | **Unsupported** | `HITECH.EXE` stops on `IN AL,21h` at `1345:2710`; no GUI. | 2026-10-23 |
 | PasswordBox | 0.11 DOS build, `pbox011-dos.zip` | **Unsupported** | DJGPP/go32 stub reports `Load error: no DPMI`; no password database. | 2026-10-23 |
 
