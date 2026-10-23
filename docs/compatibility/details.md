@@ -18,8 +18,8 @@ machine-readable [database](database.json). The sections are kept in test order
 and include earlier builds, so a section can predate the current result; use it
 for commands, timings, hashes and exact failure addresses. The 2026-10-23
 [dosprograms.info.tt catalog](https://dosprograms.info.tt/apps.htm) batch is
-followed by the compat4 Info-ZIP, DOSStart, Spectra and PasswordBox batch at the
-end.
+followed by the compat4 Info-ZIP, DOSStart, Spectra and PasswordBox batch and
+the FreeDOS-repo Games batch at the end.
 
 ## Warcraft: Orcs & Humans
 
@@ -1179,5 +1179,183 @@ and [JSON records](2026-10-23-compat4-extra.json). Screenshots:
 [DOSStart](2026-10-23-compat4-dosstart.png),
 [Spectra](2026-10-23-compat4-spectra.png). The transcript lists SHA-256
 values for the downloaded archives, the executables and the fixture files.
+
+No application binaries, ZIP archives or disk images are committed.
+
+## FreeDOS-repo Games batch (2026-10-23)
+
+Tested source tree: `44d4751`, ManiOS 0.26.0; kernel SHA256
+`5553a1934d19165f34dcea365ffcb4aaec0d11b81877521da23ec889726fc88c`.
+Each case booted a fresh 16 MiB FAT16 image in QEMU i386 (CPU 486, 64 MiB
+RAM) with the serial console. The package files were copied to the image
+root; downloads and disk images remain outside the repository. All eleven
+games on the [FreeDOS-repo Games page](https://clasqm.github.io/freedos-repo/Games.html)
+were tested unchanged.
+
+| Application | Version / media | Status | Observed result | Last tested |
+| --- | --- | --- | --- | --- |
+| Champ Galagon | 1.0 (registered, 1997), `galagon.zip` | **Unsupported** | Returns to the shell in under 0.6 s with no console output or title screen. | 2026-10-23 |
+| Dr Mind Lite | LITE variant, 2019, `drlite.zip` | **Unsupported** | Stops on `OUT 0x3C8` (VGA DAC palette) at `1010:02CA`; no board. | 2026-10-23 |
+| Drobos | 1.3 (DRoboWHOids), `drobos.zip` | **Unsupported** | Stops on x87 opcode `D8` at `1010:0487`; no game screen. | 2026-10-23 |
+| Ford Driving Simulator | 1988 models, `ford.zip` | **Unsupported** | Stops on `IN` port `0021h` (PIC) at `1010:10C8`; no simulator screen. | 2026-10-23 |
+| Life2 | text-mode Conway Life, `life2.zip` | **Partial** | Instructions and EDIT mode render; RUN mode stops on `OUT` port `0040h` (PIT channel 0) at `111E:0B64`. | 2026-10-23 |
+| Mahjong! | 1996/1997 SoftSpot, `mahjong.zip` | **Unsupported** | Stops on operand-size prefix `66h` at `101D:0990`; no screen. Requires SVGA 1024x768 VESA graphics and a mouse. | 2026-10-23 |
+| Mine Mayhem | freeware by Jason Hood, `minemay.zip` | **Unsupported** | Stops on operand-size prefix `66h` at `1426:2DC3`; no screen. DJGPP/go32 build. | 2026-10-23 |
+| Nero 5 | 08.02.2000, `nero5.zip` | **Unsupported** | Returns to the shell in under 0.6 s with no console output or menu; BGI EGAVGA 640x480 initialization produces no board. | 2026-10-23 |
+| ShuffleV | 1.1 (2000), `shufflev.zip` | **Unsupported** | Turbo Vision board renders, then stops on opcode `66h` at `1C36:07FD`; no move is possible. | 2026-10-23 |
+| Hanoi | 1.3 (2000), `hanoi.zip` | **Unsupported** | LZEXE startup unpacks, then stops on `IN` port `0006h` at `115B:0603`; no board. | 2026-10-23 |
+| TypeFast | typing drill, `typefast.zip` | **Broken** | Starts and remains running, but the console stays blank; no prompts or game screen appear. | 2026-10-23 |
+
+### Champ Galagon
+
+`dosrun C:/GALAGON.EXE` returns to the shell in under 0.6 s with no console
+output. The screenshot shows the shell prompt and no title or VGA frame.
+The binary contains Borland C++ and DiamondWare sound code and requires VGA
+graphics; the exact failing display or sound probe was not isolated. No
+gameplay, input or audio was verified. Input `GALAGON.EXE` SHA-256:
+`fde1aa1569117d7748800fc21aa12fe5c36655921cf1d12a1b7670a32cba180c`.
+See the [return screenshot](2026-10-23-compat4-games-galagon.png).
+
+### Dr Mind Lite
+
+`dosrun C:/DRMIND.EXE` stops during VGA palette programming:
+
+```text
+dosrun: C:/DRMIND.EXE: can't run opcode EE (at 1010:02CA)
+dosrun: unsupported OUT port 03C8, AL=F0 AX=00F0; bytes at 1010:02C1:
+8B C6 02 46 0A BA C8 03 EE 8B C6 03 C6 03 C6 C4
+```
+
+The package requires VGA or MCGA; no board or menu is reached. Input
+`DRMIND.EXE` SHA-256:
+`391645e0dd87b0c66934bc3c3a32f9954864102e3be6c83b1949afb462686055`.
+
+### Drobos
+
+`dosrun C:/DROBOS.EXE` stops on the first x87 instruction:
+
+```text
+dosrun: C:/DROBOS.EXE: can't run opcode D8 (at 1010:0487)
+```
+
+No game screen is reached. Input `DROBOS.EXE` SHA-256:
+`eef6382b4f415716e17e905457b82101aaed7fff4b4974f6cbd472758bb52329`.
+
+### Ford Driving Simulator
+
+`dosrun C:/SIMUL.EXE` stops on the PIC-mask read:
+
+```text
+dosrun: C:/SIMUL.EXE: can't run opcode EC (at 1010:10C8)
+dosrun: unsupported IN port 0021, AL=00 AX=1C00; bytes at 1010:10BF:
+52 57 56 1E 06 BA 21 00 EC 0C 03 EE B8 00 00 8E
+```
+
+No simulator screen is reached. Input `SIMUL.EXE` SHA-256:
+`0dbe08a5f5eac0a0aeba4ec8a310f8ca7b895c16ffb4e156aa82e36bba8d4a69`.
+
+### Life2
+
+`dosrun C:/LIFE2.EXE` presents the two instruction pages and reaches EDIT
+mode. Starting RUN mode stops when BASIC's `SOUND` writes the PIT channel-0
+port:
+
+```text
+dosrun: C:/LIFE2.EXE: can't run opcode E6 (at 111E:0B64)
+dosrun: unsupported OUT port 0040, AL=00 AX=0800; bytes at 111E:0B5B:
+8C 0E 22 00 07 B8 00 08 E6 40 8A C4 E6 40 80 3E
+```
+
+The instructions and EDIT screen are usable, but no generation runs.
+Input `LIFE2.EXE` SHA-256:
+`45f45ec0ff09ef9eb7f7a222b255d39ee263f6119467ec28e34a2f042760fd0a`.
+See the [RUN fault screenshot](2026-10-23-compat4-games-life2.png).
+
+### Mahjong!
+
+`dosrun C:/MAHJONG.EXE` stops on the operand-size prefix:
+
+```text
+dosrun: C:/MAHJONG.EXE: can't run opcode 66 (at 101D:0990)
+```
+
+No screen is reached. The package documentation requires a 386 or better,
+SVGA 1024x768 256-colour VESA graphics, a mouse and a protected-mode DOS
+environment. Input `MAHJONG.EXE` SHA-256:
+`ca03bb09254cbea8eed1ce858245fc96d9d04a4c35e56840f7927c5d7851753d`.
+
+### Mine Mayhem
+
+`dosrun C:/MINE.EXE` stops on the operand-size prefix:
+
+```text
+dosrun: C:/MINE.EXE: can't run opcode 66 (at 1426:2DC3)
+```
+
+No screen is reached. The executable is a DJGPP/go32 build; the package
+includes `CWSDPMI.EXE`, but the current runner has no DPMI host. Input
+`MINE.EXE` SHA-256:
+`bac57d57471e381af874dd88c880b774b1b6de15d20004460c12d52f5420a56d`.
+
+### Nero 5
+
+`dosrun C:/NERO5.EXE` returns to the shell in under 0.6 s with no console
+output. The screenshot shows the shell prompt and no menu or chessboard.
+The executable contains Borland BGI EGAVGA drivers, including 640x480 VGA;
+the current DOS video path provides text and mode 13h only. No chess
+position or move was verified. Input `NERO5.EXE` SHA-256:
+`db83314435dc6f952b6496f4225d14b02274a171887f6c081cbbc1bc9c557936`.
+See the [return screenshot](2026-10-23-compat4-games-nero5.png).
+
+### ShuffleV
+
+`dosrun C:/SHUFFLEV.EXE` draws the Turbo Vision 4x4 puzzle board, then
+stops:
+
+```text
+dosrun: C:/SHUFFLEV.EXE: can't run opcode 66 (at 1C36:07FD)
+```
+
+The screen remains visible, but no move is possible. The executable is
+LZEXE-compressed; the loader unpacked it successfully before the fault.
+Input `SHUFFLEV.EXE` SHA-256:
+`60895319166b91b66e4dbac462963009c351267c4d8ea7c4fd113dbc2262900b`.
+See the [board and fault screenshot](2026-10-23-compat4-games-shufflev.png).
+
+### Hanoi
+
+`dosrun C:/HANOIE.EXE` unpacks the LZEXE-compressed executable and then
+stops on a hardware port read:
+
+```text
+dosrun: C:/HANOIE.EXE: can't run opcode EC (at 115B:0603)
+dosrun: unsupported IN port 0006, AL=54 AX=B854; bytes at 115B:05FA:
+FC 0A DB 74 16 AC 8A D8 EC A8 01 75 FB FA EC A8
+```
+
+No board is reached. Input `HANOIE.EXE` SHA-256:
+`a73066b6ad8ad3ef45852988a4b2532b0938306283858ab30bb1ff62a17a37ab`.
+
+### TypeFast
+
+`dosrun C:/TYPEFAST.EXE` starts and remains running, but the console stays
+blank. Sending `n1`, `a` and Enter produced no visible prompts or game
+screen; the process did not return during the bounded observation. The
+README identifies a Turbo C/PCcurses build that uses the PC display
+character set. No typing task was completed. Input `TYPEFAST.EXE` SHA-256:
+`a995ed918ecba7eb934269cfd3b7e9a9833a19ff21e275f205723ab12d4583e6`.
+See the [blank screenshot](2026-10-23-compat4-games-typefast.png).
+
+### Evidence and inputs
+
+The full transcript and per-case observations are in
+[2026-10-23-compat4-games.txt](2026-10-23-compat4-games.txt); the
+machine-readable package and executable hashes are in
+[2026-10-23-compat4-games.json](2026-10-23-compat4-games.json).
+Screenshots: [Champ Galagon](2026-10-23-compat4-games-galagon.png),
+[Nero 5](2026-10-23-compat4-games-nero5.png),
+[Life2](2026-10-23-compat4-games-life2.png),
+[ShuffleV](2026-10-23-compat4-games-shufflev.png),
+[TypeFast](2026-10-23-compat4-games-typefast.png).
 
 No application binaries, ZIP archives or disk images are committed.

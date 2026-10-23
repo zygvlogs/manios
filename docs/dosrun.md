@@ -274,3 +274,27 @@ DOS-internal list-of-lists request. No version override is shipped. The
 Windows installation image is unchanged and is not a release asset.
 
 Regression command: `python3 tests/dosrun_exec_test.py`.
+
+### Games batch gaps (2026-10-23)
+
+The FreeDOS-repo Games batch exercised eleven small DOS games. It exposed
+several limits that are broader than any one title:
+
+- **Video.** Only text mode and mode 13h are provided. Nero 5's BGI EGAVGA
+  640x480 initialization produces no menu, and Dr Mind Lite stops on VGA DAC
+  palette programming at `OUT 03C8h`.
+- **Instructions and extenders.** Drobos stops on x87 opcode `D8`; Mahjong!,
+  Mine Mayhem and ShuffleV stop on the operand-size prefix `66h`. Mahjong!
+  and Mine Mayhem also require SVGA/protected-mode facilities.
+- **Hardware ports.** Ford Driving Simulator stops on the PIC read
+  `IN AL,21h`; Hanoi stops on `IN` port `0006h`. These join DOSStart, Spectra,
+  DATES and Cash Register in the same startup gap.
+- **PIT channel 0.** Life2's BASIC `SOUND` writes channel 0 at `OUT 40h`.
+  The current PIT model covers only channel 2 and the PC-speaker gate.
+- **Loader.** LZEXE-compressed ShuffleV and Hanoi both unpack and begin
+  execution; the earlier UPX limitation remains specific to those packed
+  startup stubs.
+- **Unresolved screens.** Champ Galagon and Nero 5 return before a visible
+  screen; TypeFast remains running with a blank console. The exact failing
+  services were not isolated, so these are recorded as observed results rather
+  than assigned causes.

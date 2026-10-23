@@ -1,0 +1,191 @@
+FreeDOS-repo Games batch
+=======================
+
+Date: 2026-10-23
+Source page: https://clasqm.github.io/freedos-repo/Games.html
+Source repository: https://github.com/clasqm/freedos-repo
+Tested build: ManiOS 0.26.0, source commit 44d4751462a411aa2b84abb04c2dcc24df4300ac
+Kernel SHA256: 5553a1934d19165f34dcea365ffcb4aaec0d11b81877521da23ec889726fc88c
+Environment: QEMU i386, CPU 486, 64 MiB RAM, serial console; one fresh 16 MiB FAT16 image per game; package files copied to the image root; 8 s startup observation.
+
+Every package below was downloaded from the FreeDOS-repo Games page and tested unchanged. The ZIP archives and disk images are not committed.
+
+Summary
+-------
+  Champ Galagon             Unsupported  returns to shell in <0.6 s; no title screen
+  Dr Mind Lite              Unsupported  OUT 0x3C8 (VGA DAC palette), 1010:02CA
+  DRoboWHOids (Drobos)      Unsupported  x87 opcode D8, 1010:0487
+  Ford Driving Simulator    Unsupported  IN port 0021h (PIC), 1010:10C8
+  Life2                     Partial      instructions/EDIT render; RUN stops on OUT 0040h
+  Mahjong!                  Unsupported  opcode 66h, 101D:0990; needs SVGA/mouse
+  Mine Mayhem               Unsupported  opcode 66h, 1426:2DC3; DJGPP build
+  Nero 5                    Unsupported  returns in <0.6 s; BGI 640x480 init produces no board
+  ShuffleV                  Unsupported  Turbo Vision board, then opcode 66h, 1C36:07FD
+  Hanoi                     Unsupported  IN port 0006h, 115B:0603
+  TypeFast                  Broken       stays running, console blank; no task
+
+Downloads and input hashes
+---------------------------
+
+Champ Galagon (1.0 (registered, 1997), `galagon.zip`)
+  package: galagon.zip (247865 bytes)
+  package SHA256: 78edd22687598452d613ea5ef4446ea0b17fa6db77601c6fbadb02c38502a4b1
+  main: GALAGON.EXE
+  main SHA256: fde1aa1569117d7748800fc21aa12fe5c36655921cf1d12a1b7670a32cba180c
+  command: dosrun C:/GALAGON.EXE
+  status: Unsupported
+  observation: Returned to the shell in under 0.6 s with no console output or title screen; no VGA/game frame was captured.
+  screenshot: 2026-10-23-compat4-games-galagon.png
+
+Dr Mind Lite (LITE variant, 2019, `drlite.zip`)
+  package: drlite.zip (30770 bytes)
+  package SHA256: 620cd48228ee16b81fe2479965b49b7364a6d5a56d1c9e0310c4dbef8266edee
+  main: DRMIND.EXE
+  main SHA256: 391645e0dd87b0c66934bc3c3a32f9954864102e3be6c83b1949afb462686055
+  command: dosrun C:/DRMIND.EXE
+  status: Unsupported
+  observation: Stopped at `OUT 0x3C8` (VGA DAC palette) at `1010:02CA`; no game board.
+
+DRoboWHOids (Drobos) (1.3, `drobos.zip`)
+  package: drobos.zip (65714 bytes)
+  package SHA256: 4cc38c93486b4bcf135ef9a93e41284c2b00c716dff1247cd065d65985a8eaf3
+  main: DROBOS.EXE
+  main SHA256: eef6382b4f415716e17e905457b82101aaed7fff4b4974f6cbd472758bb52329
+  command: dosrun C:/DROBOS.EXE
+  status: Unsupported
+  observation: Stopped at x87 opcode `D8` at `1010:0487`; no game screen.
+
+Ford Driving Simulator (1988 models, `ford.zip`)
+  package: ford.zip (138254 bytes)
+  package SHA256: 96093cbc862da3f985211f3c61526a3d3fd84b77bfaa92d9892e193ecbd2a471
+  main: SIMUL.EXE
+  main SHA256: 0dbe08a5f5eac0a0aeba4ec8a310f8ca7b895c16ffb4e156aa82e36bba8d4a69
+  command: dosrun C:/SIMUL.EXE
+  status: Unsupported
+  observation: Stopped at `IN` port `0021h` (PIC) at `1010:10C8`; no simulator screen.
+
+Life2 (text-mode Conway Life, `life2.zip`)
+  package: life2.zip (21258 bytes)
+  package SHA256: a6aaa92650a66e958f7f0ec63230fa8e1ccdede93ebc4db03c0a6236b04fb6cf
+  main: LIFE2.EXE
+  main SHA256: 45f45ec0ff09ef9eb7f7a222b255d39ee263f6119467ec28e34a2f042760fd0a
+  command: dosrun C:/LIFE2.EXE
+  status: Partial
+  observation: Instructions and EDIT mode rendered; starting RUN mode stopped at `OUT` port `0040h` (PIT channel 0) at `111E:0B64` before a generation.
+  screenshot: 2026-10-23-compat4-games-life2.png
+
+Mahjong! (1996/1997 SoftSpot, `mahjong.zip`)
+  package: mahjong.zip (412433 bytes)
+  package SHA256: dce4ed8506905872e0bcd484b68cb111662dfaf906e6e771402e09c3db76fcc1
+  main: MAHJONG.EXE
+  main SHA256: ca03bb09254cbea8eed1ce858245fc96d9d04a4c35e56840f7927c5d7851753d
+  command: dosrun C:/MAHJONG.EXE
+  status: Unsupported
+  observation: Stopped at operand-size prefix `66h` at `101D:0990`; no screen. The package requires SVGA 1024x768 VESA graphics and a mouse.
+
+Mine Mayhem (freeware by Jason Hood, `minemay.zip`)
+  package: minemay.zip (428297 bytes)
+  package SHA256: 421bade975c64a85965c621583c57324c0037e7babeef76407627ecfe9982a1f
+  main: MINE.EXE
+  main SHA256: bac57d57471e381af874dd88c880b774b1b6de15d20004460c12d52f5420a56d
+  command: dosrun C:/MINE.EXE
+  status: Unsupported
+  observation: Stopped at operand-size prefix `66h` at `1426:2DC3`; no screen. The executable is a DJGPP/go32 build.
+
+Nero 5 (08.02.2000, `nero5.zip`)
+  package: nero5.zip (48044 bytes)
+  package SHA256: bc0f18014a70a1b0f1e4039c6fb2c8fe37c32cffd7cb7b46859d184c0f8d3e26
+  main: NERO5.EXE
+  main SHA256: db83314435dc6f952b6496f4225d14b02274a171887f6c081cbbc1bc9c557936
+  command: dosrun C:/NERO5.EXE
+  status: Unsupported
+  observation: Returned to the shell in under 0.6 s with no console output or menu; the BGI EGAVGA 640x480 initialization did not produce a board.
+  screenshot: 2026-10-23-compat4-games-nero5.png
+
+ShuffleV (1.1 (2000), `shufflev.zip`)
+  package: shufflev.zip (39853 bytes)
+  package SHA256: e4f33c87db2d0adb024ad7a0193b834abd6a57e1d9455b8fb0de1f2764a09180
+  main: SHUFFLEV.EXE
+  main SHA256: 60895319166b91b66e4dbac462963009c351267c4d8ea7c4fd113dbc2262900b
+  command: dosrun C:/SHUFFLEV.EXE
+  status: Unsupported
+  observation: The Turbo Vision board rendered, then `can't run opcode 66` at `1C36:07FD`; no move was possible.
+  screenshot: 2026-10-23-compat4-games-shufflev.png
+
+Hanoi (1.3 (2000), `hanoi.zip`)
+  package: hanoi.zip (13100 bytes)
+  package SHA256: 378660ad7aa5e68159792ccea7ef613dd21c8d7caa004c58b87be1aa7927f30b
+  main: HANOIE.EXE
+  main SHA256: a73066b6ad8ad3ef45852988a4b2532b0938306283858ab30bb1ff62a17a37ab
+  command: dosrun C:/HANOIE.EXE
+  status: Unsupported
+  observation: The LZEXE-compressed executable unpacked, then stopped at `IN` port `0006h` at `115B:0603`; no board.
+
+TypeFast (typing drill, `typefast.zip`)
+  package: typefast.zip (73786 bytes)
+  package SHA256: 3cd28d21703ea2f5f41f4152db20c065a2dfadb1fac4d51cf6a9032d49893094
+  main: TYPEFAST.EXE
+  main SHA256: a995ed918ecba7eb934269cfd3b7e9a9833a19ff21e275f205723ab12d4583e6
+  command: dosrun C:/TYPEFAST.EXE
+  status: Broken
+  observation: Started and remained running, but the console stayed blank; no prompts or game screen appeared, so no task was completed.
+  screenshot: 2026-10-23-compat4-games-typefast.png
+
+Selected transcript details
+---------------------------
+
+Dr Mind Lite
+  dosrun C:/DRMIND.EXE
+  dosrun: C:/DRMIND.EXE: can't run opcode EE (at 1010:02CA)
+  dosrun: unsupported OUT port 03C8, AL=F0 AX=00F0; bytes at 1010:02C1: 8B C6 02 46 0A BA C8 03 EE 8B C6 03 C6 03 C6 C4
+
+Drobos
+  dosrun C:/DROBOS.EXE
+  dosrun: C:/DROBOS.EXE: can't run opcode D8 (at 1010:0487)
+
+Ford Driving Simulator
+  dosrun C:/SIMUL.EXE
+  dosrun: C:/SIMUL.EXE: can't run opcode EC (at 1010:10C8)
+  dosrun: unsupported IN port 0021, AL=00 AX=1C00; bytes at 1010:10BF: 52 57 56 1E 06 BA 21 00 EC 0C 03 EE B8 00 00 8E
+
+Life2
+  dosrun C:/LIFE2.EXE
+  Instruction pages render and accept the spacebar. EDIT mode renders. Starting RUN mode stops:
+  dosrun: C:/LIFE2.EXE: can't run opcode E6 (at 111E:0B64)
+  dosrun: unsupported OUT port 0040, AL=00 AX=0800; bytes at 111E:0B5B: 8C 0E 22 00 07 B8 00 08 E6 40 8A C4 E6 40 80 3E
+
+Mahjong!
+  dosrun C:/MAHJONG.EXE
+  dosrun: C:/MAHJONG.EXE: can't run opcode 66 (at 101D:0990)
+
+Mine Mayhem
+  dosrun C:/MINE.EXE
+  dosrun: C:/MINE.EXE: can't run opcode 66 (at 1426:2DC3)
+
+ShuffleV
+  dosrun C:/SHUFFLEV.EXE
+  The Turbo Vision board is drawn (blue/green 4x4 puzzle), then:
+  dosrun: C:/SHUFFLEV.EXE: can't run opcode 66 (at 1C36:07FD)
+
+Hanoi
+  dosrun C:/HANOIE.EXE
+  dosrun: C:/HANOIE.EXE: can't run opcode EC (at 115B:0603)
+  dosrun: unsupported IN port 0006, AL=54 AX=B854; bytes at 115B:05FA: FC 0A DB 74 16 AC 8A D8 EC A8 01 75 FB FA EC A8
+
+Champ Galagon and Nero 5
+  dosrun C:/GALAGON.EXE
+  dosrun C:/NERO5.EXE
+  Both return to the shell before 0.6 s with no console output. The screenshots show the shell prompt; no title or game screen is reached.
+
+TypeFast
+  dosrun C:/TYPEFAST.EXE
+  The process remains active, but the console stays blank. Sending n1, a and Enter produced no visible prompts or game screen.
+
+Limitations
+-----------
+  The console is line-oriented. Printable input was delivered with Enter; function, cursor and Alt keys were not used for these game probes.
+  Life2 RUN mode needs the PIT channel-0 ports used by BASIC SOUND; the runner currently models only channel 2/PC-speaker ports.
+  ShuffleV is LZEXE-compressed; the loader unpacks it and the Turbo Vision screen renders before the unsupported 66h opcode stops it.
+  Champ Galagon and Nero 5 fail before a visible screen; the exact VGA/display probe was not isolated further.
+  TypeFast uses PCcurses; its screen never became visible on the ManiOS console.
+  No application binaries, ZIP archives or disk images are committed.

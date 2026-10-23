@@ -415,6 +415,127 @@
       "anchor": "passwordbox-011",
       "evidence": "2026-10-23-compat4-extra.txt",
       "last_tested": "2026-10-23"
+    },
+    {
+      "id": "champ-galagon",
+      "name": "Champ Galagon",
+      "version": "1.0 (registered, 1997), `galagon.zip`",
+      "status": "Unsupported",
+      "kind": "game",
+      "summary": "Returns to the shell in under 0.6 s with no console output or title screen; no VGA/game frame is reached.",
+      "anchor": "champ-galagon",
+      "evidence": "2026-10-23-compat4-games.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "dr-mind-lite",
+      "name": "Dr Mind Lite",
+      "version": "LITE variant, 2019, `drlite.zip`",
+      "status": "Unsupported",
+      "kind": "game",
+      "summary": "Stops on `OUT 0x3C8` (VGA DAC palette) at `1010:02CA`; no game board.",
+      "anchor": "dr-mind-lite",
+      "evidence": "2026-10-23-compat4-games.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "drobos",
+      "name": "Drobos",
+      "version": "1.3 (DRoboWHOids), `drobos.zip`",
+      "status": "Unsupported",
+      "kind": "game",
+      "summary": "Stops on x87 opcode `D8` at `1010:0487`; no game screen.",
+      "anchor": "drobos",
+      "evidence": "2026-10-23-compat4-games.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "ford-driving-simulator",
+      "name": "Ford Driving Simulator",
+      "version": "1988 models, `ford.zip`",
+      "status": "Unsupported",
+      "kind": "game",
+      "summary": "Stops on `IN` port `0021h` (PIC) at `1010:10C8`; no simulator screen.",
+      "anchor": "ford-driving-simulator",
+      "evidence": "2026-10-23-compat4-games.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "life2",
+      "name": "Life2",
+      "version": "text-mode Conway Life, `life2.zip`",
+      "status": "Partial",
+      "kind": "game",
+      "summary": "Instructions and EDIT mode render; starting RUN mode stops on `OUT` port `0040h` (PIT channel 0) before a generation.",
+      "anchor": "life2",
+      "evidence": "2026-10-23-compat4-games.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "mahjong",
+      "name": "Mahjong!",
+      "version": "1996/1997 SoftSpot, `mahjong.zip`",
+      "status": "Unsupported",
+      "kind": "game",
+      "summary": "Stops on operand-size prefix `66h` at `101D:0990`; no screen. The package requires SVGA 1024x768 VESA graphics and a mouse.",
+      "anchor": "mahjong",
+      "evidence": "2026-10-23-compat4-games.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "mine-mayhem",
+      "name": "Mine Mayhem",
+      "version": "freeware by Jason Hood, `minemay.zip`",
+      "status": "Unsupported",
+      "kind": "game",
+      "summary": "Stops on operand-size prefix `66h` at `1426:2DC3`; no screen. The executable is a DJGPP/go32 build.",
+      "anchor": "mine-mayhem",
+      "evidence": "2026-10-23-compat4-games.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "nero-5",
+      "name": "Nero 5",
+      "version": "08.02.2000, `nero5.zip`",
+      "status": "Unsupported",
+      "kind": "game",
+      "summary": "Returns to the shell in under 0.6 s with no console output or menu; BGI EGAVGA 640x480 initialization produces no board.",
+      "anchor": "nero-5",
+      "evidence": "2026-10-23-compat4-games.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "shufflev",
+      "name": "ShuffleV",
+      "version": "1.1 (2000), `shufflev.zip`",
+      "status": "Unsupported",
+      "kind": "game",
+      "summary": "Turbo Vision board renders, then stops on opcode `66h` at `1C36:07FD`; no move is possible.",
+      "anchor": "shufflev",
+      "evidence": "2026-10-23-compat4-games.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "hanoi",
+      "name": "Hanoi",
+      "version": "1.3 (2000), `hanoi.zip`",
+      "status": "Unsupported",
+      "kind": "game",
+      "summary": "LZEXE startup unpacks, then stops on `IN` port `0006h` at `115B:0603`; no board.",
+      "anchor": "hanoi",
+      "evidence": "2026-10-23-compat4-games.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "typefast",
+      "name": "TypeFast",
+      "version": "typing drill, `typefast.zip`",
+      "status": "Broken",
+      "kind": "game",
+      "summary": "Starts and remains running, but the console stays blank; no prompts or game screen appear, so no task is completed.",
+      "anchor": "typefast",
+      "evidence": "2026-10-23-compat4-games.txt",
+      "last_tested": "2026-10-23"
     }
   ],
   "status_colors": {
