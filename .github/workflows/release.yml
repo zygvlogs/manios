@@ -97,6 +97,10 @@ jobs:
           else
             where="--target $GITHUB_SHA"  # a new tag on this commit
           fi
-          gh release create "v$version" dist/* $pre $where \
-            --title "ManiOS $version" \
-            --notes-file "docs/releases/$version.md"
+          if gh release view "v$version" >/dev/null 2>&1; then
+            gh release upload "v$version" dist/* --clobber
+          else
+            gh release create "v$version" dist/* $pre $where \
+              --title "ManiOS $version" \
+              --notes-file "docs/releases/$version.md"
+          fi
