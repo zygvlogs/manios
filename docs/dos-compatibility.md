@@ -44,7 +44,7 @@ percentage. Checks & Balances, the SemWare editor and Windows 1.01 setup are Par
 | [Search](#search-10a) | 1.0a, FD14 BonusCD | **Working** | Finds both root/nested matches exactly once; correct total and missing-file result after directory fix. | 2026-10-23 |
 | [utf8tocp](#utf8tocp-20240918) | 20240918, FD14 BonusCD | **Working** | Exact UTF-8 ↔ CP437 and UTF-8 ↔ CP775 conversions, including Lithuanian letters and CRLF. | 2026-10-23 |
 | [Bywater BASIC](#bywater-basic-330) | 3.30, FD14 BonusCD binary | **Unsupported** | LE protected-mode executable rejected; the supplied arithmetic program was not executed. | 2026-10-23 |
-| [Microsoft Windows](#microsoft-windows-101) | 1.01, five 360 KB floppy images | **Partial** | Setup passes the PIT/speaker routine and displays its own directory-creation error. Installation/desktop still incomplete. | 2026-10-23 |
+| [Microsoft Windows](#microsoft-windows-101) | 1.01, five 360 KB floppy images | **Partial** | Setup now creates `C:\WINDOWS` on FAT16 and advances to the next preparation screen. Installation/desktop still incomplete. | 2026-10-23 |
 
 ## Warcraft: Orcs & Humans
 
@@ -502,7 +502,7 @@ other drives and larger trees remain unverified. DOS directory changes now
 validate the destination, retain independent per-drive current directories and
 resolve relative paths there. Current-directory queries return the actual path;
 failed changes preserve it. Host regressions cover these cases and root clamping.
-Directory creation and removal are still unsupported.
+Directory creation/removal were unsupported in that build; see the [later directory-service fix](#dos-directory-services-and-windows-setup).
 
 ## utf8tocp 20240918
 
@@ -561,7 +561,7 @@ Evidence: [guest transcripts and exported-byte comparisons](compatibility/2026-1
 
 ## Microsoft Windows 1.01
 
-These are pre-fix observations. See the [latest PIT/speaker retest](#windows-101-pit-and-speaker-retest) for the current Partial installer result.
+These are pre-fix observations. See the [latest directory-service retest](#dos-directory-services-and-windows-setup) for the current Partial installer result.
 
 The user-supplied `Microsoft Windows 1.01 (5.25).7z` contains five 368,640-byte
 FAT12 floppy images: Setup, Build, Utility, Apps and Write. File timestamps in
@@ -703,7 +703,7 @@ previously failing beep routine. Inputs are `c`+Enter at Continue, then Enter
 at `C:\WINDOWS`. Instead of an opcode error, the installer displays its own
 message that it cannot create the specified directory and requests another one.
 This remains **Partial**: no completed installation, generated `WIN.COM` or Windows
-desktop. DOS directory creation is not implemented in the current runtime;
+desktop. DOS directory creation was not implemented in that tested build;
 this batch did not isolate the exact failing directory-service call. That work
 is separate from the confirmed PIT fault and is not masked by this change.
 
@@ -727,6 +727,43 @@ Existing APKs were not rebuilt; no release was created.
 Evidence: [trace, disassembly and retest transcripts](compatibility/2026-10-23-pit-speaker.txt),
 [exact results, source/kernel hashes and compatibility checks](compatibility/2026-10-23-pit-speaker.json),
 [setup directory-error screen after the PIT fix](compatibility/2026-10-23-pit-speaker-setup.png).
+
+## DOS directory services and Windows setup
+
+Fixed source: `fbaaaff`, following baseline `eede40b`. `INT 21h/AH=39h` now
+creates one directory and `AH=3Ah` removes an empty directory through the real
+filesystem. Relative, drive-relative and rooted DOS names resolve within the
+selected drive. Existing files/directories, missing parents, nonempty directories,
+read-only destinations and invalid/oversized paths return DOS errors with CF set.
+Mounted roots cannot be removed; removing a DOS current directory returns error
+16. Failed calls preserve drive and current-directory state.
+
+A QEMU COM regression creates `C:\WTEST`, changes into it, creates `SUB`,
+returns to root and removes both directories. Host regressions cover error cases,
+current/root protection and actual on-disk effects. A separate QEMU guest has
+C: on FAT16 and D: on a read-only ISO9660 CD: attempting `D:\ROCHK` creation
+correctly returns access denied (CF=1, AX=5). Drive-letter assignment was not
+changed; the Windows test's C: is the FAT16 hard disk, not the CD.
+
+Windows 1.01 setup is rerun with the same merged-media disk copy and inputs:
+`c`+Enter at Continue, then Enter to accept `C:\WINDOWS`. It passes the former
+directory error and advances to the preparation/information screen listing
+required Windows disks and hardware information. After guest shutdown, host
+mtools confirms that `::/WINDOWS` really exists on the disposable FAT16 image.
+A separate snapshot run reaches the same next screen. Status stays **Partial**;
+full installation, file-copy/driver configuration, produced `WIN.COM` and the
+Windows desktop have not been verified. Display remnants remain visible.
+
+The host, string, runtime, video-status, PIT and QEMU DOS runner suites pass.
+All ten previously verified utility tasks also pass on the rebuilt runtime.
+Exported TSORT, SAL and converter outputs are checked; FDBanner's screenshot is
+identical to the previously visually verified banner. Tests use QEMU 486 /
+64 MiB and disposable images. Original media are unchanged; existing APKs were
+not rebuilt and no release was created.
+
+Evidence: [guest checks and directory listing](compatibility/2026-10-23-dos-directories.txt),
+[exact outputs, hashes and regression/compatibility results](compatibility/2026-10-23-dos-directories.json),
+[Windows setup after directory creation](compatibility/2026-10-23-dos-directories-setup.png).
 
 ## Adding or updating an entry
 
