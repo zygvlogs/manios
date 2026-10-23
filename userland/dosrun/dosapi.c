@@ -419,19 +419,39 @@ static void set_cf(struct cpu *c, int on)
 
 /* --- the console --- */
 
+static void text_scroll(struct dos_state *d, int page, int top, int left,
+			int bottom, int right, int lines, int down, uint8_t attr);
+
 /* DOS writes CR and LF independently. A carriage return moves to column
- * zero without adding a line; the following LF advances the row. */
+ * zero without adding a line; the following LF advances the row. At the
+ * bottom row, output scrolls the active text page instead of overwriting
+ * the last line. */
 static void con_putc(struct dos_state *d, uint8_t ch)
 {
 	uint16_t pos = d->cursor[d->active_page];
 	unsigned row = pos >> 8, col = pos & 255;
 	if (ch == '\r') col = 0;
-	else if (ch == '\n') { if (row < 24) row++; }
+	else if (ch == '\n') {
+		if (row < 24) row++;
+		else {
+			d->cursor[d->active_page] = (row << 8) | col;
+			text_scroll(d, d->active_page, 0, 0, 24, 79, 1, 0, 0x07);
+			return;
+		}
+	}
 	else if (ch == '\b') { if (col) col--; }
 	else if (ch >= 32) {
 		mem_w16(d->cpu, 0xB8000 + d->active_page * 4096 + (row * 80 + col) * 2, ch | 0x0700);
 		d->text_seen[row * 80 + col] = ch | 0x0700;
-		if (++col >= 80) { col = 0; if (row < 24) row++; }
+		if (++col >= 80) {
+			col = 0;
+			if (row < 24) row++;
+			else {
+				d->cursor[d->active_page] = (row << 8) | col;
+				text_scroll(d, d->active_page, 0, 0, 24, 79, 1, 0, 0x07);
+				return;
+			}
+		}
 	}
 	d->cursor[d->active_page] = (row << 8) | col;
 	write(d->con_out, &ch, 1);
@@ -1776,6 +1796,43 @@ static void text_colour(struct dos_state *d, uint8_t attr)
 	write(d->con_out, seq, n);
 }
 
+/* BIOS INT 10h AH=06h/07h scrolls a rectangular text window. The active
+ * page is mirrored to the terminal by text_present(), which compares the
+ * updated cells with its cache and repaints the changed spans. */
+static void text_scroll(struct dos_state *d, int page, int top, int left,
+			int bottom, int right, int lines, int down, uint8_t attr)
+{
+	if (top < 0 || left < 0 || bottom >= 25 || right >= 80 ||
+	    top > bottom || left > right) return;
+	int height = bottom - top + 1;
+	if (lines < 0) lines = 0;
+	if (lines > height) lines = height;
+	uint32_t base = 0xB8000 + page * 4096;
+	uint16_t blank = (uint16_t)(' ' | (attr << 8));
+	if (lines == 0) {
+		for (int row = top; row <= bottom; row++)
+			for (int col = left; col <= right; col++)
+				mem_w16(d->cpu, base + (row * 80 + col) * 2, blank);
+	} else if (!down) {
+		for (int row = top; row <= bottom - lines; row++)
+			for (int col = left; col <= right; col++)
+				mem_w16(d->cpu, base + (row * 80 + col) * 2,
+					mem_r16(d->cpu, base + ((row + lines) * 80 + col) * 2));
+		for (int row = bottom - lines + 1; row <= bottom; row++)
+			for (int col = left; col <= right; col++)
+				mem_w16(d->cpu, base + (row * 80 + col) * 2, blank);
+	} else {
+		for (int row = bottom; row >= top + lines; row--)
+			for (int col = left; col <= right; col++)
+				mem_w16(d->cpu, base + (row * 80 + col) * 2,
+					mem_r16(d->cpu, base + ((row - lines) * 80 + col) * 2));
+		for (int row = top; row < top + lines; row++)
+			for (int col = left; col <= right; col++)
+				mem_w16(d->cpu, base + (row * 80 + col) * 2, blank);
+	}
+	if (page == d->active_page) text_present(d);
+}
+
 static enum cpu_stop bios10(struct dos_state *d, struct cpu *c)
 {
 	uint8_t ah = (uint8_t)(c->r[AX] >> 8);
@@ -1832,8 +1889,13 @@ static enum cpu_stop bios10(struct dos_state *d, struct cpu *c)
 	case 0x0F:
 		c->r[AX] = (80 << 8) | d->video_mode;
 		c->r[BX] = (c->r[BX] & 255) | (d->active_page << 8); return CPU_OK;
-	case 0x06: case 0x07:
-		return CPU_OK; /* scrolling remains to be implemented */
+	case 0x06: case 0x07: {
+		int top = c->r[CX] >> 8, left = c->r[CX] & 255;
+		int bottom = c->r[DX] >> 8, right = c->r[DX] & 255;
+		text_scroll(d, d->active_page, top, left, bottom, right, al,
+			    ah == 0x07, (uint8_t)(c->r[BX] & 255));
+		return CPU_OK;
+	}
 	case 0x10: case 0x11: case 0x12: case 0x1A: case 0x1B:
 		return CPU_OK; /* the palette, font and adapter services */
 	default:
