@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <errno.h>
+#include <unistd.h>
 
 struct mount {
 	char letter;
@@ -187,4 +189,32 @@ int dos_getcwd(int drive, char *out, size_t n)
 	snprintf(out, n, "%s", mounts[drive].cwd);
 	for (char *p = out; *p; p++) *p = *p == '/' ? '\\' : (char)toupper((unsigned char)*p);
 	return 0;
+}
+
+int dos_directory(const char *path, int remove)
+{
+	char mapped[512];
+	int explicit_drive = isalpha((unsigned char)path[0]) && path[1] == ':';
+	if (!*path || strchr(path, '*') || strchr(path, '?') ||
+	    strchr(path + (explicit_drive ? 2 : 0), ':')) { errno = ENOENT; return -1; }
+	int drive = explicit_drive ? toupper((unsigned char)path[0]) - 'A' : current;
+	if (drive < 0 || drive >= 26 || !mounts[drive].present) { errno = ENOENT; return -1; }
+	/* DS:DX names a DOS path: /DIR is rooted on the default drive, not
+	 * an escape into the host namespace. Preserve drive-relative paths. */
+	int n = explicit_drive ? snprintf(mapped, sizeof(mapped), "%s", path) :
+	        snprintf(mapped, sizeof(mapped), "%c:%s", 'A' + drive, path);
+	if (n < 0 || n >= (int)sizeof(mapped) || dos_path(mapped, sizeof(mapped)) < 0) {
+		errno = ENOENT; return -1;
+	}
+	if (remove) {
+		for (int i = 0; i < 26; i++) if (mounts[i].present) {
+			if (!strcmp(mapped, mounts[i].root)) { errno = EACCES; return -1; }
+			char cwd[512];
+			snprintf(cwd, sizeof(cwd), "%s%s%s", mounts[i].root,
+			         mounts[i].cwd[0] && strcmp(mounts[i].root, "/") ? "/" : "", mounts[i].cwd);
+			if (!strcmp(mapped, cwd)) { errno = EBUSY; return -1; }
+		}
+		return rmdir(mapped);
+	}
+	return mkdir(mapped, 0777);
 }

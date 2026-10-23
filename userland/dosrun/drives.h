@@ -29,5 +29,7 @@ int dos_set_drive(int drive);
 /* DOS keeps a separate current directory for each mounted drive. */
 int dos_chdir(const char *path);
 int dos_getcwd(int drive, char *out, size_t n);
+/* Create/remove one directory; fail with errno, preserving drive/CWD state. */
+int dos_directory(const char *path, int remove);
 
 #endif

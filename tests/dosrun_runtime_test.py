@@ -127,6 +127,29 @@ int main(void) {
  c.r[DX]=26;call(0x21,0x4700);CHECK((c.flags&FLAG_CF)&&c.r[AX]==15);
  CHECK(dos_chdir("D:\\")==0&&dos_set_drive(2)==0);
  puts("PASS: DOS directory changes, relative paths, per-drive state, root clamping and failed changes");
+ /* Directory creation/removal must perform real filesystem operations and
+  * report useful errors rather than claiming success for a missing path. */
+ text(0x3000,0x100,"C:\\made");c.sreg[3]=0x3000;c.r[DX]=0x100;call(0x21,0x3900);CHECK(!(c.flags&FLAG_CF));
+ struct stat dir_stat;CHECK(stat("made",&dir_stat)==0&&S_ISDIR(dir_stat.st_mode));
+ call(0x21,0x3900);CHECK((c.flags&FLAG_CF)&&c.r[AX]==5);
+ text(0x3000,0x100,"C:\\missing\\child");call(0x21,0x3900);CHECK((c.flags&FLAG_CF)&&c.r[AX]==3);
+ text(0x3000,0x100,"C:\\a.txt");call(0x21,0x3900);CHECK((c.flags&FLAG_CF)&&c.r[AX]==5);
+ text(0x3000,0x100,"C:\\made");call(0x21,0x3B00);CHECK(!(c.flags&FLAG_CF));
+ call(0x21,0x3A00);CHECK((c.flags&FLAG_CF)&&c.r[AX]==16);
+ text(0x3000,0x100,"kid");call(0x21,0x3900);CHECK(!(c.flags&FLAG_CF)&&stat("made/kid",&dir_stat)==0);
+ FILE *occupied=fopen("made/kid/file.txt","w");CHECK(occupied);fputs("keep",occupied);fclose(occupied);
+ call(0x21,0x3A00);CHECK((c.flags&FLAG_CF)&&c.r[AX]==5&&stat("made/kid/file.txt",&dir_stat)==0);
+ CHECK(unlink("made/kid/file.txt")==0);call(0x21,0x3A00);CHECK(!(c.flags&FLAG_CF)&&stat("made/kid",&dir_stat)<0);
+ call(0x21,0x3A00);CHECK((c.flags&FLAG_CF)&&c.r[AX]==3);
+ CHECK(dos_chdir("C:\\")==0);text(0x3000,0x100,"C:\\made");call(0x21,0x3A00);CHECK(!(c.flags&FLAG_CF)&&stat("made",&dir_stat)<0);
+ text(0x3000,0x100,"C:\\");call(0x21,0x3A00);CHECK((c.flags&FLAG_CF)&&c.r[AX]==5);
+ text(0x3000,0x100,"X:\\bad");call(0x21,0x3900);CHECK((c.flags&FLAG_CF)&&c.r[AX]==3);
+ text(0x3000,0x100,"/rooted");call(0x21,0x3900);CHECK(!(c.flags&FLAG_CF)&&stat("rooted",&dir_stat)==0);
+ call(0x21,0x3A00);CHECK(!(c.flags&FLAG_CF));
+ text(0x3000,0x100,"C:\\wild*");call(0x21,0x3900);CHECK((c.flags&FLAG_CF)&&c.r[AX]==3);
+ for(int i=0;i<255;i++)wr8(&c,0x3000,0x100+i,'a');call(0x21,0x3900);CHECK((c.flags&FLAG_CF)&&c.r[AX]==3);
+ CHECK(dos_getcwd(2,cwd,sizeof(cwd))==0&&!cwd[0]&&dos_get_drive()==2);
+ puts("PASS: MKDIR/RMDIR, relative/rooted names, existing/nonempty/current/root directories and path errors");
  /* Legacy overlays use record-oriented FCB I/O rather than file handles. */
  c.sreg[3]=0x1600;
  for(int i=0;i<37;i++)wr8(&c,0x1600,0x400+i,0);

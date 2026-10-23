@@ -133,6 +133,26 @@ def pit_speaker_com():
     return bytes(code)
 
 
+def directory_com():
+    # Create a real nested FAT directory tree, change into it, then remove
+    # it again. Each failed DOS call exits before the success marker.
+    code = bytearray()
+    patches = []
+    for ah, path in [(0x39, b"C:\\WTEST"), (0x3B, b"C:\\WTEST"),
+                     (0x39, b"SUB"), (0x3B, b"C:\\"),
+                     (0x3A, b"C:\\WTEST\\SUB"), (0x3A, b"C:\\WTEST")]:
+        code += bytes([0xBA, 0, 0])
+        patches.append((len(code) - 2, path))
+        code += bytes([0xB4, ah, 0xCD, 0x21, 0x73, 5, 0xB8, 1, 0x4C, 0xCD, 0x21])
+    code += bytes([0xBA, 0, 0])
+    patches.append((len(code) - 2, b"DIRECTORY OK\r\n$"))
+    code += bytes([0xB4, 9, 0xCD, 0x21, 0xB8, 0, 0x4C, 0xCD, 0x21])
+    for at, value in patches:
+        code[at:at + 2] = (0x100 + len(code)).to_bytes(2, "little")
+        code += value + b"\0"
+    return bytes(code)
+
+
 def hello_exe():
     # The same as hello_com, as an .EXE: CS:IP = 0:0, so the image is
     # the code with the message's offset within the image.
@@ -215,6 +235,7 @@ def build_disk(path):
     put(path, "VIDSTAT.COM", video_status_com(), srcdir)
     put(path, "PIT.COM", pit_speaker_com(), srcdir)
     put(path, "BADIO.COM", bytes([0xB0, 0xB7, 0xE6, 0x43, 0xF4]), srcdir)
+    put(path, "MKDIR.COM", directory_com(), srcdir)
     put(path, "IRET.COM", iret_com(), srcdir)
     put(path, "VGA.COM", vga_text_com(), srcdir)
     put(path, "EXTENDER.EXE", protected_exe(), srcdir)
@@ -282,6 +303,9 @@ def main():
         step("unsupported PIT command faults with port and AL diagnostics",
              lambda: run_command(m, "serial", "dosrun C:/BADIO.COM",
                                  ["can't run opcode E6", "OUT port 0043", "AL=B7"], SHELL_PROMPT))
+        step("DOS mkdir/chdir/rmdir operate on a real FAT directory tree",
+             lambda: run_command(m, "serial", "dosrun C:/MKDIR.COM",
+                                 ["DIRECTORY OK"], SHELL_PROMPT))
         step("a short direct-VGA text program renders before exit",
              lambda: run_command(m, "serial", "dosrun C:/VGA.COM",
                                  ["VGA OK"], SHELL_PROMPT))

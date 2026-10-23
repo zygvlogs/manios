@@ -58,12 +58,16 @@ Each mounted drive starts at its root and keeps an independent DOS current
 directory. `INT 21h/AH=3Bh` changes it after checking the destination exists;
 `AH=47h` returns it without a drive or leading slash. Relative paths, including
 `C:FILE.TXT`, use that drive's directory. Rooted paths such as `C:\FILE.TXT`
-start at the drive root, and `..` is clamped there. Directory creation/removal
-remain unsupported. These changes do not change the ManiOS shell's directory.
+start at the drive root, and `..` is clamped there. `AH=39h` creates one
+directory and `AH=3Ah` removes an empty directory. Existing/nonempty or
+read-only destinations return access denied (5), missing paths return 3, and
+removing a DOS current directory returns 16. Mounted roots are protected.
+Relative and rooted DOS paths stay within the selected drive. Failed calls
+preserve drive/CWD state; these changes do not change the shell's directory.
 
 | Interrupt | What it serves |
 |---|---|
-| `INT 21h` | DOS: the console (1, 2, 6-9, 0Ah, 0Bh), the date and time (2Ah, 2Ch), the version (30h), the interrupt vectors (25h, 35h), the PSP (51h, 62h), and file functions (3Ch-43h), duplication (45h/46h), MCB memory blocks (48h-4Ah), directory searches (4Eh/4Fh) and legacy FCB record I/O |
+| `INT 21h` | DOS: the console (1, 2, 6-9, 0Ah, 0Bh), the date and time (2Ah, 2Ch), the version (30h), the interrupt vectors (25h, 35h), the PSP (51h, 62h), directory functions (39h-3Bh, 47h), file functions (3Ch-43h), duplication (45h/46h), MCB memory blocks (48h-4Ah), directory searches (4Eh/4Fh) and legacy FCB record I/O |
 | `INT 10h` | BIOS video: mode 13h and text character/attribute/cursor services |
 | `INT 16h` | BIOS keyboard: reading a key and non-consuming readiness queries |
 | `INT 1Ah` | BIOS clock: the tick count and the RTC time |

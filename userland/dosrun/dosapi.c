@@ -780,11 +780,20 @@ static enum cpu_stop dos21(struct dos_state *d, struct cpu *c)
 		if (result < 0) c->r[AX] = 3;
 		set_cf(c, result < 0); return CPU_OK;
 	}
-	case 0x39: /* make directory */
-	case 0x3A: /* remove directory */
-		set_cf(c, 1);
-		c->r[AX] = 0x0003; /* path not found */
+	case 0x39: case 0x3A: { /* make/remove directory */
+		char path[256]; unsigned i;
+		for (i = 0; i + 1 < sizeof(path); i++) {
+			path[i] = rd8(c, ds, (uint16_t)(dx + i));
+			if (!path[i]) break;
+		}
+		if (i + 1 == sizeof(path)) { c->r[AX] = 3; set_cf(c, 1); return CPU_OK; }
+		if (dos_directory(path, ah == 0x3A) < 0) {
+			c->r[AX] = errno == ENOENT || errno == ENOTDIR ? 3 :
+			             errno == EBUSY ? 16 : 5;
+			set_cf(c, 1);
+		} else set_cf(c, 0);
 		return CPU_OK;
+	}
 
 	case 0x3C: case 0x3D: case 0x3E: case 0x3F: case 0x40: case 0x41:
 	case 0x42: case 0x43: case 0x4E: case 0x4F:
