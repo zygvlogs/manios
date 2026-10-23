@@ -17,8 +17,9 @@ void dos_free(struct dos_state *d);
 
 /* Runs the service for `vector` after cpu_enter_interrupt built its frame.
  * Saves returned status flags in that frame for the caller's IRET.
- * Returns CPU_OK, or CPU_EXIT when the program asked to end
- * (INT 21h AH=4Ch): the exit code is in cpu->exit_code. */
+ * Returns CPU_OK with an IRET frame for the caller (or a newly EXECed
+ * child). A child termination restores its parent frame. CPU_EXIT means
+ * the top-level program ended; its exit code is in cpu->exit_code. */
 enum cpu_stop dos_int(struct dos_state *d, struct cpu *c, uint8_t vector);
 
 /* The DOS environment's memory: the PSP and the program's segment. */

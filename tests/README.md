@@ -199,3 +199,8 @@
 GitHub Actions runs all of them (`make test`) before it publishes a
 release ([`.github/workflows/release.yml`](../.github/workflows/release.yml));
 they are not run on every push.
+
+- `dosrun_exec_test.py` (also run by `make test`) — child COM/MZ startup,
+  high-load MZ images, nested termination/status, inherited handles, PSP and
+  environment copying, parent DTA/stack restoration, repeated allocation
+  cleanup, and EXEC failure cases. Uses generated test binaries only.

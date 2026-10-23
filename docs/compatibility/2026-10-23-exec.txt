@@ -1,0 +1,34 @@
+DOS EXEC validation — 2026-10-23
+
+Generated binaries only in tests/dosrun_exec_test.py:
+- COM and relocated MZ child startup; zero-min/max MZ high loading.
+- Nested EXEC and termination; child status returned once by AH=4Dh.
+- Child PSP, copied environment and command tail; parent stack/DTA restored.
+- Repeated child teardown, allocation rollback after environment allocation.
+- Inherited handle close does not close parent handle; private handles excluded.
+- Missing executable, bad MZ, insufficient memory, unsupported subfunction.
+- Host AddressSanitizer and UndefinedBehaviorSanitizer pass.
+
+QEMU, cpu=486, 64 MiB, rebuilt 0.26.0 kernel:
+- Generated EXECPAR.COM executes CHILD.COM, gets exit status 42, prints EXEC OK.
+- Saved Windows 1.01 installation tested on a disposable disk copy with QEMU
+  snapshot writes. WIN.COM now enters WIN100.BIN; the missing-startup-files
+  message caused by absent EXEC no longer appears.
+- Windows prints Incorrect DOS version and subsequently faults at 7504:65D1
+  (opcode DB). The desktop is not running.
+- A host-only diagnostic returning DOS 3.10 reaches INT 21h AX=5203h, the
+  unsupported DOS-internal list-of-lists query, and then stalls. No version
+  override or fake DOS internal structures are shipped.
+
+Original installed disk SHA-256 (unchanged by these tests):
+63290fbb9a00e0033b7aa7a8723ce9b0bc229949733f09e6517c2a8b83093503
+
+The installation image and Microsoft executables are not included in the release.
+
+Broader validation:
+- Boot smoke, installer (including CD, disk, CHS, low memory), console, OpenBSD
+  tools, all network-adapter scenarios, and VBE checks passed.
+- The undersized 3 MiB boot test was updated for the earlier allocator failure
+  reached with the larger archive; its visible-panic assertions pass.
+- gfx_test.py reports two VGA mode-13h text/font-restoration failures. The
+  same two checks fail against the saved pre-change Windows setup kernel.

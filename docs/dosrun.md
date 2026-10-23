@@ -126,7 +126,8 @@ physical `0xA0000` is copied to ManiOS's screen as it runs.
   frame.
 - **No audio playback, mouse or serial.** The limited PIT channel-2/PC-speaker
   register model below supplies timer state, not an audio output backend.
-- **No TSRs, no child processes.** `INT 21h` AH=4Bh (EXEC) isn't there.
+- **No TSRs or load-only/overlay EXEC.** `INT 21h` AX=4B00h now supports
+  synchronous child COM/MZ programs; other EXEC subfunctions are refused.
 - **A single program at a time.** `dosrun` runs one program and returns
   to the shell when it ends.
 
@@ -251,3 +252,22 @@ loads, both tone divisors, gate/enable behavior, odd/even counts, count latching
 zero divisors, wrap, CPU IN/OUT semantics and rejection without state corruption.
 It is included in `make test`. QEMU regressions execute a channel-2 polling COM
 and check that an unsupported BCD command faults with port/value diagnostics.
+
+## Child processes (0.26.0)
+
+`INT 21h AX=4B00h` loads a COM or MZ child from `DS:DX`, using the
+parameter block at `ES:BX`. The parent must release enough conventional
+memory first (usually with `AH=4Ah`). Each child receives its own PSP,
+copied environment, command tail, default FCBs, and duplicated inherited
+handles (excluding those opened with the private/no-inherit bit). Nested EXEC calls are supported. On `INT 20h`, `AH=00h`, or
+`AH=4Ch`, child allocations and handles are released and the parent's
+registers, stack, DTA, handles, and search state are restored. `AH=4Dh`
+returns the child's status once. Zero-minimum/maximum MZ images load high.
+
+The installed Windows 1.01 disk now gets past the missing-EXEC failure and
+executes `WIN100.BIN`. It still does not reach the desktop: it rejects DOS
+4.00, and a diagnostic version override reaches the unsupported `AH=52h`
+DOS-internal list-of-lists request. No version override is shipped. The
+Windows installation image is unchanged and is not a release asset.
+
+Regression command: `python3 tests/dosrun_exec_test.py`.

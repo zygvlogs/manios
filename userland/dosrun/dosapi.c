@@ -12,6 +12,7 @@
  */
 #include "dosapi.h"
 #include "drives.h"
+#include "loader.h"
 
 #include <errno.h>
 #include <dirent.h>
@@ -88,7 +89,24 @@ extern int poll(struct zkt_pollfd *, int, int);
 #define EMS_PAGE    16384u /* a 16 KiB page, as EMS has it */
 #define EMS_FRAME   0xE000 /* where the 4-page window is mapped */
 
+struct dos_find {
+	DIR *dir;
+	uint16_t seg, off, attr;
+	char root[256], pattern[128];
+};
+struct dos_parent {
+	struct dos_parent *next;
+	struct cpu cpu;
+	uint16_t psp, prog, dta_seg, dta;
+	int handles[HANDLES], fcb[16];
+	uint8_t private_handles[HANDLES];
+	struct dos_find find[8];
+};
+
 struct dos_state {
+	struct dos_parent *parent;
+	uint16_t arena_seg;
+	uint16_t child_status;
 	struct cpu *cpu;
 	uint32_t clock_fraction;
 	struct {
@@ -100,7 +118,7 @@ struct dos_state {
 	uint16_t psp_seg;
 	uint16_t prog_seg;
 	uint16_t dta, dta_seg; /* disk transfer area, independent of later DS */
-	struct { DIR *dir; uint16_t seg, off, attr; char root[256], pattern[128]; } find[8];
+	struct dos_find find[8];
 	uint8_t exit_code;
 	int con_in;        /* the console, for a program's reads */
 	int con_out;
@@ -117,6 +135,7 @@ struct dos_state {
 	/* The open files, one per DOS handle: 0-4 are the standard ones, a
 	 * program's own files start at 5. */
 	int handle_fd[HANDLES];
+	uint8_t private_handles[HANDLES];
 
 	/* Extended memory (XMS): a pool outside the 1 MiB the program can
 	 * address, which it copies to and from through a move call. */
@@ -294,6 +313,14 @@ void dos_free(struct dos_state *d)
 	for (int i = 0; i < 16; i++) if (d->fcb_fd[i] >= 0) close(d->fcb_fd[i]);
 	for (int i = 0; i < 8; i++) if (d->find[i].dir) closedir(d->find[i].dir);
 	for (int i = 0; i < HANDLES; i++) if (d->handle_fd[i] > 2) close(d->handle_fd[i]);
+	while (d->parent) {
+		struct dos_parent *p = d->parent;
+		d->parent = p->next;
+		for (int i = 0; i < HANDLES; i++) if (p->handles[i] > 2) close(p->handles[i]);
+		for (int i = 0; i < 16; i++) if (p->fcb[i] >= 0) close(p->fcb[i]);
+		for (int i = 0; i < 8; i++) if (p->find[i].dir) closedir(p->find[i].dir);
+		free(p);
+	}
 	free(d->xms);
 	free(d->ems);
 	free(d);
@@ -302,6 +329,7 @@ void dos_free(struct dos_state *d)
 void dos_set_program(struct dos_state *d, uint16_t psp_seg, uint16_t prog_seg)
 {
 	d->psp_seg = psp_seg;
+	if (!d->arena_seg) d->arena_seg = psp_seg - 1;
 	d->prog_seg = prog_seg;
 	d->dta_seg = psp_seg;
 }
@@ -330,7 +358,7 @@ void dos_set_tail(struct dos_state *d, const char *tail)
 
 /* Builds the PSP the way DOS does, so a program that looks at it finds
  * what it expects. */
-void dos_build_psp(struct dos_state *d)
+static void build_psp(struct dos_state *d)
 {
 	struct cpu *c = d->cpu;
 	uint16_t psp = d->psp_seg;
@@ -358,6 +386,13 @@ void dos_build_psp(struct dos_state *d)
 	for (int i = 0; i < 20; i++) {
 		wr8(c, psp, (uint16_t)(PSP_JFT + i), i < 5 ? (uint8_t)i : 0xFF);
 	}
+}
+
+void dos_build_psp(struct dos_state *d)
+{
+	build_psp(d);
+	struct cpu *c = d->cpu;
+	uint16_t psp = d->psp_seg;
 	/* A real, terminated environment below the process allocation. The
 	 * word after the double NUL counts executable-name strings. */
 	const uint16_t env = 0x0F00;
@@ -504,7 +539,7 @@ static void mcb_split(struct cpu *c, uint16_t m, uint16_t wanted)
 static enum cpu_stop dos_memory(struct dos_state *d, struct cpu *c, uint8_t ah)
 {
 	uint16_t wanted = c->r[BX], largest = 0;
-	for (uint32_t at = d->psp_seg - 1; at < 0xA000;) {
+	for (uint32_t at = d->arena_seg; at < 0xA000;) {
 		uint16_t m = at;
 		if (!mcb_valid(c, m)) { c->r[AX] = 7; set_cf(c, 1); return CPU_OK; }
 		if (ah == 0x48 && !rd16(c, m, 1)) {
@@ -535,6 +570,166 @@ static enum cpu_stop dos_memory(struct dos_state *d, struct cpu *c, uint8_t ah)
 	c->r[AX] = ah == 0x48 ? 8 : 9;
 	if (ah == 0x48) c->r[BX] = largest;
 	set_cf(c, 1); return CPU_OK;
+}
+
+/* EXEC keeps suspended processes out of the child's handle/search tables.
+ * Guest memory is shared, but each process owns separate MCBs and a PSP. */
+static uint16_t exec_alloc(struct dos_state *d, uint16_t min, uint16_t max)
+{
+	struct cpu *c = d->cpu;
+	for (uint32_t at = d->arena_seg; at < 0xA000;) {
+		uint16_t m = at;
+		if (!mcb_valid(c, m)) return 0;
+		if (!rd16(c, m, 1)) {
+			mcb_join(c, m);
+			uint16_t size = rd16(c, m, 3);
+			if (size >= min) {
+				mcb_split(c, m, size < max ? size : max);
+				wr16(c, m, 1, 0xFFFF);
+				return m + 1;
+			}
+		}
+		if (rd8(c, m, 0) == 'Z') break;
+		at += 1u + rd16(c, m, 3);
+	}
+	return 0;
+}
+
+static void exec_release(struct dos_state *d, uint16_t owner)
+{
+	struct cpu *c = d->cpu;
+	for (uint32_t at = d->arena_seg; at < 0xA000;) {
+		uint16_t m = at;
+		if (!mcb_valid(c, m)) break;
+		if (rd16(c, m, 1) == owner) wr16(c, m, 1, 0);
+		if (rd8(c, m, 0) == 'Z') break;
+		at += 1u + rd16(c, m, 3);
+	}
+	for (uint32_t at = d->arena_seg; at < 0xA000;) {
+		uint16_t m = at;
+		if (!mcb_valid(c, m)) break;
+		if (!rd16(c, m, 1)) mcb_join(c, m);
+		if (rd8(c, m, 0) == 'Z') break;
+		at += 1u + rd16(c, m, 3);
+	}
+}
+
+static enum cpu_stop dos_exec(struct dos_state *d, struct cpu *c)
+{
+	int error = 1;
+	if ((c->r[AX] & 255) != 0) goto fail;
+	char path[256], name[256], err[256];
+	unsigned n;
+	for (n = 0; n < sizeof(name); n++) {
+		name[n] = rd8(c, c->sreg[3], c->r[DX] + n);
+		if (!name[n]) break;
+	}
+	if (n == sizeof(name)) { error = 3; goto fail; }
+	strcpy(path, name);
+	if (dos_path(path, sizeof(path)) < 0) { error = 3; goto fail; }
+	uint16_t min, max;
+	error = load_program_at(NULL, path, 0x1000, 0x9000, &min, &max, err, sizeof(err));
+	if (error) goto fail;
+	uint16_t es = c->sreg[0], bx = c->r[BX];
+	uint16_t env = rd16(c, es, bx);
+	if (!env) env = rd16(c, d->psp_seg, PSP_ENVIRON);
+	unsigned envlen;
+	for (envlen = 0; envlen < 32766; envlen++)
+		if (!rd8(c, env, envlen) && !rd8(c, env, envlen + 1)) break;
+	if (envlen == 32766) { error = 10; goto fail; }
+	envlen += 2;
+	uint16_t tail_off = rd16(c, es, bx + 2), tail_seg = rd16(c, es, bx + 4);
+	uint8_t tail[128], fcbs[32];
+	unsigned tail_len = rd8(c, tail_seg, tail_off);
+	if (tail_len > 126) tail_len = 126;
+	tail[0] = tail_len;
+	for (unsigned i = 0; i < tail_len; i++) tail[i + 1] = rd8(c, tail_seg, tail_off + 1 + i);
+	tail[tail_len + 1] = '\r';
+	for (unsigned i = 0; i < 2; i++) {
+		uint16_t off = rd16(c, es, bx + 6 + i * 4), seg = rd16(c, es, bx + 8 + i * 4);
+		for (unsigned j = 0; j < 16; j++) fcbs[i * 16 + j] = (seg || off) ? rd8(c, seg, off + j) : 0;
+	}
+	struct dos_parent *parent = calloc(1, sizeof(*parent));
+	if (!parent) { error = 8; goto fail; }
+	int inherited[HANDLES];
+	for (int i = 0; i < HANDLES; i++) inherited[i] = -1;
+	for (int i = 0; i < HANDLES; i++) {
+		if (d->handle_fd[i] < 0 || d->private_handles[i]) continue;
+		inherited[i] = dup(d->handle_fd[i]);
+		if (inherited[i] < 0) { error = 4; goto rollback; }
+	}
+	uint16_t env_paras = (envlen + 2 + strlen(name) + 1 + 15) / 16;
+	uint16_t child_env = exec_alloc(d, env_paras, env_paras);
+	if (!child_env) { error = 8; goto rollback; }
+	for (unsigned i = 0; i < envlen; i++) wr8(c, child_env, i, rd8(c, env, i));
+	wr16(c, child_env, envlen, 1);
+	for (unsigned i = 0; i <= strlen(name); i++) wr8(c, child_env, envlen + 2 + i, name[i]);
+	uint16_t child = exec_alloc(d, min, max);
+	if (!child) { error = 8; goto rollback; }
+	parent->cpu = *c;
+	error = load_program_at(c, path, child, rd16(c, child - 1, 3), NULL, NULL, err, sizeof(err));
+	if (error) goto rollback;
+	parent->next = d->parent;
+	parent->psp = d->psp_seg; parent->prog = d->prog_seg;
+	parent->dta_seg = d->dta_seg; parent->dta = d->dta;
+	memcpy(parent->handles, d->handle_fd, sizeof(parent->handles));
+	memcpy(parent->private_handles, d->private_handles, sizeof(d->private_handles));
+	memcpy(parent->fcb, d->fcb_fd, sizeof(parent->fcb));
+	memcpy(parent->find, d->find, sizeof(parent->find));
+	memcpy(d->handle_fd, inherited, sizeof(inherited));
+	memset(d->private_handles, 0, sizeof(d->private_handles));
+	for (int i = 0; i < 16; i++) d->fcb_fd[i] = -1;
+	memset(d->find, 0, sizeof(d->find));
+	d->parent = parent;
+	d->psp_seg = child; d->prog_seg = child + 0x10;
+	d->dta_seg = child; d->dta = PSP_DTA;
+	memset(c->mem + lin(child, 0), 0, 256);
+	build_psp(d);
+	wr16(c, child, PSP_MEMSIZE, child + rd16(c, child - 1, 3));
+	wr16(c, child, PSP_PARENT, parent->psp);
+	wr16(c, child, PSP_ENVIRON, child_env);
+	wr16(c, child - 1, 1, child);
+	wr16(c, child_env - 1, 1, child);
+	for (unsigned i = 0; i < tail_len + 2; i++) wr8(c, child, PSP_TAIL + i, tail[i]);
+	for (unsigned i = 0; i < sizeof(fcbs); i++) wr8(c, child, 0x5C + i, fcbs[i]);
+	for (int i = 0; i < 20; i++) wr8(c, child, PSP_JFT + i, d->handle_fd[i] < 0 ? 0xFF : i);
+	/* The service caller always IRETs: synthesize the child's entry frame. */
+	push16(c, c->flags); push16(c, c->sreg[1]); push16(c, c->ip);
+	return CPU_OK;
+rollback:
+	exec_release(d, 0xFFFF);
+	for (int i = 0; i < HANDLES; i++) if (inherited[i] >= 0) close(inherited[i]);
+	free(parent);
+fail:
+	c->r[AX] = error; set_cf(c, 1); return CPU_OK;
+}
+
+static enum cpu_stop exec_return(struct dos_state *d, struct cpu *c)
+{
+	struct dos_parent *p = d->parent;
+	d->child_status = c->exit_code;
+	for (int i = 0; i < HANDLES; i++) if (d->handle_fd[i] > 2) close(d->handle_fd[i]);
+	for (int i = 0; i < 16; i++) if (d->fcb_fd[i] >= 0) close(d->fcb_fd[i]);
+	for (int i = 0; i < 8; i++) if (d->find[i].dir) closedir(d->find[i].dir);
+	for (int i = 0; i < 3; i++) {
+		wr16(c, 0, (0x22 + i) * 4, rd16(c, d->psp_seg, PSP_INT22 + i * 4));
+		wr16(c, 0, (0x22 + i) * 4 + 2, rd16(c, d->psp_seg, PSP_INT22 + i * 4 + 2));
+	}
+	exec_release(d, d->psp_seg);
+	memcpy(d->handle_fd, p->handles, sizeof(p->handles));
+	memcpy(d->private_handles, p->private_handles, sizeof(d->private_handles));
+	memcpy(d->fcb_fd, p->fcb, sizeof(p->fcb));
+	memcpy(d->find, p->find, sizeof(p->find));
+	d->psp_seg = p->psp; d->prog_seg = p->prog;
+	d->dta_seg = p->dta_seg; d->dta = p->dta;
+	memcpy(c->r, p->cpu.r, sizeof(c->r));
+	memcpy(c->sreg, p->cpu.sreg, sizeof(c->sreg));
+	c->ip = p->cpu.ip; c->flags = p->cpu.flags;
+	c->exit_code = 0;
+	d->parent = p->next;
+	free(p);
+	set_cf(c, 0);
+	return CPU_OK;
 }
 
 /* Legacy FCB record I/O, used by pre-handle runtimes and overlay loaders.
@@ -847,6 +1042,7 @@ static enum cpu_stop dos21(struct dos_state *d, struct cpu *c)
 			if (fd < 0) { c->r[AX] = 4; set_cf(c, 1); return CPU_OK; }
 			if (d->handle_fd[target] > 2) close(d->handle_fd[target]);
 			d->handle_fd[target] = fd;
+			d->private_handles[target] = d->private_handles[bx];
 		}
 		c->r[AX] = target; set_cf(c, 0); return CPU_OK;
 	}
@@ -868,13 +1064,17 @@ static enum cpu_stop dos21(struct dos_state *d, struct cpu *c)
 	case 0x71: /* no Windows long-filename API; callers can use DOS 8.3 */
 		c->r[AX] = 0x7100; set_cf(c, 1); return CPU_OK;
 
+	case 0x4B:
+		return dos_exec(d, c);
+
 	case 0x4C: /* terminate with a return code */
 		d->exit_code = (uint8_t)(c->r[AX] & 0xFF);
 		c->exit_code = d->exit_code;
 		return CPU_EXIT;
 
-	case 0x4D: /* get the return code: nothing yet */
-		c->r[AX] = (uint16_t)(c->r[AX] & 0xFF00);
+	case 0x4D: /* last child status, consumed by this call */
+		c->r[AX] = d->child_status;
+		d->child_status = 0;
 		return CPU_OK;
 
 	case 0x51: case 0x62: /* get the current PSP */
@@ -896,6 +1096,7 @@ static int handle_alloc(struct dos_state *d, int fd)
 	for (int i = 5; i < HANDLES; i++) {
 		if (d->handle_fd[i] < 0) {
 			d->handle_fd[i] = fd;
+			d->private_handles[i] = 0;
 			return i;
 		}
 	}
@@ -1012,7 +1213,9 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 		if (path_at(d, ds, dx, path, sizeof(path)) < 0) {
 			break;
 		}
-		int mode = (c->r[AX] & 0xFF) == 0 ? O_RDONLY : O_RDWR;
+		int access = c->r[AX] & 7;
+		if (access > 2) { c->r[AX] = 12; set_cf(c, 1); return CPU_OK; }
+		int mode = access == 0 ? O_RDONLY : access == 1 ? O_WRONLY : O_RDWR;
 		fd = open(path, mode);
 		if (fd < 0) {
 			break;
@@ -1022,6 +1225,7 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 			close(fd);
 			break;
 		}
+		d->private_handles[h] = !!(c->r[AX] & 0x80);
 		c->r[AX] = (uint16_t)h;
 		set_cf(c, 0);
 		return CPU_OK;
@@ -1038,7 +1242,7 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 	case 0x3F: { /* read */
 		
 		if (bx >= HANDLES || d->handle_fd[bx] < 0) {
-			break;
+			c->r[AX] = 6; set_cf(c, 1); return CPU_OK;
 		}
 		uint16_t n = cx;
 		uint8_t *buf = malloc(n ? n : 1);
@@ -1061,7 +1265,7 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 	case 0x40: { /* write */
 		
 		if (bx >= HANDLES || d->handle_fd[bx] < 0) {
-			break;
+			c->r[AX] = 6; set_cf(c, 1); return CPU_OK;
 		}
 		uint16_t n = cx;
 		uint8_t *buf = malloc(n ? n : 1);
@@ -1093,7 +1297,7 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 	case 0x42: { /* lseek: CX:DX is the offset, AL the whence */
 		
 		if (bx >= HANDLES || d->handle_fd[bx] < 0) {
-			break;
+			c->r[AX] = 6; set_cf(c, 1); return CPU_OK;
 		}
 		int whence = c->r[AX] & 0xFF;
 		long off = (long)((uint32_t)cx << 16 | dx);
@@ -1735,6 +1939,7 @@ enum cpu_stop dos_int(struct dos_state *d, struct cpu *c, uint8_t vector)
 {
 	if (vector == 0x16 && ((c->r[AX] >> 8) == 0 || (c->r[AX] >> 8) == 0x10)) dos_video_present(d);
 	enum cpu_stop stop = dispatch_int(d, c, vector);
+	if (stop == CPU_EXIT && d->parent) stop = exec_return(d, c);
 	if (stop == CPU_OK) {
 		/* The caller returns through the INT frame. Updating only the
 		 * live FLAGS register loses service results (CF for DOS errors,

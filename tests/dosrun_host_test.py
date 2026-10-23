@@ -69,7 +69,7 @@ void gfx_present(struct gfx_screen *s, const struct gfx_canvas *c, struct gfx_re
 """
 
 
-def build(workdir):
+def build(workdir, extra_cflags=()):
     src = os.path.join(workdir, "harness.c")
     with open(src, "w") as f:
         f.write(HARNESS)
@@ -77,7 +77,7 @@ def build(workdir):
     with open(stub, "w") as f:
         f.write(GFX_STUB)
     exe = os.path.join(workdir, "harness")
-    subprocess.run(["gcc", "-std=gnu11", "-O2", "-w",
+    subprocess.run(["gcc", "-std=gnu11", "-O2", "-w", *extra_cflags,
                     "-I", os.path.join(ROOT, "userland/dosrun"),
                     "-I", os.path.join(ROOT, "desktop/libgfx"), src,
                     os.path.join(ROOT, "userland/dosrun/cpu.c"),

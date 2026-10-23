@@ -14,4 +14,9 @@
 int load_program(struct cpu *c, const char *path, const char *tail,
                  char *err, unsigned long errlen);
 
+/* Validate/probe with c == NULL, or load at an allocated PSP. Returns a DOS
+ * error code (zero on success); validation precedes all guest-memory writes. */
+int load_program_at(struct cpu *c, const char *path, uint16_t psp, uint16_t paras,
+                    uint16_t *minimum, uint16_t *maximum, char *err, unsigned long errlen);
+
 #endif
