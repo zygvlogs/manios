@@ -44,7 +44,7 @@ percentage. Checks & Balances, the SemWare editor and Windows 1.01 setup are Par
 | [Search](#search-10a) | 1.0a, FD14 BonusCD | **Working** | Finds both root/nested matches exactly once; correct total and missing-file result after directory fix. | 2026-10-23 |
 | [utf8tocp](#utf8tocp-20240918) | 20240918, FD14 BonusCD | **Working** | Exact UTF-8 ↔ CP437 and UTF-8 ↔ CP775 conversions, including Lithuanian letters and CRLF. | 2026-10-23 |
 | [Bywater BASIC](#bywater-basic-330) | 3.30, FD14 BonusCD binary | **Unsupported** | LE protected-mode executable rejected; the supplied arithmetic program was not executed. | 2026-10-23 |
-| [Microsoft Windows](#microsoft-windows-101) | 1.01, five 360 KB floppy images | **Partial** | Setup welcome, Continue and directory selection work; accepting directory stops on `OUT 43h,AL`. No completed installation or desktop. | 2026-10-23 |
+| [Microsoft Windows](#microsoft-windows-101) | 1.01, five 360 KB floppy images | **Partial** | Setup passes the PIT/speaker routine and displays its own directory-creation error. Installation/desktop still incomplete. | 2026-10-23 |
 
 ## Warcraft: Orcs & Humans
 
@@ -561,7 +561,7 @@ Evidence: [guest transcripts and exported-byte comparisons](compatibility/2026-1
 
 ## Microsoft Windows 1.01
 
-These are pre-fix observations. See the [video-status retest](#video-status-emulation-and-retest) for the current Partial installer result.
+These are pre-fix observations. See the [latest PIT/speaker retest](#windows-101-pit-and-speaker-retest) for the current Partial installer result.
 
 The user-supplied `Microsoft Windows 1.01 (5.25).7z` contains five 368,640-byte
 FAT12 floppy images: Setup, Build, Utility, Apps and Write. File timestamps in
@@ -663,6 +663,70 @@ Evidence: [transcripts and regression results](compatibility/2026-10-23-video-st
 [exact outputs, inputs, source/program hashes and test logs](compatibility/2026-10-23-video-status.json),
 [Windows setup welcome](compatibility/2026-10-23-video-status-windows-start.png),
 [Windows directory prompt](compatibility/2026-10-23-video-status-windows-directory.png).
+
+## Windows 1.01 PIT and speaker retest
+
+Fixed source: `ff4602d`, following baseline `b3b7dc3`. The failing instruction
+starts at `1010:167A`; reported post-opcode CS:IP `1010:167B` points to its
+immediate port byte. A baseline interpreter trace captures:
+
+```text
+1010:1678  B0 B6       MOV AL,B6h
+1010:167A  E6 43       OUT 43h,AL
+FAULT CS:IP=1010:167B opcode=E6 next_port_byte=43 AL=B6 AX=00B6 DX=0C32
+1010:167C  B8 33 05    MOV AX,0533h
+1010:167F  E6 42       OUT 42h,AL
+1010:1681  8A C4       MOV AL,AH
+1010:1683  E6 42       OUT 42h,AL
+1010:1687  E4 61       IN AL,61h
+```
+
+The complete surrounding disassembly is in the evidence. `B6h` programs PIT
+channel 2 for binary mode-3 square-wave generation, with low/high-byte count
+loading. The routine then sets speaker gate/enable bits at `61h`, waits in CPU
+loops, loads divisor `0633h` and restores the old speaker control bits. It is a
+PC-speaker two-tone routine. The post-fix device trace reports logical integer
+frequencies 896 Hz, 751 Hz, then zero after restoration.
+
+The [PIT/speaker model](dosrun.md#pit-channel-2-and-pc-speaker) now implements
+this sequence, count latching/readback, zero divisor = 65,536, gate state and
+OUT2 status. Byte `IN`/`OUT` support both immediate and DX addressing and preserve
+flags/unaffected registers. Unsupported ports, modes, BCD commands and word I/O
+still fault; the runtime now prints port, AL/AX and surrounding guest bytes.
+The model does not produce audible sound, deliver timer interrupts or emulate
+all PIT channels. Timing is instruction-driven; completed reloads restart the
+period immediately. No native I/O is issued and no unsupported command is
+silently treated as success.
+
+The same QEMU 486 / 64 MiB FAT16 snapshot setup run now passes the entire
+previously failing beep routine. Inputs are `c`+Enter at Continue, then Enter
+at `C:\WINDOWS`. Instead of an opcode error, the installer displays its own
+message that it cannot create the specified directory and requests another one.
+This remains **Partial**: no completed installation, generated `WIN.COM` or Windows
+desktop. DOS directory creation is not implemented in the current runtime;
+this batch did not isolate the exact failing directory-service call. That work
+is separate from the confirmed PIT fault and is not masked by this change.
+
+The dedicated PIT suite tests partial/complete divisor loading, both actual
+Windows divisors, gate/enable independence, even/odd mode-3 counts, OUT2 status,
+count freezing/restart, stable latches, zero divisors, instruction-counter wrap,
+IN/OUT operand consumption, register/flag preservation, cleanup and refusal of
+unsupported requests without timer-state corruption. It is wired into `make test`.
+QEMU regressions run the programming sequence and poll both OUT2 edges; an
+unsupported BCD control command still produces a port/value diagnostic.
+
+The host, string, runtime, video-status and PIT suites and QEMU DOS runner suite
+pass. All ten earlier Working utilities were retested for their representative
+tasks on the rebuilt kernel: MORE, FC, FDBanner, B64, BSUM, SemWare GREP, TSORT,
+SAL compiler, Search and utf8tocp. Sorted and converted outputs were exported and
+compared; SAL's 87-byte macro matches the earlier SHA256. FDBanner's rendered
+banner was visually checked. This preserves the tested workflows, not a claim
+that all program features work. Original media/executables are unchanged.
+Existing APKs were not rebuilt; no release was created.
+
+Evidence: [trace, disassembly and retest transcripts](compatibility/2026-10-23-pit-speaker.txt),
+[exact results, source/kernel hashes and compatibility checks](compatibility/2026-10-23-pit-speaker.json),
+[setup directory-error screen after the PIT fix](compatibility/2026-10-23-pit-speaker-setup.png).
 
 ## Adding or updating an entry
 
