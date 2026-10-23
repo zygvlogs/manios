@@ -1,0 +1,394 @@
+{
+  "title": "ManiOS 0.26.0 dosprograms.info.tt applications batch",
+  "date": "2026-10-23",
+  "build": {
+    "commit": "c10d9f01303f2c50ec86ad24e5e6363fe5da5c4c",
+    "version": "0.26.0",
+    "kernel_sha256": "5553a1934d19165f34dcea365ffcb4aaec0d11b81877521da23ec889726fc88c",
+    "environment": "QEMU 10.0.13 i386, CPU 486, 64 MiB RAM, serial console; one 16 MiB FAT16 IDE image per package, fresh disposable copy per case",
+    "docs_state": "evidence written after e80fbe2; no DOS runtime source changed"
+  },
+  "method": "Each case boots the 0.26.0 kernel, runs one dosrun command from the ManiOS shell, records the serial transcript and a screen dump, and sends Esc where an exit key exists. UI transcripts are cleaned of ANSI screen writes; the raw streams remain in the workspace logs. No program binaries or disk images are committed.",
+  "catalog": "https://dosprograms.info.tt/apps.htm",
+  "sources": {
+    "Directory Freedom": {
+      "version": "4.61B (1999)",
+      "archive": "df461b.zip",
+      "url": "https://web.archive.org/web/20151002085811id_/http://home.comcast.net/~ghaff/bitmason/df461b.zip",
+      "sha": "4d15ace672c96c1788915cc620ac029bfdb6eeb8d11ad882c59acddf8034f0d9",
+      "exe": "DF.COM",
+      "exe_sha": "c73ba877c72bce323dbe83889a647c53aea10a089a82a87ce37793c9122e5a9b"
+    },
+    "Costa GUI": {
+      "version": "1.8.0",
+      "archive": "costa180.zip",
+      "url": "https://costa.jacobpalm.dk/downloads/costa180.zip",
+      "sha": "254e79b7617bd96722d228731883ea2aeac982ee22e236d30fa0f9987430ee88",
+      "exe": "DESKTOP.EXE",
+      "exe_sha": "5909e81c199e70fc16f346610e8f05ba9398e4209812ad08068748fcc91d1783"
+    },
+    "AUMenu": {
+      "version": "1.4.3a archive; reports 1.4.3b Unix edition",
+      "archive": "aumenu143a.zip",
+      "url": "https://web.archive.org/web/20080402084721id_/ftp://members.aol.com/aumenu/aumenu143a.zip",
+      "sha": "0fca02a7a1cdaa0b38b2119c423497fc94a401b8bb81f0decf930bce73cc8b31",
+      "exe": "MENU.EXE",
+      "exe_sha": "4d4d8d81846ffa53f8c42d77c0b91f71de0079f9fd07ef402492c7aa57978e45"
+    },
+    "VIEW": {
+      "version": "17.2",
+      "archive": "view.zip",
+      "url": "https://web.archive.org/web/20070808021307id_/http://www3.sympatico.ca/mdrury/view.zip",
+      "sha": "da7b515f4784dab9bb82fdd9bef26f54301def42e5ff25ed7cec9b88959b5ee7",
+      "exe": "VIEW.EXE",
+      "exe_sha": "b66dc89569a3d8f7e70a8c7d72ba0607e8aa346ba8262123bbd5deff821b1610"
+    },
+    "DATES": {
+      "version": "2002.08",
+      "archive": "DATE0208.ZIP via Wayback",
+      "url": "https://web.archive.org/web/2008id_/http://www.erols.com/waynesof/DATE0208.ZIP",
+      "sha": "3e0e9d4f667e1360216edbddae7a4e875707031b539a872ee47bffae408a1a08",
+      "exe": "DATES.EXE",
+      "exe_sha": "ed782e68eff8a6f28a2352fa010cc680f5dbb93b966ea1d8986492fda15e68d3"
+    },
+    "Cash Register": {
+      "version": "7.1j",
+      "archive": "POS71J.ZIP",
+      "url": "http://keyhut.com/pos71j.zip",
+      "sha": "64201fe5c25d5d48194a942daeeeb36b3a9b03b10ca35c80a306bad2d480836a",
+      "exe": "POS.EXE",
+      "exe_sha": "c7b505f8a8f3334ff4bdc0373af0aa67b3f445b1c65dc7eb1b5369d851a6e6f6"
+    },
+    "Figlet": {
+      "version": "2.2 (DOS port, 1997)",
+      "archive": "figdos22.zip",
+      "url": "ftp://ftp.figlet.org/pub/figlet/program/ms-dos/figdos22.zip",
+      "sha": "237a77a7255d9a89bbdd101cdf14472274b1a692e2833c2d7b53a3d5f2a28b16",
+      "exe": "figlet.exe",
+      "exe_sha": "ea91967a62d877a9302f07285727db0201143a7770ce44916f05361864d113b1"
+    },
+    "EDITV": {
+      "version": "4.1 (US)",
+      "archive": "editv41u.zip",
+      "url": "https://web.archive.org/web/2006id_/http://www.xs4all.nl/~ferguson/freeware/editv41u.zip",
+      "sha": "412fc702f365d854f3df36d49d763be7b894e7a5f170b9b5c88554a5ffa922c7",
+      "exe": "EDITV.EXE",
+      "exe_sha": "f508b124a48bb3d16f1e1434638037b877e70c59744cc01c29c662c2fb703ba4"
+    },
+    "MinEd": {
+      "version": "2022.27",
+      "archive": "mined-2022.27-dos.zip",
+      "url": "https://github.com/mined/mined/releases/download/2022.27/mined-2022.27-dos.zip",
+      "sha": "d31d44cf9c9c5a23621aac4ef14f6467cc7c0d99b0aa93504e04fb53a861df43",
+      "exe": "MINED.EXE",
+      "exe_sha": "94dbc9c87e6a7d04a982b5ec7caee83702b8c01aa9c3dfae66eeca2ed977c7d1"
+    },
+    "VIEWSEEK": {
+      "version": "3.1 (VIEW package)",
+      "archive": "view.zip",
+      "url": "https://web.archive.org/web/20070808021307id_/http://www3.sympatico.ca/mdrury/view.zip",
+      "sha": "da7b515f4784dab9bb82fdd9bef26f54301def42e5ff25ed7cec9b88959b5ee7",
+      "exe": "VIEWSEEK.EXE",
+      "exe_sha": "b68f510d0b31ff7200be5e618a9b555893e83d07ab7c0f6c1050e052f00c918f"
+    },
+    "As-Easy-As": {
+      "version": "5.7",
+      "archive": "emulation.zip (DOS files)",
+      "url": "https://archive.org/download/as-easy-as-version-5.7-for-dos/emulation.zip",
+      "sha": "330e131ee4a295fa19f77e2b5abe36223d150f4abfcb3a15677f12eb9303371f",
+      "exe": "ASEASY.EXE",
+      "exe_sha": "ffd7f2122ff3d37ebfc19fcf79fdf8c5f3a46eef3ea8229e93ba57fa2311cb52"
+    }
+  },
+  "cases": [
+    {
+      "case": "directory-freedom",
+      "program": "Directory Freedom",
+      "status": "Partial",
+      "command": "dosrun C:/DF.COM",
+      "timeout_seconds": null,
+      "returned": false,
+      "returned_after_esc": null,
+      "screenshot": "compatibility/2026-10-23-dosprograms-directory-freedom.png",
+      "screenshot_typed": null,
+      "checks": [],
+      "note": "Directory listing, version 4.61B and the F1-F10 menu render; no navigation, file operation or exit was exercised. Shell text remains in cells the program did not overwrite.",
+      "output": "dosrun C:/DF.COM\nLoading and Sorting directory.Dir of Source C:\\Target C:\\ AR       COM    13920   1-01-80  12:00a   A\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557 AR       ZIF      830   1-01-80  12:00a   A\u2551   Directory Freedom    \u2551 DF       COM    39328   1-01-80  12:00a   A\u2551      Version 4.61B     \u2551 DF       ICO      766   1-01-80  12:00a   A\u2551 Copr. Gordon Haff 1999 \u2551 DF460    TXT   140990   1-01-80  12:00a   A\u255f\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2562 DF461B   NEW     6114   1-01-80  12:00a   A\u2551 F1   Copy              \u2551 DFCONFIG EXE   121560   1-01-80  12:00a   A\u2551 F2   Delete            \u2551 DFCONFIG HLP    28287   1-01-80  12:00a   A\u2551 F3   Move              \u2551 DFHELP   TXT     1084   1-01-80  12:00a   A\u2551 F4   Rename            \u2551 FILE_ID  DIZ      262   1-01-80  12\u2551 F5   Clear marks       \u2551\u2551 F6   Mark remainder    \u2551\u2551 F7   Swap Mark/Unmark  \u2551\u2551 F8   Swap Source/Target\u2551\u2551 F9   Change Source     \u2551\u2551 F10  Change Target     \u2551\u2551                        \u2551\u2551                        \u2551\u2551       Ctl-Z  Help      \u2551\u2551  Esc or Ctl-Q to Exit  \u2551\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d   1 of   23.     499,712 bytes/     files:00a   A INPUT    TXT       37   1-01-80 12:00a   A LIBERTY  ICO      766   1-01-80  12:00a   A LR       COM    13920   1-01-80  12:00a   A LR       ZIF      830   1-01-80  12:00a   A PATCH    COM    12874   1-01-80  12:00a   A PATCH    DOC     3252   1-01-80  12:00a   A READ_ME  DF      6296   1-01-80  12:00a   A UNARJXR  EXE    19168   1-01-80  12:00a   A XR103    TXT    34065   1-01-80  12:00a   A ZOR      COM    13920   1-01-80  12:00a   AVolume: AR.COM        8,388,608 bytes freeTarget disk has       8,388,608 bytes free23",
+      "output_chars_raw": 1601
+    },
+    {
+      "case": "costa-launcher",
+      "program": "Costa GUI",
+      "status": "Unsupported",
+      "command": "dosrun C:/COSTA.EXE",
+      "timeout_seconds": null,
+      "returned": true,
+      "returned_after_esc": null,
+      "screenshot": null,
+      "screenshot_typed": null,
+      "checks": [
+        {
+          "expect": "DESKTOP.EXE not found.",
+          "ok": false
+        }
+      ],
+      "note": "Launcher prints `DESKTOP.EXE not found.` in both root and `C:/COSTA/` layouts. The reason was not isolated.",
+      "output": "dosrun C:/COSTA.EXE\nDESKTOP.EXE not found.\n\nmanios%",
+      "output_chars_raw": 51
+    },
+    {
+      "case": "costa-desktop",
+      "program": "Costa GUI",
+      "status": "Unsupported",
+      "command": "dosrun C:/DESKTOP.EXE",
+      "timeout_seconds": null,
+      "returned": true,
+      "returned_after_esc": null,
+      "screenshot": null,
+      "screenshot_typed": null,
+      "checks": [
+        {
+          "expect": "unsupported IN port 0021",
+          "ok": false
+        }
+      ],
+      "note": "Running `DESKTOP.EXE` directly stops on `IN AL,21h` (port 0021h) at `1D20:70B6`; the GUI never starts.",
+      "output": "dosrun C:/DESKTOP.EXE\ndosrun: C:/DESKTOP.EXE: can't run opcode EC (at 1D20:70B6)\ndosrun: unsupported IN port 0021, AL=24 AX=0024; bytes at 1D20:70AD: 88 26 B3 30 BA 21 00 FA EC 80 FC FC 75 03 24 FB\nmanios%",
+      "output_chars_raw": 205
+    },
+    {
+      "case": "aumenu",
+      "program": "AUMenu",
+      "status": "Broken",
+      "command": "dosrun C:/MENU.EXE",
+      "timeout_seconds": null,
+      "returned": false,
+      "returned_after_esc": null,
+      "screenshot": "compatibility/2026-10-23-dosprograms-aumenu.png",
+      "screenshot_typed": null,
+      "checks": [],
+      "note": "The archived ZIP is the Unix edition: it displays `AUMenu for Unix 1.4.3b` and a $79 registration screen, not the DOS menu. The free DOS build was not obtained.",
+      "output": "dosrun C:/MENU.EXE\n                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\u2502                                                                    \u2502\u2502                           AUMenu for Unix                          \u2502\u2502                           Version 1.4.3b                           \u2502\u2502           Copyright (c) 1996-2001 Eugiworks Incorporated           \u2502\u2502                         All Rights Reserved                        \u2502\u2502                                                                    \u2502\u2502                   $79.00 Dollars US Per Computer                   \u2502\u2502                                 for                                \u2502\u2502           Solaris, AIX, SCO, UnixWare, FreeBSD and Linux           \u2502\u2502                                                                    \u2502\u2502                              U.S. Mail                             \u2502\u2502                       Eugiworks Incorporated                       \u2502\u2502                       940 S.W. 159th Terrace                       \u2502\u2502                  Pembroke Pines, Florida 33027 USA                 \u2502\u2502                                                                    \u2502\u2502                      E-Mail : alvareze@aol.com                     \u2502\u2502                                                                    \u2502\u2502           WWW : http://members.aol.com/aumenu/index.html           \u2502\u2502                                                                    \u2502\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518",
+      "output_chars_raw": 3489
+    },
+    {
+      "case": "view",
+      "program": "VIEW",
+      "status": "Partial",
+      "command": "dosrun C:/VIEW.EXE C:/VIEW.DOC",
+      "timeout_seconds": null,
+      "returned": false,
+      "returned_after_esc": true,
+      "screenshot": "compatibility/2026-10-23-dosprograms-view-doc.png",
+      "screenshot_typed": null,
+      "checks": [
+        {
+          "expect": "Esc returns to the shell",
+          "ok": true
+        }
+      ],
+      "note": "Opens the 23-page `VIEW.DOC` and renders page 1 with the header and status bar; Esc returns to the shell. Paging and cursor navigation were not exercised, and screen remnants corrupt the header area.",
+      "output": "dosrun C:/VIEW.EXE C:/VIEW.DOC\n                                                                                C:\\VIEW.DOC (PLAIN TEXT)                                                                                VIEW 17.2 Copyright (c) Malcolm Drury 2002  (1% of file read)                            VIEW - the file viewer                                Version 17.2                          =========================     Note: this package contains the following files: VIEW.EXE      - file viewer VIEWCFG.COM   - customizer for screen colors and other parameters VOICECFG.COM  - customizer for using VIEW with speech synthesis screen readers HPPRINT.COM   - utility for setting printer functions VIEW.DOC      - this fileVIEW 17.2 Copyright (c) Malcolm Drury 2002  (2% of file read) CTL-F10.DOC   - notes on the Ctl-F10 function key use in VIEW SHIFT-F9.DOC  - notes on the use of the Shift-F9 function key WHATSNEW.DOC  - new features in this release VIEWHELP.CST  - template for customized help file (shift-F1 in VIEW) TROUBLE.DOC   - possible problems, and solutions HOWDOI.DOC    - tips for using VIEW VISIMP.DOC    - notes for visually-impaired users HPUSERS.DOC   - notes for HP Palmtop users DESCRIPT.ION  - information for webmastersVIEW 17.2 Copyright (c) Malcolm Drury 2002  (4% of file read) BATCHCNV.EXE  - batch converter to use with VIEWVIEW 17.2 Copyright (c) Malcolm Drury 2002  (5% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (7% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (8% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (9% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (11% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (12% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (14% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (15% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (16% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (18% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (19% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (21% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (22% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (24% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (25% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (26% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (28% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (29% of file read)VIEW 17.2 Copyright (c) Malcolm\n...[screen-write stream truncated]...\ncolm Drury 2002  (62% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (63% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (65% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (66% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (67% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (69% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (70% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (72% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (73% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (74% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (76% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (77% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (79% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (80% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (82% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (83% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (84% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (86% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (87% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (89% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (90% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (91% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (93% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (94% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (96% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (97% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (98% of file read)VIEW 17.2 Copyright (c) Malcolm Drury 2002  (99% of file read)  Esc: exit  Home  End  PgUp  PgDn   Cursor arrows  F1: help  Del: delete file   of   825Lines     1 to    23\ndosrun: C:/VIEW.EXE: can't run opcode EE (at 1F4D:4A16)\ndosrun: unsupported OUT port 03D8, AL=21 AX=0321; bytes at 1F4D:4A0D: 8B EC 8B 56 06 8A 46 08 EE B4 00 5D CB 55 8B EC\nmanios%",
+      "output_chars_raw": 5860
+    },
+    {
+      "case": "dates",
+      "program": "DATES",
+      "status": "Unsupported",
+      "command": "dosrun C:/DATES.EXE MYDATES.LST",
+      "timeout_seconds": null,
+      "returned": true,
+      "returned_after_esc": null,
+      "screenshot": null,
+      "screenshot_typed": null,
+      "checks": [
+        {
+          "expect": "unsupported IN port 0021",
+          "ok": false
+        }
+      ],
+      "note": "Stops during startup on `IN AL,21h` (port 0021h) at `161C:4006`; no date list or usage text is printed.",
+      "output": "dosrun C:/DATES.EXE MYDATES.LST\ndosrun: C:/DATES.EXE: can't run opcode EC (at 161C:4006)\ndosrun: unsupported IN port 0021, AL=24 AX=0024; bytes at 161C:3FFD: 88 26 CD 0B BA 21 00 FA EC 80 FC FC 75 03 24 FB\nmanios%",
+      "output_chars_raw": 213
+    },
+    {
+      "case": "cash-register",
+      "program": "Cash Register",
+      "status": "Unsupported",
+      "command": "dosrun C:/POS.EXE",
+      "timeout_seconds": null,
+      "returned": true,
+      "returned_after_esc": null,
+      "screenshot": null,
+      "screenshot_typed": null,
+      "checks": [
+        {
+          "expect": "unsupported IN port 0021",
+          "ok": false
+        }
+      ],
+      "note": "`POS.EXE` stops during startup on `IN AL,21h` (port 0021h) at `718A:3E98`; no register screen is reached.",
+      "output": "dosrun C:/POS.EXE\ndosrun: C:/POS.EXE: can't run opcode EC (at 718A:3E98)\ndosrun: unsupported IN port 0021, AL=24 AX=0024; bytes at 718A:3E8F: 88 26 D5 A7 BA 21 00 FA EC 80 FC FC 75 03 24 FB\nmanios%",
+      "output_chars_raw": 197
+    },
+    {
+      "case": "figlet-banner",
+      "program": "Figlet",
+      "status": "Working",
+      "command": "dosrun C:/FIGLET.EXE -f C:/fonts/standard ManiOS",
+      "timeout_seconds": null,
+      "returned": true,
+      "returned_after_esc": null,
+      "screenshot": null,
+      "screenshot_typed": null,
+      "checks": [
+        {
+          "expect": "|  \\/  | __ _ _ __ (_)/ _ \\/ ___|",
+          "ok": false
+        }
+      ],
+      "note": "Renders the correct `ManiOS` standard-font banner from `C:/fonts/standard`; `-I 1` prints `20200`.",
+      "output": "dosrun C:/FIGLET.EXE -f C:/fonts/standard ManiOS\n __  __             _  ___  ____  \n\n|  \\/  | __ _ _ __ (_)/ _ \\/ ___| \n\n| |\\/| |/ _` | '_ \\| | | | \\___ \\ \n\n| |  | | (_| | | | | | |_| |___) |\n\n|_|  |_|\\__,_|_| |_|_|\\___/|____/ \n\n                                  \n\nmanios%",
+      "output_chars_raw": 272
+    },
+    {
+      "case": "editv",
+      "program": "EDITV",
+      "status": "Partial",
+      "command": "dosrun C:/EDITV.EXE C:/INPUT.TXT",
+      "timeout_seconds": null,
+      "returned": false,
+      "returned_after_esc": null,
+      "screenshot": "compatibility/2026-10-23-dosprograms-editv.png",
+      "screenshot_typed": "compatibility/2026-10-23-dosprograms-editv-typed.png",
+      "checks": [
+        {
+          "expect": "Zalpha one on screen",
+          "ok": true
+        }
+      ],
+      "note": "Opens `INPUT.TXT`, displays all three lines and accepts typed text (`Z` appears at 1:1). Save and reopen are unverified because F2 cannot be delivered on the serial console.",
+      "output": "dosrun C:/EDITV.EXE C:/INPUT.TXT\n\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591 Alt+X=Exit  F1=Help  F2=Save  F8=Exec     File  Edit  Search  Options  Window  Help                           EDITV 4.1                                   Edit ^Lit  12:00am\u2502Reading...           \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 C:\\/INPUT.TXT \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25001\u2500\u2500\u2500\u2500\u2500\u2510\u2502alpha one                                                                     \u2502\u2502bravo two                                                                     \u2502\u2502charlie three                                                                 \u2502\u2502                                                                              \u2502\u2502                                                                              \u2502\u2502                                                                              \u2502\u2502                                                                              \u2502\u2502                                                                              \u2502\u2502                                                                              \u2502\u2502                                                                              \u2502\u2502                                                                              \u2502\u2502                                                                              \u2502\u2502                                                                              \u2502\u2502                                                                              \u2502\u2502                                                                              \u2502\u2502                                                                              \u2502\u2502                                                                              \u2502\u2502                                                                              \u2502\u2502                                                                              \u2502\u2502                                                                              \u2502\u2502                                                                              \u2502\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\u2554\u2550[\u25a0]\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 C:\\/INPUT.TXT \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u25501\u2550[]\u2550\u2557\u2551\u2551\u2593\u2551\u2593\u2551\u2593\u2551\u2593\u2551\u2593\u2551\u2593\u2551\u2593\u2551\u2593\u2551\u2593\u2551\u2593\u2551\u2593\u2551\u2593\u2551\u2593\u2551\u2593\u2551\u2593\u2551\u2593\u2551\u2593\u2551\u2593\u2551\u2593\u2551\u255a\u2550\u2550\u2550\u2550\u2550\u2550 1:1 \u2550\u2550\u2550\u2550\u2550\u2550\u25a0\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2592\u2500\u2518Z\nZalpha one2        alphaonebrvo two    charliethree21",
+      "output_chars_raw": 4160
+    },
+    {
+      "case": "mined",
+      "program": "MinEd",
+      "status": "Unsupported",
+      "command": "dosrun C:/MINED.EXE C:/INPUT.TXT",
+      "timeout_seconds": null,
+      "returned": true,
+      "returned_after_esc": null,
+      "screenshot": null,
+      "screenshot_typed": null,
+      "checks": [
+        {
+          "expect": "no DPMI",
+          "ok": false
+        }
+      ],
+      "note": "DJGPP/go32 extender reports `Load error: no DPMI - Get csdpmi*b.zip`; no editor screen.",
+      "output": "dosrun C:/MINED.EXE C:/INPUT.TXT\nLoad error: no DPMI - Get csdpmi*b.zip\n\nmanios%",
+      "output_chars_raw": 80
+    },
+    {
+      "case": "as-easy-as",
+      "program": "As-Easy-As",
+      "status": "Unsupported",
+      "command": "dosrun C:/ASEASY.EXE CHKBOOK.WKS",
+      "timeout_seconds": null,
+      "returned": true,
+      "returned_after_esc": null,
+      "screenshot": null,
+      "screenshot_typed": null,
+      "checks": [
+        {
+          "expect": "unsupported OUT port 00F0",
+          "ok": false
+        }
+      ],
+      "note": "Stops in FPU detection on `OUT 0F0h` at `3704:3004`; the following bytes are `FNINIT` (`DB E3`) and `FSTSW` (`D9 3F`). No worksheet is displayed.",
+      "output": "dosrun C:/ASEASY.EXE CHKBOOK.WKS\ndosrun: C:/ASEASY.EXE: can't run opcode E6 (at 3704:3004)\ndosrun: unsupported OUT port 00F0, AL=00 AX=0000; bytes at 3704:2FFB: 33 C0 F2 AE 74 DE 33 C0 E6 F0 DB E3 89 07 D9 3F\nmanios%",
+      "output_chars_raw": 216
+    },
+    {
+      "case": "viewseek",
+      "program": "VIEWSEEK",
+      "status": "Broken",
+      "command": "dosrun C:/VIEWSEEK.EXE INPUT.TXT alpha",
+      "timeout_seconds": null,
+      "returned": true,
+      "returned_after_esc": null,
+      "screenshot": null,
+      "screenshot_typed": null,
+      "checks": [
+        {
+          "expect": "run-time error R6001",
+          "ok": false
+        }
+      ],
+      "note": "Auxiliary program. Searches `INPUT.TXT` for `alpha` (present) but reports no matching files, then exits with `run-time error R6001 - null pointer assignment`.",
+      "output": "dosrun C:/VIEWSEEK.EXE INPUT.TXT alpha\nVIEWSEEK 3.1    Copyright (c) Malcolm Drury 1999\n\nSearching INPUT.TXT for alpha\n\n.No files containing \"alpha\" were found.\n\nrun-time error R6001\n\n- null pointer assignment\n\nmanios%",
+      "output_chars_raw": 218
+    },
+    {
+      "case": "view-short",
+      "program": "VIEW",
+      "status": "Partial",
+      "command": "dosrun C:/VIEW.EXE C:/INPUT.TXT",
+      "timeout_seconds": null,
+      "returned": false,
+      "returned_after_esc": true,
+      "screenshot": "compatibility/2026-10-23-dosprograms-view-short.png",
+      "screenshot_typed": null,
+      "checks": [
+        {
+          "expect": "Esc returns to the shell",
+          "ok": true
+        }
+      ],
+      "note": "Opens the three-line `INPUT.TXT`, displays `Lines 1 to 3 of 3` and exits with Esc. The document text overlaps the header/cursor rows and shell text remains visible.",
+      "output": "dosrun C:/VIEW.EXE C:/INPUT.TXT\n                                                                                C:\\INPUT.TXT (PLAIN TEXT)                                                                                VIEW 17.2 Copyright (c) Malcolm Drury 2002  (97% of file read)alpha onebravo twocharlie three  Esc: exit  Home  End  PgUp  PgDn   Cursor arrows  F1: help  Del: delete file   of     3Lines     1 to     3\ndosrun: C:/VIEW.EXE: can't run opcode EE (at 1F4D:4A16)\ndosrun: unsupported OUT port 03D8, AL=21 AX=0321; bytes at 1F4D:4A0D: 8B EC 8B 56 06 8A 46 08 EE B4 00 5D CB 55 8B EC\nmanios%",
+      "output_chars_raw": 601
+    }
+  ],
+  "auxiliary": [
+    {
+      "case": "figlet-info",
+      "command": "dosrun C:/FIGLET.EXE -I 1",
+      "observed": "20200",
+      "output": "dosrun C:/FIGLET.EXE -I 1\n20200\n\nmanios% dosrun C:/FIGLET.EXE -f C:/fonts/standard ManiOS\n __  __             _  ___  ____  \n\n|  \\/  | __ _ _ __ (_)/ _ \\/ ___| \n\n| |\\/| |/ _` | '_ \\| | | | \\___ \\ \n\n| |  | | (_| | | | | | |_| |___) |\n\n|_|  |_|\\__,_|_| |_|_|\\___/|____/ \n\n                                  \n\nmanios%",
+      "note": "The version/info code returns 20200 (2.2); `-I 0` prints the copyright and usage text."
+    },
+    {
+      "case": "view-batchcnv",
+      "command": "dosrun C:/BATCHCNV.EXE INPUT.TXT OUT /a",
+      "observed": "reports `Converting INPUT.TXT to OUT\\INPUT.TXT` and `Completed`, but no file appears in OUT (mtools directory listing empty).",
+      "output": "dosrun C:/BATCHCNV.EXE INPUT.TXT OUT /a\nBATCHCNV 4.3   Copyright (c) 2000 Malcolm Drury\n\nIf batchcnv returns an error message or halts press Ctrl-Break to\n\ncontinue the process.\n\nConverting INPUT.TXT to OUT\\INPUT.TXT\n\nCompleted -- any files that were not converted will have zero length.\n\nmanios% ",
+      "note": "Not counted as a Working VIEW task. Whether the missing output is a path/current-directory effect or a runtime file-creation defect was not isolated."
+    }
+  ],
+  "runtime_gaps": [
+    {
+      "gap": "PIC mask read (`IN AL,21h`, port 0021h)",
+      "affected": "Costa DESKTOP.EXE 1.8.0, DATES 2002.08, Cash Register 7.1j",
+      "detail": "All three stop on the same startup pattern: `mov [..],ah; mov dx,21h; cli; in al,dx; cmp ah,0FCh; jne +3; and al,0FBh`. The runtime rejects port reads other than its bounded 8254/video models."
+    },
+    {
+      "gap": "x87/FPU detection (`OUT 0F0h`, `FNINIT`, `FSTSW`)",
+      "affected": "As-Easy-As 5.7",
+      "detail": "Stops at `OUT 0F0h` before `DB E3` (`FNINIT`) and `D9 3F` (`FSTSW`). Consistent with Ability Plus 3.0, which stops on x87 `FNINIT`."
+    },
+    {
+      "gap": "DPMI / 32-bit DOS extender",
+      "affected": "MinEd 2022.27",
+      "detail": "The DJGPP/go32 stub asks for a DPMI host: `Load error: no DPMI - Get csdpmi*b.zip`."
+    },
+    {
+      "gap": "Text-screen clearing/scrolling",
+      "affected": "Directory Freedom 4.61B, VIEW 17.2",
+      "detail": "Both leave ManiOS shell/boot text in the headers and clear rows; VIEW short-file rendering overlaps the header with the document. This is the known incomplete BIOS text scrolling described in `dosrun.md`."
+    }
+  ],
+  "conclusion": "Ten catalog packages were exercised. Figlet 2.2 completes a real banner-generation task and is Working. Directory Freedom, VIEW and EDITV are Partial. The AUMenu archive is Broken as shipped (Unix edition). Costa GUI, DATES, Cash Register, MinEd and As-Easy-As are Unsupported because they require a PIC read, x87/FPU instructions or DPMI. The dominant new blocker is the PIC mask read, which stops three unrelated applications in their startup code."
+}

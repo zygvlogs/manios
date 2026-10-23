@@ -14,6 +14,14 @@ opening and rendering an input file, and completes Windows setup again with
 startup still blocked after the 1.01 banner. Warcraft and Ability Plus encounter
 unsupported runtime features; VisiCalc still has no usable worksheet.
 
+A separate 2026-10-23 batch exercised ten packages from the
+[dosprograms.info.tt catalog](https://dosprograms.info.tt/apps.htm). Figlet 2.2
+completes a banner-generation task (Working); Directory Freedom, VIEW and EDITV
+are Partial. The linked AUMenu archive is the Unix edition, not the free DOS
+build (Broken as shipped). Costa GUI, DATES, Cash Register, MinEd and As-Easy-As
+stop on unimplemented hardware or extender requirements (Unsupported). These
+results do not change the counts above.
+
 ## Status definitions
 
 | Status | Meaning |
@@ -49,6 +57,9 @@ unsupported runtime features; VisiCalc still has no usable worksheet.
 | [utf8tocp](#utf8tocp-20240918) | 20240918, FD14 BonusCD | **Working** | Exact UTF-8 ↔ CP437 and UTF-8 ↔ CP775 conversions, including Lithuanian letters and CRLF. | 2026-10-23 |
 | [Bywater BASIC](#bywater-basic-330) | 3.30, FD14 BonusCD binary | **Unsupported** | LE protected-mode executable rejected; the supplied arithmetic program was not executed. | 2026-10-23 |
 | [Microsoft Windows](#microsoft-windows-101) | 1.01, five 360 KB floppy images | **Partial** | Setup completes on FAT16 and creates WIN.COM/WIN100.BIN/WIN100.OVL. In 0.26.0 WIN.COM loads WIN100.BIN, prints the 1.01 banner and `Incorrect DOS version`, then faults at 7504:65D1 (opcode DB); desktop unavailable. | 2026-10-23 |
+
+Applications from the dosprograms.info.tt catalog were tested in a separate
+batch; see [dosprograms.info.tt applications batch](#dosprogramsinfott-applications-batch-2026-10-23).
 
 ## Warcraft: Orcs & Humans
 
@@ -881,3 +892,171 @@ Evidence: [case records, transcripts, hashes and regression log](compatibility/2
 [Checks & Balances](compatibility/2026-10-23-retest-026-checks.png),
 [Windows setup](compatibility/2026-10-23-retest-026-windows-setup.png),
 [Windows startup](compatibility/2026-10-23-retest-026-windows-start.png).
+
+## dosprograms.info.tt applications batch (2026-10-23)
+
+Tested source: `c10d9f0`, ManiOS 0.26.0, clean tree; kernel SHA256
+`5553a1934d19165f34dcea365ffcb4aaec0d11b81877521da23ec889726fc88c`. No DOS
+runtime source changes were made. Ten packages linked from the catalog page
+were downloaded on 2026-10-23, placed on 16 MiB FAT16 images and run in QEMU
+i386 (CPU 486, 64 MiB RAM) from a fresh disposable copy per case. UI programs
+were observed for 6-10 seconds; a timeout is a bounded observation, not proof
+of a hang. Downloads and disk images remain outside the repository.
+
+| Application | Version / media | Status | Observed result | Last tested |
+| --- | --- | --- | --- | --- |
+| Directory Freedom | 4.61B, `df461b.zip` | **Partial** | Directory listing, version 4.61B and the F1-F10 menu render. No navigation, file operation or exit was exercised; shell text remains in uncleared cells. | 2026-10-23 |
+| Costa GUI | 1.8.0, `costa180.zip` | **Unsupported** | `COSTA.EXE` prints `DESKTOP.EXE not found.` in root and `C:/COSTA/` layouts. Direct `DESKTOP.EXE` stops during startup on `IN AL,21h` (port `0021h`) at `1D20:70B6`; no GUI. | 2026-10-23 |
+| AUMenu | 1.4.3a archive; reports 1.4.3b Unix edition | **Broken** | The linked ZIP contains the Unix edition: it displays `AUMenu for Unix 1.4.3b` and a $79 registration screen, not the DOS menu. The free DOS build was not obtained. | 2026-10-23 |
+| VIEW | 17.2, `view.zip` | **Partial** | Opens the 23-page `VIEW.DOC` and renders page 1 with header and status bar; Esc returns. A three-line `INPUT.TXT` shows `Lines 1 to 3 of 3`, but the document overlaps the header and shell remnants remain. Paging/cursor keys were not exercised. | 2026-10-23 |
+| DATES | 2002.08, `DATE0208.ZIP` via Wayback | **Unsupported** | Stops during startup on `IN AL,21h` (port `0021h`) at `161C:4006`; no date list or usage text. | 2026-10-23 |
+| Cash Register | 7.1j, `POS71J.ZIP` | **Unsupported** | `POS.EXE` stops during startup on `IN AL,21h` (port `0021h`) at `718A:3E98`; no register screen. | 2026-10-23 |
+| Figlet | 2.2 DOS port, `figdos22.zip` | **Working** | Standard-font banner for `ManiOS` is correct; `-I 1` prints `20200`; fonts load from `C:/fonts/standard`. | 2026-10-23 |
+| EDITV | 4.1 US, `editv41u.zip` | **Partial** | Opens `INPUT.TXT`, displays all three lines and accepts typed text (`Z` appears at 1:1). Save/reopen unverified; F2 cannot be delivered on the serial console. | 2026-10-23 |
+| MinEd | 2022.27, `mined-2022.27-dos.zip` | **Unsupported** | DJGPP/go32 extender reports `Load error: no DPMI - Get csdpmi*b.zip`; no editor screen. | 2026-10-23 |
+| As-Easy-As | 5.7, DOS files from archive.org item | **Unsupported** | Stops in FPU detection on `OUT 0F0h` at `3704:3004`; following bytes are `FNINIT` (`DB E3`) and `FSTSW` (`D9 3F`). No worksheet. | 2026-10-23 |
+
+### Directory Freedom 4.61B
+
+`dosrun C:/DF.COM` renders the directory list for `C:\`, the
+`Directory Freedom / Version 4.61B` box and the F1-F10 function menu. It was
+still active at the 7-second limit. Cursor and function-key navigation was not
+testable through the serial console, so no copy/delete/rename operation is
+claimed. See the [Directory Freedom screenshot](compatibility/2026-10-23-dosprograms-directory-freedom.png).
+
+### Costa GUI 1.8.0
+
+`dosrun C:/COSTA.EXE` prints `DESKTOP.EXE not found.` and returns, both with the
+package in the image root and under `C:/COSTA/`. Running `C:/DESKTOP.EXE`
+directly reaches the real blocker:
+
+```text
+dosrun: C:/DESKTOP.EXE: can't run opcode EC (at 1D20:70B6)
+dosrun: unsupported IN port 0021, AL=24 AX=0024; bytes at 1D20:70AD:
+88 26 B3 30 BA 21 00 FA EC 80 FC FC 75 03 24 FB
+```
+
+The launcher's file lookup and the runtime's port handling are separate issues;
+no Costa screen was reached.
+
+### AUMenu 1.4.3a
+
+`dosrun C:/MENU.EXE` draws a boxed splash identifying itself as
+`AUMenu for Unix / Version 1.4.3b` with a `$79.00 Dollars US Per Computer`
+registration notice for Solaris, AIX, SCO, UnixWare, FreeBSD and Linux. No menu
+is displayed. The archived ZIP appears to be the Unix distribution even though
+the catalog entry describes the DOS/Unix package; the free DOS build remains
+untested. See the [AUMenu screenshot](compatibility/2026-10-23-dosprograms-aumenu.png).
+
+### VIEW 17.2
+
+`dosrun C:/VIEW.EXE C:/VIEW.DOC` displays page 1 of a 23-page document
+(`1 of 23`, `82%`) with the title/status bars; Esc returns to the shell.
+`dosrun C:/VIEW.EXE C:/INPUT.TXT` reports `Lines 1 to 3 of 3`, but the document
+text overlaps the header rows and shell text remains visible in both runs.
+PgUp/PgDn and cursor keys need BIOS scan codes that the serial console cannot
+send, so only opening, first-page rendering and Esc exit are verified.
+
+Two auxiliary programs of the same package did not add a Working task:
+VIEWSEEK 3.1 searched a file containing `alpha` but reported no matches and
+exited with `run-time error R6001 - null pointer assignment`; BATCHCNV 4.3
+reported `Converting INPUT.TXT to OUT\INPUT.TXT` and `Completed` but left no
+file in `OUT`.
+
+Screenshots: [VIEW.DOC](compatibility/2026-10-23-dosprograms-view-doc.png),
+[short file](compatibility/2026-10-23-dosprograms-view-short.png).
+
+### DATES 2002.08
+
+Both a fixture date file and `/?` stop before any output:
+
+```text
+dosrun: C:/DATES.EXE: can't run opcode EC (at 161C:4006)
+dosrun: unsupported IN port 0021, AL=24 AX=0024; bytes at 161C:3FFD:
+88 26 CD 0B BA 21 00 FA EC 80 FC FC 75 03 24 FB
+```
+
+### Cash Register 7.1j
+
+`dosrun C:/POS.EXE` stops at the same startup pattern:
+
+```text
+dosrun: C:/POS.EXE: can't run opcode EC (at 718A:3E98)
+dosrun: unsupported IN port 0021, AL=24 AX=0024; bytes at 718A:3E8F:
+88 26 D5 A7 BA 21 00 FA EC 80 FC FC 75 03 24 FB
+```
+
+No register, configuration or data-file workflow was reached.
+
+### Figlet 2.2
+
+`dosrun C:/FIGLET.EXE -f C:/fonts/standard ManiOS` prints the expected
+six-line standard-font banner, and `-I 1` prints `20200`. This is a complete
+command-line task with the correct output. See the
+[Figlet screenshot](compatibility/2026-10-23-dosprograms-figlet.png).
+
+### EDITV 4.1
+
+`dosrun C:/EDITV.EXE C:/INPUT.TXT` opens the file in a Turbo Vision editor and
+shows all three lines. Sending `Z` plus Enter inserted `Z` before `alpha`
+(cursor moved to line 2, column 1), so keyboard editing reaches the program.
+F2 save and reopen are unverified because function-key scan codes are not
+deliverable on the serial console. See the
+[EDITV screenshot](compatibility/2026-10-23-dosprograms-editv.png) and
+[typed-text screenshot](compatibility/2026-10-23-dosprograms-editv-typed.png).
+
+### MinEd 2022.27
+
+The DJGPP/go32 stub reports:
+
+```text
+Load error: no DPMI - Get csdpmi*b.zip
+```
+
+The editor never starts; DPMI is not implemented.
+
+### As-Easy-As 5.7
+
+`dosrun C:/ASEASY.EXE CHKBOOK.WKS` stops in the math-coprocessor probe:
+
+```text
+dosrun: C:/ASEASY.EXE: can't run opcode E6 (at 3704:3004)
+dosrun: unsupported OUT port 00F0, AL=00 AX=0000; bytes at 3704:2FFB:
+33 C0 F2 AE 74 DE 33 C0 E6 F0 DB E3 89 07 D9 3F
+```
+
+`E6 F0` writes port `00F0h`; `DB E3` is `FNINIT` and `D9 3F` is `FSTSW`. This
+is the same class of x87 requirement that stops Ability Plus 3.0.
+
+### Runtime gaps exposed
+
+- **PIC mask read (`IN AL,21h`).** Costa's desktop, DATES and Cash Register stop
+  on the same startup sequence: `mov [..],ah; mov dx,21h; cli; in al,dx;
+  cmp ah,0FCh; jne +3; and al,0FBh`. The current port model accepts only the
+  bounded PIT/video ports, so one unimplemented hardware read blocks three
+  unrelated applications before their own code runs.
+- **x87/FPU detection.** As-Easy-As writes `00F0h`, then executes `FNINIT` and
+  `FSTSW`. Ability Plus 3.0 already stops on `FNINIT`; x87 instructions and the
+  FPU clear ports remain absent.
+- **DPMI/32-bit extender.** MinEd's go32 stub cannot load without a DPMI host.
+- **Text-screen clearing and scrolling.** Directory Freedom and VIEW leave
+  shell/boot text in cells and rows they do not overwrite; VIEW's short-file
+  rendering overlaps the header. This is the incomplete BIOS text scrolling
+  already noted in [dosrun](dosrun.md).
+- **AUMenu packaging.** The linked archive is the Unix edition. This is a
+  source/package issue, not a ManiOS execution result.
+
+### Evidence and inputs
+
+Input hashes, command lines, cleaned transcripts and per-case checks:
+[readable summary](compatibility/2026-10-23-dosprograms-apps.txt) and
+[JSON records](compatibility/2026-10-23-dosprograms-apps.json). Screenshots:
+[Directory Freedom](compatibility/2026-10-23-dosprograms-directory-freedom.png),
+[AUMenu](compatibility/2026-10-23-dosprograms-aumenu.png),
+[VIEW.DOC](compatibility/2026-10-23-dosprograms-view-doc.png),
+[VIEW short file](compatibility/2026-10-23-dosprograms-view-short.png),
+[EDITV](compatibility/2026-10-23-dosprograms-editv.png),
+[EDITV typed](compatibility/2026-10-23-dosprograms-editv-typed.png),
+[Figlet](compatibility/2026-10-23-dosprograms-figlet.png).
+
+No application binaries, ZIP archives or disk images are committed.

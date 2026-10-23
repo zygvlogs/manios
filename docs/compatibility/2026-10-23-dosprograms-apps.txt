@@ -1,0 +1,305 @@
+ManiOS 0.26.0 — dosprograms.info.tt applications batch — 2026-10-23
+
+Build and environment
+---------------------
+- Tested source: `c10d9f0` ("Add DOS EXEC child processes and prepare ManiOS 0.26.0"), VERSION 0.26.0, clean tree.
+- Kernel: build/manios-zkt.elf, SHA256 5553a1934d19165f34dcea365ffcb4aaec0d11b81877521da23ec889726fc88c.
+- Environment: QEMU 10.0.13 i386, CPU 486, 64 MiB RAM, serial console; one 16 MiB FAT16 IDE image per package, fresh disposable copy per case, 6-10 s observation limit. A timeout is a bounded observation, not proof of a hang.
+- No program binaries, ZIPs or disk images are committed. Downloads were made on 2026-10-23 from the catalog page and its links.
+- No DOS runtime source changes were made during this batch.
+
+Scope
+-----
+Ten packages from https://dosprograms.info.tt/apps.htm were downloaded, placed on FAT16 images and run. One is Working (Figlet), three are Partial (Directory Freedom, VIEW, EDITV), one archived package is Broken (AUMenu, Unix edition) and five are Unsupported (Costa GUI, DATES, Cash Register, MinEd, As-Easy-As). VIEWSEEK and BATCHCNV were exercised as auxiliary programs of the VIEW package.
+
+Results
+-------
+| Application | Version / media | Status | Observed result |
+| --- | --- | --- | --- |
+| Directory Freedom | 4.61B (1999) | **Partial** | Directory listing, version 4.61B and the F1-F10 menu render; no navigation, file operation or exit was exercised. Shell text remains in cells the program did not overwrite. |
+| Costa GUI | 1.8.0 | **Unsupported** | The launcher prints `DESKTOP.EXE not found.` in both root and `C:/COSTA/` layouts. Running `DESKTOP.EXE` directly stops on `IN AL,21h` (port 0021h) at `1D20:70B6`; the GUI never starts. |
+| AUMenu | 1.4.3a archive; reports 1.4.3b Unix edition | **Broken** | The archived ZIP is the Unix edition: it displays `AUMenu for Unix 1.4.3b` and a $79 registration screen, not the DOS menu. The free DOS build was not obtained. |
+| VIEW | 17.2 | **Partial** | Opens the 23-page `VIEW.DOC` and renders page 1 with the header and status bar; Esc returns to the shell. A short `INPUT.TXT` shows `Lines 1 to 3 of 3`, but its text overlaps the header and shell remnants remain. Paging/cursor navigation was not exercised. |
+| DATES | 2002.08 | **Unsupported** | Stops during startup on `IN AL,21h` (port 0021h) at `161C:4006`; no date list or usage text is printed. |
+| Cash Register | 7.1j | **Unsupported** | `POS.EXE` stops during startup on `IN AL,21h` (port 0021h) at `718A:3E98`; no register screen is reached. |
+| Figlet | 2.2 (DOS port, 1997) | **Working** | Renders the correct `ManiOS` standard-font banner from `C:/fonts/standard`; `-I 1` prints `20200`. |
+| EDITV | 4.1 (US) | **Partial** | Opens `INPUT.TXT`, displays all three lines and accepts typed text (`Z` appears at 1:1). Save and reopen are unverified because F2 cannot be delivered on the serial console. |
+| MinEd | 2022.27 | **Unsupported** | DJGPP/go32 extender reports `Load error: no DPMI - Get csdpmi*b.zip`; no editor screen. |
+| As-Easy-As | 5.7 | **Unsupported** | Stops in FPU detection on `OUT 0F0h` at `3704:3004`; the following bytes are `FNINIT` (`DB E3`) and `FSTSW` (`D9 3F`). No worksheet is displayed. |
+
+Per-application notes
+---------------------
+### Directory Freedom — 4.61B (1999)
+
+- Status: **Partial**
+- Command: `dosrun C:/DF.COM`
+- Returned to shell: False
+- Directory listing, version 4.61B and the F1-F10 menu render; no navigation, file operation or exit was exercised. Shell text remains in cells the program did not overwrite.
+- Screenshot: [2026-10-23-dosprograms-directory-freedom.png](2026-10-23-dosprograms-directory-freedom.png)
+
+### Costa GUI — 1.8.0
+
+- Status: **Unsupported**
+- Command: `dosrun C:/COSTA.EXE`
+- Returned to shell: True
+- Command: `dosrun C:/DESKTOP.EXE`
+- Returned to shell: True
+- The launcher prints `DESKTOP.EXE not found.` in both root and `C:/COSTA/` layouts. Running `DESKTOP.EXE` directly stops on `IN AL,21h` (port 0021h) at `1D20:70B6`; the GUI never starts.
+
+```text
+dosrun C:/COSTA.EXE
+DESKTOP.EXE not found.
+
+manios%
+```
+
+
+```text
+dosrun C:/DESKTOP.EXE
+dosrun: C:/DESKTOP.EXE: can't run opcode EC (at 1D20:70B6)
+dosrun: unsupported IN port 0021, AL=24 AX=0024; bytes at 1D20:70AD: 88 26 B3 30 BA 21 00 FA EC 80 FC FC 75 03 24 FB
+manios%
+```
+
+
+### AUMenu — 1.4.3a archive; reports 1.4.3b Unix edition
+
+- Status: **Broken**
+- Command: `dosrun C:/MENU.EXE`
+- Returned to shell: False
+- The archived ZIP is the Unix edition: it displays `AUMenu for Unix 1.4.3b` and a $79 registration screen, not the DOS menu. The free DOS build was not obtained.
+- Screenshot: [2026-10-23-dosprograms-aumenu.png](2026-10-23-dosprograms-aumenu.png)
+
+### VIEW — 17.2
+
+- Status: **Partial**
+- Command: `dosrun C:/VIEW.EXE C:/VIEW.DOC`
+- Returned to shell: False; after Esc: True
+- Command: `dosrun C:/VIEW.EXE C:/INPUT.TXT`
+- Returned to shell: False; after Esc: True
+- Opens the 23-page `VIEW.DOC` and renders page 1 with the header and status bar; Esc returns to the shell. A short `INPUT.TXT` shows `Lines 1 to 3 of 3`, but its text overlaps the header and shell remnants remain. Paging/cursor navigation was not exercised.
+- Screenshot: [2026-10-23-dosprograms-view-doc.png](2026-10-23-dosprograms-view-doc.png)
+- Screenshot: [2026-10-23-dosprograms-view-short.png](2026-10-23-dosprograms-view-short.png)
+
+### DATES — 2002.08
+
+- Status: **Unsupported**
+- Command: `dosrun C:/DATES.EXE MYDATES.LST`
+- Returned to shell: True
+- Stops during startup on `IN AL,21h` (port 0021h) at `161C:4006`; no date list or usage text is printed.
+
+```text
+dosrun C:/DATES.EXE MYDATES.LST
+dosrun: C:/DATES.EXE: can't run opcode EC (at 161C:4006)
+dosrun: unsupported IN port 0021, AL=24 AX=0024; bytes at 161C:3FFD: 88 26 CD 0B BA 21 00 FA EC 80 FC FC 75 03 24 FB
+manios%
+```
+
+
+### Cash Register — 7.1j
+
+- Status: **Unsupported**
+- Command: `dosrun C:/POS.EXE`
+- Returned to shell: True
+- `POS.EXE` stops during startup on `IN AL,21h` (port 0021h) at `718A:3E98`; no register screen is reached.
+
+```text
+dosrun C:/POS.EXE
+dosrun: C:/POS.EXE: can't run opcode EC (at 718A:3E98)
+dosrun: unsupported IN port 0021, AL=24 AX=0024; bytes at 718A:3E8F: 88 26 D5 A7 BA 21 00 FA EC 80 FC FC 75 03 24 FB
+manios%
+```
+
+
+### Figlet — 2.2 (DOS port, 1997)
+
+- Status: **Working**
+- Command: `dosrun C:/FIGLET.EXE -f C:/fonts/standard ManiOS`
+- Returned to shell: True
+- Renders the correct `ManiOS` standard-font banner from `C:/fonts/standard`; `-I 1` prints `20200`.
+- Screenshot: [2026-10-23-dosprograms-figlet.png](2026-10-23-dosprograms-figlet.png)
+
+```text
+dosrun C:/FIGLET.EXE -f C:/fonts/standard ManiOS
+ __  __             _  ___  ____  
+
+|  \/  | __ _ _ __ (_)/ _ \/ ___| 
+
+| |\/| |/ _` | '_ \| | | | \___ \ 
+
+| |  | | (_| | | | | | |_| |___) |
+
+|_|  |_|\__,_|_| |_|_|\___/|____/ 
+
+                                  
+
+manios%
+```
+
+
+### EDITV — 4.1 (US)
+
+- Status: **Partial**
+- Command: `dosrun C:/EDITV.EXE C:/INPUT.TXT`
+- Returned to shell: False
+- Opens `INPUT.TXT`, displays all three lines and accepts typed text (`Z` appears at 1:1). Save and reopen are unverified because F2 cannot be delivered on the serial console.
+- Screenshot: [2026-10-23-dosprograms-editv.png](2026-10-23-dosprograms-editv.png)
+- Typed-text screenshot: [2026-10-23-dosprograms-editv-typed.png](2026-10-23-dosprograms-editv-typed.png)
+
+### MinEd — 2022.27
+
+- Status: **Unsupported**
+- Command: `dosrun C:/MINED.EXE C:/INPUT.TXT`
+- Returned to shell: True
+- DJGPP/go32 extender reports `Load error: no DPMI - Get csdpmi*b.zip`; no editor screen.
+
+```text
+dosrun C:/MINED.EXE C:/INPUT.TXT
+Load error: no DPMI - Get csdpmi*b.zip
+
+manios%
+```
+
+
+### As-Easy-As — 5.7
+
+- Status: **Unsupported**
+- Command: `dosrun C:/ASEASY.EXE CHKBOOK.WKS`
+- Returned to shell: True
+- Stops in FPU detection on `OUT 0F0h` at `3704:3004`; the following bytes are `FNINIT` (`DB E3`) and `FSTSW` (`D9 3F`). No worksheet is displayed.
+
+```text
+dosrun C:/ASEASY.EXE CHKBOOK.WKS
+dosrun: C:/ASEASY.EXE: can't run opcode E6 (at 3704:3004)
+dosrun: unsupported OUT port 00F0, AL=00 AX=0000; bytes at 3704:2FFB: 33 C0 F2 AE 74 DE 33 C0 E6 F0 DB E3 89 07 D9 3F
+manios%
+```
+
+
+Auxiliary checks
+----------------
+### VIEWSEEK 3.1 (VIEW package)
+
+- Command: `dosrun C:/VIEWSEEK.EXE INPUT.TXT alpha`
+- Observed: searches `INPUT.TXT` for `alpha` (present) but reports no matching files, then exits with `run-time error R6001 - null pointer assignment`.
+- Not counted as a VIEW application result; the failure may depend on the missing DOS `PATH`/VIEW registration environment.
+
+```text
+dosrun C:/VIEWSEEK.EXE INPUT.TXT alpha
+VIEWSEEK 3.1    Copyright (c) Malcolm Drury 1999
+
+Searching INPUT.TXT for alpha
+
+.No files containing "alpha" were found.
+
+run-time error R6001
+
+- null pointer assignment
+
+manios%
+```
+
+### figlet-info
+
+- Command: `dosrun C:/FIGLET.EXE -I 1`
+- Observed: 20200
+- Note: The version/info code returns 20200 (2.2); `-I 0` prints the copyright and usage text.
+
+```text
+dosrun C:/FIGLET.EXE -I 1
+20200
+
+manios% dosrun C:/FIGLET.EXE -f C:/fonts/standard ManiOS
+ __  __             _  ___  ____  
+
+|  \/  | __ _ _ __ (_)/ _ \/ ___| 
+
+| |\/| |/ _` | '_ \| | | | \___ \ 
+
+| |  | | (_| | | | | | |_| |___) |
+
+|_|  |_|\__,_|_| |_|_|\___/|____/ 
+
+                                  
+
+manios%
+```
+
+### view-batchcnv
+
+- Command: `dosrun C:/BATCHCNV.EXE INPUT.TXT OUT /a`
+- Observed: reports `Converting INPUT.TXT to OUT\INPUT.TXT` and `Completed`, but no file appears in OUT (mtools directory listing empty).
+- Note: Not counted as a Working VIEW task. Whether the missing output is a path/current-directory effect or a runtime file-creation defect was not isolated.
+
+```text
+dosrun C:/BATCHCNV.EXE INPUT.TXT OUT /a
+BATCHCNV 4.3   Copyright (c) 2000 Malcolm Drury
+
+If batchcnv returns an error message or halts press Ctrl-Break to
+
+continue the process.
+
+Converting INPUT.TXT to OUT\INPUT.TXT
+
+Completed -- any files that were not converted will have zero length.
+
+manios% 
+```
+
+
+Runtime gaps exposed
+---------------------
+### PIC mask read (`IN AL,21h`, port 0021h)
+
+- Affected: Costa DESKTOP.EXE 1.8.0, DATES 2002.08, Cash Register 7.1j
+- All three stop on the same startup pattern: `mov [..],ah; mov dx,21h; cli; in al,dx; cmp ah,0FCh; jne +3; and al,0FBh`. The runtime rejects port reads other than its bounded 8254/video models.
+
+### x87/FPU detection (`OUT 0F0h`, `FNINIT`, `FSTSW`)
+
+- Affected: As-Easy-As 5.7
+- Stops at `OUT 0F0h` before `DB E3` (`FNINIT`) and `D9 3F` (`FSTSW`). Consistent with Ability Plus 3.0, which stops on x87 `FNINIT`.
+
+### DPMI / 32-bit DOS extender
+
+- Affected: MinEd 2022.27
+- The DJGPP/go32 stub asks for a DPMI host: `Load error: no DPMI - Get csdpmi*b.zip`.
+
+### Text-screen clearing/scrolling
+
+- Affected: Directory Freedom 4.61B, VIEW 17.2
+- Both leave ManiOS shell/boot text in the headers and clear rows; VIEW short-file rendering overlaps the header with the document. This is the known incomplete BIOS text scrolling described in `dosrun.md`.
+
+Sources and input hashes
+------------------------
+| Application | Archive / media | SHA256 | Main executable | SHA256 |
+| --- | --- | --- | --- | --- |
+| Directory Freedom | df461b.zip | `4d15ace672c96c1788915cc620ac029bfdb6eeb8d11ad882c59acddf8034f0d9` | DF.COM | `c73ba877c72bce323dbe83889a647c53aea10a089a82a87ce37793c9122e5a9b` |
+| Costa GUI | costa180.zip | `254e79b7617bd96722d228731883ea2aeac982ee22e236d30fa0f9987430ee88` | DESKTOP.EXE | `5909e81c199e70fc16f346610e8f05ba9398e4209812ad08068748fcc91d1783` |
+| AUMenu | aumenu143a.zip | `0fca02a7a1cdaa0b38b2119c423497fc94a401b8bb81f0decf930bce73cc8b31` | MENU.EXE | `4d4d8d81846ffa53f8c42d77c0b91f71de0079f9fd07ef402492c7aa57978e45` |
+| VIEW | view.zip | `da7b515f4784dab9bb82fdd9bef26f54301def42e5ff25ed7cec9b88959b5ee7` | VIEW.EXE | `b66dc89569a3d8f7e70a8c7d72ba0607e8aa346ba8262123bbd5deff821b1610` |
+| DATES | DATE0208.ZIP via Wayback | `3e0e9d4f667e1360216edbddae7a4e875707031b539a872ee47bffae408a1a08` | DATES.EXE | `ed782e68eff8a6f28a2352fa010cc680f5dbb93b966ea1d8986492fda15e68d3` |
+| Cash Register | POS71J.ZIP | `64201fe5c25d5d48194a942daeeeb36b3a9b03b10ca35c80a306bad2d480836a` | POS.EXE | `c7b505f8a8f3334ff4bdc0373af0aa67b3f445b1c65dc7eb1b5369d851a6e6f6` |
+| Figlet | figdos22.zip | `237a77a7255d9a89bbdd101cdf14472274b1a692e2833c2d7b53a3d5f2a28b16` | figlet.exe | `ea91967a62d877a9302f07285727db0201143a7770ce44916f05361864d113b1` |
+| EDITV | editv41u.zip | `412fc702f365d854f3df36d49d763be7b894e7a5f170b9b5c88554a5ffa922c7` | EDITV.EXE | `f508b124a48bb3d16f1e1434638037b877e70c59744cc01c29c662c2fb703ba4` |
+| MinEd | mined-2022.27-dos.zip | `d31d44cf9c9c5a23621aac4ef14f6467cc7c0d99b0aa93504e04fb53a861df43` | MINED.EXE | `94dbc9c87e6a7d04a982b5ec7caee83702b8c01aa9c3dfae66eeca2ed977c7d1` |
+| As-Easy-As | emulation.zip (DOS files) | `330e131ee4a295fa19f77e2b5abe36223d150f4abfcb3a15677f12eb9303371f` | ASEASY.EXE | `ffd7f2122ff3d37ebfc19fcf79fdf8c5f3a46eef3ea8229e93ba57fa2311cb52` |
+| VIEWSEEK | view.zip | `da7b515f4784dab9bb82fdd9bef26f54301def42e5ff25ed7cec9b88959b5ee7` | VIEWSEEK.EXE | `b68f510d0b31ff7200be5e618a9b555893e83d07ab7c0f6c1050e052f00c918f` |
+
+Download URLs:
+- Directory Freedom: https://web.archive.org/web/20151002085811id_/http://home.comcast.net/~ghaff/bitmason/df461b.zip
+- Costa GUI: https://costa.jacobpalm.dk/downloads/costa180.zip
+- AUMenu: https://web.archive.org/web/20080402084721id_/ftp://members.aol.com/aumenu/aumenu143a.zip
+- VIEW: https://web.archive.org/web/20070808021307id_/http://www3.sympatico.ca/mdrury/view.zip
+- DATES: https://web.archive.org/web/2008id_/http://www.erols.com/waynesof/DATE0208.ZIP
+- Cash Register: http://keyhut.com/pos71j.zip
+- Figlet: ftp://ftp.figlet.org/pub/figlet/program/ms-dos/figdos22.zip
+- EDITV: https://web.archive.org/web/2006id_/http://www.xs4all.nl/~ferguson/freeware/editv41u.zip
+- MinEd: https://github.com/mined/mined/releases/download/2022.27/mined-2022.27-dos.zip
+- As-Easy-As: https://archive.org/download/as-easy-as-version-5.7-for-dos/emulation.zip
+- VIEWSEEK: https://web.archive.org/web/20070808021307id_/http://www3.sympatico.ca/mdrury/view.zip
+
+Conclusion
+----------
+Ten catalog packages were exercised. Figlet 2.2 completes a real banner-generation task and is Working. Directory Freedom, VIEW and EDITV are Partial. The AUMenu archive is Broken as shipped (Unix edition). Costa GUI, DATES, Cash Register, MinEd and As-Easy-As are Unsupported because they require a PIC read, x87/FPU instructions or DPMI. The dominant new blocker is the PIC mask read, which stops three unrelated applications in their startup code.
+
+Raw per-case transcripts and screen dumps remain in the workspace batch directory; the committed JSON keeps cleaned transcripts, checks and hashes. Screenshots are in docs/compatibility/.
