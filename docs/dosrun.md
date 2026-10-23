@@ -132,6 +132,10 @@ FCB reads/writes and save/reopen, keyboard peeking, and BIOS text state.
 `tests/dosrun_test.py` also runs a guest IRET regression through the actual runner.
 The three host suites and the QEMU DOS suites are included in `make test`.
 
+`python3 tests/dosrun_port_test.py` checks emulated input status, register/flag
+preservation, both polling polarities with interrupts disabled, counter wrap
+and rejection of unsupported ports. It is also included in `make test`.
+
 FCB zero-count block writes cannot truncate through the current filesystem API
 and return an explicit failure. BIOS text scrolling is incomplete. Keyboard
 input uses the terminal's line discipline (Enter is needed); direct VGA writes,
@@ -160,3 +164,24 @@ It does not deliver timer interrupts to guest handlers or implement the PIT's
 hardware ports. DOS date/time and BIOS RTC responses still use fixed values.
 The host runtime suite checks fractions, word carry and midnight rollover; the
 QEMU suite checks a direct-memory polling loop through the actual runner.
+
+### Minimal CGA/EGA-compatible video status
+
+`IN AL,DX` can read the colour Input Status Register 1 at `03DAh`. Bit 0
+indicates an inactive horizontal or vertical display interval; bit 3 indicates
+vertical retrace. Their meanings follow the
+[FreeVGA register reference](https://web.stanford.edu/~ouster/cgi-bin/cs140-spring18/pintos/specs/freevga/vga/extreg.htm).
+Other status bits return zero. The CPU delegates byte input to the DOS device
+model; it never reads host hardware. Unsupported ports, word input, immediate
+input and all output instructions still fault.
+
+The synthetic scan has a 4,096-instruction frame, 64-instruction lines, the
+last 16 instructions of each line inactive, and the last 256 instructions of
+the frame in vertical retrace. Phase follows executed guest instructions,
+rather than toggling on every port read. Bit 0 is always high during vertical
+retrace. This deterministic approximation lets programs wait for either edge,
+including with interrupts disabled; it is not a real refresh frequency or
+cycle-accurate CGA/EGA emulation. CRTC programming, graphics modes, attribute
+controller side effects, monochrome ports and other hardware registers are
+outside this model. The QEMU runner suite also executes a COM program that
+waits for both edges of both bits before printing `VIDEO STATUS OK`.

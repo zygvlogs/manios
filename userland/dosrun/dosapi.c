@@ -110,6 +110,21 @@ struct dos_state {
 
 };
 
+/* Minimal colour-adapter Input Status Register 1. Synthetic scan timing is
+ * driven by guest instructions, not by read count, so either-polarity polling
+ * loops can finish even without interrupts. Bit 0 means display disabled
+ * (horizontal or vertical blanking); bit 3 means vertical retrace. Other bits
+ * stay zero. This is not a cycle-accurate or programmable CRTC. */
+static int video_status_in8(struct cpu *c, uint16_t port, uint8_t *value)
+{
+	if (port != 0x03DA) return -1;
+	uint32_t phase = c->insns & 4095u;
+	int vertical = phase >= 3840u;
+	int horizontal = (phase & 63u) >= 48u;
+	*value = (uint8_t)((vertical ? 8 : 0) | ((vertical || horizontal) ? 1 : 0));
+	return 0;
+}
+
 struct dos_state *dos_new(struct cpu *c)
 {
 	struct dos_state *d = calloc(1, sizeof(*d));
@@ -149,11 +164,13 @@ struct dos_state *dos_new(struct cpu *c)
 		d->ems_map_h[i] = -1;
 		d->ems_map_p[i] = -1;
 	}
+	c->port_in8 = video_status_in8;
 	return d;
 }
 
 void dos_free(struct dos_state *d)
 {
+	if (d->cpu->port_in8 == video_status_in8) d->cpu->port_in8 = NULL;
 	for (int i = 0; i < 16; i++) if (d->fcb_fd[i] >= 0) close(d->fcb_fd[i]);
 	for (int i = 0; i < 8; i++) if (d->find[i].dir) closedir(d->find[i].dir);
 	for (int i = 0; i < HANDLES; i++) if (d->handle_fd[i] > 2) close(d->handle_fd[i]);

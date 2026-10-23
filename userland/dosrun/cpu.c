@@ -1253,9 +1253,16 @@ enum cpu_stop cpu_step(struct cpu *c)
 		}
 		return CPU_OK;
 	}
+	case 0xEC: { /* IN AL,DX: only an explicitly emulated byte port */
+		uint8_t value;
+		if (!c->port_in8 || c->port_in8(c, c->r[DX], &value) < 0)
+			return CPU_FAULT;
+		c->r[AX] = (uint16_t)((c->r[AX] & 0xFF00) | value);
+		return CPU_OK;
+	}
 	case 0xE4: case 0xE5: case 0xE6: case 0xE7: /* IN/OUT imm8 */
-	case 0xEC: case 0xED: case 0xEE: case 0xEF: /* IN/OUT DX */
-		return CPU_FAULT; /* port I/O: the caller decides (a DOS program's hardware) */
+	case 0xED: case 0xEE: case 0xEF: /* word IN or OUT DX */
+		return CPU_FAULT;
 	case 0xE8: { /* CALL rel16 */
 		int16_t rel = (int16_t)rd16(c, c->sreg[1], c->ip);
 		c->ip += 2;

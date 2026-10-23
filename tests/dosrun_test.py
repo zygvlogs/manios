@@ -102,6 +102,21 @@ def clock_com():
     return bytes(code)
 
 
+def video_status_com():
+    # Wait for inactive/active display and vertical retrace start/end using
+    # actual IN/TEST/Jcc instructions, with interrupts disabled throughout.
+    code = bytearray([0xFA, 0xBA, 0xDA, 3])
+    for mask in (1, 8):
+        code += bytes([0xEC, 0xA8, mask, 0x75, 0xFB,
+                       0xEC, 0xA8, mask, 0x74, 0xFB,
+                       0xEC, 0xA8, mask, 0x75, 0xFB])
+    code += bytes([0xFB])
+    msg = 0x100 + len(code) + 12
+    code += bytes([0xBA, msg & 255, msg >> 8, 0xB4, 9, 0xCD, 0x21,
+                   0xB8, 0, 0x4C, 0xCD, 0x21]) + b"VIDEO STATUS OK\r\n$"
+    return bytes(code)
+
+
 def hello_exe():
     # The same as hello_com, as an .EXE: CS:IP = 0:0, so the image is
     # the code with the message's offset within the image.
@@ -181,6 +196,7 @@ def build_disk(path):
     put(path, "MOVZX.COM", movzx_com(), srcdir)
     put(path, "FLAGS.COM", flags_com(), srcdir)
     put(path, "CLOCK.COM", clock_com(), srcdir)
+    put(path, "VIDSTAT.COM", video_status_com(), srcdir)
     put(path, "IRET.COM", iret_com(), srcdir)
     put(path, "VGA.COM", vga_text_com(), srcdir)
     put(path, "EXTENDER.EXE", protected_exe(), srcdir)
@@ -239,6 +255,9 @@ def main():
         step("direct BIOS clock polling advances during a busy loop",
              lambda: run_command(m, "serial", "dosrun C:/CLOCK.COM",
                                  ["CLOCK OK"], SHELL_PROMPT))
+        step("video status polling crosses both bit edges with interrupts disabled",
+             lambda: run_command(m, "serial", "dosrun C:/VIDSTAT.COM",
+                                 ["VIDEO STATUS OK"], SHELL_PROMPT))
         step("a short direct-VGA text program renders before exit",
              lambda: run_command(m, "serial", "dosrun C:/VGA.COM",
                                  ["VGA OK"], SHELL_PROMPT))
