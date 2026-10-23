@@ -2,8 +2,10 @@
 
 `dosrun` runs a DOS program -- a `.COM` or an `.EXE` -- on ManiOS.
 
-See the [DOS software compatibility list](dos-compatibility.md) for tested
-applications, build-specific results and known failures.
+See the [DOS software compatibility list](dos-compatibility.md) for
+red/yellow/green results, the [database](compatibility/database.json) for the
+index, and the [full records](compatibility/details.md) for build-specific
+results and known failures.
 
 ```
 manios% dosrun HELLO.COM

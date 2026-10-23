@@ -15,8 +15,10 @@ is written anew for it.
 
 ## DOS software compatibility
 
-[View the DOS compatibility list](docs/dos-compatibility.md) for tested
-applications, test results and known limitations.
+[View the DOS compatibility list](docs/dos-compatibility.md) for a
+red/yellow/green status of tested applications, test results and known
+limitations. The machine-readable index is
+[docs/compatibility/database.json](docs/compatibility/database.json).
 
 ## Status
 
@@ -166,8 +168,10 @@ and redirection (to a file too), and ManiOS's programs on its PATH.
 ([guide](docs/dos.md)).
 
 DOS executables run through `dosrun`. The [DOS software compatibility
-list](docs/dos-compatibility.md) records tested applications, exact failures,
-test environments and evidence; compatibility is currently experimental.
+list](docs/dos-compatibility.md) gives task-specific red/yellow/green results;
+the [database](docs/compatibility/database.json) and
+[full records](docs/compatibility/details.md) hold exact failures, test
+environments and evidence. Compatibility is currently experimental.
 
 `fetch` shows the system at a glance and `top` the processes, busiest
 first; both work in any terminal, the text console included, which

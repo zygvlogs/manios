@@ -1,0 +1,372 @@
+{
+  "schema": 1,
+  "updated": "2026-10-23",
+  "build": {
+    "version": "0.26.0",
+    "commit": "c10d9f0",
+    "kernel_sha256": "5553a1934d19165f34dcea365ffcb4aaec0d11b81877521da23ec889726fc88c",
+    "environment": "QEMU i386, CPU 486, 64 MiB RAM, serial console; disposable FAT16 images and 6-12 s observations unless a longer setup run is recorded"
+  },
+  "details": "details.md",
+  "apps": [
+    {
+      "id": "warcraft-orcs-humans",
+      "name": "Warcraft: Orcs & Humans",
+      "version": "1994 DOS CD; exact patch unverified",
+      "status": "Unsupported",
+      "kind": "game",
+      "summary": "Extracted `war.exe` needs a DOS/4GW protected-mode payload; the installer stops on `OUT 43h` (`E6`).",
+      "anchor": "warcraft-orcs--humans",
+      "evidence": "2026-10-22-warcraft.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "checks-and-balances",
+      "name": "Checks & Balances",
+      "version": "4.0g (1986), two 360 KB floppies",
+      "status": "Partial",
+      "kind": "application",
+      "summary": "Configuration and the supplied DEMO work (`TRUE $2450.20`, `BANK $279.04`); ledger entry, save and reopen are unverified.",
+      "anchor": "checks--balances",
+      "evidence": "2026-10-23-retest-026.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "freedos-more",
+      "name": "FreeDOS MORE",
+      "version": "4.3, FD14 BonusCD",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Help, exact short-file text, redirected stdin and 24-line paging/quit verified.",
+      "anchor": "freedos-more",
+      "evidence": "2026-10-23-retest-026.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "freedos-fc",
+      "name": "FreeDOS FC",
+      "version": "FD14 BonusCD; version unverified",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Equal/different text and `/B` binary comparisons produce the correct results.",
+      "anchor": "freedos-fc",
+      "evidence": "2026-10-23-retest-026.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "fdbanner",
+      "name": "FDBanner",
+      "version": "1.1, FD14 BonusCD",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Coloured banner rendered through BIOS text services; screenshot checked.",
+      "anchor": "fdbanner",
+      "evidence": "2026-10-23-retest-026-fdbanner.png",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "b64",
+      "name": "B64",
+      "version": "0.06R (rev A), FD14 BonusCD",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Help, Base64 encoding of `ABCD` and decoding of `QUJDRA==` are byte-exact.",
+      "anchor": "b64",
+      "evidence": "2026-10-23-retest-026.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "bsum",
+      "name": "BSUM",
+      "version": "1.1a, FD14 BonusCD",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Text, empty-file and 20 KiB binary checksums match an independent oracle; usage and missing-file errors verified.",
+      "anchor": "bsum",
+      "evidence": "2026-10-23-retest-026.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "semware-tse",
+      "name": "SemWare Editor Professional",
+      "version": "2.50e, `tse250e.zip`",
+      "status": "Partial",
+      "kind": "application",
+      "summary": "An input file opens and renders, but typed input does not reach the editor; editing, save and reopen are unverified.",
+      "anchor": "semware-tse-250e",
+      "evidence": "2026-10-23-retest-026-tse-file.png",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "semware-grep",
+      "name": "SemWare GREP",
+      "version": "bundled with TSE 2.50e",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Finds exactly the two `apple` lines in the fixture.",
+      "anchor": "semware-tse-250e",
+      "evidence": "2026-10-23-retest-026.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "semware-tsort",
+      "name": "SemWare TSORT",
+      "version": "bundled with TSE 2.50e",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Sorts four input lines into the expected order.",
+      "anchor": "semware-tse-250e",
+      "evidence": "2026-10-23-retest-026.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "sal-sc",
+      "name": "SAL compiler SC",
+      "version": "2.50e, bundled with TSE",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Compiles a minimal macro to an 87-byte MAC with the expected signature and message.",
+      "anchor": "semware-tse-250e",
+      "evidence": "2026-10-23-retest-026.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "visicalc",
+      "name": "VisiCalc",
+      "version": "`VC.COM`, 27,520 bytes; version unverified",
+      "status": "Broken",
+      "kind": "application",
+      "summary": "No usable worksheet or shell return during the retest; the blank screen remains.",
+      "anchor": "visicalc",
+      "evidence": "2026-10-23-retest-026-visicalc.png",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "ability-plus",
+      "name": "Ability Plus 3.0",
+      "version": "3.0, `AB3.ZIP`",
+      "status": "Unsupported",
+      "kind": "application",
+      "summary": "Main program stops on x87 `FNINIT`; the installer needs a 32-bit operand.",
+      "anchor": "ability-plus-30",
+      "evidence": "2026-10-23-visicalc-ability.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "pedit",
+      "name": "PEDIT",
+      "version": "4.00 standard and Light",
+      "status": "Unsupported",
+      "kind": "application",
+      "summary": "Both variants stop on the operand-size prefix `66h`; no editable document.",
+      "anchor": "pedit-400",
+      "evidence": "2026-10-23-catalog.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "uhex",
+      "name": "uHex",
+      "version": "1.0.4 DOS",
+      "status": "Partial",
+      "kind": "application",
+      "summary": "Help and the 34-byte read-only view work, with display defects; editing, save and reopen are unverified.",
+      "anchor": "uhex-104",
+      "evidence": "2026-10-23-retest-026-uhex.png",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "directory-maven",
+      "name": "Directory Maven",
+      "version": "1.3",
+      "status": "Unsupported",
+      "kind": "application",
+      "summary": "The scan path stops on `66h`; help stops at `IN AL,DX`.",
+      "anchor": "directory-maven-13",
+      "evidence": "2026-10-23-maven.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "file-maven",
+      "name": "File Maven",
+      "version": "3.5a",
+      "status": "Broken",
+      "kind": "application",
+      "summary": "Installer, main executable and launcher pass the clock wait, then fail on `IN AL,DX`; no usable manager.",
+      "anchor": "file-maven-35a",
+      "evidence": "2026-10-23-maven.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "search",
+      "name": "Search",
+      "version": "1.0a, FD14 BonusCD",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Finds both root and nested matches once; totals and the missing-file result are correct.",
+      "anchor": "search-10a",
+      "evidence": "2026-10-23-search-utf8-basic.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "utf8tocp",
+      "name": "utf8tocp",
+      "version": "20240918, FD14 BonusCD",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Exact UTF-8 ↔ CP437 and UTF-8 ↔ CP775 conversions, including Lithuanian letters and CRLF.",
+      "anchor": "utf8tocp-20240918",
+      "evidence": "2026-10-23-search-utf8-basic.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "bywater-basic",
+      "name": "Bywater BASIC",
+      "version": "3.30, FD14 BonusCD",
+      "status": "Unsupported",
+      "kind": "application",
+      "summary": "LE protected-mode executable rejected; the supplied arithmetic program was not executed.",
+      "anchor": "bywater-basic-330",
+      "evidence": "2026-10-23-search-utf8-basic.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "microsoft-windows-101",
+      "name": "Microsoft Windows 1.01",
+      "version": "1.01, five 360 KB floppy images",
+      "status": "Partial",
+      "kind": "application",
+      "summary": "Setup completes and writes `WIN.COM`/`WIN100.BIN`; startup prints `Incorrect DOS version` and faults; desktop unavailable.",
+      "anchor": "microsoft-windows-101",
+      "evidence": "2026-10-23-retest-026-windows-start.png",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "directory-freedom",
+      "name": "Directory Freedom",
+      "version": "4.61B, `df461b.zip`",
+      "status": "Partial",
+      "kind": "application",
+      "summary": "Directory listing, version 4.61B and the F1-F10 menu render; no file operation was exercised.",
+      "anchor": "directory-freedom-461b",
+      "evidence": "2026-10-23-dosprograms-directory-freedom.png",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "costa-gui",
+      "name": "Costa GUI",
+      "version": "1.8.0, `costa180.zip`",
+      "status": "Unsupported",
+      "kind": "application",
+      "summary": "Launcher reports `DESKTOP.EXE not found.`; direct `DESKTOP.EXE` stops on `IN AL,21h`.",
+      "anchor": "costa-gui-180",
+      "evidence": "2026-10-23-dosprograms-apps.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "aumenu",
+      "name": "AUMenu",
+      "version": "1.4.3a archive; reports 1.4.3b Unix edition",
+      "status": "Broken",
+      "kind": "application",
+      "summary": "The linked ZIP is the Unix edition: a $79 registration splash appears instead of the DOS menu.",
+      "anchor": "aumenu-143a",
+      "evidence": "2026-10-23-dosprograms-aumenu.png",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "view",
+      "name": "VIEW",
+      "version": "17.2, `view.zip`",
+      "status": "Partial",
+      "kind": "application",
+      "summary": "Opens the 23-page `VIEW.DOC` and a short file; Esc exits. Header overlap and screen remnants remain; paging is untested.",
+      "anchor": "view-172",
+      "evidence": "2026-10-23-dosprograms-view-doc.png",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "dates",
+      "name": "DATES",
+      "version": "2002.08, `DATE0208.ZIP`",
+      "status": "Unsupported",
+      "kind": "application",
+      "summary": "Startup stops on `IN AL,21h` (port `0021h`); no date list or usage text.",
+      "anchor": "dates-200208",
+      "evidence": "2026-10-23-dosprograms-apps.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "cash-register",
+      "name": "Cash Register",
+      "version": "7.1j, `POS71J.ZIP`",
+      "status": "Unsupported",
+      "kind": "application",
+      "summary": "`POS.EXE` startup stops on `IN AL,21h`; no register screen.",
+      "anchor": "cash-register-71j",
+      "evidence": "2026-10-23-dosprograms-apps.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "figlet",
+      "name": "Figlet",
+      "version": "2.2 DOS port, `figdos22.zip`",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Correct `ManiOS` standard-font banner; `-I 1` prints `20200`.",
+      "anchor": "figlet-22",
+      "evidence": "2026-10-23-dosprograms-figlet.png",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "editv",
+      "name": "EDITV",
+      "version": "4.1 US, `editv41u.zip`",
+      "status": "Partial",
+      "kind": "application",
+      "summary": "Opens and displays a file and accepts typed text; save and reopen are unverified.",
+      "anchor": "editv-41",
+      "evidence": "2026-10-23-dosprograms-editv-typed.png",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "mined",
+      "name": "MinEd",
+      "version": "2022.27, `mined-2022.27-dos.zip`",
+      "status": "Unsupported",
+      "kind": "application",
+      "summary": "DJGPP/go32 loader reports `Load error: no DPMI`; no editor screen.",
+      "anchor": "mined-202227",
+      "evidence": "2026-10-23-dosprograms-apps.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "as-easy-as",
+      "name": "As-Easy-As",
+      "version": "5.7, DOS files from archive.org item",
+      "status": "Unsupported",
+      "kind": "application",
+      "summary": "FPU probe writes `OUT 0F0h`, then runs `FNINIT`/`FSTSW`; no worksheet.",
+      "anchor": "as-easy-as-57",
+      "evidence": "2026-10-23-dosprograms-apps.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "viewseek",
+      "name": "VIEWSEEK",
+      "version": "3.1, VIEW package (auxiliary)",
+      "status": "Broken",
+      "kind": "auxiliary",
+      "summary": "Search reports no match for text that is present, then exits with `run-time error R6001`.",
+      "anchor": "viewseek-31-auxiliary",
+      "evidence": "2026-10-23-dosprograms-apps.txt",
+      "last_tested": "2026-10-23"
+    }
+  ],
+  "status_colors": {
+    "Working": "green",
+    "Partial": "yellow",
+    "Broken": "red",
+    "Unsupported": "red",
+    "Untested": "grey"
+  }
+}
