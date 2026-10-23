@@ -133,6 +133,62 @@ def pit_speaker_com():
     return bytes(code)
 
 
+def filetime_com():
+    # Installer workflow: create/write, stamp, close, reopen and read stamp.
+    # All failure paths exit before the marker. Disk metadata is also checked
+    # independently below after QEMU closes.
+    code = bytearray()
+    refs = []
+    def dx(value):
+        code.extend(b"\xBA\0\0"); refs.append((len(code)-2, value))
+    def check(op=b"\x73"):
+        code.extend(op + b"\x05\xB8\x01\x4C\xCD\x21")
+    def call(ax):
+        code.extend(b"\xB8" + struct.pack("<H", ax) + b"\xCD\x21")
+        check()
+    dx(b"C:\\STAMP.DAT\0"); code.extend(b"\x31\xC9"); call(0x3C00)
+    code.extend(b"\x89\xC3")  # BX=handle
+    dx(b"abc"); code.extend(b"\xB9\x03\0"); call(0x4000)
+    code.extend(b"\xB9\x5C\x64\xBA\x6F\x0B"); call(0x5701)
+    call(0x3E00)
+    dx(b"C:\\STAMP.DAT\0"); call(0x3D00); code.extend(b"\x89\xC3")
+    call(0x5700)
+    code.extend(b"\x81\xF9\x5C\x64"); check(b"\x74")
+    code.extend(b"\x81\xFA\x6F\x0B"); check(b"\x74")
+    call(0x3E00)
+    # Closed handle must fail with DOS invalid handle, not invented metadata.
+    code.extend(b"\xB8\0\x57\xCD\x21"); check(b"\x72")
+    code.extend(b"\x3D\x06\0"); check(b"\x74")
+    # A valid console handle has no FAT timestamp: report unsupported.
+    code.extend(b"\xBB\x01\0\xB8\0\x57\xCD\x21"); check(b"\x72")
+    code.extend(b"\x3D\x01\0"); check(b"\x74")
+    # A 512-byte cluster holds only 14 files plus dot entries. Grow to
+    # 40 files so directory insertion traverses several cluster boundaries.
+    dx(b"C:\\GROW\0"); call(0x3900)
+    for i in range(40):
+        dx(f"C:\\GROW\\F{i:02}.DAT\0".encode()); code.extend(b"\x31\xC9")
+        call(0x3C00); code.extend(b"\x89\xC3"); call(0x3E00)
+    dx(b"FILETIME OK\r\n$"); code.extend(b"\xB4\x09\xCD\x21\xB8\0\x4C\xCD\x21")
+    for at, value in refs:
+        code[at:at+2] = struct.pack("<H", 0x100+len(code)); code.extend(value)
+    return bytes(code)
+
+
+def readonly_filetime_com():
+    # Get metadata on a read-only FAT volume; setting it must be refused.
+    code = bytearray(b"\xBA\0\0\xB8\0\x3D\xCD\x21")
+    def check(op=b"\x73"):
+        code.extend(op+b"\x05\xB8\x01\x4C\xCD\x21")
+    check(); code.extend(b"\x89\xC3\xB8\0\x57\xCD\x21"); check()
+    code.extend(b"\xB8\x01\x57\xCD\x21"); check(b"\x72")
+    code.extend(b"\x3D\x05\0"); check(b"\x74")
+    code.extend(b"\xB4\x3E\xCD\x21"); check()
+    at=len(code)+1; code.extend(b"\xBA\0\0\xB4\x09\xCD\x21\xB8\0\x4C\xCD\x21")
+    code[1:3]=struct.pack("<H",0x100+len(code)); code.extend(b"C:\\HELLO.COM\0")
+    code[at:at+2]=struct.pack("<H",0x100+len(code)); code.extend(b"READONLY TIME OK\r\n$")
+    return bytes(code)
+
+
 def directory_com():
     # Create a real nested FAT directory tree, change into it, then remove
     # it again. Each failed DOS call exits before the success marker.
@@ -235,6 +291,8 @@ def build_disk(path):
     put(path, "VIDSTAT.COM", video_status_com(), srcdir)
     put(path, "PIT.COM", pit_speaker_com(), srcdir)
     put(path, "BADIO.COM", bytes([0xB0, 0xB7, 0xE6, 0x43, 0xF4]), srcdir)
+    put(path, "RTIME.COM", readonly_filetime_com(), srcdir)
+    put(path, "FTIME.COM", filetime_com(), srcdir)
     put(path, "MKDIR.COM", directory_com(), srcdir)
     put(path, "IRET.COM", iret_com(), srcdir)
     put(path, "VGA.COM", vga_text_com(), srcdir)
@@ -268,6 +326,12 @@ def main():
         step("dosrun with an absolute ManiOS path",
              lambda: run_command(m, "serial", "dosrun /n/ata0p1/HELLO.COM",
                                  ["Hello from DOS!"], SHELL_PROMPT))
+        step("an explicit A: mount reads the selected media directory",
+             lambda: run_command(m, "serial", "dosrun --mount A=/n/ata0p1 A:/HELLO.COM",
+                                 ["Hello from DOS!"], SHELL_PROMPT))
+        step("an invalid mount directory is rejected",
+             lambda: run_command(m, "serial", "dosrun --mount A=/n/ata0p1/HELLO.COM C:/HELLO.COM",
+                                 ["--mount requires"], SHELL_PROMPT))
         step("dosrun DIGITS.COM: a loop, INC and LOOP",
              lambda: run_command(m, "serial", "dosrun C:/DIGITS.COM",
                                  ["0123456789"], SHELL_PROMPT))
@@ -306,6 +370,9 @@ def main():
         step("DOS mkdir/chdir/rmdir operate on a real FAT directory tree",
              lambda: run_command(m, "serial", "dosrun C:/MKDIR.COM",
                                  ["DIRECTORY OK"], SHELL_PROMPT))
+        step("DOS timestamps persist across close/reopen and reject unsupported handles",
+             lambda: run_command(m, "serial", "dosrun C:/FTIME.COM",
+                                 ["FILETIME OK"], SHELL_PROMPT))
         step("a short direct-VGA text program renders before exit",
              lambda: run_command(m, "serial", "dosrun C:/VGA.COM",
                                  ["VGA OK"], SHELL_PROMPT))
@@ -320,6 +387,34 @@ def main():
                                  ["usage"], SHELL_PROMPT))
     finally:
         m.close()
+    m = Machine(kernel, ["-drive", f"file={disk},format=raw,if=none,id=ro,readonly=on",
+                         "-device", "virtio-blk-pci,drive=ro"])
+    try:
+        m.expect(SHELL_PROMPT, timeout=60)
+        step("read-only FAT timestamps can be read but cannot be changed",
+             lambda: run_command(m, "serial", "dosrun --mount C=/n/vd0p1 C:/RTIME.COM",
+                                 ["READONLY TIME OK"], SHELL_PROMPT))
+    finally:
+        m.close()
+    listing = subprocess.check_output(["mdir", "-b", "-i", f"{disk}@@{PART_START*512}", "::/GROW"], text=True)
+    if len(listing.splitlines()) != 40:
+        print("FAIL: persistent directory growth to 40 files"); failures += 1
+    else:
+        print("PASS: mtools independently lists all 40 files across directory clusters")
+    # Inspect the persistent FAT16 root entry, independently of DOS get-time.
+    with open(disk, "rb") as f:
+        f.seek(PART_START * 512); bpb = f.read(512)
+        reserved = int.from_bytes(bpb[14:16], "little")
+        fats, fatsectors = bpb[16], int.from_bytes(bpb[22:24], "little")
+        roots = int.from_bytes(bpb[17:19], "little")
+        f.seek((PART_START + reserved + fats * fatsectors) * 512)
+        entries = f.read(roots * 32)
+    entry = next((entries[i:i+32] for i in range(0, len(entries), 32)
+                  if entries[i:i+11] == b"STAMP   DAT"), None)
+    if entry is None or entry[22:26] != bytes.fromhex("5c646f0b") or int.from_bytes(entry[28:32], "little") != 3:
+        print("FAIL: persisted FAT modification stamp/size"); failures += 1
+    else:
+        print("PASS: independent on-disk FAT timestamp and size after VM shutdown")
     print(f"\n{'FAILED' if failures else 'OK'}: {failures} failure(s)")
     return 1 if failures else 0
 

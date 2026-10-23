@@ -522,6 +522,23 @@ static long sys_fstat(struct process *p, int fd, struct zkt_dirent *uout)
 	return copy_to_user(uout, &z, sizeof(z));
 }
 
+static long sys_filetime(struct process *p, int fd, uint32_t *ustamp, int set)
+{
+	struct file *f = process_fd(p, fd);
+	uint32_t stamp;
+	if (!f) return -EBADF;
+	if (set != 0 && set != 1) return -EINVAL;
+	struct vnode *v = vfs_vnode(f);
+	if (!v->ops->filetime) return -ENOSYS;
+	if (set) {
+		int rc = copy_from_user(&stamp, ustamp, sizeof(stamp));
+		if (rc) return rc;
+	}
+	int rc = v->ops->filetime(v, &stamp, set != 0);
+	if (rc || set) return rc;
+	return copy_to_user(ustamp, &stamp, sizeof(stamp));
+}
+
 long syscall_dispatch(uint32_t num, uint32_t a0, uint32_t a1, uint32_t a2,
                       uint32_t a3, uint32_t a4)
 {
@@ -548,6 +565,7 @@ long syscall_dispatch(uint32_t num, uint32_t a0, uint32_t a1, uint32_t a2,
 	case SYS_RMDIR:  return sys_rmdir(p, (const char *)a0);
 	case SYS_RENAME: return sys_rename(p, (const char *)a0, (const char *)a1);
 	case SYS_NSFORK: return sys_nsfork();
+	case SYS_FILETIME: return sys_filetime(p, (int)a0, (uint32_t *)a1, (int)a2);
 	case SYS_FSTAT:  return sys_fstat(p, (int)a0, (struct zkt_dirent *)a1);
 	case SYS_UPTIME: return (long)((uint32_t)timer_uptime_ms() & 0x7FFFFFFF);
 	case SYS_SBRK:   return process_sbrk(p, (int32_t)a0);

@@ -1,6 +1,6 @@
 /* dosrun -- run a DOS program (.COM or .EXE) on ManiOS.
  *
- *   dosrun PROGRAM [ARGS...]
+ *   dosrun [--mount LETTER=/directory] PROGRAM [ARGS...]
  *
  * The program is loaded into an 8086 interpreter (cpu.c), and its DOS
  * and BIOS calls (dosapi.c) are served by ManiOS: the console is this
@@ -19,7 +19,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <manios.h>
+#include <stdint.h>
+#include <ctype.h>
+#include <sys/stat.h>
+
+/* manios.h declares the native fstat ABI; this file uses POSIX stat. */
+extern uint32_t uptime_ms(void);
 
 /* How many instructions between checks of the clock and the keyboard,
  * so a program in a tight loop still sees input. */
@@ -27,8 +32,20 @@
 
 int main(int argc, char **argv)
 {
+	char letters[26]; const char *roots[26]; int mounts = 0;
+	while (argc > 1 && !strcmp(argv[1], "--mount")) {
+		struct stat st;
+		if (argc < 4 || mounts == 26 || !isalpha((unsigned char)argv[2][0]) ||
+		    argv[2][1] != '=' || argv[2][2] != '/' || strlen(argv[2] + 2) >= 64 ||
+		    stat(argv[2] + 2, &st) < 0 || !S_ISDIR(st.st_mode)) {
+			fprintf(stderr, "dosrun: --mount requires LETTER=/absolute/directory followed by a program\n");
+			return 2;
+		}
+		letters[mounts] = argv[2][0]; roots[mounts++] = argv[2] + 2;
+		argc -= 2; argv += 2;
+	}
 	if (argc < 2) {
-		fprintf(stderr, "usage: dosrun PROGRAM [ARGS...]\n");
+		fprintf(stderr, "usage: dosrun [--mount LETTER=/directory] PROGRAM [ARGS...]\n");
 		return 2;
 	}
 
@@ -50,6 +67,7 @@ int main(int argc, char **argv)
 	}
 
 	dos_mount_defaults();
+	for (int i = 0; i < mounts; i++) dos_mount(letters[i], roots[i]);
 	/* The program's path is a DOS path: map it onto ManiOS's, the way
 	 * the program's own file calls will be. */
 	char prog[256];

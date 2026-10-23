@@ -64,6 +64,18 @@ int main(void) {
  puts("PASS: DAA packed-decimal addition for all 10,000 pairs from 00 to 99");
  puts("PASS: addressing segments, POPA, LAHF/SAHF, far CALL, IRET, ROL and INC/DEC flags");
  init();d=dos_new(&c);CHECK(d);dos_set_program(d,0x1000,0x1010);dos_build_psp(d);dos_mount('C',".");
+ /* Timestamp changes must survive close/reopen, as an installer requires. */
+ text(0x3000,0x900,"C:\\A.TXT");c.r[DX]=0x900;call(0x21,0x3D00);
+ CHECK(!(c.flags&FLAG_CF));unsigned fh=c.r[AX];
+ c.r[BX]=fh;c.r[CX]=0x645C;c.r[DX]=0x0B6F;call(0x21,0x5701);CHECK(!(c.flags&FLAG_CF));
+ c.r[BX]=fh;call(0x21,0x3E00);
+ c.r[DX]=0x900;call(0x21,0x3D00);CHECK(!(c.flags&FLAG_CF));fh=c.r[AX];
+ c.r[BX]=fh;c.r[CX]=c.r[DX]=0;call(0x21,0x5700);
+ CHECK(!(c.flags&FLAG_CF)&&c.r[CX]==0x645C&&c.r[DX]==0x0B6F);
+ c.r[BX]=fh;call(0x21,0x5702);CHECK((c.flags&FLAG_CF)&&c.r[AX]==1);
+ c.r[BX]=fh;call(0x21,0x3E00);call(0x21,0x5700);CHECK((c.flags&FLAG_CF)&&c.r[AX]==6);
+ c.r[BX]=0xFFFF;call(0x21,0x5701);CHECK((c.flags&FLAG_CF)&&c.r[AX]==6);
+ puts("PASS: file timestamps persist across close/reopen; invalid handles/subfunctions fail");
  /* Real elapsed time must advance both direct BDA polls and INT 1Ah.
   * Sub-tick updates retain their fraction, and midnight is read/cleared. */
  dos_clock_advance(d,54);CHECK(mem_r16(&c,0x46C)==0);

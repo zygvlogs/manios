@@ -75,6 +75,12 @@
                         * directory; between two directories it is refused (EXDEV), not
                         * done for you */
 
+/* Native FAT modification stamp: low 16 bits time, high 16 bits date,
+ * in FAT's local-time encoding. No timezone conversion or invented times.
+ * Reading requires a filesystem with metadata support; writes also require
+ * a writable filesystem. Existing dirent/STAT ABI stays unchanged. */
+#define SYS_FILETIME 30 /* (int fd, uint32_t *stamp, int set [0 or 1]) -> 0 */
+
 /* Paths may be relative to the process's current directory ("/" for a
  * program the kernel starts; a child inherits its parent's). They are
  * cleaned lexically, as Plan 9 does: ".." never escapes a bind. */

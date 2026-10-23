@@ -311,8 +311,8 @@ static int cluster_at(struct fat_node *n, uint32_t index, uint32_t *out)
 }
 
 /* The index'th cluster of a node's chain, allocating it -- and linking
- * it to the one before -- when a file's chain doesn't reach that far.
- * Directories don't grow: past their last cluster is -ENOSPC. Caller
+ * it to the one before -- when a file or subdirectory chain doesn't
+ * reach that far. The FAT12/16 fixed root never goes here. Caller
  * holds the lock. */
 static int cluster_for_write(struct fat_node *n, uint32_t index, uint32_t *out)
 {
@@ -320,12 +320,18 @@ static int cluster_for_write(struct fat_node *n, uint32_t index, uint32_t *out)
 	uint32_t c = n->first_cluster, prev = 0;
 	for (uint32_t i = 0; i <= fs->cluster_count; i++) {
 		if (!c) { /* nothing here yet: take a free cluster */
-			if (n->vnode.type == VNODE_DIR) {
-				return -ENOSPC;
-			}
 			int rc = alloc_cluster(fs, &c);
 			if (rc) {
 				return rc;
+			}
+			/* A reused directory cluster must contain no stale entries.
+			 * Clear it before linking it into the visible chain. */
+			if (n->vnode.type == VNODE_DIR) {
+				uint8_t zero[SECTOR] = {0};
+				for (uint32_t s = 0; s < fs->sectors_per_cluster; s++) {
+					rc = write_sector(fs, fs->data_start + (c - 2) * fs->sectors_per_cluster + s, zero);
+					if (rc) { fat_set_entry(fs, c, 0); return rc; }
+				}
 			}
 			if (prev) {
 				rc = fat_set_entry(fs, prev, c);
@@ -419,8 +425,8 @@ static long node_read(struct fat_node *n, uint32_t offset, uint8_t *buf, uint32_
 }
 
 /* Writes a node's raw contents (file data or directory entries),
- * growing a file's chain as it goes; a fixed root region or a full
- * directory stops it short. Caller holds the lock. */
+ * growing a file or subdirectory chain as it goes; a fixed root
+ * region stops it short. Caller holds the lock. */
 static long node_write(struct fat_node *n, uint32_t offset, const uint8_t *buf, uint32_t len)
 {
 	struct fat_fs *fs = n->fs;
@@ -883,7 +889,12 @@ static int entry_slot(struct fat_node *dir, uint32_t *off, bool *at_end)
 			return -EIO;
 		}
 		if (got < DIRENT_SIZE) {
-			break; /* the directory is full */
+			if (dir->fixed_root) break; /* FAT12/16 roots have a fixed capacity. */
+			/* Subdirectories are cluster chains: node_write allocates
+			 * and zeroes another cluster when this entry is placed. */
+			*off = at;
+			*at_end = true;
+			return 0;
 		}
 		if (e[0] == ENTRY_DELETED) {
 			*off = at;
@@ -1343,6 +1354,29 @@ static int fat_readdir(struct vnode *dir, uint32_t index, struct dirent *out)
 	return rc ? rc : r.hit;
 }
 
+/* Work on the on-disk entry under the filesystem lock, so independent
+ * open handles observe the same stamp and size/cluster fields survive. */
+static int fat_filetime(struct vnode *v, uint32_t *stamp, bool set)
+{
+	struct fat_node *n = (struct fat_node *)v;
+	struct fat_fs *fs = n->fs;
+	struct fat_node dir;
+	uint8_t e[DIRENT_SIZE];
+	int rc = 0;
+	if (!n->has_entry) return -EINVAL;
+	if (set && fs->read_only) return -EROFS;
+	mutex_lock(&fs->lock);
+	dir_at(fs, n->entry_dir_fixed, n->entry_dir_cluster, &dir);
+	if (node_read(&dir, n->entry_off, e, DIRENT_SIZE) != DIRENT_SIZE) rc = -EIO;
+	else if (e[0] == ENTRY_DELETED) rc = -ENOENT;
+	else if (set) {
+		put_le32(e + 22, *stamp);
+		if (node_write(&dir, n->entry_off, e, DIRENT_SIZE) != DIRENT_SIZE) rc = -EIO;
+	} else *stamp = le32(e + 22);
+	mutex_unlock(&fs->lock);
+	return rc;
+}
+
 static void fat_release(struct vnode *v)
 {
 	kfree(v);
@@ -1357,6 +1391,7 @@ static const struct vnode_ops fat_ops = {
 	.remove = fat_remove,
 	.rename = fat_rename,
 	.truncate = fat_truncate,
+	.filetime = fat_filetime,
 	.release = fat_release,
 };
 
@@ -1365,6 +1400,7 @@ static const struct vnode_ops fat_ro_ops = {
 	.walk = fat_walk,
 	.read = fat_read,
 	.readdir = fat_readdir,
+	.filetime = fat_filetime,
 	.release = fat_release,
 };
 

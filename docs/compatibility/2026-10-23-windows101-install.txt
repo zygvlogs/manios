@@ -1,0 +1,297 @@
+Windows 1.01 / ManiOS installation evidence, 2026-10-23
+
+Production run uses no temporary DOS tracing. QEMU 486, 64 MiB, disposable
+8 MiB FAT16 disk, all five supplied floppies merged into the staging root.
+Selections: C/Enter, Enter (C:\WINDOWS), C/Enter, Enter (no pointer),
+Enter (CGA), C/Enter (Build), C/Enter (Utilities), N/Enter (no printer),
+C/Enter (Desktop Applications), C/Enter (Write).
+
+Installation result:
+c
+Microsoft Windows is set up to operate on your computer.
+You are now in the Windows directory.
+
+To start Microsoft Windows:
+
+    - Type WIN
+    - Press the �� key.
+is copying fils fromthe Microsoft Write Program disktotheC:\WINDOWS\ directory.                                                                                                                                                                                                                                                                          manios% manios% 
+
+Persistent on-disk listing:
+ Volume in drive : is DOSRUN     
+ Volume Serial Number is 29F9-E2BD
+Directory for ::/WINDOWS
+
+.            <DIR>     1980-01-01   0:00 
+..           <DIR>     1980-01-01   0:00 
+WIN100   OVL    214080 2026-10-23   2:55 
+PIF          <DIR>     1980-01-01   0:00 
+SPOOLER  EXE     13216 2026-10-23   2:55 
+WINOLDAP MOD     19392 2026-10-23   2:55 
+WINOLDAP GRB      1350 2026-10-23   2:55 
+MSDOS    EXE         1 1980-01-01   0:00 
+WIN      COM      4867 2026-10-23   2:55 
+WIN100   BIN    177488 2026-10-23   2:55 
+COURA    FON      8720 2026-10-23   2:55 
+HELVA    FON      8032 2026-10-23   2:55 
+TMSRA    FON      8208 2026-10-23   2:55 
+LOFONTS  FON      5552 2026-10-23   2:55 
+ROMAN    FON     27264 2026-10-23   2:55 
+SCRIPT   FON      5744 2026-10-23   2:55 
+MODERN   FON      9680 2026-10-23   2:55 
+HELLO    COM        30 2026-10-23   2:55 
+DIGITS   COM        18 2026-10-23   2:55 
+EXIT7    COM         5 2026-10-23   2:55 
+HELLO    EXE        53 2026-10-23   2:55 
+BAD386   COM         7 2026-10-23   2:55 
+MOVZX    COM        17 2026-10-23   2:55 
+FLAGS    COM        69 2026-10-23   2:55 
+CLOCK    COM        40 2026-10-23   2:55 
+IRET     COM        28 2026-10-23   2:55 
+VGA      COM        35 2026-10-23   2:55 
+EXTENDER EXE       133 2026-10-23   2:55 
+PACKED   EXA        47 2026-10-23   2:55 
+LPC      DRV      2438 2026-10-23   2:55 
+SYSTEM   DRV      2594 2026-10-23   2:55 
+EGAHIBW  DRV     13952 2026-10-23   2:55 
+EMM      PC      12898 2026-10-23   2:55 
+SETUP    EXE     33974 2026-10-23   2:55 
+SETUP    LBL         7 2026-10-23   2:55 
+RAMDRIVE SYS      6459 2026-10-23   2:55 
+JOYMOUSE DRV      2114 2026-10-23   2:55 
+MSMOUSE1 DRV      1966 2026-10-23   2:55 
+EGALORES DRV     15648 2026-10-23   2:55 
+HERCULES DRV     15776 2026-10-23   2:55 
+WRITE    DAT        43 2026-10-23   2:55 
+EGAHIRES DRV     17536 2026-10-23   2:55 
+EMM      AT      12874 2026-10-23   2:55 
+MOUSE    DRV      3239 2026-10-23   2:55 
+NOMOUSE  DRV      1592 2026-10-23   2:55 
+SOUND    DRV      5853 2026-10-23   2:55 
+MSMOUSE2 DRV      1966 2026-10-23   2:55 
+LMOUSE   DRV      2484 2026-10-23   2:55 
+EGAMONO  DRV     13952 2026-10-23   2:55 
+KEYBUS   DRV      3335 2026-10-23   2:55 
+HIFONTS  FON      7472 2026-10-23   2:55 
+COMM     DRV      4860 2026-10-23   2:55 
+CGA      DRV     13008 2026-10-23   2:55 
+KERNEL   EXE     33343 2026-10-23   2:55 
+FTG      DRV      1961 2026-10-23   2:55 
+EGAHIBW  LGO         9 2026-10-23   2:55 
+BUILD    LBL         7 2026-10-23   2:55 
+HERCULES LGO      3054 2026-10-23   2:55 
+EGAHIBW  GRB        15 2026-10-23   2:55 
+EGALORES GRB      1213 2026-10-23   2:55 
+HERCULES GRB      1250 2026-10-23   2:55 
+MSDOSD   EXE      5934 2026-10-23   2:55 
+USER     EXE    122400 2026-10-23   2:55 
+EGAHIRES LGO         9 2026-10-23   2:55 
+EGAMONO  LGO      2930 2026-10-23   2:55 
+GDI      EXE     94254 2026-10-23   2:55 
+EGAMONO  GRB      1061 2026-10-23   2:55 
+CGA      LGO      2931 2026-10-23   2:55 
+WIN      INI      1801 2026-10-23   2:55 
+CGA      GRB      1350 2026-10-23   2:55 
+EGAHIRES GRB        15 2026-10-23   2:55 
+WIN      CNF      1936 2026-10-23   2:55 
+EGALORES LGO         9 2026-10-23   2:55 
+NEC3550  DRV     21536 2026-10-23   2:55 
+HELVC    FON      8656 2026-10-23   2:55 
+TMSRC    FON      8240 2026-10-23   2:55 
+SG10     DRV     13264 2026-10-23   2:55 
+README   DOC      2922 2026-10-23   2:55 
+TMSRB    FON     10784 2026-10-23   2:55 
+HPLASER  DRV     15600 2026-10-23   2:55 
+COURD    FON     15136 2026-10-23   2:55 
+TMSRD    FON     12608 2026-10-23   2:55 
+EPSON    DRV     12688 2026-10-23   2:55 
+LQ1500   DRV     12992 2026-10-23   2:55 
+UTILITY  LBL         9 2026-10-23   2:55 
+IBMGRX   DRV     11392 2026-10-23   2:55 
+OKI92    DRV     11392 2026-10-23   2:55 
+NECP2    DRV     11312 2026-10-23   2:55 
+TOSH     DRV     11520 2026-10-23   2:55 
+HP747XA  DRV     21232 2026-10-23   2:55 
+HELVD    FON     12224 2026-10-23   2:55 
+TI850    DRV     10704 2026-10-23   2:55 
+CITOH    DRV     10976 2026-10-23   2:55 
+COURB    FON     12304 2026-10-23   2:55 
+HELVB    FON     10480 2026-10-23   2:55 
+COURC    FON      8784 2026-10-23   2:55 
+CLOCK    EXE      7920 2026-10-23   2:55 
+NOTEPAD  EXE     18544 2026-10-23   2:55 
+DOTHIS   TXT       493 2026-10-23   2:55 
+CONTROL  EXE     53360 2026-10-23   2:55 
+TERMINAL EXE     43968 2026-10-23   2:55 
+CALENDAR EXE     37360 2026-10-23   2:55 
+REVERSI  EXE     14816 2026-10-23   2:55 
+CARDFILE EXE     36528 2026-10-23   2:55 
+CALC     EXE     24992 2026-10-23   2:55 
+ABC      TXT        42 2026-10-23   2:55 
+PAINT    EXE     89584 2026-10-23   2:55 
+CLIPBRD  EXE      9696 2026-10-23   2:55 
+PRACTICE DOC      2944 2026-10-23   2:55 
+WRITE    EXE    188464 2026-10-23   2:55 
+      110 files           1 771 064 bytes
+                          3 891 200 bytes free
+
+
+Startup diagnosis from separate temporary tracing build (not delivered):
+DOS AX=4A8B RESULT=4A8B CF=0
+DOS AX=488B RESULT=0008 CF=1
+DOS AX=3008 RESULT=0004 CF=1
+DOS AX=473A RESULT=473A CF=0
+OPEN C:\WIN100.BIN
+DOS AX=4B00 RESULT=0001 CF=1
+
+The trace label OPEN also logs EXEC filenames. AX=4B00h is unimplemented;
+CF=1/AX=1 is the failure. No Windows desktop has been verified.
+
+Original copy failure before timestamp support:
+DOS AX=4E26 BX=0000 CX=0001 DX=3AB0 RESULT=3AB0:0002 CF=1
+DOS AX=3D00 BX=0739 CX=0000 DX=3A7A RESULT=3A7A:0006 CF=0
+DOS AX=4300 BX=0739 CX=0000 DX=3AB0 RESULT=3AB0:4300 CF=0
+DOS AX=4301 BX=0739 CX=0000 DX=3AB0 RESULT=3AB0:4301 CF=0
+DOS AX=3C01 BX=0739 CX=0020 DX=3AB0 RESULT=3AB0:0007 CF=0
+DOS AX=4007 BX=0007 CX=0000 DX=3AB0 RESULT=3AB0:0000 CF=0
+DOS AX=3F07 BX=0006 CX=FFFF DX=0000 RESULT=0000:0171 CF=0
+DOS AX=4071 BX=0007 CX=0171 DX=0000 RESULT=0000:0171 CF=0
+DOS AX=3F71 BX=0006 CX=FFFF DX=0000 RESULT=0000:0000 CF=0
+DOS AX=5700 BX=0006 CX=0000 DX=0000 RESULT=0000:0001 CF=1
+DOS AX=3E01 BX=0007 CX=0000 DX=0000 RESULT=0000:3E01 CF=0
+DOS AX=4301 BX=FFFF CX=0000 DX=3AB0 RESULT=3AB0:4301 CF=0
+DOS AX=4101 BX=FFFF CX=0000 DX=3AB0 RESULT=3AB0:4101 CF=0
+DOS AX=3EFF BX=0006 CX=0000 DX=3AB0 RESULT=3AB0:3EFF CF=0
+DOS AX=4300 BX=FFFF CX=0000 DX=3A7A RESULT=3A7A:4300 CF=0
+
+After timestamps, first cluster fills in PIF directory:
+DOS AX=3E00 BX=0006 CX=16E1 DX=5D57 RESULT=5D57:3E00 CF=0
+DOS AX=3EFF BX=0007 CX=16E1 DX=5D57 RESULT=5D57:3EFF CF=0
+DOS AX=4F5C BX=0000 CX=16E1 DX=3A5C RESULT=3A5C:0000 CF=0
+DOS AX=4E26 BX=0000 CX=0001 DX=3AB0 RESULT=3AB0:0002 CF=1
+DOS AX=3D00 BX=0733 CX=0000 DX=3A7A RESULT=3A7A:0006 CF=0
+DOS AX=4300 BX=0733 CX=0000 DX=3AB0 RESULT=3AB0:4300 CF=0
+DOS AX=4301 BX=0733 CX=0000 DX=3AB0 RESULT=3AB0:4301 CF=0
+DOS AX=3C01 BX=0733 CX=0020 DX=3AB0 RESULT=3AB0:0002 CF=1
+DOS AX=3EFF BX=0006 CX=0020 DX=3AB0 RESULT=3AB0:3EFF CF=0
+DOS AX=4300 BX=FFFF CX=0020 DX=3A7A RESULT=3A7A:4300 CF=0
+
+Final production QEMU regressions:
+PASS: dosrun HELLO.COM: a .COM prints its string
+PASS: dosrun with an absolute ManiOS path
+PASS: an explicit A: mount reads the selected media directory
+PASS: an invalid mount directory is rejected
+PASS: dosrun DIGITS.COM: a loop, INC and LOOP
+PASS: dosrun HELLO.EXE: an .EXE loads and runs
+PASS: dosrun EXIT7.COM: it runs and returns to the prompt
+PASS: dosrun BAD386.COM: an instruction it can't run is named
+PASS: dosrun MOVZX.COM: a 386 instruction runs
+PASS: dosrun FLAGS.COM: DOS and BIOS results survive IRET
+PASS: a guest IRET restores its frame exactly once
+PASS: direct BIOS clock polling advances during a busy loop
+PASS: video status polling crosses both bit edges with interrupts disabled
+PASS: PIT channel 2 programming and speaker OUT2 polling
+PASS: unsupported PIT command faults with port and AL diagnostics
+PASS: DOS mkdir/chdir/rmdir operate on a real FAT directory tree
+PASS: DOS timestamps persist across close/reopen and reject unsupported handles
+PASS: a short direct-VGA text program renders before exit
+PASS: a DOS extender is refused with its actual requirement
+PASS: a packed installation file is identified as an archive
+PASS: dosrun with no program: a usage message
+PASS: read-only FAT timestamps can be read but cannot be changed
+PASS: mtools independently lists all 40 files across directory clusters
+PASS: independent on-disk FAT timestamp and size after VM shutdown
+
+OK: 0 failure(s)
+
+strings.log:
+PASS: byte/word strings, REP/REPE/REPNE, zero counts, direction, segment prefixes, TEST, shifts, XLAT, AAD and DAS
+
+ports.log:
+PASS: active display, horizontal blank and recurring vertical retrace; IN preserves AH/flags/registers
+PASS: both-polarity bit 0/3 polling loops terminate with interrupts disabled, including counter wrap
+PASS: unknown/read-only ports, word I/O and truncated immediate port aliases remain unsupported
+
+pit.log:
+PASS: Windows B6/33/05 and 33/06 tone sequence, partial divisor, gate and speaker enable
+PASS: mode-3 odd/even counts, OUT2 status, frozen/rising gate, latching, zero=65536 and wrap
+PASS: byte IN/OUT instruction semantics, unsupported ports/modes/widths and device cleanup
+
+dos-shell.log:
+PASS: dos /C: one command from ManiOS's shell
+PASS: dos /C DRIVES: the drives and where they are
+PASS: dos: the banner, AUTOEXEC.BAT quietly, and the C:\> prompt
+PASS: DIR: the label and serial number from the boot sector, bytes free as mtools says
+PASS: DIR with a pattern, /B, and a pattern matching nothing
+PASS: CD, the prompt following it, CD.. and CD\, and a bad directory
+PASS: TYPE, and TYPE of what isn't a file
+PASS: COPY to CON; what the write commands say before they write
+PASS: drive letters: D:, a drive that isn't there
+PASS: VOL: C:'s label, D:'s serial number
+PASS: CHKDSK C:: a sound disk, its figures as the FAT and mtools have them
+PASS: CHKDSK D:: the faults put there -- cross-link, sizes, a lost chain, FAT copies
+PASS: CHKDSK of the boot disk, which isn't FAT
+PASS: TREE /F
+PASS: FIND, its switches, and its errorlevel
+PASS: SORT from a file, and pipelines
+PASS: MORE: a screen, then Enter for the rest
+PASS: redirection: to NUL, CON, a device, and a file
+PASS: COPY, MD, REN, RD and DEL write to the drive
+PASS: ManiOS programs: DOS paths in their arguments, and their errorlevel
+PASS: what isn't a command, and a DOS program
+PASS: SET, %VARIABLES%, PROMPT and PATH
+PASS: a batch file: parameters, IF, GOTO, SHIFT, FOR, CALL, ERRORLEVEL
+PASS: FOR at the prompt, and ECHO OFF hiding the prompt
+PASS: A:, the boot disk: AUTOEXEC.BAT; Z:, all of ManiOS
+PASS: VER, MEM, DATE, TIME, HELP, TRUENAME
+PASS: EXIT: back to ManiOS
+PASS: what ManiDOS wrote is on C:, as mtools and the FAT see it
+PASS: shell=dos: ManiOS boots into ManiDOS (no FAT disk: A:)
+dos test: all passed
+
+compat-summary.log:
+Testing more
+PASS more
+Testing fc
+PASS fc
+Testing banner
+PASS banner
+Testing b64
+PASS b64
+Testing bsum
+PASS bsum
+Testing grep
+PASS grep
+Testing tsort
+PASS tsort
+Testing sal
+PASS sal
+Testing search
+PASS search
+Testing utf8tocp
+PASS utf8tocp
+
+Additional host CPU/loader suite: 0 failures; runtime suite (including
+timestamp reopen/error tests and all 10,000 DAA pairs): passed.
+
+FDBanner PNG SHA256 (matches previously verified screenshot): 5ae465d1a99d12f29da27ef9be64a7620e958043ca709866b7dd81fcfbd0a21c
+
+Source SHA256:
+33f3635836c2a3ce2dfdb5350f8d60e43983fe0e2dbda36ddb275a0503c580ed  userland/dosrun/main.c
+85b24afadcc0af64dfe1b4934eef89c6eb1553f7559aa10174efe63a87828a4b  userland/dosrun/dosapi.c
+c27a01ef9bc78635bb5b6ce8142cd53fad8fe2ac693e0d2a09591b9beaef2356  zkt/fs/fat.c
+cc8623a2bd4109bb9f9c5e5ba3ed51a5e01e0b3c4d686ad94c5f9aaa2e7103e3  zkt/fs/vfs.h
+040d84748a4fa2f6a11a29555eaa9aa0fa9a4c7f1ef8c01ab08e0c13b8d77246  zkt/kernel/syscall.c
+6fd760088d83594540d84856ee8a787b4aa6609970f9ae070a3e36043b5c1071  zkt/abi/zkt_abi.h
+90a1332710eaf5ede24411a20608e479a8200e80687171c1e837399a9f37a55a  libc/syscalls.c
+5bbec06706e7fe6d1c11b2cbed45ebc11f40247aef684946a4a69e3a5ca365dc  libc/include/sys/filetime.h
+a064a3947ec82fdf0022f63937e5f220ae2714a4c6fa9d01821547d1856621be  tests/dosrun_runtime_test.py
+742b42d436959d29e3f1a8c9f52adf56ef47b8ff5836f1ccd0696e99bd801b64  tests/dosrun_test.py
+
+Local artifacts (Microsoft files stay outside Git):
+63290fbb9a00e0033b7aa7a8723ce9b0bc229949733f09e6517c2a8b83093503  Windows-1.01-installed.img
+5aeef4d701198d6be7422d0cddc6c882b7e412084c0eac3624aadbde311a05df  ManiOS-Windows101-test.elf
+
+Setup uses actual FAT timestamps through SYS_FILETIME. POSIX stat/search
+times remain epoch placeholders; newly created files do not get RTC stamps.
+No APK rebuilt, no release created, original media unmodified.

@@ -67,7 +67,7 @@ preserve drive/CWD state; these changes do not change the shell's directory.
 
 | Interrupt | What it serves |
 |---|---|
-| `INT 21h` | DOS: the console (1, 2, 6-9, 0Ah, 0Bh), the date and time (2Ah, 2Ch), the version (30h), the interrupt vectors (25h, 35h), the PSP (51h, 62h), directory functions (39h-3Bh, 47h), file functions (3Ch-43h), duplication (45h/46h), MCB memory blocks (48h-4Ah), directory searches (4Eh/4Fh) and legacy FCB record I/O |
+| `INT 21h` | DOS: the console (1, 2, 6-9, 0Ah, 0Bh), the date and time (2Ah, 2Ch), the version (30h), the interrupt vectors (25h, 35h), the PSP (51h, 62h), directory functions (39h-3Bh, 47h), file functions (3Ch-43h), duplication (45h/46h), MCB memory blocks (48h-4Ah), directory searches (4Eh/4Fh), FAT modification timestamps (57h) and legacy FCB record I/O |
 | `INT 10h` | BIOS video: mode 13h and text character/attribute/cursor services |
 | `INT 16h` | BIOS keyboard: reading a key and non-consuming readiness queries |
 | `INT 1Ah` | BIOS clock: the tick count and the RTC time |
@@ -83,6 +83,28 @@ path by the same scheme ManiDOS uses: a drive letter names a ManiOS
 directory (`A:` the boot disk, `Z:` ManiOS itself, `C:` onwards the
 disks under `/n`), and the path's backslashes become slashes. So a
 DOS program and ManiDOS see the same files.
+
+For installation media, override an individual drive for one invocation:
+
+```
+dosrun --mount A=/n/ata0p1 C:/SETUP.EXE
+```
+
+`--mount LETTER=/absolute/directory` can be repeated before the program name.
+The directory must exist; ordinary arguments after the program remain its DOS
+command tail. Defaults still apply to all other drives. This lets an installer
+read A: without treating the installation target C: as a CD or boot archive.
+Each invocation starts the DOS drive directories at their roots.
+
+`INT 21h/AX=5700h` reads and `5701h` persists the open file's FAT modification
+time (CX) and date (DX). These are the actual packed local-time fields in its
+directory entry, shared across handles and preserved across close/reopen and
+reboot. Unsupported filesystems return an error, as do invalid handles and
+read-only writes. This uses the additive native `SYS_FILETIME` interface;
+POSIX `stat` and DOS directory-search timestamps retain their earlier epoch
+placeholder. New files do not yet acquire the current clock time automatically.
+FAT subdirectories now extend their cluster chains when full; the FAT12/16
+root directory retains its fixed on-disk capacity.
 
 The console is the terminal `dosrun` runs on. Mode 13h (320x200, 256
 colours) is ManiOS's VGA mode 13h: the program's framebuffer at

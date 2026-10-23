@@ -44,7 +44,7 @@ percentage. Checks & Balances, the SemWare editor and Windows 1.01 setup are Par
 | [Search](#search-10a) | 1.0a, FD14 BonusCD | **Working** | Finds both root/nested matches exactly once; correct total and missing-file result after directory fix. | 2026-10-23 |
 | [utf8tocp](#utf8tocp-20240918) | 20240918, FD14 BonusCD | **Working** | Exact UTF-8 ↔ CP437 and UTF-8 ↔ CP775 conversions, including Lithuanian letters and CRLF. | 2026-10-23 |
 | [Bywater BASIC](#bywater-basic-330) | 3.30, FD14 BonusCD binary | **Unsupported** | LE protected-mode executable rejected; the supplied arithmetic program was not executed. | 2026-10-23 |
-| [Microsoft Windows](#microsoft-windows-101) | 1.01, five 360 KB floppy images | **Partial** | Setup now creates `C:\WINDOWS` on FAT16 and advances to the next preparation screen. Installation/desktop still incomplete. | 2026-10-23 |
+| [Microsoft Windows](#microsoft-windows-101) | 1.01, five 360 KB floppy images | **Partial** | Setup completes on FAT16 and creates WIN.COM/WIN100.BIN/WIN100.OVL. Launch prints the 1.01 banner, then fails at unimplemented DOS EXEC (4B00h); desktop unavailable. | 2026-10-23 |
 
 ## Warcraft: Orcs & Humans
 
@@ -783,3 +783,46 @@ Keep historical evidence when updating a result. Test programs are supplied
 separately; this list and its evidence contain no application executables or disk
 images. See [dosrun](dosrun.md) for the implemented execution environment and
 [ManiDOS](dos.md) for the command shell.
+
+
+## Windows 1.01 installation completed; startup blocked by EXEC
+
+The latest disposable FAT16 run completes setup, selecting no pointing device,
+CGA graphics and no printer. A: explicitly maps to the staged installation
+media with `dosrun --mount A=/n/ata0p1 C:/SETUP.EXE`; C: remains the hard disk.
+Continue is accepted for the Build, Utilities, Desktop Applications and Write
+disks. Setup reports “Microsoft Windows is set up to operate on your computer”
+and returns to the ManiOS shell. `WINDOWS/WIN.COM`, `WIN100.BIN`, `WIN100.OVL`,
+applications and PIFs persist on the image. Source media are unchanged. The five
+supplied disks were merged for this test, so setup also copies extra staged
+files; this is a completed setup run on merged media, not a physical disk-swap
+test. Staging timestamps are preserved, rather than restoring original archive
+dates. No Microsoft binaries are committed to Git or bundled in an APK.
+
+Two file-copy blockers were fixed without suppressing errors:
+
+- `AX=5700h` previously returned CF=1/AX=1 after a successful copy, which setup
+  misreported as insufficient space. Handle timestamp get/set now reads/writes
+  real FAT modification fields through an additive native syscall. Unsupported
+  filesystems, invalid handles/subfunctions and read-only writes fail.
+- PIF copying then reached the 15th file in a 512-byte directory cluster and
+  failed to create it despite free disk space. Subdirectories now allocate,
+  clear and link additional clusters; fixed FAT12/16 root capacity is unchanged.
+
+Startup remains **Partial**. With the installed directory explicitly mapped as
+C: (`dosrun --mount C=/n/ata0p1/windows C:/WIN.COM`), WIN.COM prints the 1.01
+banner and requests `INT 21h/AX=4B00h` for `C:\WIN100.BIN`. ManiDOS returns
+CF=1/AX=1 because child EXEC is unimplemented. WIN.COM displays “Cannot find
+Windows startup files”; this error does not establish that files are missing.
+The installed Windows desktop has not run. Launching from a shell subdirectory
+also does not automatically set the DOS current directory.
+
+Regressions verify timestamps after close/reopen and directly in the disk entry,
+invalid/unsupported calls, read-only storage, and 40 persistent files spanning
+several directory clusters, independently listed by mtools. The host, runtime,
+string, video-status, PIT, QEMU runner and DOS shell suites pass. All ten existing
+utility workflows pass; FDBanner's PNG matches its prior verified image exactly.
+The APK was not rebuilt and no release was created.
+
+Evidence: [installation and regression record](compatibility/2026-10-23-windows101-install.txt),
+[completion screen](compatibility/2026-10-23-windows101-installed.png).

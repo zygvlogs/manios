@@ -17,6 +17,33 @@
 #include <dirent.h>
 #include <ctype.h>
 #include <sys/stat.h>
+#ifdef MANIOS_VERSION
+#include <sys/filetime.h>
+#else
+#include <time.h>
+/* Host harness adapter for the same persisted file metadata. */
+static int filetime(int fd, uint32_t *stamp, int set)
+{
+	struct stat st;
+	if (fstat(fd, &st) < 0) return -1;
+	if (!set) {
+		struct tm tm;
+		if (!localtime_r(&st.st_mtime, &tm) || tm.tm_year < 80 || tm.tm_year > 207) {
+			errno = EINVAL; return -1;
+		}
+		*stamp = (uint32_t)(((tm.tm_year - 80) << 9) | ((tm.tm_mon + 1) << 5) | tm.tm_mday) << 16
+		       | (tm.tm_hour << 11) | (tm.tm_min << 5) | (tm.tm_sec / 2);
+		return 0;
+	}
+	unsigned date = *stamp >> 16, t = *stamp & 0xFFFF;
+	struct tm tm = {0};
+	tm.tm_year = 80 + (date >> 9); tm.tm_mon = ((date >> 5) & 15) - 1;
+	tm.tm_mday = date & 31; tm.tm_hour = t >> 11;
+	tm.tm_min = (t >> 5) & 63; tm.tm_sec = (t & 31) * 2; tm.tm_isdst = -1;
+	struct timespec times[2] = {st.st_atim, {mktime(&tm), 0}};
+	return futimens(fd, times);
+}
+#endif
 #include <fcntl.h>
 #include <gfx.h>
 #include <stdio.h>
@@ -796,7 +823,7 @@ static enum cpu_stop dos21(struct dos_state *d, struct cpu *c)
 	}
 
 	case 0x3C: case 0x3D: case 0x3E: case 0x3F: case 0x40: case 0x41:
-	case 0x42: case 0x43: case 0x4E: case 0x4F:
+	case 0x42: case 0x43: case 0x4E: case 0x4F: case 0x57:
 		return dos_file(d, c, ah);
 
 	case 0x44: /* IOCTL: a device, or a file handle */
@@ -952,7 +979,7 @@ missing:
 	c->r[AX] = ah == 0x4E ? 2 : 18; set_cf(c, 1); return CPU_OK;
 }
 
-/* The file services (INT 21h AH=3C..43, 4E, 4F). */
+/* The file services (INT 21h AH=3C..43, 4E, 4F, 57). */
 enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 {
 	uint16_t dx = c->r[DX], cx = c->r[CX], bx = c->r[BX];
@@ -1078,6 +1105,20 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 		c->r[DX] = (uint16_t)((pos >> 16) & 0xFFFF);
 		set_cf(c, 0);
 		return CPU_OK;
+	}
+	case 0x57: { /* get/set the handle's last modification time */
+		unsigned sub = c->r[AX] & 0xFF;
+		if (sub > 1) { c->r[AX] = 1; set_cf(c, 1); return CPU_OK; }
+		if (bx >= HANDLES || d->handle_fd[bx] < 0) {
+			c->r[AX] = 6; set_cf(c, 1); return CPU_OK;
+		}
+		uint32_t stamp = (uint32_t)dx << 16 | cx;
+		if (filetime(d->handle_fd[bx], &stamp, sub) < 0) {
+			c->r[AX] = errno == EBADF ? 6 : errno == ENOSYS ? 1 : 5;
+			set_cf(c, 1); return CPU_OK;
+		}
+		if (!sub) { c->r[CX] = (uint16_t)stamp; c->r[DX] = (uint16_t)(stamp >> 16); }
+		set_cf(c, 0); return CPU_OK;
 	}
 	case 0x43: { /* get/set the file attributes */
 		if ((c->r[AX] & 0xFF) == 0) {

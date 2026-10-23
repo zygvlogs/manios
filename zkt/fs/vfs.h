@@ -52,6 +52,8 @@ struct vnode_ops {
 	int (*rename)(struct vnode *dir, const char *from, const char *to);
 	/* Empties a file, or shrinks it. NULL: -EROFS. */
 	int (*truncate)(struct vnode *v, uint32_t size);
+	/* Native FAT modification stamp (date high, time low). NULL: unsupported. */
+	int (*filetime)(struct vnode *v, uint32_t *stamp, bool set);
 	/* Called when the last reference goes; frees the vnode. */
 	void (*release)(struct vnode *v);
 	/* Whether a read would return without blocking: 1 or 0. Called with
