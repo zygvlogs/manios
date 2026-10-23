@@ -1,6 +1,6 @@
 # DOS software compatibility
 
-Last updated: **2026-10-23**. ManiOS version: **0.25.0**.
+Last updated: **2026-10-23**. ManiOS version: **0.26.0**.
 
 This list records tests of real DOS applications through `dosrun`. Results apply
 only to the identified program version, ManiOS revision and test setup. ManiDOS's
@@ -8,7 +8,11 @@ built-in commands and synthetic interpreter tests are tracked separately.
 
 **Ten DOS utilities have verified Working results for the workflows
 listed below:** seven FreeDOS tools and three utilities from the SemWare package. This is task-specific coverage, not a general DOS compatibility
-percentage. Checks & Balances, the SemWare editor and Windows 1.01 setup are Partial. Warcraft and Ability Plus encounter unsupported runtime features; VisiCalc still has no usable worksheet.
+percentage. Checks & Balances, the SemWare editor and Windows 1.01 are Partial.
+The 0.26.0 retest confirms the ten utility tasks, shows the SemWare editor now
+opening and rendering an input file, and completes Windows setup again with
+startup still blocked after the 1.01 banner. Warcraft and Ability Plus encounter
+unsupported runtime features; VisiCalc still has no usable worksheet.
 
 ## Status definitions
 
@@ -24,17 +28,17 @@ percentage. Checks & Balances, the SemWare editor and Windows 1.01 setup are Par
 
 | Application | Version / media | Status | Observed result | Last tested |
 | --- | --- | --- | --- | --- |
-| [Warcraft: Orcs & Humans](#warcraft-orcs--humans) | 1994 DOS CD; exact patch version unverified | **Unsupported** | Extracted `war.exe` requires a DOS/4GW protected-mode payload. Installer also reaches unsupported hardware port I/O. | 2026-10-22 |
-| [Checks & Balances](#checks--balances) | 4.0g (1986), two 360 KB floppy images | **Partial** | Configuration saved; supplied DEMO data opens with balances and command menu. Ledger-entry save/reopen is unverified. | 2026-10-22 |
-| [FreeDOS MORE](#freedos-more) | 4.3, FD14 BonusCD | **Working** | Help, exact short-file text, redirected stdin and interactive paging/quit verified. | 2026-10-22 |
-| [FreeDOS FC](#freedos-fc) | FD14 BonusCD binary, dated 2005-01-09; version unverified | **Working** | Correct equal/different results for text files and `/B` binary comparisons. | 2026-10-22 |
-| [FDBanner](#fdbanner) | 1.1, FD14 BonusCD | **Working** | BIOS text cells and cursor services draw the coloured FreeDOS banner; screenshot verified. | 2026-10-22 |
-| [B64](#b64) | 0.06R (rev A), FD14 BonusCD | **Working** | Help (`-h`), Base64 encoding `ABCD` and decoding `QUJDRA==` produce correct files. | 2026-10-22 |
-| [BSUM](#bsum) | 1.1a, FD14 BonusCD; help says 1.1 | **Working** | Correct checksums for two text files, an empty file and a 20 KiB binary file; missing-file error and help also verified. | 2026-10-22 |
-| [SemWare Editor Professional](#semware-tse-250e) | 2.50e, `tse250e.zip` | **Partial** | Welcome dialog and input-file text render; file-opening run then stops on `IN AL,61h`. Editing/save/reopen unverified. | 2026-10-22 |
-| [SemWare GREP](#semware-tse-250e) | bundled in `tse250e.zip`; utility version unverified | **Working** | Finds exactly the two `apple` lines in the fixture. | 2026-10-22 |
-| [SemWare TSORT](#semware-tse-250e) | bundled in `tse250e.zip`; utility version unverified | **Working** | Sorts four input lines into a correctly ordered output file. | 2026-10-22 |
-| [SAL compiler SC](#semware-tse-250e) | 2.50e | **Working** | Compiles a minimal macro to an 87-byte MAC file with the expected signature and message. Macro execution untested. | 2026-10-22 |
+| [Warcraft: Orcs & Humans](#warcraft-orcs--humans) | 1994 DOS CD; exact patch version unverified | **Unsupported** | Extracted `war.exe` requires a DOS/4GW protected-mode payload. Installer stops on `OUT 43h` (`E6`, `1010:4A4C`) with `AL=00`. | 2026-10-23 |
+| [Checks & Balances](#checks--balances) | 4.0g (1986), two 360 KB floppy images | **Partial** | Configuration saved; supplied DEMO data opens with balances and command menu. Ledger-entry save/reopen is unverified. | 2026-10-23 |
+| [FreeDOS MORE](#freedos-more) | 4.3, FD14 BonusCD | **Working** | Help, exact short-file text, redirected stdin and interactive paging/quit verified. | 2026-10-23 |
+| [FreeDOS FC](#freedos-fc) | FD14 BonusCD binary, dated 2005-01-09; version unverified | **Working** | Correct equal/different results for text files and `/B` binary comparisons. | 2026-10-23 |
+| [FDBanner](#fdbanner) | 1.1, FD14 BonusCD | **Working** | BIOS text cells and cursor services draw the coloured FreeDOS banner; screenshot verified. | 2026-10-23 |
+| [B64](#b64) | 0.06R (rev A), FD14 BonusCD | **Working** | Help (`-h`), Base64 encoding `ABCD` and decoding `QUJDRA==` produce correct files. | 2026-10-23 |
+| [BSUM](#bsum) | 1.1a, FD14 BonusCD; help says 1.1 | **Working** | Correct checksums for two text files, an empty file and a 20 KiB binary file; missing-file error and help also verified. | 2026-10-23 |
+| [SemWare Editor Professional](#semware-tse-250e) | 2.50e, `tse250e.zip` | **Partial** | Welcome dialog and file prompt; in 0.26.0 an input file opens and renders with its status line. Typed input did not reach the editor; editing/save/reopen unverified. | 2026-10-23 |
+| [SemWare GREP](#semware-tse-250e) | bundled in `tse250e.zip`; utility version unverified | **Working** | Finds exactly the two `apple` lines in the fixture. | 2026-10-23 |
+| [SemWare TSORT](#semware-tse-250e) | bundled in `tse250e.zip`; utility version unverified | **Working** | Sorts four input lines into a correctly ordered output file. | 2026-10-23 |
+| [SAL compiler SC](#semware-tse-250e) | 2.50e | **Working** | Compiles a minimal macro to an 87-byte MAC file with the expected signature and message. Macro execution untested. | 2026-10-23 |
 | [VisiCalc](#visicalc) | `VC.COM`, 27,520 bytes; archive timestamp 1981-12-17, exact version unverified | **Broken** | Initial `03DAh` fault resolved; no worksheet or shell return during the 12-second retest. | 2026-10-23 |
 | [Ability Plus](#ability-plus-30) | 3.0, `AB3.ZIP` | **Unsupported** | Main program stops on x87 `FNINIT`; installer stops on a 32-bit operand instruction. No application workflow completed. | 2026-10-23 |
 | [PEDIT](#pedit-400) | 4.00, standard and Light | **Unsupported** | Both stop on operand-size prefix `66h`; no editable document reached. | 2026-10-23 |
@@ -44,7 +48,7 @@ percentage. Checks & Balances, the SemWare editor and Windows 1.01 setup are Par
 | [Search](#search-10a) | 1.0a, FD14 BonusCD | **Working** | Finds both root/nested matches exactly once; correct total and missing-file result after directory fix. | 2026-10-23 |
 | [utf8tocp](#utf8tocp-20240918) | 20240918, FD14 BonusCD | **Working** | Exact UTF-8 ↔ CP437 and UTF-8 ↔ CP775 conversions, including Lithuanian letters and CRLF. | 2026-10-23 |
 | [Bywater BASIC](#bywater-basic-330) | 3.30, FD14 BonusCD binary | **Unsupported** | LE protected-mode executable rejected; the supplied arithmetic program was not executed. | 2026-10-23 |
-| [Microsoft Windows](#microsoft-windows-101) | 1.01, five 360 KB floppy images | **Partial** | Setup completes on FAT16 and creates WIN.COM/WIN100.BIN/WIN100.OVL. Launch prints the 1.01 banner, then fails at unimplemented DOS EXEC (4B00h); desktop unavailable. | 2026-10-23 |
+| [Microsoft Windows](#microsoft-windows-101) | 1.01, five 360 KB floppy images | **Partial** | Setup completes on FAT16 and creates WIN.COM/WIN100.BIN/WIN100.OVL. In 0.26.0 WIN.COM loads WIN100.BIN, prints the 1.01 banner and `Incorrect DOS version`, then faults at 7504:65D1 (opcode DB); desktop unavailable. | 2026-10-23 |
 
 ## Warcraft: Orcs & Humans
 
@@ -273,10 +277,12 @@ avoid redrawing ordinary console output. Pending direct writes flush before a
 blocking BIOS key read and before program exit. Monochrome/high-row modes,
 text-mode scrolling and hardware keyboard integration are not completed here.
 
+Pre-0.26.0 baseline (the 0.26.0 retest follows the table):
+
 | Test | Verified result |
 | --- | --- |
 | `dosrun C:/TSE/E.EXE` | Welcome and file-selection dialog visible; still active after eight seconds. This is a bounded observation of a prompt, not proof of a hang. |
-| `dosrun C:/TSE/E.EXE C:/INPUT.TXT` | Input text becomes visible, then fails at `E4`, `1070:F8A7`. A host CPU probe reads the next operand as `61`, identifying `IN AL,61h`. Port I/O remains unsupported. |
+| `dosrun C:/TSE/E.EXE C:/INPUT.TXT` | Pre-0.26.0: input text becomes visible, then fails at `E4`, `1070:F8A7`. A host CPU probe reads the next operand as `61`, identifying `IN AL,61h`. The 0.26.0 retest below no longer faults. |
 | `dosrun C:/TSE/GREP.COM apple C:/INPUT.TXT` | Returns `apple` and `apple pie`, excluding `pear` and `banana`. No regex/recursive-search claim is made. |
 | `dosrun C:/TSE/TSORT.COM C:INPUT.TXT C:SORTED.TXT` | Output reads exactly `apple`, `apple pie`, `banana`, `pear`, in that order. The `C:/...` argument form produced `Bad!! /INPUT.TXT`; the successful case uses DOS drive-relative names. |
 | `dosrun C:/TSE/SC.EXE C:/HELLO.S` | Compiles the fixture and announces `c:/hello.mac`. A separate run on a disposable persistent image exports and verifies the 87-byte result, signature `FFFF426F62626900`, and embedded `ManiOS macro test` string. |
@@ -287,6 +293,16 @@ no compiler-menu workflow is claimed beyond that. Eight package cases plus a
 separate persisted-output check were run. Main-editor editing, save/reopen,
 macros, help, spelling and interactive key bindings remain unverified. The editor
 stays Partial even though companion utilities complete their tested tasks.
+
+**0.26.0 update (2026-10-23):** with commit `c10d9f0`, the former file-opening
+failure is gone. `dosrun C:/TSE/E.EXE C:/INPUT.TXT` displays the welcome box,
+`Loading: c:/input.txt`, all four input lines and `<*** End of File ***>` with the
+F-key status line; no instruction fault appears during the 10-second observation.
+The editor still does not return to the shell. A bounded edit attempt (typed text,
+then `Ctrl+K S` save and `Ctrl+K X` save-and-quit, each followed by Enter for the
+cooked console) changed nothing and left `INPUT.TXT` byte-identical. Typed input
+does not yet reach the editor's keyboard path, so editing, save and reopen remain
+unverified. The editor stays Partial.
 
 The 31 host checks, string/runtime state suites, both QEMU DOS suites and a new
 short direct-VGA program regression pass. Five representative FreeDOS tasks were
@@ -826,3 +842,42 @@ The APK was not rebuilt and no release was created.
 
 Evidence: [installation and regression record](compatibility/2026-10-23-windows101-install.txt),
 [completion screen](compatibility/2026-10-23-windows101-installed.png).
+
+## 0.26.0 compatibility retest
+
+Tested source: `c10d9f0`, ManiOS 0.26.0, clean tree; kernel SHA256
+`5553a1934d19165f34dcea365ffcb4aaec0d11b81877521da23ec889726fc88c`. No DOS
+runtime source changes were made during this batch. Every case boots QEMU i386
+(CPU 486, 64 MiB RAM) from a fresh disposable FAT16 copy; most cases observe
+8-12 seconds, Windows setup 60 seconds. Generated files are exported with
+mtools and compared byte-for-byte. A timeout is a bounded observation, not
+proof of a hang.
+
+49 scripted cases covered the ten Working utility workflows and every other
+application in the list. All reached their expected 0.26.0 outcome:
+
+| Area | 0.26.0 result |
+| --- | --- |
+| Ten utilities | The same verified tasks pass: MORE (help, file, stdin, 24-line paging with Space then q), FC (text equal/different and `/B`), FDBanner, B64 (encode/decode/help), BSUM (two text checksums, empty file, 20 KiB binary, usage, missing-file `ERROR`), SemWare GREP, TSORT, SAL SC, Search, utf8tocp (CP437 and CP775, both directions). |
+| Checks & Balances | Configuration save/run and the supplied DEMO still work; the menu shows `TRUE $2450.20` and `BANK $279.04` after `SH`. A new ledger entry and save/reopen remain unverified. |
+| SemWare editor | An input file now opens and renders instead of failing at `IN AL,61h`. Typed serial input did not reach the editor; editing/save/reopen remain unverified. |
+| Windows 1.01 | Setup completes again and writes `WIN.COM`, `WIN100.BIN` and `WIN100.OVL`. `WIN.COM` now loads `WIN100.BIN`, prints the 1.01 banner and `Incorrect DOS version`, then faults at `7504:65D1` (opcode `DB`) with `FatalExit code = 0 stack overflow` text. The runtime reports DOS 4.00; an earlier host probe returning 3.10 reached the unimplemented `AX=5203h` list-of-lists call. Desktop still unavailable. |
+| uHex | Usage and the read-only 34-byte view still work; the offset column repeats `00000022` and no shell return was seen. |
+| PEDIT, Directory Maven, File Maven, Ability Plus, Bywater BASIC, Warcraft, VisiCalc | Unchanged blockers: operand-size prefix `66h` (PEDIT, Maven scan, Ability installer), `IN AL,DX` on port `0006h` (Maven help/main), x87 `FNINIT` (`DB`), LE/32-bit protected-mode rejection (Bywater, Warcraft), installer `OUT 43h` (`E6`), and VisiCalc's blank screen with no return. |
+
+The host, string, runtime, port/video-status, PIT, EXEC and QEMU DOS runner
+suites also pass. Statuses in the application list are unchanged: ten utilities
+Working, Checks & Balances/SemWare editor/Windows/uHex Partial, File Maven
+Broken, VisiCalc Broken, and PEDIT/Maven-directory/Ability/Bywater/Warcraft
+Unsupported. This is task-specific coverage, not a compatibility percentage.
+
+Evidence: [case records, transcripts, hashes and regression log](compatibility/2026-10-23-retest-026.json),
+[readable summary](compatibility/2026-10-23-retest-026.txt),
+[banner](compatibility/2026-10-23-retest-026-fdbanner.png),
+[editor file](compatibility/2026-10-23-retest-026-tse-file.png),
+[editor welcome](compatibility/2026-10-23-retest-026-tse-welcome.png),
+[uHex](compatibility/2026-10-23-retest-026-uhex.png),
+[VisiCalc](compatibility/2026-10-23-retest-026-visicalc.png),
+[Checks & Balances](compatibility/2026-10-23-retest-026-checks.png),
+[Windows setup](compatibility/2026-10-23-retest-026-windows-setup.png),
+[Windows startup](compatibility/2026-10-23-retest-026-windows-start.png).

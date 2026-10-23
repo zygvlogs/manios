@@ -1,0 +1,1242 @@
+{
+  "title": "ManiOS 0.26.0 DOS compatibility retest",
+  "date": "2026-10-23",
+  "build": {
+    "commit": "c10d9f01303f2c50ec86ad24e5e6363fe5da5c4c",
+    "version": "0.26.0",
+    "kernel_sha256": "5553a1934d19165f34dcea365ffcb4aaec0d11b81877521da23ec889726fc88c",
+    "sources": {
+      "cpu.c": "67b8b038a9d99bfb0fc7bddc247c60734553dd776ecdba2851004d781c96d342",
+      "cpu.h": "93d903c42601f218d00e051dcbd42965a765f47a39a23f43d05e8e11eae80dbf",
+      "dosapi.c": "fdf521945951898076749dbb450c458805357ec6fb773e3468cb4523c9eb4454",
+      "dosapi.h": "e801b9cb877d9fd4f98363094c8d877308ea14481095f0839c637d7235c98869",
+      "loader.c": "34eb227e83901cf4b77ff6b99cf32ffcc3ddcaa4418a4c2db84a7c33d50a1e01",
+      "loader.h": "a6d701136a09e2ca5c81b03bbab32bd785ec402bb7348182858b91bb7d933eb9",
+      "main.c": "33f3635836c2a3ce2dfdb5350f8d60e43983fe0e2dbda36ddb275a0503c580ed",
+      "drives.c": "800b958c4960baf1c5087c5ee0ac5b1f8d16583405a9827257c333f274f915b2",
+      "drives.h": "5f8a9c602d05e9293281bcec485fca8ae638cc18b3fb64c926236305ff66ed61"
+    },
+    "environment": "QEMU i386 10.0.13, CPU 486, 64 MiB RAM, serial console; fresh disposable FAT16 copy per case; 8-12 s observation limit"
+  },
+  "method": "Each case copies the source FAT16 image, boots QEMU 486/64 MiB with the 0.26.0 kernel, runs one command from the ManiOS shell, captures the serial transcript and a screen dump, and exports any generated files with mtools for byte comparison. Windows setup writes to its disposable copy; every other copy is also writable but observed only.",
+  "inputs": {
+    "disks": {
+      "freedos": {
+        "path": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+        "sha256": "23e60ad1dc5def274fbd303ead2238c5fad070ee06a5f6c7570bb70be215a4d5"
+      },
+      "tse": {
+        "path": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/tse.img",
+        "sha256": "f5240e605d3d3f1bbb4acfa73d180b6b136acc33eef9fe8e4360450c61a45da2"
+      },
+      "base": {
+        "path": "/home/zyg/Dokumentai/ChatGPT/ManiOS/compat3-audit/base.img",
+        "sha256": "586ca56a6cd6e3b729a3ae0bc6c04152bd3a8e67983e8ebda69d66dcbfd4b9f5"
+      },
+      "catalog": {
+        "path": "/home/zyg/Dokumentai/ChatGPT/ManiOS/catalog-audit/catalog.img",
+        "sha256": "1a62ec53589e1a8bbaa82223ff6f0793fc717aaae0ef14594106c1ba4fb04ae0"
+      },
+      "catalog2": {
+        "path": "/home/zyg/Dokumentai/ChatGPT/ManiOS/catalog2-audit/catalog2.img",
+        "sha256": "a48eecae7b819171818f5e85dfdf9a1a944d87fd4bcec39f2114eddfb55525c4"
+      },
+      "office": {
+        "path": "/home/zyg/Dokumentai/ChatGPT/ManiOS/office-audit/office.img",
+        "sha256": "2bf70c2ee52c027a92ac84771962ebdbd929203df7b67325f7a14b4605fe58d2"
+      },
+      "checks": {
+        "path": "/home/zyg/Dokumentai/ChatGPT/ManiOS/checks-audit/checks-test.img",
+        "sha256": "4d4c622846511b9dd28356fb972244034a43b74749a3dfc3e235cb268a101fbb"
+      },
+      "war": {
+        "path": "/home/zyg/Dokumentai/ChatGPT/ManiOS/warcraft-audit/war-test.img",
+        "sha256": "1ffb58c238f9b1ce82603c73055258d1e977425cd8521d2909bf53db9f01b188"
+      },
+      "win_media": {
+        "path": "/home/zyg/Dokumentai/ChatGPT/ManiOS/windows101-audit/windows.img",
+        "sha256": "477e1e6d9d29a00c8629c04f1c732f0033f843fc2fb91990b28deb24ed54601a"
+      },
+      "win_installed": {
+        "path": "/home/zyg/Dokumentai/ChatGPT/ManiOS/windows-install-audit/windows101-installed.img",
+        "sha256": "63290fbb9a00e0033b7aa7a8723ce9b0bc229949733f09e6517c2a8b83093503"
+      }
+    },
+    "programs": {
+      "MORE.EXE": "d57bba5d16674ed48f6bb5bf8634bc55f33d14d1171df9d52e4a425fc6a57239",
+      "FC.EXE": "f6f03ca1aaa4874049f05de1289f7a8b55e5a23ff94709345983f156ffb2f39f",
+      "FDBANNER.COM": "0c9c7d565c28416cf08133485ae717fab170dd495bb15415dcf5e1f9967d5ebf",
+      "B64.EXE": "1ae523c3fd145178fae68a1f7ac1fd5bb29a1a2ff044a16c1bbf48e0aae38f48",
+      "BSUM.COM": "95d8e753cddca78ed8649728eb5f0f56684a27f803698c5b4ae98d40e1b8434d",
+      "TSE/E.EXE": "665dbeec2e899393a1e339e2710960f82760a6023addea7338a9af6c4afa1285",
+      "TSE/GREP.COM": "9915252ab6e05b2afd67ade0c6fa92801eaa4e3ab14bc96c67c966826a6479bf",
+      "TSE/TSORT.COM": "db369adce4a5f1bebec56a1c1c2fb673b035556f8b1c2a9b67b5dd507a550c1d",
+      "TSE/SC.EXE": "23bdc898770fed99fc46e96ca50b9a91481540f321bab12ebb5cd9cf293d615f",
+      "SEARCH.EXE": "c2ab662ee32aa1611033bb0f0a62b7d3cd579da503d8a225d5f9d462921c458c",
+      "UTF8TOCP.COM": "1c50cef6e628b34dac098a77bc6c4f767b43a014ae31164f0c6701dc0be778f5",
+      "BWBASIC.EXE": "0d948854bc74e93b88f54cc861f01915393142e87341fac76889885f462b3b3d",
+      "pedit/PEDIT.EXE": "8497ad3d6feb62716004227266ff97a090ddeda5ba4f2f13779d86651722f1b3",
+      "pedit/PEDITLGT.EXE": "80dcf812bde1c1d0c2ab1512d5291b9e739e2e2d00c96e48d93bf5d620c3c6b2",
+      "uhex/PROGS/UHEX/uhex.com": "66cc6d8acb9ecce126cda570d74526d6d79cc0d7f87124542f459e6f1fd6853a",
+      "fmaven/INSTALL.EXE": "9b7d7e7f31f8dda1ca78b79cc24350fccde1298c2521b1b053d65de4157fc374",
+      "fmaven/FMAVEN.EXE": "d34ac09a8500347fe9f24cf7211c23e6fcd2e844255e48c07330b18500d9f6d6",
+      "fmaven/FM3.EXE": "8c82cf2b7f15b851d8a7916e9925a6b0c966907538e00f04cbfe8d0ed7dd1a60",
+      "dmaven/DM.EXE": "f46707bdeaca320bcb451b7ab058d4b8edbf025f7b9c395c85901a8ee895f6a2",
+      "ab3/AB30.EXE": "c64f86aba829d354c4f3ce623b2e7ee9fc9ae3ef398c29e8fdf4fa6e695b090a",
+      "ab3/INSTALL.EXE": "87f1e9222912feec34b95152e82af971e5d726569c3e62a23dd778d5b3199e83",
+      "vc/VC.COM": "06b80d1c56b69232fd85cf55dee0b3369c2af3197bfbda5c4c584490e0418495",
+      "CHECK.EXE": "e27ce9fe637d0e14db934e8e54ab73e8d5619759efd59a361f2e8672a878817d",
+      "war.exe": "de7d38ed9b00d5bc849dbf45189fe4674185064dd538d95f156e1b60f70514db",
+      "SETUP.EXE": "afc04027f24815d5b89b09094c5a116d9d8e77d144889fb4bc64f8bdbd073257"
+    }
+  },
+  "cases": [
+    {
+      "case": "more-help",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/MORE.EXE /?",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/MORE.EXE /?\r\nMORE: Display the contents of a text file one screen at a time\r\r\nMORE 4.3, Copyright (C) 1994-2002 Jim Hall <jhall@freedos.org>\r\r\n  This is free software, and you are welcome to redistribute it\r\r\n  under the GNU GPL; see the COPYING file for details.\r\r\n\r\r\nUsage:\r\r\n  command | MORE [/T4] \r\r\n  MORE [/T4] file..\r\r\n  MORE [/T4] < file\r\r\n\r\r\nAvailable keys:\r\r\n  Space = Next page\r\r\n  N n = Next file\r\r\n  Q q = Quit program\r\r\n",
+      "checks": [
+        {
+          "expect": "MORE 4.3",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.2
+    },
+    {
+      "case": "more-file",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/MORE.EXE C:/INPUT.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/MORE.EXE C:/INPUT.TXT\r\napple red\r\r\r\nbanana yellow\r\r\r\nApple green\r\r\r\n",
+      "checks": [
+        {
+          "expect": "apple red",
+          "ok": true
+        },
+        {
+          "expect": "banana yellow",
+          "ok": true
+        },
+        {
+          "expect": "Apple green",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.1
+    },
+    {
+      "case": "more-stdin",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/MORE.EXE < /n/ata0p1/input.txt",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/MORE.EXE < /n/ata0p1/input.txt\r\napple red\r\r\r\nbanana yellow\r\r\r\nApple green\r\r\r\n",
+      "checks": [
+        {
+          "expect": "apple red",
+          "ok": true
+        },
+        {
+          "expect": "banana yellow",
+          "ok": true
+        },
+        {
+          "expect": "Apple green",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.3
+    },
+    {
+      "case": "fc-equal",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/FC.EXE C:/INPUT.TXT C:/INPUT.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/FC.EXE C:/INPUT.TXT C:/INPUT.TXT\r\nComparing C:\\INPUT.TXT and C:\\INPUT.TXT\r\r\nNo differences\r\r\n\r\r\n",
+      "checks": [
+        {
+          "expect": "No differences",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.2
+    },
+    {
+      "case": "fc-different",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/FC.EXE C:/INPUT.TXT C:/OTHER.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/FC.EXE C:/INPUT.TXT C:/OTHER.TXT\r\nComparing C:\\INPUT.TXT and C:\\OTHER.TXT\r\r\n***** C:\\INPUT.TXT\r\r\napple red\r\r\nbanana yellow\r\r\nApple green\r\r\n***** C:\\OTHER.TXT\r\r\napple red\r\r\nbanana purple\r\r\nApple green\r\r\n*****\r\r\n\r\r\n",
+      "checks": [
+        {
+          "expect": "banana yellow",
+          "ok": true
+        },
+        {
+          "expect": "banana purple",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.2
+    },
+    {
+      "case": "fc-binary-equal",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/FC.EXE /B C:/RAW.TXT C:/RAW.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/FC.EXE /B C:/RAW.TXT C:/RAW.TXT\r\nComparing C:\\RAW.TXT and C:\\RAW.TXT\r\r\nNo differences\r\r\n\r\r\n",
+      "checks": [
+        {
+          "expect": "No differences",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.2
+    },
+    {
+      "case": "fc-binary-different",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/FC.EXE /B C:/RAW.TXT C:/DIFF.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/FC.EXE /B C:/RAW.TXT C:/DIFF.TXT\r\nComparing C:\\RAW.TXT and C:\\DIFF.TXT\r\r\n00000003:     44  D      45  E\r\r\n",
+      "checks": [
+        {
+          "expect": "00000003:",
+          "ok": true
+        },
+        {
+          "expect": "44",
+          "ok": true
+        },
+        {
+          "expect": "45",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.2
+    },
+    {
+      "case": "fdbanner",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/FDBANNER.COM",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/FDBANNER.COM\r\n\r\r\n\u001b[2;1H\u001b[37;40m \u001b[0m\u001b[2;1H\u001b[2;2H\u001b[2;2H\u001b[37;40m \u001b[0m\u001b[2;2H\u001b[2;3H\u001b[2;3H\u001b[37;40m \u001b[0m\u001b[2;3H\u001b[2;4H\u001b[2;4H\u001b[37;40m \u001b[0m\u001b[2;4H\u001b[2;5H\u001b[2;5H\u001b[37;40m \u001b[0m\u001b[2;5H\u001b[2;6H\u001b[2;6H\u001b[37;40m \u001b[0m\u001b[2;6H\u001b[2;7H\u001b[2;7H\u001b[37;40m \u001b[0m\u001b[2;7H\u001b[2;8H\u001b[2;8H\u001b[30;44m \u001b[0m\u001b[2;8H\u001b[2;9H\u001b[2;9H\u001b[30;44m \u001b[0m\u001b[2;9H\u001b[2;10H\u001b[2;10H\u001b[32;44m\ufffd\u001b[0m\u001b[2;10H\u001b[2;11H\u001b[2;11H\u001b[32;44m\ufffd\u001b[0m\u001b[2;11H\u001b[2;12H\u001b[2;12H\u001b[32;44m\ufffd\u001b[0m\u001b[2;12H\u001b[2;13H\u001b[2;13H\u001b[32;44m\ufffd\u001b[0m\u001b[2;13H\u001b[2;14H\u001b[2;14H\u001b[32;44m\ufffd\u001b[0m\u001b[2;14H\u001b[2;15H\u001b[2;15H\u001b[32;44m\ufffd\u001b[0m\u001b[2;15H\u001b[2;16H\u001b[2;16H\u001b[32;44m\ufffd\u001b[0m\u001b[2;16H\u001b[2;17H\u001b[2;17H\u001b[30;44m \u001b[0m\u001b[2;17H\u001b[2;18H\u001b[2;18H\u001b[30;44m \u001b[0m\u001b[2;18H\u001b[2;19H\u001b[2;19H\u001b[30;44m \u001b[0m\u001b[2;19H\u001b[2;20H\u001b[2;20H\u001b[30;44m \u001b[0m\u001b[2;20H\u001b[2;21H\u001b[2;21H\u001b[30;44m \u001b[0m\u001b[2;21H\u001b[2;22H\u001b[2;22H\u001b[30;44m \u001b[0m\u001b[2;22H\u001b[2;23H\u001b[2;23H\u001b[30;44m \u001b[0m\u001b[2;23H\u001b[2;24H\u001b[2;24H\u001b[30;44m \u001b[0m\u001b[2;24H\u001b[2;25H\u001b[2;25H\u001b[30;44m \u001b[0m\u001b[2;25H\u001b[2;26H\u001b[2;26H\u001b[30;44m \u001b[0m\u001b[2;26H\u001b[2;27H\u001b[2;27H\u001b[30;44m \u001b[0m\u001b[2;27H\u001b[2;28H\u001b[2;28H\u001b[30;44m \u001b[0m\u001b[2;28H\u001b[2;29H\u001b[2;29H\u001b[30;44m \u001b[0m\u001b[2;29H\u001b[2;30H\u001b[2;30H\u001b[30;44m \u001b[0m\u001b[2;30H\u001b[2;31H\u001b[2;31H\u001b[30;44m \u001b[0m\u001b[2;31H\u001b[2;32H\u001b[2;32H\u001b[30;44m \u001b[0m\u001b[2;32H\u001b[2;33H\u001b[2;33H\u001b[30;44m \u001b[0m\u001b[2;33H\u001b[2;34H\u001b[2;34H\u001b[30;44m \u001b[0m\u001b[2;34H\u001b[2;35H\u001b[2;35H\u001b[30;44m \u001b[0m\u001b[2;35H\u001b[2;36H\u001b[2;36H\u001b[30;44m \u001b[0m\u001b[2;36H\u001b[2;37H\u001b[2;37H\u001b[30;44m \u001b[0m\u001b[2;37H\u001b[2;38H\u001b[2;38H\u001b[30;44m \u001b[0m\u001b[2;38H\u001b[2;39H\u001b[2;39H\u001b[30;44m \u001b[0m\u001b[2;39H\u001b[2;40H\u001b[2;40H\u001b[30;44m \u001b[0m\u001b[2;40H\u001b[2;41H\u001b[2;41H\u001b[30;44m \u001b[0m\u001b[2;41H\u001b[2;42H\u001b[2;42H\u001b[32;44m\ufffd\u001b[0m\u001b[2;42H\u001b[2;43H\u001b[2;43H\u001b[32;44m\ufffd\u001b[0m\u001b[2;43H\u001b[2;44H\u001b[2;44H\u001b[32;44m\ufffd\u001b[0m\u001b[2;44H\u001b[2;45H\u001b[2;45H\u001b[32;44m\ufffd\u001b[0m\u001b[2;45H\u001b[2;46H\u001b[2;46H\u001b[32;44m\ufffd\u001b[0m\u001b[2;46H\u001b[2;47H\u001b[2;47H\u001b[32;44m\ufffd\u001b[0m\u001b[2;47H\u001b[2;48H\u001b[2;48H\u001b[30;44m \u001b[0m\u001b[2;48H\u001b[2;49H\u001b[2;49H\u001b[30;44m \u001b[0m\u001b[2;49H\u001b[2;50H\u001b[2;50H\u001b[30;44m \u001b[0m\u001b[2;50H\u001b[2;51H\u001b[2;51H\u001b[30;44m \u001b[0m\u001b[2;51H\u001b[2;52H\u001b[2;52H\u001b[30;44m \u001b[0m\u001b[2;52H\u001b[2;53H\u001b[2;53H\u001b[30;44m \u001b[0m\u001b[2;53H\u001b[2;54H\u001b[2;54H\u001b[32;44m\ufffd\u001b[0m\u001b[2;54H\u001b[2;55H\u001b[2;55H\u001b[32;44m\ufffd\u001b[0m\u001b[2;55H\u001b[2;56H\u001b[2;56H\u001b[32;44m\ufffd\u001b[0m\u001b[2;56H\u001b[2;57H\u001b[2;57H\u001b[32;44m\ufffd\u001b[0m\u001b[2;57H\u001b[2;58H\u001b[2;58H\u001b[32;44m\ufffd\u001b[0m\u001b[2;58H\u001b[2;59H\u001b[2;59H\u001b[32;44m\ufffd\u001b[0m\u001b[2;59H\u001b[2;60H\u001b[2;60H\u001b[30;44m \u001b[0m\u001b[2;60H\u001b[2;61H\u001b[2;61H\u001b[30;44m \u001b[0m\u001b[2;61H\u001b[2;62H\u001b[2;62H\u001b[30;44m \u001b[0m\u001b[2;62H\u001b[2;63H\u001b[2;63H\u001b[30;44m \u001b[0m\u001b[2;63H\u001b[2;64H\u001b[2;64H\u001b[30;44m \u001b[0m\u001b[2;64H\u001b[2;65H\u001b[2;65H\u001b[32;44m\ufffd\u001b[0m\u001b[2;65H\u001b[2;66H\u001b[2;66H\u001b[32;44m\ufffd\u001b[0m\u001b[2;66H\u001b[2;67H\u001b[2;67H\u001b[32;44m\ufffd\u001b[0m\u001b[2;67H\u001b[2;68H\u001b[2;68H\u001b[32;44m\ufffd\u001b[0m\u001b[2;68H\u001b[2;69H\u001b[2;69H\u001b[32;44m\ufffd\u001b[0m\u001b[2;69H\u001b[2;70H\u001b[2;70H\u001b[32;44m\ufffd\u001b[0m\u001b[2;70H\u001b[2;71H\u001b[2;71H\u001b[30;44m \u001b[0m\u001b[2;71H\u001b[2;72H\u001b[2;72H\u001b[30;44m \u001b[0m\u001b[2;72H\u001b[2;73H\u001b[2;73H\u001b[30;44m \u001b[0m\u001b[2;73H\u001b[2;74H\u001b[2;74H\u001b[37;40m \u001b[0m\u001b[2;74H\u001b[2;75H\u001b[2;75H\u001b[37;40m \u001b[0m\u001b[2;75H\u001b[2;76H\u001b[2;76H\u001b[37;40m \u001b[0m\u001b[2;76H\u001b[2;77H\u001b[2;77H\u001b[37;40m \u001b[0m\u001b[2;77H\u001b[2;78H\u001b[2;78H\u001b[37;40m \u001b[0m\u001b[2;78H\u001b[2;79H\u001b[2;79H\u001b[37;40m \u001b[0m\u001b[2;79H\u001b[2;80H\u001b[2;80H\u001b[37;40m \u001b[0m\u001b[2;80H\r\r\n\u001b[3;1H\u001b[37;40m \u001b[0m\u001b[3;1H\u001b[3;2H\u001b[3;2H\u001b[37;40m \u001b[0m\u001b[3;2H\u001b[3;3H\u001b[3;3H\u001b[37;40m \u001b[0m\u001b[3;3H\u001b[3;4H\u001b[3;4H\u001b[37;40m \u001b[0m\u001b[3;4H\u001b[3;5H\u001b[3;5H\u001b[37;40m \u001b[0m\u001b[3;5H\u001b[3;6H\u001b[3;6H\u001b[37;40m \u001b[0m\u001b[3;6H\u001b[3;7H\u001b[3;7H\u001b[37;40m \u001b[0m\u001b[3;7H\u001b[3;8H\u001b[3;8H\u001b[30;44m \u001b[0m\u001b[3;8H\u001b[3;9H\u001b[3;9H\u001b[30;44m \u001b[0m\u001b[3;9H\u001b[3;10H\u001b[3;10H\u001b[32;44m\ufffd\u001b[0m\u001b[3;10H\u001b[3;11H\u001b[3;11H\u001b[32;44m\ufffd\u001b[0m\u001b[3;11H\u001b[3;12H\u001b[3;12H\u001b[30;44m \u001b[0m\u001b[3;12H\u001b[3;13H\u001b[3;13H\u001b[30;44m \u001b[0m\u001b[3;13H\u001b[3;14H\u001b[3;14H\u001b[30;44m \u001b[0m\u001b[3;14H\u001b[3;15H\u001b[3;15H\u001b[30;44m \u001b[0m\u001b[3;15H\u001b[3;16H\u001b[3;16H\u001b[30;44m \u001b[0m\u001b[3;16H\u001b[3;17H\u001b[3;17H\u001b[30;44m \u001b[0m\u001b[3;17H\u001b[3;18H\u001b[3;18H\u001b[30;44m \u001b[0m\u001b[3;18H\u001b[3;19H\u001b[3;19H\u001b[30;44m \u001b[0m\u001b[3;19H\u001b[3;20H\u001b[3;20H\u001b[30;44m \u001b[0m\u001b[3;20H\u001b[3;21H\u001b[3;21H\u001b[30;44m \u001b[0m\u001b[3;21H\u001b[3;22H\u001b[3;22H\u001b[30;44m \u001b[0m\u001b[3;22H\u001b[3;23H\u001b[3;23H\u001b[30;44m \u001b[0m\u001b[3;23H\u001b[3;24H\u001b[3;24H\u001b[30;44m \u001b[0m\u001b[3;24H\u001b[3;25H\u001b[3;25H\u001b[30;44m \u001b[0m\u001b[3;25H\u001b[3;26H\u001b[3;26H\u001b[30;44m \u001b[0m\u001b[3;26H\u001b[3;27H\u001b[3;27H\u001b[30;44m \u001b[0m\u001b[3;27H\u001b[3;28H\u001b[3;28H\u001b[30;44m \u001b[0m\u001b[3;28H\u001b[3;29H\u001b[3;29H\u001b[30;44m \u001b[0m\u001b[3;29H\u001b[3;30H\u001b[3;30H\u001b[30;44m \u001b[0m\u001b[3;30H\u001b[3;31H\u001b[3;31H\u001b[30;44m \u001b[0m\u001b[3;31H\u001b[3;32H\u001b[3;32H\u001b[30;44m \u001b[0m\u001b[3;32H\u001b[3;33H\u001b[3;33H\u001b[30;44m \u001b[0m\u001b[3;33H\u001b[3;34H\u001b[3;34H\u001b[30;44m \u001b[0m\u001b[3;34H\u001b[3;35H\u001b[3;35H\u001b[30;44m \u001b[0m\u001b[3;35H\u001b[3;36H\u001b[3;36H\u001b[30;44m \u001b[0m\u001b[3;36H\u001b[3;37H\u001b[3;37H\u001b[30;44m \u001b[0m\u001b[3;37H\u001b[3;38H\u001b[3;38H\u001b[30;44m \u001b[0m\u001b[3;38H\u001b[3;39H\u001b[3;39H\u001b[30;44m \u001b[0m\u001b[3;39H\u001b[3;40H\u001b[3;40H\u001b[30;44m \u001b[0m\u001b[3;40H\u001b[3;41H\u001b[3;41H\u001b[30;44m \u001b[0m\u001b[3;41H\u001b[3;42H\u001b[3;42H\u001b[32;44m\ufffd\u001b[0m\u001b[3;42H\u001b[3;43H\u001b[3;43H\u001b[32;44m\ufffd\u001b[0m\u001b[3;43H\u001b[3;44H\u001b[3;44H\u001b[30;44m \u001b[0m\u001b[3;44H\u001b[3;45H\u001b[3;45H\u001b[30;44m \u001b[0m\u001b[3;45H\u001b[3;46H\u001b[3;46H\u001b[30;44m \u001b[0m\u001b[3;46H\u001b[3;47H\u001b[3;47H\u001b[32;44m\ufffd\u001b[0m\u001b[3;47H\u001b[3;48H\u001b[3;48H\u001b[32;44m\ufffd\u001b[0m\u001b[3;48H\u001b[3;49H\u001b[3;49H\u001b[30;44m \u001b[0m\u001b[3;49H\u001b[3;50H\u001b[3;50H\u001b[30;44m \u001b[0m\u001b[3;50H\u001b[3;51H\u001b[3;51H\u001b[30;44m \u001b[0m\u001b[3;51H\u001b[3;52H\u001b[3;52H\u001b[30;44m \u001b[0m\u001b[3;52H\u001b[3;53H\u001b[3;53H\u001b[32;44m\ufffd\u001b[0m\u001b[3;53H\u001b[3;54H\u001b[3;54H\u001b[32;44m\ufffd\u001b[0m\u001b[3;54H\u001b[3;55H\u001b[3;55H\u001b[30;44m \u001b[0m\u001b[3;55H\u001b[3;56H\u001b[3;56H\u001b[30;44m \u001b[0m\u001b[3;56H\u001b[3;57H\u001b[3;57H\u001b[30;44m \u001b[0m\u001b[3;57H\u001b[3;58H\u001b[3;58H\u001b[30;44m \u001b[0m\u001b[3;58H\u001b[3;59H\u001b[3;59H\u001b[32;44m\ufffd\u001b[0m\u001b[3;59H\u001b[3;60H\u001b[3;60H\u001b[32;44m\ufffd\u001b[0m\u001b[3;60H\u001b[3;61H\u001b[3;61H\u001b[30;44m \u001b[0m\u001b[3;61H\u001b[3;62H\u001b[3;62H\u001b[30;44m \u001b[0m\u001b[3;62H\u001b[3;63H\u001b[3;63H\u001b[30;44m \u001b[0m\u001b[3;63H\u001b[3;64H\u001b[3;64H\u001b[32;44m\ufffd\u001b[0m\u001b[3;64H\u001b[3;65H\u001b[3;65H\u001b[32;44m\ufffd\u001b[0m\u001b[3;65H\u001b[3;66H\u001b[3;66H\u001b[30;44m \u001b[0m\u001b[3;66H\u001b[3;67H\u001b[3;67H\u001b[30;44m \u001b[0m\u001b[3;67H\u001b[3;68H\u001b[3;68H\u001b[30;44m \u001b[0m\u001b[3;68H\u001b[3;69H\u001b[3;69H\u001b[30;44m \u001b[0m\u001b[3;69H\u001b[3;70H\u001b[3;70H\u001b[32;44m\ufffd\u001b[0m\u001b[3;70H\u001b[3;71H\u001b[3;71H\u001b[32;44m\ufffd\u001b[0m\u001b[3;71H\u001b[3;72H\u001b[3;72H\u001b[30;44m \u001b[0m\u001b[3;72H\u001b[3;73H\u001b[3;73H\u001b[30;44m \u001b[0m\u001b[3;73H\u001b[3;74H\u001b[3;74H\u001b[37;40m \u001b[0m\u001b[3;74H\u001b[3;75H\u001b[3;75H\u001b[37;40m \u001b[0m\u001b[3;75H\u001b[3;76H\u001b[3;76H\u001b[37;40m \u001b[0m\u001b[3;76H\u001b[3;77H\u001b[3;77H\u001b[37;40m \u001b[0m\u001b[3;77H\u001b[3;78H\u001b[3;78H\u001b[37;40m \u001b[0m\u001b[3;78H\u001b[3;79H\u001b[3;79H\u001b[37;40m \u001b[0m\u001b[3;79H\u001b[3;80H\u001b[3;80H\u001b[37;40m \u001b[0m\u001b[3;80H\r\r\n\u001b[4;1H\u001b[37;40m \u001b[0m\u001b[4;1H\u001b[4;2H\u001b[4;2H\u001b[37;40m \u001b[0m\u001b[4;2H\u001b[4;3H\u001b[4;3H\u001b[37;40m \u001b[0m\u001b[4;3H\u001b[4;4H\u001b[4;4H\u001b[37;40m \u001b[0m\u001b[4;4H\u001b[4;5H\u001b[4;5H\u001b[37;40m \u001b[0m\u001b[4;5H\u001b[4;6H\u001b[4;6H\u001b[37;40m \u001b[0m\u001b[4;6H\u001b[4;7H\u001b[4;7H\u001b[37;40m \u001b[0m\u001b[4;7H\u001b[4;8H\u001b[4;8H\u001b[30;44m \u001b[0m\u001b[4;8H\u001b[4;9H\u001b[4;9H\u001b[30;44m \u001b[0m\u001b[4;9H\u001b[4;10H\u001b[4;10H\u001b[32;44m\ufffd\u001b[0m\u001b[4;10H\u001b[4;11H\u001b[4;11H\u001b[32;44m\ufffd\u001b[0m\u001b[4;11H\u001b[4;12H\u001b[4;12H\u001b[30;44m \u001b[0m\u001b[4;12H\u001b[4;13H\u001b[4;13H\u001b[30;44m \u001b[0m\u001b[4;13H\u001b[4;14H\u001b[4;14H\u001b[30;44m \u001b[0m\u001b[4;14H\u001b[4;15H\u001b[4;15H\u001b[30;44m \u001b[0m\u001b[4;15H\u001b[4;16H\u001b[4;16H\u001b[30;44m \u001b[0m\u001b[4;16H\u001b[4;17H\u001b[4;17H\u001b[30;44m \u001b[0m\u001b[4;17H\u001b[4;18H\u001b[4;18H\u001b[30;44m \u001b[0m\u001b[4;18H\u001b[4;19H\u001b[4;19H\u001b[30;44m \u001b[0m\u001b[4;19H\u001b[4;20H\u001b[4;20H\u001b[30;44m \u001b[0m\u001b[4;20H\u001b[4;21H\u001b[4;21H\u001b[30;44m \u001b[0m\u001b[4;21H\u001b[4;22H\u001b[4;22H\u001b[30;44m \u001b[0m\u001b[4;22H\u001b[4;23H\u001b[4;23H\u001b[30;44m \u001b[0m\u001b[4;23H\u001b[4;24H\u001b[4;24H\u001b[30;44m \u001b[0m\u001b[4;24H\u001b[4;25H\u001b[4;25H\u001b[30;44m \u001b[0m\u001b[4;25H\u001b[4;26H\u001b[4;26H\u001b[30;44m \u001b[0m\u001b[4;26H\u001b[4;27H\u001b[4;27H\u001b[30;44m \u001b[0m\u001b[4;27H\u001b[4;28H\u001b[4;28H\u001b[30;44m \u001b[0m\u001b[4;28H\u001b[4;29H\u001b[4;29H\u001b[30;44m \u001b[0m\u001b[4;29H\u001b[4;30H\u001b[4;30H\u001b[30;44m \u001b[0m\u001b[4;30H\u001b[4;31H\u001b[4;31H\u001b[30;44m \u001b[0m\u001b[4;31H\u001b[4;32H\u001b[4;32H\u001b[30;44m \u001b[0m\u001b[4;32H\u001b[4;33H\u001b[4;33H\u001b[30;44m \u001b[0m\u001b[4;33H\u001b[4;34H\u001b[4;34H\u001b[30;44m \u001b[0m\u001b[4;34H\u001b[4;35H\u001b[4;35H\u001b[30;44m \u001b[0m\u001b[4;35H\u001b[4;36H\u001b[4;36H\u001b[30;44m \u001b[0m\u001b[4;36H\u001b[4;37H\u001b[4;37H\u001b[30;44m \u001b[0m\u001b[4;37H\u001b[4;38H\u001b[4;38H\u001b[30;44m \u001b[0m\u001b[4;38H\u001b[4;39H\u001b[4;39H\u001b[30;44m \u001b[0m\u001b[4;39H\u001b[4;40H\u001b[4;40H\u001b[30;44m \u001b[0m\u001b[4;40H\u001b[4;41H\u001b[4;41H\u001b[30;44m \u001b[0m\u001b[4;41H\u001b[4;42H\u001b[4;42H\u001b[32;44m\ufffd\u001b[0m\u001b[4;42H\u001b[4;43H\u001b[4;43H\u001b[32;44m\ufffd\u001b[0m\u001b[4;43H\u001b[4;44H\u001b[4;44H\u001b[30;44m \u001b[0m\u001b[4;44H\u001b[4;45H\u001b[4;45H\u001b[30;44m \u001b[0m\u001b[4;45H\u001b[4;46H\u001b[4;46H\u001b[30;44m \u001b[0m\u001b[4;46H\u001b[4;47H\u001b[4;47H\u001b[30;44m \u001b[0m\u001b[4;47H\u001b[4;48H\u001b[4;48H\u001b[32;44m\ufffd\u001b[0m\u001b[4;48H\u001b[4;49H\u001b[4;49H\u001b[32;44m\ufffd\u001b[0m\u001b[4;49H\u001b[4;50H\u001b[4;50H\u001b[30;44m \u001b[0m\u001b[4;50H\u001b[4;51H\u001b[4;51H\u001b[30;44m \u001b[0m\u001b[4;51H\u001b[4;52H\u001b[4;52H\u001b[32;44m\ufffd\u001b[0m\u001b[4;52H\u001b[4;53H\u001b[4;53H\u001b[32;44m\ufffd\u001b[0m\u001b[4;53H\u001b[4;54H\u001b[4;54H\u001b[30;44m \u001b[0m\u001b[4;54H\u001b[4;55H\u001b[4;55H\u001b[30;44m \u001b[0m\u001b[4;55H\u001b[4;56H\u001b[4;56H\u001b[30;44m \u001b[0m\u001b[4;56H\u001b[4;57H\u001b[4;57H\u001b[30;44m \u001b[0m\u001b[4;57H\u001b[4;58H\u001b[4;58H\u001b[30;44m \u001b[0m\u001b[4;58H\u001b[4;59H\u001b[4;59H\u001b[30;44m \u001b[0m\u001b[4;59H\u001b[4;60H\u001b[4;60H\u001b[32;44m\ufffd\u001b[0m\u001b[4;60H\u001b[4;61H\u001b[4;61H\u001b[32;44m\ufffd\u001b[0m\u001b[4;61H\u001b[4;62H\u001b[4;62H\u001b[30;44m \u001b[0m\u001b[4;62H\u001b[4;63H\u001b[4;63H\u001b[32;44m\ufffd\u001b[0m\u001b[4;63H\u001b[4;64H\u001b[4;64H\u001b[32;44m\ufffd\u001b[0m\u001b[4;64H\u001b[4;65H\u001b[4;65H\u001b[30;44m \u001b[0m\u001b[4;65H\u001b[4;66H\u001b[4;66H\u001b[30;44m \u001b[0m\u001b[4;66H\u001b[4;67H\u001b[4;67H\u001b[30;44m \u001b[0m\u001b[4;67H\u001b[4;68H\u001b[4;68H\u001b[30;44m \u001b[0m\u001b[4;68H\u001b[4;69H\u001b[4;69H\u001b[30;44m \u001b[0m\u001b[4;69H\u001b[4;70H\u001b[4;70H\u001b[30;44m \u001b[0m\u001b[4;70H\u001b[4;71H\u001b[4;71H\u001b[30;44m \u001b[0m\u001b[4;71H\u001b[4;72H\u001b[4;72H\u001b[30;44m \u001b[0m\u001b[4;72H\u001b[4;73H\u001b[4;73H\u001b[30;44m \u001b[0m\u001b[4;73H\u001b[4;74H\u001b[4;74H\u001b[37;40m \u001b[0m\u001b[4;74H\u001b[4;75H\u001b[4;75H\u001b[37;40m \u001b[0m\u001b[4;75H\u001b[4;76H\u001b[4;76H\u001b[37;40m \u001b[0m\u001b[4;76H\u001b[4;77H\u001b[4;77H\u001b[37;40m \u001b[0m\u001b[4;77H\u001b[4;78H\u001b[4;78H\u001b[37;40m \u001b[0m\u001b[4;78H\u001b[4;79H\u001b[4;79H\u001b[37;40m \u001b[0m\u001b[4;79H\u001b[4;80H\u001b[4;80H\u001b[37;40m \u001b[0m\u001b[4;80H\r\r\n\u001b[5;1H\u001b[37;40m \u001b[0m\u001b[5;1H\u001b[5;2H\u001b[5;2H\u001b[37;40m \u001b[0m\u001b[5;2H\u001b[5;3H\u001b[5;3H\u001b[37;40m \u001b[0m\u001b[5;3H\u001b[5;4H\u001b[5;4H\u001b[37;40m \u001b[0m\u001b[5;4H\u001b[5;5H\u001b[5;5H\u001b[37;40m \u001b[0m\u001b[5;5H\u001b[5;6H\u001b[5;6H\u001b[37;40m \u001b[0m\u001b[5;6H\u001b[5;7H\u001b[5;7H\u001b[37;40m \u001b[0m\u001b[5;7H\u001b[5;8H\u001b[5;8H\u001b[30;44m \u001b[0m\u001b[5;8H\u001b[5;9H\u001b[5;9H\u001b[30;44m \u001b[0m\u001b[5;9H\u001b[5;10H\u001b[5;10H\u001b[32;44m\ufffd\u001b[0m\u001b[5;10H\u001b[5;11H\u001b[5;11H\u001b[32;44m\ufffd\u001b[0m\u001b[5;11H\u001b[5;12H\u001b[5;12H\u001b[30;44m \u001b[0m\u001b[5;12H\u001b[5;13H\u001b[5;13H\u001b[30;44m \u001b[0m\u001b[5;13H\u001b[5;14H\u001b[5;14H\u001b[30;44m \u001b[0m\u001b[5;14H\u001b[5;15H\u001b[5;15H\u001b[30;44m \u001b[0m\u001b[5;15H\u001b[5;16H\u001b[5;16H\u001b[30;44m \u001b[0m\u001b[5;16H\u001b[5;17H\u001b[5;17H\u001b[30;44m \u001b[0m\u001b[5;17H\u001b[5;18H\u001b[5;18H\u001b[32;44m\ufffd\u001b[0m\u001b[5;18H\u001b[5;19H\u001b[5;19H\u001b[30;44m \u001b[0m\u001b[5;19H\u001b[5;20H\u001b[5;20H\u001b[32;44m\ufffd\u001b[0m\u001b[5;20H\u001b[5;21H\u001b[5;21H\u001b[32;44m\ufffd\u001b[0m\u001b[5;21H\u001b[5;22H\u001b[5;22H\u001b[32;44m\ufffd\u001b[0m\u001b[5;22H\u001b[5;23H\u001b[5;23H\u001b[32;44m\ufffd\u001b[0m\u001b[5;23H\u001b[5;24H\u001b[5;24H\u001b[30;44m \u001b[0m\u001b[5;24H\u001b[5;25H\u001b[5;25H\u001b[30;44m \u001b[0m\u001b[5;25H\u001b[5;26H\u001b[5;26H\u001b[30;44m \u001b[0m\u001b[5;26H\u001b[5;27H\u001b[5;27H\u001b[32;44m\ufffd\u001b[0m\u001b[5;27H\u001b[5;28H\u001b[5;28H\u001b[32;44m\ufffd\u001b[0m\u001b[5;28H\u001b[5;29H\u001b[5;29H\u001b[32;44m\ufffd\u001b[0m\u001b[5;29H\u001b[5;30H\u001b[5;30H\u001b[32;44m\ufffd\u001b[0m\u001b[5;30H\u001b[5;31H\u001b[5;31H\u001b[32;44m\ufffd\u001b[0m\u001b[5;31H\u001b[5;32H\u001b[5;32H\u001b[30;44m \u001b[0m\u001b[5;32H\u001b[5;33H\u001b[5;33H\u001b[30;44m \u001b[0m\u001b[5;33H\u001b[5;34H\u001b[5;34H\u001b[30;44m \u001b[0m\u001b[5;34H\u001b[5;35H\u001b[5;35H\u001b[32;44m\ufffd\u001b[0m\u001b[5;35H\u001b[5;36H\u001b[5;36H\u001b[32;44m\ufffd\u001b[0m\u001b[5;36H\u001b[5;37H\u001b[5;37H\u001b[32;44m\ufffd\u001b[0m\u001b[5;37H\u001b[5;38H\u001b[5;38H\u001b[32;44m\ufffd\u001b[0m\u001b[5;38H\u001b[5;39H\u001b[5;39H\u001b[32;44m\ufffd\u001b[0m\u001b[5;39H\u001b[5;40H\u001b[5;40H\u001b[30;44m \u001b[0m\u001b[5;40H\u001b[5;41H\u001b[5;41H\u001b[30;44m \u001b[0m\u001b[5;41H\u001b[5;42H\u001b[5;42H\u001b[32;44m\ufffd\u001b[0m\u001b[5;42H\u001b[5;43H\u001b[5;43H\u001b[32;44m\ufffd\u001b[0m\u001b[5;43H\u001b[5;44H\u001b[5;44H\u001b[30;44m \u001b[0m\u001b[5;44H\u001b[5;45H\u001b[5;45H\u001b[30;44m \u001b[0m\u001b[5;45H\u001b[5;46H\u001b[5;46H\u001b[30;44m \u001b[0m\u001b[5;46H\u001b[5;47H\u001b[5;47H\u001b[30;44m \u001b[0m\u001b[5;47H\u001b[5;48H\u001b[5;48H\u001b[30;44m \u001b[0m\u001b[5;48H\u001b[5;49H\u001b[5;49H\u001b[32;44m\ufffd\u001b[0m\u001b[5;49H\u001b[5;50H\u001b[5;50H\u001b[32;44m\ufffd\u001b[0m\u001b[5;50H\u001b[5;51H\u001b[5;51H\u001b[30;44m \u001b[0m\u001b[5;51H\u001b[5;52H\u001b[5;52H\u001b[32;44m\ufffd\u001b[0m\u001b[5;52H\u001b[5;53H\u001b[5;53H\u001b[32;44m\ufffd\u001b[0m\u001b[5;53H\u001b[5;54H\u001b[5;54H\u001b[30;44m \u001b[0m\u001b[5;54H\u001b[5;55H\u001b[5;55H\u001b[30;44m \u001b[0m\u001b[5;55H\u001b[5;56H\u001b[5;56H\u001b[30;44m \u001b[0m\u001b[5;56H\u001b[5;57H\u001b[5;57H\u001b[30;44m \u001b[0m\u001b[5;57H\u001b[5;58H\u001b[5;58H\u001b[30;44m \u001b[0m\u001b[5;58H\u001b[5;59H\u001b[5;59H\u001b[30;44m \u001b[0m\u001b[5;59H\u001b[5;60H\u001b[5;60H\u001b[32;44m\ufffd\u001b[0m\u001b[5;60H\u001b[5;61H\u001b[5;61H\u001b[32;44m\ufffd\u001b[0m\u001b[5;61H\u001b[5;62H\u001b[5;62H\u001b[30;44m \u001b[0m\u001b[5;62H\u001b[5;63H\u001b[5;63H\u001b[30;44m \u001b[0m\u001b[5;63H\u001b[5;64H\u001b[5;64H\u001b[32;44m\ufffd\u001b[0m\u001b[5;64H\u001b[5;65H\u001b[5;65H\u001b[32;44m\ufffd\u001b[0m\u001b[5;65H\u001b[5;66H\u001b[5;66H\u001b[30;44m \u001b[0m\u001b[5;66H\u001b[5;67H\u001b[5;67H\u001b[30;44m \u001b[0m\u001b[5;67H\u001b[5;68H\u001b[5;68H\u001b[30;44m \u001b[0m\u001b[5;68H\u001b[5;69H\u001b[5;69H\u001b[30;44m \u001b[0m\u001b[5;69H\u001b[5;70H\u001b[5;70H\u001b[30;44m \u001b[0m\u001b[5;70H\u001b[5;71H\u001b[5;71H\u001b[30;44m \u001b[0m\u001b[5;71H\u001b[5;72H\u001b[5;72H\u001b[30;44m \u001b[0m\u001b[5;72H\u001b[5;73H\u001b[5;73H\u001b[30;44m \u001b[0m\u001b[5;73H\u001b[5;74H\u001b[5;74H\u001b[37;40m \u001b[0m\u001b[5;74H\u001b[5;75H\u001b[5;75H\u001b[37;40m \u001b[0m\u001b[5;75H\u001b[5;76H\u001b[5;76H\u001b[37;40m \u001b[0m\u001b[5;76H\u001b[5;77H\u001b[5;77H\u001b[37;40m \u001b[0m\u001b[5;77H\u001b[5;78H\u001b[5;78H\u001b[37;40m \u001b[0m\u001b[5;78H\u001b[5;79H\u001b[5;79H\u001b[37;40m \u001b[0m\u001b[5;79H\u001b[5;80H\u001b[5;80H\u001b[37;40m \u001b[0m\u001b[5;80H\r\r\n\u001b[6;1H\u001b[37;40m \u001b[0m\u001b[6;1H\u001b[6;2H\u001b[6;2H\u001b[37;40m \u001b[0m\u001b[6;2H\u001b[6;3H\u001b[6;3H\u001b[37;40m \u001b[0m\u001b[6;3H\u001b[6;4H\u001b[6;4H\u001b[37;40m \u001b[0m\u001b[6;4H\u001b[6;5H\u001b[6;5H\u001b[37;40m \u001b[0m\u001b[6;5H\u001b[6;6H\u001b[6;6H\u001b[37;40m \u001b[0m\u001b[6;6H\u001b[6;7H\u001b[6;7H\u001b[37;40m \u001b[0m\u001b[6;7H\u001b[6;8H\u001b[6;8H\u001b[30;44m \u001b[0m\u001b[6;8H\u001b[6;9H\u001b[6;9H\u001b[30;44m \u001b[0m\u001b[6;9H\u001b[6;10H\u001b[6;10H\u001b[32;44m\ufffd\u001b[0m\u001b[6;10H\u001b[6;11H\u001b[6;11H\u001b[32;44m\ufffd\u001b[0m\u001b[6;11H\u001b[6;12H\u001b[6;12H\u001b[30;44m \u001b[0m\u001b[6;12H\u001b[6;13H\u001b[6;13H\u001b[30;44m \u001b[0m\u001b[6;13H\u001b[6;14H\u001b[6;14H\u001b[30;44m \u001b[0m\u001b[6;14H\u001b[6;15H\u001b[6;15H\u001b[30;44m \u001b[0m\u001b[6;15H\u001b[6;16H\u001b[6;16H\u001b[30;44m \u001b[0m\u001b[6;16H\u001b[6;17H\u001b[6;17H\u001b[30;44m \u001b[0m\u001b[6;17H\u001b[6;18H\u001b[6;18H\u001b[32;44m\ufffd\u001b[0m\u001b[6;18H\u001b[6;19H\u001b[6;19H\u001b[32;44m\ufffd\u001b[0m\u001b[6;19H\u001b[6;20H\u001b[6;20H\u001b[32;44m\ufffd\u001b[0m\u001b[6;20H\u001b[6;21H\u001b[6;21H\u001b[30;44m \u001b[0m\u001b[6;21H\u001b[6;22H\u001b[6;22H\u001b[30;44m \u001b[0m\u001b[6;22H\u001b[6;23H\u001b[6;23H\u001b[32;44m\ufffd\u001b[0m\u001b[6;23H\u001b[6;24H\u001b[6;24H\u001b[32;44m\ufffd\u001b[0m\u001b[6;24H\u001b[6;25H\u001b[6;25H\u001b[30;44m \u001b[0m\u001b[6;25H\u001b[6;26H\u001b[6;26H\u001b[32;44m\ufffd\u001b[0m\u001b[6;26H\u001b[6;27H\u001b[6;27H\u001b[32;44m\ufffd\u001b[0m\u001b[6;27H\u001b[6;28H\u001b[6;28H\u001b[30;44m \u001b[0m\u001b[6;28H\u001b[6;29H\u001b[6;29H\u001b[30;44m \u001b[0m\u001b[6;29H\u001b[6;30H\u001b[6;30H\u001b[30;44m \u001b[0m\u001b[6;30H\u001b[6;31H\u001b[6;31H\u001b[32;44m\ufffd\u001b[0m\u001b[6;31H\u001b[6;32H\u001b[6;32H\u001b[32;44m\ufffd\u001b[0m\u001b[6;32H\u001b[6;33H\u001b[6;33H\u001b[30;44m \u001b[0m\u001b[6;33H\u001b[6;34H\u001b[6;34H\u001b[32;44m\ufffd\u001b[0m\u001b[6;34H\u001b[6;35H\u001b[6;35H\u001b[32;44m\ufffd\u001b[0m\u001b[6;35H\u001b[6;36H\u001b[6;36H\u001b[30;44m \u001b[0m\u001b[6;36H\u001b[6;37H\u001b[6;37H\u001b[30;44m \u001b[0m\u001b[6;37H\u001b[6;38H\u001b[6;38H\u001b[30;44m \u001b[0m\u001b[6;38H\u001b[6;39H\u001b[6;39H\u001b[32;44m\ufffd\u001b[0m\u001b[6;39H\u001b[6;40H\u001b[6;40H\u001b[32;44m\ufffd\u001b[0m\u001b[6;40H\u001b[6;41H\u001b[6;41H\u001b[30;44m \u001b[0m\u001b[6;41H\u001b[6;42H\u001b[6;42H\u001b[32;44m\ufffd\u001b[0m\u001b[6;42H\u001b[6;43H\u001b[6;43H\u001b[32;44m\ufffd\u001b[0m\u001b[6;43H\u001b[6;44H\u001b[6;44H\u001b[30;44m \u001b[0m\u001b[6;44H\u001b[6;45H\u001b[6;45H\u001b[30;44m \u001b[0m\u001b[6;45H\u001b[6;46H\u001b[6;46H\u001b[30;44m \u001b[0m\u001b[6;46H\u001b[6;47H\u001b[6;47H\u001b[30;44m \u001b[0m\u001b[6;47H\u001b[6;48H\u001b[6;48H\u001b[30;44m \u001b[0m\u001b[6;48H\u001b[6;49H\u001b[6;49H\u001b[32;44m\ufffd\u001b[0m\u001b[6;49H\u001b[6;50H\u001b[6;50H\u001b[32;44m\ufffd\u001b[0m\u001b[6;50H\u001b[6;51H\u001b[6;51H\u001b[30;44m \u001b[0m\u001b[6;51H\u001b[6;52H\u001b[6;52H\u001b[32;44m\ufffd\u001b[0m\u001b[6;52H\u001b[6;53H\u001b[6;53H\u001b[32;44m\ufffd\u001b[0m\u001b[6;53H\u001b[6;54H\u001b[6;54H\u001b[30;44m \u001b[0m\u001b[6;54H\u001b[6;55H\u001b[6;55H\u001b[30;44m \u001b[0m\u001b[6;55H\u001b[6;56H\u001b[6;56H\u001b[30;44m \u001b[0m\u001b[6;56H\u001b[6;57H\u001b[6;57H\u001b[30;44m \u001b[0m\u001b[6;57H\u001b[6;58H\u001b[6;58H\u001b[30;44m \u001b[0m\u001b[6;58H\u001b[6;59H\u001b[6;59H\u001b[30;44m \u001b[0m\u001b[6;59H\u001b[6;60H\u001b[6;60H\u001b[32;44m\ufffd\u001b[0m\u001b[6;60H\u001b[6;61H\u001b[6;61H\u001b[32;44m\ufffd\u001b[0m\u001b[6;61H\u001b[6;62H\u001b[6;62H\u001b[30;44m \u001b[0m\u001b[6;62H\u001b[6;63H\u001b[6;63H\u001b[30;44m \u001b[0m\u001b[6;63H\u001b[6;64H\u001b[6;64H\u001b[30;44m \u001b[0m\u001b[6;64H\u001b[6;65H\u001b[6;65H\u001b[32;44m\ufffd\u001b[0m\u001b[6;65H\u001b[6;66H\u001b[6;66H\u001b[32;44m\ufffd\u001b[0m\u001b[6;66H\u001b[6;67H\u001b[6;67H\u001b[32;44m\ufffd\u001b[0m\u001b[6;67H\u001b[6;68H\u001b[6;68H\u001b[32;44m\ufffd\u001b[0m\u001b[6;68H\u001b[6;69H\u001b[6;69H\u001b[32;44m\ufffd\u001b[0m\u001b[6;69H\u001b[6;70H\u001b[6;70H\u001b[32;44m\ufffd\u001b[0m\u001b[6;70H\u001b[6;71H\u001b[6;71H\u001b[30;44m \u001b[0m\u001b[6;71H\u001b[6;72H\u001b[6;72H\u001b[30;44m \u001b[0m\u001b[6;72H\u001b[6;73H\u001b[6;73H\u001b[30;44m \u001b[0m\u001b[6;73H\u001b[6;74H\u001b[6;74H\u001b[37;40m \u001b[0m\u001b[6;74H\u001b[6;75H\u001b[6;75H\u001b[37;40m \u001b[0m\u001b[6;75H\u001b[6;76H\u001b[6;76H\u001b[37;40m \u001b[0m\u001b[6;76H\u001b[6;77H\u001b[6;77H\u001b[37;40m \u001b[0m\u001b[6;77H\u001b[6;78H\u001b[6;78H\u001b[37;40m \u001b[0m\u001b[6;78H\u001b[6;79H\u001b[6;79H\u001b[37;40m \u001b[0m\u001b[6;79H\u001b[6;80H\u001b[6;80H\u001b[37;40m \u001b[0m\u001b[6;80H\r\r\n\u001b[7;1H\u001b[37;40m \u001b[0m\u001b[7;1H\u001b[7;2H\u001b[7;2H\u001b[37;40m \u001b[0m\u001b[7;2H\u001b[7;3H\u001b[7;3H\u001b[37;40m \u001b[0m\u001b[7;3H\u001b[7;4H\u001b[7;4H\u001b[37;40m \u001b[0m\u001b[7;4H\u001b[7;5H\u001b[7;5H\u001b[37;40m \u001b[0m\u001b[7;5H\u001b[7;6H\u001b[7;6H\u001b[37;40m \u001b[0m\u001b[7;6H\u001b[7;7H\u001b[7;7H\u001b[37;40m \u001b[0m\u001b[7;7H\u001b[7;8H\u001b[7;8H\u001b[30;44m \u001b[0m\u001b[7;8H\u001b[7;9H\u001b[7;9H\u001b[30;44m \u001b[0m\u001b[7;9H\u001b[7;10H\u001b[7;10H\u001b[32;44m\ufffd\u001b[0m\u001b[7;10H\u001b[7;11H\u001b[7;11H\u001b[32;44m\ufffd\u001b[0m\u001b[7;11H\u001b[7;12H\u001b[7;12H\u001b[32;44m\ufffd\u001b[0m\u001b[7;12H\u001b[7;13H\u001b[7;13H\u001b[32;44m\ufffd\u001b[0m\u001b[7;13H\u001b[7;14H\u001b[7;14H\u001b[32;44m\ufffd\u001b[0m\u001b[7;14H\u001b[7;15H\u001b[7;15H\u001b[32;44m\ufffd\u001b[0m\u001b[7;15H\u001b[7;16H\u001b[7;16H\u001b[30;44m \u001b[0m\u001b[7;16H\u001b[7;17H\u001b[7;17H\u001b[30;44m \u001b[0m\u001b[7;17H\u001b[7;18H\u001b[7;18H\u001b[32;44m\ufffd\u001b[0m\u001b[7;18H\u001b[7;19H\u001b[7;19H\u001b[32;44m\ufffd\u001b[0m\u001b[7;19H\u001b[7;20H\u001b[7;20H\u001b[30;44m \u001b[0m\u001b[7;20H\u001b[7;21H\u001b[7;21H\u001b[30;44m \u001b[0m\u001b[7;21H\u001b[7;22H\u001b[7;22H\u001b[30;44m \u001b[0m\u001b[7;22H\u001b[7;23H\u001b[7;23H\u001b[30;44m \u001b[0m\u001b[7;23H\u001b[7;24H\u001b[7;24H\u001b[30;44m \u001b[0m\u001b[7;24H\u001b[7;25H\u001b[7;25H\u001b[30;44m \u001b[0m\u001b[7;25H\u001b[7;26H\u001b[7;26H\u001b[32;44m\ufffd\u001b[0m\u001b[7;26H\u001b[7;27H\u001b[7;27H\u001b[32;44m\ufffd\u001b[0m\u001b[7;27H\u001b[7;28H\u001b[7;28H\u001b[30;44m \u001b[0m\u001b[7;28H\u001b[7;29H\u001b[7;29H\u001b[30;44m \u001b[0m\u001b[7;29H\u001b[7;30H\u001b[7;30H\u001b[30;44m \u001b[0m\u001b[7;30H\u001b[7;31H\u001b[7;31H\u001b[32;44m\ufffd\u001b[0m\u001b[7;31H\u001b[7;32H\u001b[7;32H\u001b[32;44m\ufffd\u001b[0m\u001b[7;32H\u001b[7;33H\u001b[7;33H\u001b[30;44m \u001b[0m\u001b[7;33H\u001b[7;34H\u001b[7;34H\u001b[32;44m\ufffd\u001b[0m\u001b[7;34H\u001b[7;35H\u001b[7;35H\u001b[32;44m\ufffd\u001b[0m\u001b[7;35H\u001b[7;36H\u001b[7;36H\u001b[30;44m \u001b[0m\u001b[7;36H\u001b[7;37H\u001b[7;37H\u001b[30;44m \u001b[0m\u001b[7;37H\u001b[7;38H\u001b[7;38H\u001b[30;44m \u001b[0m\u001b[7;38H\u001b[7;39H\u001b[7;39H\u001b[32;44m\ufffd\u001b[0m\u001b[7;39H\u001b[7;40H\u001b[7;40H\u001b[32;44m\ufffd\u001b[0m\u001b[7;40H\u001b[7;41H\u001b[7;41H\u001b[30;44m \u001b[0m\u001b[7;41H\u001b[7;42H\u001b[7;42H\u001b[32;44m\ufffd\u001b[0m\u001b[7;42H\u001b[7;43H\u001b[7;43H\u001b[32;44m\ufffd\u001b[0m\u001b[7;43H\u001b[7;44H\u001b[7;44H\u001b[30;44m \u001b[0m\u001b[7;44H\u001b[7;45H\u001b[7;45H\u001b[30;44m \u001b[0m\u001b[7;45H\u001b[7;46H\u001b[7;46H\u001b[30;44m \u001b[0m\u001b[7;46H\u001b[7;47H\u001b[7;47H\u001b[30;44m \u001b[0m\u001b[7;47H\u001b[7;48H\u001b[7;48H\u001b[30;44m \u001b[0m\u001b[7;48H\u001b[7;49H\u001b[7;49H\u001b[32;44m\ufffd\u001b[0m\u001b[7;49H\u001b[7;50H\u001b[7;50H\u001b[32;44m\ufffd\u001b[0m\u001b[7;50H\u001b[7;51H\u001b[7;51H\u001b[30;44m \u001b[0m\u001b[7;51H\u001b[7;52H\u001b[7;52H\u001b[32;44m\ufffd\u001b[0m\u001b[7;52H\u001b[7;53H\u001b[7;53H\u001b[32;44m\ufffd\u001b[0m\u001b[7;53H\u001b[7;54H\u001b[7;54H\u001b[30;44m \u001b[0m\u001b[7;54H\u001b[7;55H\u001b[7;55H\u001b[30;44m \u001b[0m\u001b[7;55H\u001b[7;56H\u001b[7;56H\u001b[30;44m \u001b[0m\u001b[7;56H\u001b[7;57H\u001b[7;57H\u001b[30;44m \u001b[0m\u001b[7;57H\u001b[7;58H\u001b[7;58H\u001b[30;44m \u001b[0m\u001b[7;58H\u001b[7;59H\u001b[7;59H\u001b[30;44m \u001b[0m\u001b[7;59H\u001b[7;60H\u001b[7;60H\u001b[32;44m\ufffd\u001b[0m\u001b[7;60H\u001b[7;61H\u001b[7;61H\u001b[32;44m\ufffd\u001b[0m\u001b[7;61H\u001b[7;62H\u001b[7;62H\u001b[30;44m \u001b[0m\u001b[7;62H\u001b[7;63H\u001b[7;63H\u001b[30;44m \u001b[0m\u001b[7;63H\u001b[7;64H\u001b[7;64H\u001b[30;44m \u001b[0m\u001b[7;64H\u001b[7;65H\u001b[7;65H\u001b[30;44m \u001b[0m\u001b[7;65H\u001b[7;66H\u001b[7;66H\u001b[30;44m \u001b[0m\u001b[7;66H\u001b[7;67H\u001b[7;67H\u001b[30;44m \u001b[0m\u001b[7;67H\u001b[7;68H\u001b[7;68H\u001b[30;44m \u001b[0m\u001b[7;68H\u001b[7;69H\u001b[7;69H\u001b[30;44m \u001b[0m\u001b[7;69H\u001b[7;70H\u001b[7;70H\u001b[32;44m\ufffd\u001b[0m\u001b[7;70H\u001b[7;71H\u001b[7;71H\u001b[32;44m\ufffd\u001b[0m\u001b[7;71H\u001b[7;72H\u001b[7;72H\u001b[30;44m \u001b[0m\u001b[7;72H\u001b[7;73H\u001b[7;73H\u001b[30;44m \u001b[0m\u001b[7;73H\u001b[7;74H\u001b[7;74H\u001b[37;40m \u001b[0m\u001b[7;74H\u001b[7;75H\u001b[7;75H\u001b[37;40m \u001b[0m\u001b[7;75H\u001b[7;76H\u001b[7;76H\u001b[37;40m \u001b[0m\u001b[7;76H\u001b[7;77H\u001b[7;77H\u001b[37;40m \u001b[0m\u001b[7;77H\u001b[7;78H\u001b[7;78H\u001b[37;40m \u001b[0m\u001b[7;78H\u001b[7;79H\u001b[7;79H\u001b[37;40m \u001b[0m\u001b[7;79H\u001b[7;80H\u001b[7;80H\u001b[37;40m \u001b[0m\u001b[7;80H\r\r\n\u001b[8;1H\u001b[37;40m \u001b[0m\u001b[8;1H\u001b[8;2H\u001b[8;2H\u001b[37;40m \u001b[0m\u001b[8;2H\u001b[8;3H\u001b[8;3H\u001b[37;40m \u001b[0m\u001b[8;3H\u001b[8;4H\u001b[8;4H\u001b[37;40m \u001b[0m\u001b[8;4H\u001b[8;5H\u001b[8;5H\u001b[37;40m \u001b[0m\u001b[8;5H\u001b[8;6H\u001b[8;6H\u001b[37;40m \u001b[0m\u001b[8;6H\u001b[8;7H\u001b[8;7H\u001b[37;40m \u001b[0m\u001b[8;7H\u001b[8;8H\u001b[8;8H\u001b[30;44m \u001b[0m\u001b[8;8H\u001b[8;9H\u001b[8;9H\u001b[30;44m \u001b[0m\u001b[8;9H\u001b[8;10H\u001b[8;10H\u001b[32;44m\ufffd\u001b[0m\u001b[8;10H\u001b[8;11H\u001b[8;11H\u001b[32;44m\ufffd\u001b[0m\u001b[8;11H\u001b[8;12H\u001b[8;12H\u001b[30;44m \u001b[0m\u001b[8;12H\u001b[8;13H\u001b[8;13H\u001b[30;44m \u001b[0m\u001b[8;13H\u001b[8;14H\u001b[8;14H\u001b[30;44m \u001b[0m\u001b[8;14H\u001b[8;15H\u001b[8;15H\u001b[30;44m \u001b[0m\u001b[8;15H\u001b[8;16H\u001b[8;16H\u001b[30;44m \u001b[0m\u001b[8;16H\u001b[8;17H\u001b[8;17H\u001b[30;44m \u001b[0m\u001b[8;17H\u001b[8;18H\u001b[8;18H\u001b[32;44m\ufffd\u001b[0m\u001b[8;18H\u001b[8;19H\u001b[8;19H\u001b[32;44m\ufffd\u001b[0m\u001b[8;19H\u001b[8;20H\u001b[8;20H\u001b[30;44m \u001b[0m\u001b[8;20H\u001b[8;21H\u001b[8;21H\u001b[30;44m \u001b[0m\u001b[8;21H\u001b[8;22H\u001b[8;22H\u001b[30;44m \u001b[0m\u001b[8;22H\u001b[8;23H\u001b[8;23H\u001b[30;44m \u001b[0m\u001b[8;23H\u001b[8;24H\u001b[8;24H\u001b[30;44m \u001b[0m\u001b[8;24H\u001b[8;25H\u001b[8;25H\u001b[30;44m \u001b[0m\u001b[8;25H\u001b[8;26H\u001b[8;26H\u001b[32;44m\ufffd\u001b[0m\u001b[8;26H\u001b[8;27H\u001b[8;27H\u001b[32;44m\ufffd\u001b[0m\u001b[8;27H\u001b[8;28H\u001b[8;28H\u001b[32;44m\ufffd\u001b[0m\u001b[8;28H\u001b[8;29H\u001b[8;29H\u001b[32;44m\ufffd\u001b[0m\u001b[8;29H\u001b[8;30H\u001b[8;30H\u001b[32;44m\ufffd\u001b[0m\u001b[8;30H\u001b[8;31H\u001b[8;31H\u001b[32;44m\ufffd\u001b[0m\u001b[8;31H\u001b[8;32H\u001b[8;32H\u001b[30;44m \u001b[0m\u001b[8;32H\u001b[8;33H\u001b[8;33H\u001b[30;44m \u001b[0m\u001b[8;33H\u001b[8;34H\u001b[8;34H\u001b[32;44m\ufffd\u001b[0m\u001b[8;34H\u001b[8;35H\u001b[8;35H\u001b[32;44m\ufffd\u001b[0m\u001b[8;35H\u001b[8;36H\u001b[8;36H\u001b[32;44m\ufffd\u001b[0m\u001b[8;36H\u001b[8;37H\u001b[8;37H\u001b[32;44m\ufffd\u001b[0m\u001b[8;37H\u001b[8;38H\u001b[8;38H\u001b[32;44m\ufffd\u001b[0m\u001b[8;38H\u001b[8;39H\u001b[8;39H\u001b[32;44m\ufffd\u001b[0m\u001b[8;39H\u001b[8;40H\u001b[8;40H\u001b[30;44m \u001b[0m\u001b[8;40H\u001b[8;41H\u001b[8;41H\u001b[30;44m \u001b[0m\u001b[8;41H\u001b[8;42H\u001b[8;42H\u001b[32;44m\ufffd\u001b[0m\u001b[8;42H\u001b[8;43H\u001b[8;43H\u001b[32;44m\ufffd\u001b[0m\u001b[8;43H\u001b[8;44H\u001b[8;44H\u001b[30;44m \u001b[0m\u001b[8;44H\u001b[8;45H\u001b[8;45H\u001b[30;44m \u001b[0m\u001b[8;45H\u001b[8;46H\u001b[8;46H\u001b[30;44m \u001b[0m\u001b[8;46H\u001b[8;47H\u001b[8;47H\u001b[30;44m \u001b[0m\u001b[8;47H\u001b[8;48H\u001b[8;48H\u001b[30;44m \u001b[0m\u001b[8;48H\u001b[8;49H\u001b[8;49H\u001b[32;44m\ufffd\u001b[0m\u001b[8;49H\u001b[8;50H\u001b[8;50H\u001b[32;44m\ufffd\u001b[0m\u001b[8;50H\u001b[8;51H\u001b[8;51H\u001b[30;44m \u001b[0m\u001b[8;51H\u001b[8;52H\u001b[8;52H\u001b[32;44m\ufffd\u001b[0m\u001b[8;52H\u001b[8;53H\u001b[8;53H\u001b[32;44m\ufffd\u001b[0m\u001b[8;53H\u001b[8;54H\u001b[8;54H\u001b[30;44m \u001b[0m\u001b[8;54H\u001b[8;55H\u001b[8;55H\u001b[30;44m \u001b[0m\u001b[8;55H\u001b[8;56H\u001b[8;56H\u001b[30;44m \u001b[0m\u001b[8;56H\u001b[8;57H\u001b[8;57H\u001b[30;44m \u001b[0m\u001b[8;57H\u001b[8;58H\u001b[8;58H\u001b[30;44m \u001b[0m\u001b[8;58H\u001b[8;59H\u001b[8;59H\u001b[30;44m \u001b[0m\u001b[8;59H\u001b[8;60H\u001b[8;60H\u001b[32;44m\ufffd\u001b[0m\u001b[8;60H\u001b[8;61H\u001b[8;61H\u001b[32;44m\ufffd\u001b[0m\u001b[8;61H\u001b[8;62H\u001b[8;62H\u001b[30;44m \u001b[0m\u001b[8;62H\u001b[8;63H\u001b[8;63H\u001b[30;44m \u001b[0m\u001b[8;63H\u001b[8;64H\u001b[8;64H\u001b[30;44m \u001b[0m\u001b[8;64H\u001b[8;65H\u001b[8;65H\u001b[30;44m \u001b[0m\u001b[8;65H\u001b[8;66H\u001b[8;66H\u001b[30;44m \u001b[0m\u001b[8;66H\u001b[8;67H\u001b[8;67H\u001b[30;44m \u001b[0m\u001b[8;67H\u001b[8;68H\u001b[8;68H\u001b[30;44m \u001b[0m\u001b[8;68H\u001b[8;69H\u001b[8;69H\u001b[30;44m \u001b[0m\u001b[8;69H\u001b[8;70H\u001b[8;70H\u001b[30;44m \u001b[0m\u001b[8;70H\u001b[8;71H\u001b[8;71H\u001b[32;44m\ufffd\u001b[0m\u001b[8;71H\u001b[8;72H\u001b[8;72H\u001b[32;44m\ufffd\u001b[0m\u001b[8;72H\u001b[8;73H\u001b[8;73H\u001b[30;44m \u001b[0m\u001b[8;73H\u001b[8;74H\u001b[8;74H\u001b[37;40m \u001b[0m\u001b[8;74H\u001b[8;75H\u001b[8;75H\u001b[37;40m \u001b[0m\u001b[8;75H\u001b[8;76H\u001b[8;76H\u001b[37;40m \u001b[0m\u001b[8;76H\u001b[8;77H\u001b[8;77H\u001b[37;40m \u001b[0m\u001b[8;77H\u001b[8;78H\u001b[8;78H\u001b[37;40m \u001b[0m\u001b[8;78H\u001b[8;79H\u001b[8;79H\u001b[37;40m \u001b[0m\u001b[8;79H\u001b[8;80H\u001b[8;80H\u001b[37;40m \u001b[0m\u001b[8;80H\r\r\n\u001b[9;1H\u001b[37;40m \u001b[0m\u001b[9;1H\u001b[9;2H\u001b[9;2H\u001b[37;40m \u001b[0m\u001b[9;2H\u001b[9;3H\u001b[9;3H\u001b[37;40m \u001b[0m\u001b[9;3H\u001b[9;4H\u001b[9;4H\u001b[37;40m \u001b[0m\u001b[9;4H\u001b[9;5H\u001b[9;5H\u001b[37;40m \u001b[0m\u001b[9;5H\u001b[9;6H\u001b[9;6H\u001b[37;40m \u001b[0m\u001b[9;6H\u001b[9;7H\u001b[9;7H\u001b[37;40m \u001b[0m\u001b[9;7H\u001b[9;8H\u001b[9;8H\u001b[30;44m \u001b[0m\u001b[9;8H\u001b[9;9H\u001b[9;9H\u001b[30;44m \u001b[0m\u001b[9;9H\u001b[9;10H\u001b[9;10H\u001b[32;44m\ufffd\u001b[0m\u001b[9;10H\u001b[9;11H\u001b[9;11H\u001b[32;44m\ufffd\u001b[0m\u001b[9;11H\u001b[9;12H\u001b[9;12H\u001b[30;44m \u001b[0m\u001b[9;12H\u001b[9;13H\u001b[9;13H\u001b[30;44m \u001b[0m\u001b[9;13H\u001b[9;14H\u001b[9;14H\u001b[30;44m \u001b[0m\u001b[9;14H\u001b[9;15H\u001b[9;15H\u001b[30;44m \u001b[0m\u001b[9;15H\u001b[9;16H\u001b[9;16H\u001b[30;44m \u001b[0m\u001b[9;16H\u001b[9;17H\u001b[9;17H\u001b[30;44m \u001b[0m\u001b[9;17H\u001b[9;18H\u001b[9;18H\u001b[32;44m\ufffd\u001b[0m\u001b[9;18H\u001b[9;19H\u001b[9;19H\u001b[32;44m\ufffd\u001b[0m\u001b[9;19H\u001b[9;20H\u001b[9;20H\u001b[30;44m \u001b[0m\u001b[9;20H\u001b[9;21H\u001b[9;21H\u001b[30;44m \u001b[0m\u001b[9;21H\u001b[9;22H\u001b[9;22H\u001b[30;44m \u001b[0m\u001b[9;22H\u001b[9;23H\u001b[9;23H\u001b[30;44m \u001b[0m\u001b[9;23H\u001b[9;24H\u001b[9;24H\u001b[30;44m \u001b[0m\u001b[9;24H\u001b[9;25H\u001b[9;25H\u001b[30;44m \u001b[0m\u001b[9;25H\u001b[9;26H\u001b[9;26H\u001b[32;44m\ufffd\u001b[0m\u001b[9;26H\u001b[9;27H\u001b[9;27H\u001b[32;44m\ufffd\u001b[0m\u001b[9;27H\u001b[9;28H\u001b[9;28H\u001b[30;44m \u001b[0m\u001b[9;28H\u001b[9;29H\u001b[9;29H\u001b[30;44m \u001b[0m\u001b[9;29H\u001b[9;30H\u001b[9;30H\u001b[30;44m \u001b[0m\u001b[9;30H\u001b[9;31H\u001b[9;31H\u001b[30;44m \u001b[0m\u001b[9;31H\u001b[9;32H\u001b[9;32H\u001b[30;44m \u001b[0m\u001b[9;32H\u001b[9;33H\u001b[9;33H\u001b[30;44m \u001b[0m\u001b[9;33H\u001b[9;34H\u001b[9;34H\u001b[32;44m\ufffd\u001b[0m\u001b[9;34H\u001b[9;35H\u001b[9;35H\u001b[32;44m\ufffd\u001b[0m\u001b[9;35H\u001b[9;36H\u001b[9;36H\u001b[30;44m \u001b[0m\u001b[9;36H\u001b[9;37H\u001b[9;37H\u001b[30;44m \u001b[0m\u001b[9;37H\u001b[9;38H\u001b[9;38H\u001b[30;44m \u001b[0m\u001b[9;38H\u001b[9;39H\u001b[9;39H\u001b[30;44m \u001b[0m\u001b[9;39H\u001b[9;40H\u001b[9;40H\u001b[30;44m \u001b[0m\u001b[9;40H\u001b[9;41H\u001b[9;41H\u001b[30;44m \u001b[0m\u001b[9;41H\u001b[9;42H\u001b[9;42H\u001b[32;44m\ufffd\u001b[0m\u001b[9;42H\u001b[9;43H\u001b[9;43H\u001b[32;44m\ufffd\u001b[0m\u001b[9;43H\u001b[9;44H\u001b[9;44H\u001b[30;44m \u001b[0m\u001b[9;44H\u001b[9;45H\u001b[9;45H\u001b[30;44m \u001b[0m\u001b[9;45H\u001b[9;46H\u001b[9;46H\u001b[30;44m \u001b[0m\u001b[9;46H\u001b[9;47H\u001b[9;47H\u001b[30;44m \u001b[0m\u001b[9;47H\u001b[9;48H\u001b[9;48H\u001b[32;44m\ufffd\u001b[0m\u001b[9;48H\u001b[9;49H\u001b[9;49H\u001b[32;44m\ufffd\u001b[0m\u001b[9;49H\u001b[9;50H\u001b[9;50H\u001b[30;44m \u001b[0m\u001b[9;50H\u001b[9;51H\u001b[9;51H\u001b[30;44m \u001b[0m\u001b[9;51H\u001b[9;52H\u001b[9;52H\u001b[32;44m\ufffd\u001b[0m\u001b[9;52H\u001b[9;53H\u001b[9;53H\u001b[32;44m\ufffd\u001b[0m\u001b[9;53H\u001b[9;54H\u001b[9;54H\u001b[30;44m \u001b[0m\u001b[9;54H\u001b[9;55H\u001b[9;55H\u001b[30;44m \u001b[0m\u001b[9;55H\u001b[9;56H\u001b[9;56H\u001b[30;44m \u001b[0m\u001b[9;56H\u001b[9;57H\u001b[9;57H\u001b[30;44m \u001b[0m\u001b[9;57H\u001b[9;58H\u001b[9;58H\u001b[30;44m \u001b[0m\u001b[9;58H\u001b[9;59H\u001b[9;59H\u001b[30;44m \u001b[0m\u001b[9;59H\u001b[9;60H\u001b[9;60H\u001b[32;44m\ufffd\u001b[0m\u001b[9;60H\u001b[9;61H\u001b[9;61H\u001b[32;44m\ufffd\u001b[0m\u001b[9;61H\u001b[9;62H\u001b[9;62H\u001b[30;44m \u001b[0m\u001b[9;62H\u001b[9;63H\u001b[9;63H\u001b[30;44m \u001b[0m\u001b[9;63H\u001b[9;64H\u001b[9;64H\u001b[30;44m \u001b[0m\u001b[9;64H\u001b[9;65H\u001b[9;65H\u001b[30;44m \u001b[0m\u001b[9;65H\u001b[9;66H\u001b[9;66H\u001b[30;44m \u001b[0m\u001b[9;66H\u001b[9;67H\u001b[9;67H\u001b[30;44m \u001b[0m\u001b[9;67H\u001b[9;68H\u001b[9;68H\u001b[30;44m \u001b[0m\u001b[9;68H\u001b[9;69H\u001b[9;69H\u001b[30;44m \u001b[0m\u001b[9;69H\u001b[9;70H\u001b[9;70H\u001b[30;44m \u001b[0m\u001b[9;70H\u001b[9;71H\u001b[9;71H\u001b[32;44m\ufffd\u001b[0m\u001b[9;71H\u001b[9;72H\u001b[9;72H\u001b[32;44m\ufffd\u001b[0m\u001b[9;72H\u001b[9;73H\u001b[9;73H\u001b[30;44m \u001b[0m\u001b[9;73H\u001b[9;74H\u001b[9;74H\u001b[37;40m \u001b[0m\u001b[9;74H\u001b[9;75H\u001b[9;75H\u001b[37;40m \u001b[0m\u001b[9;75H\u001b[9;76H\u001b[9;76H\u001b[37;40m \u001b[0m\u001b[9;76H\u001b[9;77H\u001b[9;77H\u001b[37;40m \u001b[0m\u001b[9;77H\u001b[9;78H\u001b[9;78H\u001b[37;40m \u001b[0m\u001b[9;78H\u001b[9;79H\u001b[9;79H\u001b[37;40m \u001b[0m\u001b[9;79H\u001b[9;80H\u001b[9;80H\u001b[37;40m \u001b[0m\u001b[9;80H\r\r\n\u001b[10;1H\u001b[37;40m \u001b[0m\u001b[10;1H\u001b[10;2H\u001b[10;2H\u001b[37;40m \u001b[0m\u001b[10;2H\u001b[10;3H\u001b[10;3H\u001b[37;40m \u001b[0m\u001b[10;3H\u001b[10;4H\u001b[10;4H\u001b[37;40m \u001b[0m\u001b[10;4H\u001b[10;5H\u001b[10;5H\u001b[37;40m \u001b[0m\u001b[10;5H\u001b[10;6H\u001b[10;6H\u001b[37;40m \u001b[0m\u001b[10;6H\u001b[10;7H\u001b[10;7H\u001b[37;40m \u001b[0m\u001b[10;7H\u001b[10;8H\u001b[10;8H\u001b[30;44m \u001b[0m\u001b[10;8H\u001b[10;9H\u001b[10;9H\u001b[30;44m \u001b[0m\u001b[10;9H\u001b[10;10H\u001b[10;10H\u001b[32;44m\ufffd\u001b[0m\u001b[10;10H\u001b[10;11H\u001b[10;11H\u001b[32;44m\ufffd\u001b[0m\u001b[10;11H\u001b[10;12H\u001b[10;12H\u001b[30;44m \u001b[0m\u001b[10;12H\u001b[10;13H\u001b[10;13H\u001b[30;44m \u001b[0m\u001b[10;13H\u001b[10;14H\u001b[10;14H\u001b[30;44m \u001b[0m\u001b[10;14H\u001b[10;15H\u001b[10;15H\u001b[30;44m \u001b[0m\u001b[10;15H\u001b[10;16H\u001b[10;16H\u001b[30;44m \u001b[0m\u001b[10;16H\u001b[10;17H\u001b[10;17H\u001b[30;44m \u001b[0m\u001b[10;17H\u001b[10;18H\u001b[10;18H\u001b[32;44m\ufffd\u001b[0m\u001b[10;18H\u001b[10;19H\u001b[10;19H\u001b[32;44m\ufffd\u001b[0m\u001b[10;19H\u001b[10;20H\u001b[10;20H\u001b[30;44m \u001b[0m\u001b[10;20H\u001b[10;21H\u001b[10;21H\u001b[30;44m \u001b[0m\u001b[10;21H\u001b[10;22H\u001b[10;22H\u001b[30;44m \u001b[0m\u001b[10;22H\u001b[10;23H\u001b[10;23H\u001b[30;44m \u001b[0m\u001b[10;23H\u001b[10;24H\u001b[10;24H\u001b[30;44m \u001b[0m\u001b[10;24H\u001b[10;25H\u001b[10;25H\u001b[30;44m \u001b[0m\u001b[10;25H\u001b[10;26H\u001b[10;26H\u001b[32;44m\ufffd\u001b[0m\u001b[10;26H\u001b[10;27H\u001b[10;27H\u001b[32;44m\ufffd\u001b[0m\u001b[10;27H\u001b[10;28H\u001b[10;28H\u001b[30;44m \u001b[0m\u001b[10;28H\u001b[10;29H\u001b[10;29H\u001b[30;44m \u001b[0m\u001b[10;29H\u001b[10;30H\u001b[10;30H\u001b[30;44m \u001b[0m\u001b[10;30H\u001b[10;31H\u001b[10;31H\u001b[32;44m\ufffd\u001b[0m\u001b[10;31H\u001b[10;32H\u001b[10;32H\u001b[32;44m\ufffd\u001b[0m\u001b[10;32H\u001b[10;33H\u001b[10;33H\u001b[30;44m \u001b[0m\u001b[10;33H\u001b[10;34H\u001b[10;34H\u001b[32;44m\ufffd\u001b[0m\u001b[10;34H\u001b[10;35H\u001b[10;35H\u001b[32;44m\ufffd\u001b[0m\u001b[10;35H\u001b[10;36H\u001b[10;36H\u001b[30;44m \u001b[0m\u001b[10;36H\u001b[10;37H\u001b[10;37H\u001b[30;44m \u001b[0m\u001b[10;37H\u001b[10;38H\u001b[10;38H\u001b[30;44m \u001b[0m\u001b[10;38H\u001b[10;39H\u001b[10;39H\u001b[32;44m\ufffd\u001b[0m\u001b[10;39H\u001b[10;40H\u001b[10;40H\u001b[32;44m\ufffd\u001b[0m\u001b[10;40H\u001b[10;41H\u001b[10;41H\u001b[30;44m \u001b[0m\u001b[10;41H\u001b[10;42H\u001b[10;42H\u001b[32;44m\ufffd\u001b[0m\u001b[10;42H\u001b[10;43H\u001b[10;43H\u001b[32;44m\ufffd\u001b[0m\u001b[10;43H\u001b[10;44H\u001b[10;44H\u001b[30;44m \u001b[0m\u001b[10;44H\u001b[10;45H\u001b[10;45H\u001b[30;44m \u001b[0m\u001b[10;45H\u001b[10;46H\u001b[10;46H\u001b[30;44m \u001b[0m\u001b[10;46H\u001b[10;47H\u001b[10;47H\u001b[32;44m\ufffd\u001b[0m\u001b[10;47H\u001b[10;48H\u001b[10;48H\u001b[32;44m\ufffd\u001b[0m\u001b[10;48H\u001b[10;49H\u001b[10;49H\u001b[30;44m \u001b[0m\u001b[10;49H\u001b[10;50H\u001b[10;50H\u001b[30;44m \u001b[0m\u001b[10;50H\u001b[10;51H\u001b[10;51H\u001b[30;44m \u001b[0m\u001b[10;51H\u001b[10;52H\u001b[10;52H\u001b[30;44m \u001b[0m\u001b[10;52H\u001b[10;53H\u001b[10;53H\u001b[32;44m\ufffd\u001b[0m\u001b[10;53H\u001b[10;54H\u001b[10;54H\u001b[32;44m\ufffd\u001b[0m\u001b[10;54H\u001b[10;55H\u001b[10;55H\u001b[30;44m \u001b[0m\u001b[10;55H\u001b[10;56H\u001b[10;56H\u001b[30;44m \u001b[0m\u001b[10;56H\u001b[10;57H\u001b[10;57H\u001b[30;44m \u001b[0m\u001b[10;57H\u001b[10;58H\u001b[10;58H\u001b[30;44m \u001b[0m\u001b[10;58H\u001b[10;59H\u001b[10;59H\u001b[32;44m\ufffd\u001b[0m\u001b[10;59H\u001b[10;60H\u001b[10;60H\u001b[32;44m\ufffd\u001b[0m\u001b[10;60H\u001b[10;61H\u001b[10;61H\u001b[30;44m \u001b[0m\u001b[10;61H\u001b[10;62H\u001b[10;62H\u001b[30;44m \u001b[0m\u001b[10;62H\u001b[10;63H\u001b[10;63H\u001b[30;44m \u001b[0m\u001b[10;63H\u001b[10;64H\u001b[10;64H\u001b[32;44m\ufffd\u001b[0m\u001b[10;64H\u001b[10;65H\u001b[10;65H\u001b[32;44m\ufffd\u001b[0m\u001b[10;65H\u001b[10;66H\u001b[10;66H\u001b[30;44m \u001b[0m\u001b[10;66H\u001b[10;67H\u001b[10;67H\u001b[30;44m \u001b[0m\u001b[10;67H\u001b[10;68H\u001b[10;68H\u001b[30;44m \u001b[0m\u001b[10;68H\u001b[10;69H\u001b[10;69H\u001b[30;44m \u001b[0m\u001b[10;69H\u001b[10;70H\u001b[10;70H\u001b[32;44m\ufffd\u001b[0m\u001b[10;70H\u001b[10;71H\u001b[10;71H\u001b[32;44m\ufffd\u001b[0m\u001b[10;71H\u001b[10;72H\u001b[10;72H\u001b[30;44m \u001b[0m\u001b[10;72H\u001b[10;73H\u001b[10;73H\u001b[30;44m \u001b[0m\u001b[10;73H\u001b[10;74H\u001b[10;74H\u001b[37;40m \u001b[0m\u001b[10;74H\u001b[10;75H\u001b[10;75H\u001b[37;40m \u001b[0m\u001b[10;75H\u001b[10;76H\u001b[10;76H\u001b[37;40m \u001b[0m\u001b[10;76H\u001b[10;77H\u001b[10;77H\u001b[37;40m \u001b[0m\u001b[10;77H\u001b[10;78H\u001b[10;78H\u001b[37;40m \u001b[0m\u001b[10;78H\u001b[10;79H\u001b[10;79H\u001b[37;40m \u001b[0m\u001b[10;79H\u001b[10;80H\u001b[10;80H\u001b[37;40m \u001b[0m\u001b[10;80H\r\r\n\u001b[11;1H\u001b[37;40m \u001b[0m\u001b[11;1H\u001b[11;2H\u001b[11;2H\u001b[37;40m \u001b[0m\u001b[11;2H\u001b[11;3H\u001b[11;3H\u001b[37;40m \u001b[0m\u001b[11;3H\u001b[11;4H\u001b[11;4H\u001b[37;40m \u001b[0m\u001b[11;4H\u001b[11;5H\u001b[11;5H\u001b[37;40m \u001b[0m\u001b[11;5H\u001b[11;6H\u001b[11;6H\u001b[37;40m \u001b[0m\u001b[11;6H\u001b[11;7H\u001b[11;7H\u001b[37;40m \u001b[0m\u001b[11;7H\u001b[11;8H\u001b[11;8H\u001b[30;44m \u001b[0m\u001b[11;8H\u001b[11;9H\u001b[11;9H\u001b[30;44m \u001b[0m\u001b[11;9H\u001b[11;10H\u001b[11;10H\u001b[32;44m\ufffd\u001b[0m\u001b[11;10H\u001b[11;11H\u001b[11;11H\u001b[32;44m\ufffd\u001b[0m\u001b[11;11H\u001b[11;12H\u001b[11;12H\u001b[30;44m \u001b[0m\u001b[11;12H\u001b[11;13H\u001b[11;13H\u001b[30;44m \u001b[0m\u001b[11;13H\u001b[11;14H\u001b[11;14H\u001b[30;44m \u001b[0m\u001b[11;14H\u001b[11;15H\u001b[11;15H\u001b[30;44m \u001b[0m\u001b[11;15H\u001b[11;16H\u001b[11;16H\u001b[30;44m \u001b[0m\u001b[11;16H\u001b[11;17H\u001b[11;17H\u001b[30;44m \u001b[0m\u001b[11;17H\u001b[11;18H\u001b[11;18H\u001b[32;44m\ufffd\u001b[0m\u001b[11;18H\u001b[11;19H\u001b[11;19H\u001b[32;44m\ufffd\u001b[0m\u001b[11;19H\u001b[11;20H\u001b[11;20H\u001b[30;44m \u001b[0m\u001b[11;20H\u001b[11;21H\u001b[11;21H\u001b[30;44m \u001b[0m\u001b[11;21H\u001b[11;22H\u001b[11;22H\u001b[30;44m \u001b[0m\u001b[11;22H\u001b[11;23H\u001b[11;23H\u001b[30;44m \u001b[0m\u001b[11;23H\u001b[11;24H\u001b[11;24H\u001b[30;44m \u001b[0m\u001b[11;24H\u001b[11;25H\u001b[11;25H\u001b[30;44m \u001b[0m\u001b[11;25H\u001b[11;26H\u001b[11;26H\u001b[30;44m \u001b[0m\u001b[11;26H\u001b[11;27H\u001b[11;27H\u001b[32;44m\ufffd\u001b[0m\u001b[11;27H\u001b[11;28H\u001b[11;28H\u001b[32;44m\ufffd\u001b[0m\u001b[11;28H\u001b[11;29H\u001b[11;29H\u001b[32;44m\ufffd\u001b[0m\u001b[11;29H\u001b[11;30H\u001b[11;30H\u001b[32;44m\ufffd\u001b[0m\u001b[11;30H\u001b[11;31H\u001b[11;31H\u001b[32;44m\ufffd\u001b[0m\u001b[11;31H\u001b[11;32H\u001b[11;32H\u001b[30;44m \u001b[0m\u001b[11;32H\u001b[11;33H\u001b[11;33H\u001b[30;44m \u001b[0m\u001b[11;33H\u001b[11;34H\u001b[11;34H\u001b[30;44m \u001b[0m\u001b[11;34H\u001b[11;35H\u001b[11;35H\u001b[32;44m\ufffd\u001b[0m\u001b[11;35H\u001b[11;36H\u001b[11;36H\u001b[32;44m\ufffd\u001b[0m\u001b[11;36H\u001b[11;37H\u001b[11;37H\u001b[32;44m\ufffd\u001b[0m\u001b[11;37H\u001b[11;38H\u001b[11;38H\u001b[32;44m\ufffd\u001b[0m\u001b[11;38H\u001b[11;39H\u001b[11;39H\u001b[32;44m\ufffd\u001b[0m\u001b[11;39H\u001b[11;40H\u001b[11;40H\u001b[30;44m \u001b[0m\u001b[11;40H\u001b[11;41H\u001b[11;41H\u001b[30;44m \u001b[0m\u001b[11;41H\u001b[11;42H\u001b[11;42H\u001b[32;44m\ufffd\u001b[0m\u001b[11;42H\u001b[11;43H\u001b[11;43H\u001b[32;44m\ufffd\u001b[0m\u001b[11;43H\u001b[11;44H\u001b[11;44H\u001b[32;44m\ufffd\u001b[0m\u001b[11;44H\u001b[11;45H\u001b[11;45H\u001b[32;44m\ufffd\u001b[0m\u001b[11;45H\u001b[11;46H\u001b[11;46H\u001b[32;44m\ufffd\u001b[0m\u001b[11;46H\u001b[11;47H\u001b[11;47H\u001b[32;44m\ufffd\u001b[0m\u001b[11;47H\u001b[11;48H\u001b[11;48H\u001b[30;44m \u001b[0m\u001b[11;48H\u001b[11;49H\u001b[11;49H\u001b[30;44m \u001b[0m\u001b[11;49H\u001b[11;50H\u001b[11;50H\u001b[30;44m \u001b[0m\u001b[11;50H\u001b[11;51H\u001b[11;51H\u001b[30;44m \u001b[0m\u001b[11;51H\u001b[11;52H\u001b[11;52H\u001b[30;44m \u001b[0m\u001b[11;52H\u001b[11;53H\u001b[11;53H\u001b[30;44m \u001b[0m\u001b[11;53H\u001b[11;54H\u001b[11;54H\u001b[32;44m\ufffd\u001b[0m\u001b[11;54H\u001b[11;55H\u001b[11;55H\u001b[32;44m\ufffd\u001b[0m\u001b[11;55H\u001b[11;56H\u001b[11;56H\u001b[32;44m\ufffd\u001b[0m\u001b[11;56H\u001b[11;57H\u001b[11;57H\u001b[32;44m\ufffd\u001b[0m\u001b[11;57H\u001b[11;58H\u001b[11;58H\u001b[32;44m\ufffd\u001b[0m\u001b[11;58H\u001b[11;59H\u001b[11;59H\u001b[32;44m\ufffd\u001b[0m\u001b[11;59H\u001b[11;60H\u001b[11;60H\u001b[30;44m \u001b[0m\u001b[11;60H\u001b[11;61H\u001b[11;61H\u001b[30;44m \u001b[0m\u001b[11;61H\u001b[11;62H\u001b[11;62H\u001b[30;44m \u001b[0m\u001b[11;62H\u001b[11;63H\u001b[11;63H\u001b[30;44m \u001b[0m\u001b[11;63H\u001b[11;64H\u001b[11;64H\u001b[30;44m \u001b[0m\u001b[11;64H\u001b[11;65H\u001b[11;65H\u001b[32;44m\ufffd\u001b[0m\u001b[11;65H\u001b[11;66H\u001b[11;66H\u001b[32;44m\ufffd\u001b[0m\u001b[11;66H\u001b[11;67H\u001b[11;67H\u001b[32;44m\ufffd\u001b[0m\u001b[11;67H\u001b[11;68H\u001b[11;68H\u001b[32;44m\ufffd\u001b[0m\u001b[11;68H\u001b[11;69H\u001b[11;69H\u001b[32;44m\ufffd\u001b[0m\u001b[11;69H\u001b[11;70H\u001b[11;70H\u001b[32;44m\ufffd\u001b[0m\u001b[11;70H\u001b[11;71H\u001b[11;71H\u001b[30;44m \u001b[0m\u001b[11;71H\u001b[11;72H\u001b[11;72H\u001b[30;44m \u001b[0m\u001b[11;72H\u001b[11;73H\u001b[11;73H\u001b[30;44m \u001b[0m\u001b[11;73H\u001b[11;74H\u001b[11;74H\u001b[37;40m \u001b[0m\u001b[11;74H\u001b[11;75H\u001b[11;75H\u001b[37;40m \u001b[0m\u001b[11;75H\u001b[11;76H\u001b[11;76H\u001b[37;40m \u001b[0m\u001b[11;76H\u001b[11;77H\u001b[11;77H\u001b[37;40m \u001b[0m\u001b[11;77H\u001b[11;78H\u001b[11;78H\u001b[37;40m \u001b[0m\u001b[11;78H\u001b[11;79H\u001b[11;79H\u001b[37;40m \u001b[0m\u001b[11;79H\u001b[11;80H\u001b[11;80H\u001b[37;40m \u001b[0m\u001b[11;80H\r\r\n",
+      "screenshot": "/home/zyg/Dokumentai/ChatGPT/ManiOS/retest-026/shots/fdbanner.png",
+      "checks": [
+        {
+          "forbid": "can't run",
+          "ok": true
+        },
+        {
+          "forbid": "fault",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.4
+    },
+    {
+      "case": "b64-help",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/B64.EXE -h",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/B64.EXE -h\r\n\r\r\n  b64      (Base64 Encode/Decode)      Bob Trower 08/03/01 \r\r\n           (C) Copr Bob Trower 1986-01.      Version 0.06R \r\r\n  Usage:   b64 -option [-l<num>] [<FileIn> [<FileOut>]]\r\r\n  Purpose: This program is a simple utility that implements\r\r\n           Base64 Content-Transfer-Encoding (RFC1113).\r\r\n  Options: -e  encode to Base64   -h  This help text.\r\r\n           -d  decode from Base64 -?  This help text.\r\r\n  Note:    -l  use to change line size (from 72 characters)\r\r\n  Returns: 0 = success.  Non-zero is an error code.\r\r\n  ErrCode: 1 = Bad Syntax, 2 = File Open, 3 = File I/O\r\r\n  Example: b64 -e binfile b64file     <- Encode to b64\r\r\n           b64 -d b64file binfile     <- Decode from b64\r\r\n           b64 -e -l40 infile outfile <- Line Length of 40\r\r\n  Note:    Will act as a filter, but this should only be\r\r\n           used on text files due to translations made by\r\r\n           operating systems.\r\r\n  Source:  Source code and latest releases can be found at:\r\r\n           http://base64.sourceforge.net\r\r\n  Release: 0.06.00, Sun Aug 19 14:30:00 2001, ANSI-SOURCE C\r\r\n",
+      "checks": [
+        {
+          "expect": "Version 0.06R",
+          "ok": true
+        },
+        {
+          "expect": "Options: -e",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 6.3
+    },
+    {
+      "case": "b64-encode",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/B64.EXE -e C:/RAW.TXT C:/ENC.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/B64.EXE -e C:/RAW.TXT C:/ENC.TXT\r\n",
+      "checks": [],
+      "passed": true,
+      "outputs": [
+        {
+          "name": "ENC.TXT",
+          "extracted": true,
+          "size": 10,
+          "sha256": "55940493693fb963bc0ea8e90e04d4447e97f67e6182def050a64f2aedbc1896",
+          "head_hex": "51554a4452413d3d0d0a",
+          "expected_sha256": "55940493693fb963bc0ea8e90e04d4447e97f67e6182def050a64f2aedbc1896",
+          "ok": true
+        }
+      ],
+      "seconds": 6.3
+    },
+    {
+      "case": "b64-decode",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/B64.EXE -d C:/ENCIN.TXT C:/DEC.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/B64.EXE -d C:/ENCIN.TXT C:/DEC.TXT\r\n",
+      "checks": [],
+      "passed": true,
+      "outputs": [
+        {
+          "name": "DEC.TXT",
+          "extracted": true,
+          "size": 4,
+          "sha256": "e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677",
+          "head_hex": "41424344",
+          "expected_sha256": "e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677",
+          "ok": true
+        }
+      ],
+      "seconds": 6.4
+    },
+    {
+      "case": "bsum-text",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/BSUM.COM C:/INPUT.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/BSUM.COM C:/INPUT.TXT\r\n3C36\r\r\n",
+      "checks": [
+        {
+          "expect": "3C36",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.1
+    },
+    {
+      "case": "bsum-modified",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/BSUM.COM C:/OTHER.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/BSUM.COM C:/OTHER.TXT\r\n2C14\r\r\n",
+      "checks": [
+        {
+          "expect": "2C14",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.2
+    },
+    {
+      "case": "bsum-empty",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/BSUM.COM C:/EMPTY.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/BSUM.COM C:/EMPTY.TXT\r\n0000\r\r\n",
+      "checks": [
+        {
+          "expect": "0000",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.2
+    },
+    {
+      "case": "bsum-binary",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/BSUM.COM C:/BINARY.DAT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/BSUM.COM C:/BINARY.DAT\r\nA000\r\r\n",
+      "checks": [
+        {
+          "expect": "A000",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.2
+    },
+    {
+      "case": "tse-grep",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/tse.img",
+      "command": "dosrun C:/TSE/GREP.COM apple C:/INPUT.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/TSE/GREP.COM apple C:/INPUT.TXT\r\nFile: C:/INPUT.TXT\r\r\n     apple\r\r\n     apple pie\r\r\n",
+      "checks": [
+        {
+          "expect": "apple pie",
+          "ok": true
+        },
+        {
+          "forbid": "pear",
+          "ok": true
+        },
+        {
+          "forbid": "banana",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.1
+    },
+    {
+      "case": "tse-tsort",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/tse.img",
+      "command": "dosrun C:/TSE/TSORT.COM C:INPUT.TXT C:SORTED.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/TSE/TSORT.COM C:INPUT.TXT C:SORTED.TXT\r\n",
+      "checks": [],
+      "passed": true,
+      "outputs": [
+        {
+          "name": "SORTED.TXT",
+          "extracted": true,
+          "size": 32,
+          "sha256": "e019133293285857f6d3264010c784d48d428177c96e691e627309e391e84a2f",
+          "head_hex": "6170706c650d0a6170706c65207069650d0a62616e616e610d0a706561720d0a",
+          "expected_sha256": "e019133293285857f6d3264010c784d48d428177c96e691e627309e391e84a2f",
+          "ok": true
+        }
+      ],
+      "seconds": 5.4
+    },
+    {
+      "case": "tse-sal",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/tse.img",
+      "command": "dosrun C:/TSE/SC.EXE C:/HELLO.S",
+      "timeout_seconds": 10,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/TSE/SC.EXE C:/HELLO.S\r\nSAL Compiler v2.50e\r\r\nCopyright 1991-1997 SemWare Corp.   All rights reserved worldwide.\r\r\n\r\r\n\r\r\nFile: c:/hello.s\r\r\nCompiling\ufffd\ufffd\ufffd\ufffd\r\r\nWriting output to file 'c:/hello.mac'\r\r\n",
+      "checks": [
+        {
+          "expect": "SAL Compiler v2.50e",
+          "ok": true
+        },
+        {
+          "expect": "c:/hello.mac",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "outputs": [
+        {
+          "name": "HELLO.MAC",
+          "extracted": true,
+          "size": 87,
+          "sha256": "8401be5a47a53e083c60bf900b4e8ff00fee7eea26a8d42f5f68b72111cdf8ff",
+          "head_hex": "ffff426f6262690025000000ffffffffffff00000000000016000000000017001600000000000000000016000100100000000100000000082b2b6d61696e2b2b",
+          "ok": true
+        }
+      ],
+      "seconds": 5.2
+    },
+    {
+      "case": "tse-editor-start",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/tse.img",
+      "command": "dosrun C:/TSE/E.EXE",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": false,
+      "output": "dosrun C:/TSE/E.EXE\r\n\u001b[8;6H\u001b[96;44m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u013f\u001b[9;6H\u001b[96;44m\ufffd                                                                    \ufffd\u001b[10;6H\u001b[96;44m\ufffd               The\ufffdSemWare\ufffdEditor\ufffdProfessional v2.50e               \ufffd\u001b[11;6H\u001b[96;44m\ufffd Copyright\ufffd1991-1997\ufffdSemWare\ufffdCorp.\ufffd\ufffd\ufffdAll\ufffdrights\ufffdreserved\ufffdworldwide. \ufffd\u001b[12;6H\u001b[96;44m\ufffd                     Serial\ufffdNumber:                                 \ufffd\u001b[13;6H\u001b[96;44m\ufffd                                                                    \ufffd\u001b[14;6H\u001b[96;44m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u001b[0m\u001b[1;1H\u001b[12;43H\u001b[96;44m3002000000\u001b[0m\u001b[1;1H\u001b[10;22H\u001b[96;44m                               \u001b[10;54H\u001b[96;44m      \u001b[11;8H\u001b[96;44m                                                                  \u001b[12;28H\u001b[96;44m              \u001b[12;43H\u001b[96;44m          \u001b[0m\u001b[1;1H\u001b[10;22H\u001b[96;44mThe\ufffdSemWare\ufffdEditor\ufffdProfessional\u001b[10;54H\u001b[96;44mv2.50e\u001b[11;8H\u001b[96;44mCopyright\ufffd1991-1997\ufffdSemWare\ufffdCorp.\ufffd\ufffd\ufffdAll\ufffdrights\ufffdreserved\ufffdworldwide.\u001b[12;28H\u001b[96;44mSerial\ufffdNumber:\u001b[0m\u001b[1;1H\u001b[2;1H\u001b[30;47m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u013f\u001b[3;1H\u001b[30;47m\ufffd\u001b[3;2H\u001b[97;40mFile(s) to edit: [c:\\]                                                        \u001b[3;80H\u001b[30;47m\ufffd\u001b[4;1H\u001b[30;47m\ufffd\u001b[4;2H\u001b[97;40m                                                                              \u001b[4;80H\u001b[30;47m\ufffd\u001b[5;1H\u001b[30;47m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u001b[12;43H\u001b[96;44m3002000000\u001b[0m\u001b[1;1H\u001b[4;2H",
+      "screenshot": "/home/zyg/Dokumentai/ChatGPT/ManiOS/retest-026/shots/tse-editor-start.png",
+      "checks": [
+        {
+          "no_return_observed": true,
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 13.2
+    },
+    {
+      "case": "tse-editor-file",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/tse.img",
+      "command": "dosrun C:/TSE/E.EXE C:/INPUT.TXT",
+      "timeout_seconds": 10,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": false,
+      "output": "dosrun C:/TSE/E.EXE C:/INPUT.TXT\r\n\u001b[8;6H\u001b[96;44m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u013f\u001b[9;6H\u001b[96;44m\ufffd                                                                    \ufffd\u001b[10;6H\u001b[96;44m\ufffd               The\ufffdSemWare\ufffdEditor\ufffdProfessional v2.50e               \ufffd\u001b[11;6H\u001b[96;44m\ufffd Copyright\ufffd1991-1997\ufffdSemWare\ufffdCorp.\ufffd\ufffd\ufffdAll\ufffdrights\ufffdreserved\ufffdworldwide. \ufffd\u001b[12;6H\u001b[96;44m\ufffd                     Serial\ufffdNumber:                                 \ufffd\u001b[13;6H\u001b[96;44m\ufffd                                                                    \ufffd\u001b[14;6H\u001b[96;44m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u001b[0m\u001b[1;1H\u001b[12;43H\u001b[96;44m3002000000\u001b[0m\u001b[1;1H\u001b[1;22H\u001b[2;1H\u001b[1;1H\u001b[97;40mLoading: c:/input.txt                                                           \u001b[2;1H\u001b[93;44mpear                                                                            \u001b[3;1H\u001b[96;44mapple                                                                           \u001b[4;1H\u001b[96;44mbanana                                                                          \u001b[5;1H\u001b[96;44mapple pie                                                                       \u001b[6;1H\u001b[97;40m<*** End of File ***>                                                           \u001b[7;1H\u001b[96;44m                                                                                \u001b[8;1H\u001b[96;44m                                                                                \u001b[9;1H\u001b[96;44m      \u001b[9;75H\u001b[96;44m      \u001b[10;1H\u001b[96;44m      \u001b[10;22H\u001b[96;44m                               \u001b[10;54H\u001b[96;44m      \u001b[10;75H\u001b[96;44m      \u001b[11;1H\u001b[96;44m      \u001b[11;8H\u001b[96;44m                                                                  \u001b[11;75H\u001b[96;44m      \u001b[12;1H\u001b[96;44m      \u001b[12;28H\u001b[96;44m              \u001b[12;43H\u001b[96;44m          \u001b[12;75H\u001b[96;44m      \u001b[13;1H\u001b[96;44m      \u001b[13;75H\u001b[96;44m      \u001b[14;1H\u001b[96;44m                                                                                \u001b[15;1H\u001b[96;44m                                                                                \u001b[16;1H\u001b[96;44m                                                                                \u001b[17;1H\u001b[96;44m                                                                                \u001b[18;1H\u001b[96;44m                                                                                \u001b[19;1H\u001b[96;44m                                                                                \u001b[20;1H\u001b[96;44m                                                                                \u001b[21;1H\u001b[96;44m                                                                                \u001b[22;1H\u001b[96;44m                                                                                \u001b[23;1H\u001b[96;44m                                                                                \u001b[24;1H\u001b[96;44m                                                                                \u001b[0m\u001b[2;1H\u001b[1;1H\u001b[30;47mL 1       C 1     IA     14k      c:/input.txt                                  \u001b[25;1H\u001b[31;47mF1\u001b[25;3H\u001b[30;47m-Help \u001b[25;9H\u001b[31;47mF2\u001b[25;11H\u001b[30;47m-AddLn \u001b[25;18H\u001b[31;47mF4\u001b[25;20H\u001b[30;47m-DupLn \u001b[25;27H\u001b[31;47mF5\u001b[25;29H\u001b[30;47m-ScrollTop \u001b[25;40H\u001b[31;47mF6\u001b[25;42H\u001b[30;47m-DelToEol \u001b[25;52H\u001b[31;47mF9\u001b[25;54H\u001b[30;47m-Shell \u001b[25;61H\u001b[31;47mF10\u001b[25;64H\u001b[30;47m-Menu            \u001b[0m\u001b[2;1H",
+      "screenshot": "/home/zyg/Dokumentai/ChatGPT/ManiOS/retest-026/shots/tse-editor-file.png",
+      "checks": [
+        {
+          "expect": "Loading: c:/input.txt",
+          "ok": true
+        },
+        {
+          "expect": "End of File",
+          "ok": true
+        },
+        {
+          "no_return_observed": true,
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 15.5
+    },
+    {
+      "case": "search-help",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/compat3-audit/base.img",
+      "command": "dosrun C:/SEARCH.EXE /?",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/SEARCH.EXE /?\r\nSearches for a file.\r\r\n\r\r\nSyntax: SEARCH [drive:][path]filename [/?]\r\r\n  [drive:][path]  The drive and path where to search\r\r\n  filename        The file to search for\r\r\n  /?              Displays this help message\r\r\n",
+      "checks": [
+        {
+          "expect": "Syntax: SEARCH",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.1
+    },
+    {
+      "case": "search-find",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/compat3-audit/base.img",
+      "command": "dosrun C:/SEARCH.EXE TARGET.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/SEARCH.EXE TARGET.TXT\r\nC:\\\\TARGET.TXT\r\r\nC:\\NESTED\\TARGET.TXT\r\r\n2 files found\r\r\n",
+      "checks": [
+        {
+          "expect": "2 files found",
+          "ok": true
+        },
+        {
+          "expect": "NESTED",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.2
+    },
+    {
+      "case": "search-missing",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/compat3-audit/base.img",
+      "command": "dosrun C:/SEARCH.EXE ABSENT.ZZZ",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/SEARCH.EXE ABSENT.ZZZ\r\nNo files found\r\r\n",
+      "checks": [
+        {
+          "expect": "No files found",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.2
+    },
+    {
+      "case": "utf8-list",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/compat3-audit/base.img",
+      "command": "dosrun C:/UTF8TOCP.COM -l",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/UTF8TOCP.COM -l\r\n encid   codepage description\r\r\n ---------------------------------------------------------------------\r\r\n  437    Original IBM PC codepage 437\r\r\n  775    CP 775 (a.k.a. 'MS-DOS Baltic Rim')\r\r\n  808    CP 808 (like 866, but with euro symbol)\r\r\n  850    CP 850 (a.k.a. 'Latin 1')\r\r\n  852    CP 852 (a.k.a. 'Latin 2')\r\r\n  857    CP 857 ('MS-DOS Turkish')\r\r\n  858    CP 858 (like 850, but with euro symbol)\r\r\n  866    CP 866\r\r\n 1250    Windows-1250 codepage\r\r\n 1252    Windows-1252 codepage\r\r\n  kam    Kamenicky encoding (a.k.a. CP867 or CP895)\r\r\n  maz    Mazovia (a.k.a. CP667, CP790 or CP991)\r\r\n\r\r\n",
+      "checks": [
+        {
+          "expect": "encid",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.2
+    },
+    {
+      "case": "utf8-enc437",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/compat3-audit/base.img",
+      "command": "dosrun C:/UTF8TOCP.COM 437 C:/UTF8.TXT C:/ENC.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/UTF8TOCP.COM 437 C:/UTF8.TXT C:/ENC.TXT\r\n",
+      "checks": [],
+      "passed": true,
+      "outputs": [
+        {
+          "name": "ENC.TXT",
+          "extracted": true,
+          "size": 18,
+          "sha256": "729bb5cc770e8bd126b68770ffe466267035a64842d9aa0dd9ea8f468af8c171",
+          "head_hex": "436166653a206361668220812094209c0d0a",
+          "expected_sha256": "729bb5cc770e8bd126b68770ffe466267035a64842d9aa0dd9ea8f468af8c171",
+          "ok": true
+        }
+      ],
+      "seconds": 5.5
+    },
+    {
+      "case": "utf8-dec437",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/compat3-audit/base.img",
+      "command": "dosrun C:/UTF8TOCP.COM -r 437 C:/CP437.TXT C:/DEC.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/UTF8TOCP.COM -r 437 C:/CP437.TXT C:/DEC.TXT\r\n",
+      "checks": [],
+      "passed": true,
+      "outputs": [
+        {
+          "name": "DEC.TXT",
+          "extracted": true,
+          "size": 22,
+          "sha256": "674b9972a706d6ca0b3622d67715dba3929724de6e0af356609d4227a23b8850",
+          "head_hex": "436166653a20636166c3a920c3bc20c3b620c2a30d0a",
+          "expected_sha256": "674b9972a706d6ca0b3622d67715dba3929724de6e0af356609d4227a23b8850",
+          "ok": true
+        }
+      ],
+      "seconds": 5.2
+    },
+    {
+      "case": "utf8-enc775",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/compat3-audit/base.img",
+      "command": "dosrun C:/UTF8TOCP.COM 775 C:/LTUTF8.TXT C:/LTENC.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/UTF8TOCP.COM 775 C:/LTUTF8.TXT C:/LTENC.TXT\r\n",
+      "checks": [],
+      "passed": true,
+      "outputs": [
+        {
+          "name": "LTENC.TXT",
+          "extracted": true,
+          "size": 20,
+          "sha256": "7049b03bcc9c6243a68b53542b5213b564a4dba5b2648aeb562d30448beddb7e",
+          "head_hex": "b5b6b7b8bdbec6c7cfd0d1d2d3d4d5d6d7d80d0a",
+          "expected_sha256": "7049b03bcc9c6243a68b53542b5213b564a4dba5b2648aeb562d30448beddb7e",
+          "ok": true
+        }
+      ],
+      "seconds": 5.2
+    },
+    {
+      "case": "utf8-dec775",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/compat3-audit/base.img",
+      "command": "dosrun C:/UTF8TOCP.COM -r 775 C:/LT775.TXT C:/LTDEC.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/UTF8TOCP.COM -r 775 C:/LT775.TXT C:/LTDEC.TXT\r\n",
+      "checks": [],
+      "passed": true,
+      "outputs": [
+        {
+          "name": "LTDEC.TXT",
+          "extracted": true,
+          "size": 38,
+          "sha256": "c6e048111a830118ed8251edfb1f2657984debb645dbba16b1ebeb3f9e56b0c5",
+          "head_hex": "c484c48cc498c496c4aec5a0c5b2c5aac5bdc485c48dc499c497c4afc5a1c5b3c5abc5be0d0a",
+          "expected_sha256": "c6e048111a830118ed8251edfb1f2657984debb645dbba16b1ebeb3f9e56b0c5",
+          "ok": true
+        }
+      ],
+      "seconds": 5.2
+    },
+    {
+      "case": "bwbasic",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/compat3-audit/base.img",
+      "command": "dosrun C:/BWBASIC.EXE C:/SUM.BAS",
+      "timeout_seconds": 10,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/BWBASIC.EXE C:/SUM.BAS\r\ndosrun: /n/ata0p1/bwbasic.exe: requires 32-bit protected mode (LE/LX DOS extender); dosrun supports real mode only\r\n",
+      "checks": [
+        {
+          "expect": "32-bit",
+          "ok": true
+        },
+        {
+          "expect": "protected",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.2
+    },
+    {
+      "case": "pedit-file",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/catalog-audit/catalog.img",
+      "command": "dosrun C:/PEDIT/PEDIT.EXE C:/INPUT.TXT",
+      "timeout_seconds": 10,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/PEDIT/PEDIT.EXE C:/INPUT.TXT\r\ndosrun: C:/PEDIT/PEDIT.EXE: can't run opcode 66 (at 1213:03D7)\r\n",
+      "checks": [
+        {
+          "expect": "can't run opcode 66",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.2
+    },
+    {
+      "case": "pedit-light",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/catalog-audit/catalog.img",
+      "command": "dosrun C:/PEDIT/PEDITLGT.EXE C:/INPUT.TXT",
+      "timeout_seconds": 10,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/PEDIT/PEDITLGT.EXE C:/INPUT.TXT\r\ndosrun: C:/PEDIT/PEDITLGT.EXE: can't run opcode 66 (at 1213:03D7)\r\n",
+      "checks": [
+        {
+          "expect": "can't run opcode 66",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.3
+    },
+    {
+      "case": "uhex-usage",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/catalog-audit/catalog.img",
+      "command": "dosrun C:/UHEX/PROGS/UHEX/UHEX.COM",
+      "timeout_seconds": 10,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/UHEX/PROGS/UHEX/UHEX.COM\r\n\u001b[1;1HuHex v1.0.4 Copyright (C) Mateusz Viste 2013-2015\r\r\n\r\r\nuHex is a small and fast, multiplatform hex editor. It supports large files,\r\r\nand runs on any 8086 compatible CPU.\r\r\n\r\r\nRedistribution and use in source and binary forms, with or without\r\r\nmodification, are permitted provided that the following conditions are met:\r\r\n 1. Redistributions of source code must retain the above copyright notice,\r\r\n    this list of conditions and the following disclaimer.\r\r\n 2. Redistributions in binary form must reproduce the above copyright notice,\r\r\n    this list of conditions and the following disclaimer in the documentation\r\r\n    and/or other materials provided with the distribution.\r\r\n\r\r\nUsage: uhex file [/mono | /color] [/ro]\r\r\n\r\r\n where:\r\r\n  /mono   forces monochrome display mode\r\r\n  /color  forces color display mode\r\r\n  /ro     opens the file in read-only mode\r\r\n\r\r\n",
+      "checks": [
+        {
+          "expect": "uHex v1.0.4",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.2
+    },
+    {
+      "case": "uhex-file",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/catalog-audit/catalog.img",
+      "command": "dosrun C:/UHEX/PROGS/UHEX/UHEX.COM C:/INPUT.TXT /ro",
+      "timeout_seconds": 10,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": false,
+      "output": "dosrun C:/UHEX/PROGS/UHEX/UHEX.COM C:/INPUT.TXT /ro\r\n\u001b[1;1H\u001b[25;1H\u001b[30;47mINPUT.TXT (34 bytes)                            ALT+H: Help  offset: 0x00000000 \u001b[0m\u001b[1;1H\u001b[1;1H\u001b[37;44m\ufffd\u001b[1;2H\u001b[33;44m00000000\u001b[1;10H\u001b[37;44m\ufffd \u001b[1;12H\u001b[97;43m4D\u001b[1;14H\u001b[37;44m 61 6E 69 4F 53 20 44  4F 53 20 74 65 73 74 0D \ufffd \u001b[1;63H\u001b[97;43mM\u001b[1;64H\u001b[37;44maniOS DOS test\r \ufffd\u001b[2;1H\u001b[37;44m\ufffd\u001b[2;2H\u001b[33;44m00000010\u001b[2;10H\u001b[37;44m\ufffd 0A 41 42 43 44 20 30 31  32 33 34 35 36 37 38 39 \ufffd \r\nABCD 0123456789 \ufffd\u001b[3;1H\u001b[37;44m\ufffd\u001b[3;2H\u001b[33;44m00000020\u001b[3;10H\u001b[37;44m\ufffd 0D 0A \u001b[3;18H\u001b[90;44m..\u001b[3;20H\u001b[37;44m \u001b[3;21H\u001b[90;44m..\u001b[3;23H\u001b[37;44m \u001b[3;24H\u001b[90;44m..\u001b[3;26H\u001b[37;44m \u001b[3;27H\u001b[90;44m..\u001b[3;29H\u001b[37;44m \u001b[3;30H\u001b[90;44m..\u001b[3;32H\u001b[37;44m \u001b[3;33H\u001b[90;44m..\u001b[3;35H\u001b[37;44m  \u001b[3;37H\u001b[90;44m..\u001b[3;39H\u001b[37;44m \u001b[3;40H\u001b[90;44m..\u001b[3;42H\u001b[37;44m \u001b[3;43H\u001b[90;44m..\u001b[3;45H\u001b[37;44m \u001b[3;46H\u001b[90;44m..\u001b[3;48H\u001b[37;44m \u001b[3;49H\u001b[90;44m..\u001b[3;51H\u001b[37;44m \u001b[3;52H\u001b[90;44m..\u001b[3;54H\u001b[37;44m \u001b[3;55H\u001b[90;44m..\u001b[3;57H\u001b[37;44m \u001b[3;58H\u001b[90;44m..\u001b[3;60H\u001b[37;44m \ufffd \r\r\n\u001b[3;65H\u001b[90;44m..............\u001b[3;79H\u001b[37;44m \ufffd\u001b[4;1H\u001b[37;44m\ufffd\u001b[4;2H\u001b[33;44m00000022\u001b[4;10H\u001b[37;44m\ufffd \u001b[4;12H\u001b[90;44m..\u001b[4;14H\u001b[37;44m \u001b[4;15H\u001b[90;44m..\u001b[4;17H\u001b[37;44m \u001b[4;18H\u001b[90;44m..\u001b[4;20H\u001b[37;44m \u001b[4;21H\u001b[90;44m..\u001b[4;23H\u001b[37;44m \u001b[4;24H\u001b[90;44m..\u001b[4;26H\u001b[37;44m \u001b[4;27H\u001b[90;44m..\u001b[4;29H\u001b[37;44m \u001b[4;30H\u001b[90;44m..\u001b[4;32H\u001b[37;44m \u001b[4;33H\u001b[90;44m..\u001b[4;35H\u001b[37;44m  \u001b[4;37H\u001b[90;44m..\u001b[4;39H\u001b[37;44m \u001b[4;40H\u001b[90;44m..\u001b[4;42H\u001b[37;44m \u001b[4;43H\u001b[90;44m..\u001b[4;45H\u001b[37;44m \u001b[4;46H\u001b[90;44m..\u001b[4;48H\u001b[37;44m \u001b[4;49H\u001b[90;44m..\u001b[4;51H\u001b[37;44m \u001b[4;52H\u001b[90;44m..\u001b[4;54H\u001b[37;44m \u001b[4;55H\u001b[90;44m..\u001b[4;57H\u001b[37;44m \u001b[4;58H\u001b[90;44m..\u001b[4;60H\u001b[37;44m \ufffd \u001b[4;63H\u001b[90;44m................\u001b[4;79H\u001b[37;44m \ufffd\u001b[5;1H\u001b[37;44m\ufffd\u001b[5;2H\u001b[33;44m00000022\u001b[5;10H\u001b[37;44m\ufffd \u001b[5;12H\u001b[90;44m..\u001b[5;14H\u001b[37;44m \u001b[5;15H\u001b[90;44m..\u001b[5;17H\u001b[37;44m \u001b[5;18H\u001b[90;44m..\u001b[5;20H\u001b[37;44m \u001b[5;21H\u001b[90;44m..\u001b[5;23H\u001b[37;44m \u001b[5;24H\u001b[90;44m..\u001b[5;26H\u001b[37;44m \u001b[5;27H\u001b[90;44m..\u001b[5;29H\u001b[37;44m \u001b[5;30H\u001b[90;44m..\u001b[5;32H\u001b[37;44m \u001b[5;33H\u001b[90;44m..\u001b[5;35H\u001b[37;44m  \u001b[5;37H\u001b[90;44m..\u001b[5;39H\u001b[37;44m \u001b[5;40H\u001b[90;44m..\u001b[5;42H\u001b[37;44m \u001b[5;43H\u001b[90;44m..\u001b[5;45H\u001b[37;44m \u001b[5;46H\u001b[90;44m..\u001b[5;48H\u001b[37;44m \u001b[5;49H\u001b[90;44m..\u001b[5;51H\u001b[37;44m \u001b[5;52H\u001b[90;44m..\u001b[5;54H\u001b[37;44m \u001b[5;55H\u001b[90;44m..\u001b[5;57H\u001b[37;44m \u001b[5;58H\u001b[90;44m..\u001b[5;60H\u001b[37;44m \ufffd \u001b[5;63H\u001b[90;44m................\u001b[5;79H\u001b[37;44m \ufffd\u001b[6;1H\u001b[37;44m\ufffd\u001b[6;2H\u001b[33;44m00000022\u001b[6;10H\u001b[37;44m\ufffd \u001b[6;12H\u001b[90;44m..\u001b[6;14H\u001b[37;44m \u001b[6;15H\u001b[90;44m..\u001b[6;17H\u001b[37;44m \u001b[6;18H\u001b[90;44m..\u001b[6;20H\u001b[37;44m \u001b[6;21H\u001b[90;44m..\u001b[6;23H\u001b[37;44m \u001b[6;24H\u001b[90;44m..\u001b[6;26H\u001b[37;44m \u001b[6;27H\u001b[90;44m..\u001b[6;29H\u001b[37;44m \u001b[6;30H\u001b[90;44m..\u001b[6;32H\u001b[37;44m \u001b[6;33H\u001b[90;44m..\u001b[6;35H\u001b[37;44m  \u001b[6;37H\u001b[90;44m..\u001b[6;39H\u001b[37;44m \u001b[6;40H\u001b[90;44m..\u001b[6;42H\u001b[37;44m \u001b[6;43H\u001b[90;44m..\u001b[6;45H\u001b[37;44m \u001b[6;46H\u001b[90;44m..\u001b[6;48H\u001b[37;44m \u001b[6;49H\u001b[90;44m..\u001b[6;51H\u001b[37;44m \u001b[6;52H\u001b[90;44m..\u001b[6;54H\u001b[37;44m \u001b[6;55H\u001b[90;44m..\u001b[6;57H\u001b[37;44m \u001b[6;58H\u001b[90;44m..\u001b[6;60H\u001b[37;44m \ufffd \u001b[6;63H\u001b[90;44m................\u001b[6;79H\u001b[37;44m \ufffd\u001b[7;1H\u001b[37;44m\ufffd\u001b[7;2H\u001b[33;44m00000022\u001b[7;10H\u001b[37;44m\ufffd \u001b[7;12H\u001b[90;44m..\u001b[7;14H\u001b[37;44m \u001b[7;15H\u001b[90;44m..\u001b[7;17H\u001b[37;44m \u001b[7;18H\u001b[90;44m..\u001b[7;20H\u001b[37;44m \u001b[7;21H\u001b[90;44m..\u001b[7;23H\u001b[37;44m \u001b[7;24H\u001b[90;44m..\u001b[7;26H\u001b[37;44m \u001b[7;27H\u001b[90;44m..\u001b[7;29H\u001b[37;44m \u001b[7;30H\u001b[90;44m..\u001b[7;32H\u001b[37;44m \u001b[7;33H\u001b[90;44m..\u001b[7;35H\u001b[37;44m  \u001b[7;37H\u001b[90;44m..\u001b[7;39H\u001b[37;44m \u001b[7;40H\u001b[90;44m..\u001b[7;42H\u001b[37;44m \u001b[7;43H\u001b[90;44m..\u001b[7;45H\u001b[37;44m \u001b[7;46H\u001b[90;44m..\u001b[7;48H\u001b[37;44m \u001b[7;49H\u001b[90;44m..\u001b[7;51H\u001b[37;44m \u001b[7;52H\u001b[90;44m..\u001b[7;54H\u001b[37;44m \u001b[7;55H\u001b[90;44m..\u001b[7;57H\u001b[37;44m \u001b[7;58H\u001b[90;44m.\u001b[0m\u001b[1;1H\u001b[7;59H\u001b[90;44m.\u001b[7;60H\u001b[37;44m \ufffd \u001b[7;63H\u001b[90;44m................\u001b[7;79H\u001b[37;44m \ufffd\u001b[8;1H\u001b[37;44m\ufffd\u001b[8;2H\u001b[33;44m00000022\u001b[8;10H\u001b[37;44m\ufffd \u001b[8;12H\u001b[90;44m..\u001b[8;14H\u001b[37;44m \u001b[8;15H\u001b[90;44m..\u001b[8;17H\u001b[37;44m \u001b[8;18H\u001b[90;44m..\u001b[8;20H\u001b[37;44m \u001b[8;21H\u001b[90;44m..\u001b[8;23H\u001b[37;44m \u001b[8;24H\u001b[90;44m..\u001b[8;26H\u001b[37;44m \u001b[8;27H\u001b[90;44m..\u001b[8;29H\u001b[37;44m \u001b[8;30H\u001b[90;44m..\u001b[8;32H\u001b[37;44m \u001b[8;33H\u001b[90;44m..\u001b[8;35H\u001b[37;44m  \u001b[8;37H\u001b[90;44m..\u001b[8;39H\u001b[37;44m \u001b[8;40H\u001b[90;44m..\u001b[8;42H\u001b[37;44m \u001b[8;43H\u001b[90;44m..\u001b[8;45H\u001b[37;44m \u001b[8;46H\u001b[90;44m..\u001b[8;48H\u001b[37;44m \u001b[8;49H\u001b[90;44m..\u001b[8;51H\u001b[37;44m \u001b[8;52H\u001b[90;44m..\u001b[8;54H\u001b[37;44m \u001b[8;55H\u001b[90;44m..\u001b[8;57H\u001b[37;44m \u001b[8;58H\u001b[90;44m..\u001b[8;60H\u001b[37;44m \ufffd \u001b[8;63H\u001b[90;44m................\u001b[8;79H\u001b[37;44m \ufffd\u001b[9;1H\u001b[37;44m\ufffd\u001b[9;2H\u001b[33;44m00000022\u001b[9;10H\u001b[37;44m\ufffd \u001b[9;12H\u001b[90;44m..\u001b[9;14H\u001b[37;44m \u001b[9;15H\u001b[90;44m..\u001b[9;17H\u001b[37;44m \u001b[9;18H\u001b[90;44m..\u001b[9;20H\u001b[37;44m \u001b[9;21H\u001b[90;44m..\u001b[9;23H\u001b[37;44m \u001b[9;24H\u001b[90;44m..\u001b[9;26H\u001b[37;44m \u001b[9;27H\u001b[90;44m..\u001b[9;29H\u001b[37;44m \u001b[9;30H\u001b[90;44m..\u001b[9;32H\u001b[37;44m \u001b[9;33H\u001b[90;44m..\u001b[9;35H\u001b[37;44m  \u001b[9;37H\u001b[90;44m..\u001b[9;39H\u001b[37;44m \u001b[9;40H\u001b[90;44m..\u001b[9;42H\u001b[37;44m \u001b[9;43H\u001b[90;44m..\u001b[9;45H\u001b[37;44m \u001b[9;46H\u001b[90;44m..\u001b[9;48H\u001b[37;44m \u001b[9;49H\u001b[90;44m..\u001b[9;51H\u001b[37;44m \u001b[9;52H\u001b[90;44m..\u001b[9;54H\u001b[37;44m \u001b[9;55H\u001b[90;44m..\u001b[9;57H\u001b[37;44m \u001b[9;58H\u001b[90;44m..\u001b[9;60H\u001b[37;44m \ufffd \u001b[9;63H\u001b[90;44m................\u001b[9;79H\u001b[37;44m \ufffd\u001b[10;1H\u001b[37;44m\ufffd\u001b[10;2H\u001b[33;44m00000022\u001b[10;10H\u001b[37;44m\ufffd \u001b[10;12H\u001b[90;44m..\u001b[10;14H\u001b[37;44m \u001b[10;15H\u001b[90;44m..\u001b[10;17H\u001b[37;44m \u001b[10;18H\u001b[90;44m..\u001b[10;20H\u001b[37;44m \u001b[10;21H\u001b[90;44m..\u001b[10;23H\u001b[37;44m \u001b[10;24H\u001b[90;44m..\u001b[10;26H\u001b[37;44m \u001b[10;27H\u001b[90;44m..\u001b[10;29H\u001b[37;44m \u001b[10;30H\u001b[90;44m..\u001b[10;32H\u001b[37;44m \u001b[10;33H\u001b[90;44m..\u001b[10;35H\u001b[37;44m  \u001b[10;37H\u001b[90;44m..\u001b[10;39H\u001b[37;44m \u001b[10;40H\u001b[90;44m..\u001b[10;42H\u001b[37;44m \u001b[10;43H\u001b[90;44m..\u001b[10;45H\u001b[37;44m \u001b[10;46H\u001b[90;44m..\u001b[10;48H\u001b[37;44m \u001b[10;49H\u001b[90;44m..\u001b[10;51H\u001b[37;44m \u001b[10;52H\u001b[90;44m..\u001b[10;54H\u001b[37;44m \u001b[10;55H\u001b[90;44m..\u001b[10;57H\u001b[37;44m \u001b[10;58H\u001b[90;44m..\u001b[10;60H\u001b[37;44m \ufffd \u001b[10;63H\u001b[90;44m................\u001b[10;79H\u001b[37;44m \ufffd\u001b[11;1H\u001b[37;44m\ufffd\u001b[11;2H\u001b[33;44m00000022\u001b[11;10H\u001b[37;44m\ufffd \u001b[11;12H\u001b[90;44m..\u001b[11;14H\u001b[37;44m \u001b[11;15H\u001b[90;44m..\u001b[11;17H\u001b[37;44m \u001b[11;18H\u001b[90;44m..\u001b[11;20H\u001b[37;44m \u001b[11;21H\u001b[90;44m..\u001b[11;23H\u001b[37;44m \u001b[11;24H\u001b[90;44m..\u001b[11;26H\u001b[37;44m \u001b[11;27H\u001b[90;44m..\u001b[11;29H\u001b[37;44m \u001b[11;30H\u001b[90;44m..\u001b[11;32H\u001b[37;44m \u001b[11;33H\u001b[90;44m..\u001b[11;35H\u001b[37;44m  \u001b[11;37H\u001b[90;44m..\u001b[11;39H\u001b[37;44m \u001b[11;40H\u001b[90;44m..\u001b[11;42H\u001b[37;44m \u001b[11;43H\u001b[90;44m..\u001b[11;45H\u001b[37;44m \u001b[11;46H\u001b[90;44m..\u001b[11;48H\u001b[37;44m \u001b[11;49H\u001b[90;44m..\u001b[11;51H\u001b[37;44m \u001b[11;52H\u001b[90;44m..\u001b[11;54H\u001b[37;44m \u001b[11;55H\u001b[90;44m..\u001b[11;57H\u001b[37;44m \u001b[11;58H\u001b[90;44m..\u001b[11;60H\u001b[37;44m \ufffd \u001b[11;63H\u001b[90;44m................\u001b[11;79H\u001b[37;44m \ufffd\u001b[12;1H\u001b[37;44m\ufffd\u001b[12;2H\u001b[33;44m00000022\u001b[12;10H\u001b[37;44m\ufffd \u001b[12;12H\u001b[90;44m..\u001b[12;14H\u001b[37;44m \u001b[12;15H\u001b[90;44m..\u001b[12;17H\u001b[37;44m \u001b[12;18H\u001b[90;44m..\u001b[12;20H\u001b[37;44m \u001b[12;21H\u001b[90;44m..\u001b[12;23H\u001b[37;44m \u001b[12;24H\u001b[90;44m..\u001b[12;26H\u001b[37;44m \u001b[12;27H\u001b[90;44m..\u001b[12;29H\u001b[37;44m \u001b[12;30H\u001b[90;44m..\u001b[12;32H\u001b[37;44m \u001b[12;33H\u001b[90;44m..\u001b[12;35H\u001b[37;44m  \u001b[12;37H\u001b[90;44m..\u001b[12;39H\u001b[37;44m \u001b[12;40H\u001b[90;44m..\u001b[12;42H\u001b[37;44m \u001b[12;43H\u001b[90;44m..\u001b[12;45H\u001b[37;44m \u001b[12;46H\u001b[90;44m..\u001b[12;48H\u001b[37;44m \u001b[12;49H\u001b[90;44m..\u001b[12;51H\u001b[37;44m \u001b[12;52H\u001b[90;44m..\u001b[12;54H\u001b[37;44m \u001b[12;55H\u001b[90;44m..\u001b[12;57H\u001b[37;44m \u001b[12;58H\u001b[90;44m..\u001b[12;60H\u001b[37;44m \ufffd \u001b[12;63H\u001b[90;44m................\u001b[12;79H\u001b[37;44m \ufffd\u001b[13;1H\u001b[37;44m\ufffd\u001b[13;2H\u001b[33;44m00000022\u001b[13;10H\u001b[37;44m\ufffd \u001b[13;12H\u001b[90;44m..\u001b[13;14H\u001b[37;44m \u001b[13;15H\u001b[90;44m..\u001b[13;17H\u001b[37;44m \u001b[13;18H\u001b[90;44m..\u001b[13;20H\u001b[37;44m \u001b[13;21H\u001b[90;44m..\u001b[13;23H\u001b[37;44m \u001b[13;24H\u001b[90;44m..\u001b[13;26H\u001b[37;44m \u001b[13;27H\u001b[90;44m..\u001b[13;29H\u001b[37;44m \u001b[13;30H\u001b[90;44m..\u001b[13;32H\u001b[37;44m \u001b[13;33H\u001b[90;44m..\u001b[13;35H\u001b[37;44m  \u001b[13;37H\u001b[90;44m..\u001b[13;39H\u001b[37;44m \u001b[13;40H\u001b[90;44m..\u001b[13;42H\u001b[37;44m \u001b[13;43H\u001b[90;44m..\u001b[13;45H\u001b[37;44m \u001b[13;46H\u001b[90;44m..\u001b[13;48H\u001b[37;44m \u001b[13;49H\u001b[90;44m..\u001b[13;51H\u001b[37;44m \u001b[13;52H\u001b[90;44m..\u001b[13;54H\u001b[37;44m \u001b[13;55H\u001b[90;44m..\u001b[13;57H\u001b[37;44m \u001b[13;58H\u001b[90;44m..\u001b[13;60H\u001b[37;44m \ufffd \u001b[13;63H\u001b[90;44m................\u001b[13;79H\u001b[37;44m \ufffd\u001b[14;1H\u001b[37;44m\ufffd\u001b[14;2H\u001b[33;44m00000022\u001b[14;10H\u001b[37;44m\ufffd \u001b[14;12H\u001b[90;44m..\u001b[14;14H\u001b[37;44m \u001b[14;15H\u001b[90;44m..\u001b[14;17H\u001b[37;44m \u001b[14;18H\u001b[90;44m..\u001b[14;20H\u001b[37;44m \u001b[14;21H\u001b[90;44m..\u001b[14;23H\u001b[37;44m \u001b[14;24H\u001b[90;44m..\u001b[14;26H\u001b[37;44m \u001b[14;27H\u001b[90;44m..\u001b[14;29H\u001b[37;44m \u001b[14;30H\u001b[90;44m..\u001b[14;32H\u001b[37;44m \u001b[14;33H\u001b[90;44m..\u001b[14;35H\u001b[37;44m  \u001b[14;37H\u001b[90;44m..\u001b[14;39H\u001b[37;44m \u001b[14;40H\u001b[90;44m..\u001b[14;42H\u001b[37;44m \u001b[14;43H\u001b[90;44m..\u001b[14;45H\u001b[37;44m \u001b[14;46H\u001b[30;40m.\u001b[0m\u001b[1;1H\u001b[14;46H\u001b[90;44m..\u001b[14;48H\u001b[37;44m \u001b[14;49H\u001b[90;44m..\u001b[14;51H\u001b[37;44m \u001b[14;52H\u001b[90;44m..\u001b[14;54H\u001b[37;44m \u001b[14;55H\u001b[90;44m..\u001b[14;57H\u001b[37;44m \u001b[14;58H\u001b[90;44m..\u001b[14;60H\u001b[37;44m \ufffd \u001b[14;63H\u001b[90;44m................\u001b[14;79H\u001b[37;44m \ufffd\u001b[15;1H\u001b[37;44m\ufffd\u001b[15;2H\u001b[33;44m00000022\u001b[15;10H\u001b[37;44m\ufffd \u001b[15;12H\u001b[90;44m..\u001b[15;14H\u001b[37;44m \u001b[15;15H\u001b[90;44m..\u001b[15;17H\u001b[37;44m \u001b[15;18H\u001b[90;44m..\u001b[15;20H\u001b[37;44m \u001b[15;21H\u001b[90;44m..\u001b[15;23H\u001b[37;44m \u001b[15;24H\u001b[90;44m..\u001b[15;26H\u001b[37;44m \u001b[15;27H\u001b[90;44m..\u001b[15;29H\u001b[37;44m \u001b[15;30H\u001b[90;44m..\u001b[15;32H\u001b[37;44m \u001b[15;33H\u001b[90;44m..\u001b[15;35H\u001b[37;44m  \u001b[15;37H\u001b[90;44m..\u001b[15;39H\u001b[37;44m \u001b[15;40H\u001b[90;44m..\u001b[15;42H\u001b[37;44m \u001b[15;43H\u001b[90;44m..\u001b[15;45H\u001b[37;44m \u001b[15;46H\u001b[90;44m..\u001b[15;48H\u001b[37;44m \u001b[15;49H\u001b[90;44m..\u001b[15;51H\u001b[37;44m \u001b[15;52H\u001b[90;44m..\u001b[15;54H\u001b[37;44m \u001b[15;55H\u001b[90;44m..\u001b[15;57H\u001b[37;44m \u001b[15;58H\u001b[90;44m..\u001b[15;60H\u001b[37;44m \ufffd \u001b[15;63H\u001b[90;44m................\u001b[15;79H\u001b[37;44m \ufffd\u001b[16;1H\u001b[37;44m\ufffd\u001b[16;2H\u001b[33;44m00000022\u001b[16;10H\u001b[37;44m\ufffd \u001b[16;12H\u001b[90;44m..\u001b[16;14H\u001b[37;44m \u001b[16;15H\u001b[90;44m..\u001b[16;17H\u001b[37;44m \u001b[16;18H\u001b[90;44m..\u001b[16;20H\u001b[37;44m \u001b[16;21H\u001b[90;44m..\u001b[16;23H\u001b[37;44m \u001b[16;24H\u001b[90;44m..\u001b[16;26H\u001b[37;44m \u001b[16;27H\u001b[90;44m..\u001b[16;29H\u001b[37;44m \u001b[16;30H\u001b[90;44m..\u001b[16;32H\u001b[37;44m \u001b[16;33H\u001b[90;44m..\u001b[16;35H\u001b[37;44m  \u001b[16;37H\u001b[90;44m..\u001b[16;39H\u001b[37;44m \u001b[16;40H\u001b[90;44m..\u001b[16;42H\u001b[37;44m \u001b[16;43H\u001b[90;44m..\u001b[16;45H\u001b[37;44m \u001b[16;46H\u001b[90;44m..\u001b[16;48H\u001b[37;44m \u001b[16;49H\u001b[90;44m..\u001b[16;51H\u001b[37;44m \u001b[16;52H\u001b[90;44m..\u001b[16;54H\u001b[37;44m \u001b[16;55H\u001b[90;44m..\u001b[16;57H\u001b[37;44m \u001b[16;58H\u001b[90;44m..\u001b[16;60H\u001b[37;44m \ufffd \u001b[16;63H\u001b[90;44m................\u001b[16;79H\u001b[37;44m \ufffd\u001b[17;1H\u001b[37;44m\ufffd\u001b[17;2H\u001b[33;44m00000022\u001b[17;10H\u001b[37;44m\ufffd \u001b[17;12H\u001b[90;44m..\u001b[17;14H\u001b[37;44m \u001b[17;15H\u001b[90;44m..\u001b[17;17H\u001b[37;44m \u001b[17;18H\u001b[90;44m..\u001b[17;20H\u001b[37;44m \u001b[17;21H\u001b[90;44m..\u001b[17;23H\u001b[37;44m \u001b[17;24H\u001b[90;44m..\u001b[17;26H\u001b[37;44m \u001b[17;27H\u001b[90;44m..\u001b[17;29H\u001b[37;44m \u001b[17;30H\u001b[90;44m..\u001b[17;32H\u001b[37;44m \u001b[17;33H\u001b[90;44m..\u001b[17;35H\u001b[37;44m  \u001b[17;37H\u001b[90;44m..\u001b[17;39H\u001b[37;44m \u001b[17;40H\u001b[90;44m..\u001b[17;42H\u001b[37;44m \u001b[17;43H\u001b[90;44m..\u001b[17;45H\u001b[37;44m \u001b[17;46H\u001b[90;44m..\u001b[17;48H\u001b[37;44m \u001b[17;49H\u001b[90;44m..\u001b[17;51H\u001b[37;44m \u001b[17;52H\u001b[90;44m..\u001b[17;54H\u001b[37;44m \u001b[17;55H\u001b[90;44m..\u001b[17;57H\u001b[37;44m \u001b[17;58H\u001b[90;44m..\u001b[17;60H\u001b[37;44m \ufffd \u001b[17;63H\u001b[90;44m................\u001b[17;79H\u001b[37;44m \ufffd\u001b[18;1H\u001b[37;44m\ufffd\u001b[18;2H\u001b[33;44m00000022\u001b[18;10H\u001b[37;44m\ufffd \u001b[18;12H\u001b[90;44m..\u001b[18;14H\u001b[37;44m \u001b[18;15H\u001b[90;44m..\u001b[18;17H\u001b[37;44m \u001b[18;18H\u001b[90;44m..\u001b[18;20H\u001b[37;44m \u001b[18;21H\u001b[90;44m..\u001b[18;23H\u001b[37;44m \u001b[18;24H\u001b[90;44m..\u001b[18;26H\u001b[37;44m \u001b[18;27H\u001b[90;44m..\u001b[18;29H\u001b[37;44m \u001b[18;30H\u001b[90;44m..\u001b[18;32H\u001b[37;44m \u001b[18;33H\u001b[90;44m..\u001b[18;35H\u001b[37;44m  \u001b[18;37H\u001b[90;44m..\u001b[18;39H\u001b[37;44m \u001b[18;40H\u001b[90;44m..\u001b[18;42H\u001b[37;44m \u001b[18;43H\u001b[90;44m..\u001b[18;45H\u001b[37;44m \u001b[18;46H\u001b[90;44m..\u001b[18;48H\u001b[37;44m \u001b[18;49H\u001b[90;44m..\u001b[18;51H\u001b[37;44m \u001b[18;52H\u001b[90;44m..\u001b[18;54H\u001b[37;44m \u001b[18;55H\u001b[90;44m..\u001b[18;57H\u001b[37;44m \u001b[18;58H\u001b[90;44m..\u001b[18;60H\u001b[37;44m \ufffd \u001b[18;63H\u001b[90;44m................\u001b[18;79H\u001b[37;44m \ufffd\u001b[19;1H\u001b[37;44m\ufffd\u001b[19;2H\u001b[33;44m00000022\u001b[19;10H\u001b[37;44m\ufffd \u001b[19;12H\u001b[90;44m..\u001b[19;14H\u001b[37;44m \u001b[19;15H\u001b[90;44m..\u001b[19;17H\u001b[37;44m \u001b[19;18H\u001b[90;44m..\u001b[19;20H\u001b[37;44m \u001b[19;21H\u001b[90;44m..\u001b[19;23H\u001b[37;44m \u001b[19;24H\u001b[90;44m..\u001b[19;26H\u001b[37;44m \u001b[19;27H\u001b[90;44m..\u001b[19;29H\u001b[37;44m \u001b[19;30H\u001b[90;44m..\u001b[19;32H\u001b[37;44m \u001b[19;33H\u001b[90;44m..\u001b[19;35H\u001b[37;44m  \u001b[19;37H\u001b[90;44m..\u001b[19;39H\u001b[37;44m \u001b[19;40H\u001b[90;44m..\u001b[19;42H\u001b[37;44m \u001b[19;43H\u001b[90;44m..\u001b[19;45H\u001b[37;44m \u001b[19;46H\u001b[90;44m..\u001b[19;48H\u001b[37;44m \u001b[19;49H\u001b[90;44m..\u001b[19;51H\u001b[37;44m \u001b[19;52H\u001b[90;44m..\u001b[19;54H\u001b[37;44m \u001b[19;55H\u001b[90;44m..\u001b[19;57H\u001b[37;44m \u001b[19;58H\u001b[90;44m..\u001b[19;60H\u001b[37;44m \ufffd \u001b[19;63H\u001b[90;44m................\u001b[19;79H\u001b[37;44m \ufffd\u001b[20;1H\u001b[37;44m\ufffd\u001b[20;2H\u001b[33;44m00000022\u001b[20;10H\u001b[37;44m\ufffd \u001b[20;12H\u001b[90;44m..\u001b[20;14H\u001b[37;44m \u001b[20;15H\u001b[90;44m..\u001b[20;17H\u001b[37;44m \u001b[20;18H\u001b[90;44m..\u001b[20;20H\u001b[37;44m \u001b[20;21H\u001b[90;44m..\u001b[20;23H\u001b[37;44m \u001b[20;24H\u001b[90;44m..\u001b[20;26H\u001b[37;44m \u001b[20;27H\u001b[90;44m..\u001b[20;29H\u001b[37;44m \u001b[20;30H\u001b[90;44m..\u001b[20;32H\u001b[37;44m \u001b[20;33H\u001b[90;44m..\u001b[20;35H\u001b[37;44m  \u001b[20;37H\u001b[90;44m..\u001b[20;39H\u001b[37;44m \u001b[20;40H\u001b[90;44m..\u001b[20;42H\u001b[37;44m \u001b[20;43H\u001b[90;44m..\u001b[20;45H\u001b[37;44m \u001b[20;46H\u001b[90;44m..\u001b[20;48H\u001b[37;44m \u001b[20;49H\u001b[90;44m..\u001b[20;51H\u001b[37;44m \u001b[20;52H\u001b[90;44m..\u001b[20;54H\u001b[37;44m \u001b[20;55H\u001b[90;44m..\u001b[20;57H\u001b[37;44m \u001b[20;58H\u001b[90;44m..\u001b[20;60H\u001b[37;44m \ufffd \u001b[20;63H\u001b[90;44m................\u001b[20;79H\u001b[37;44m \ufffd\u001b[21;1H\u001b[37;44m\ufffd\u001b[21;2H\u001b[33;44m00000022\u001b[21;10H\u001b[37;44m\ufffd \u001b[21;12H\u001b[90;44m..\u001b[21;14H\u001b[37;44m \u001b[21;15H\u001b[90;44m..\u001b[21;17H\u001b[37;44m \u001b[21;18H\u001b[90;44m..\u001b[21;20H\u001b[37;44m \u001b[21;21H\u001b[90;44m..\u001b[21;23H\u001b[37;44m \u001b[21;24H\u001b[90;44m..\u001b[21;26H\u001b[37;44m \u001b[21;27H\u001b[90;44m..\u001b[21;29H\u001b[37;44m \u001b[21;30H\u001b[90;44m..\u001b[21;32H\u001b[37;44m \u001b[21;33H\u001b[90;44m.\u001b[0m\u001b[1;1H\u001b[1;13H",
+      "screenshot": "/home/zyg/Dokumentai/ChatGPT/ManiOS/retest-026/shots/uhex-file.png",
+      "checks": [
+        {
+          "expect": "INPUT.TXT (34 bytes)",
+          "ok": true
+        },
+        {
+          "no_return_observed": true,
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 15.3
+    },
+    {
+      "case": "dm-help",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/catalog2-audit/catalog2.img",
+      "command": "dosrun C:/DMAVEN/DM.EXE ?",
+      "timeout_seconds": 12,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/DMAVEN/DM.EXE ?\r\ndosrun: C:/DMAVEN/DM.EXE: can't run opcode EC (at 15F3:0603)\r\ndosrun: unsupported IN port 0006, AL=44 AX=B844; bytes at 15F3:05FA: FC 0A DB 74 16 AC 8A D8 EC A8 01 75 FB FA EC A8\r\n",
+      "checks": [
+        {
+          "expect": "can't run opcode EC",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.5
+    },
+    {
+      "case": "dm-scan",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/catalog2-audit/catalog2.img",
+      "command": "dosrun C:/DMAVEN/DM.EXE /sC",
+      "timeout_seconds": 12,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/DMAVEN/DM.EXE /sC\r\ndosrun: C:/DMAVEN/DM.EXE: can't run opcode 66 (at 1656:0C91)\r\n",
+      "checks": [
+        {
+          "expect": "can't run opcode 66",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.3
+    },
+    {
+      "case": "fm-install",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/catalog2-audit/catalog2.img",
+      "command": "dosrun C:/FMAVEN/INSTALL.EXE",
+      "timeout_seconds": 12,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/FMAVEN/INSTALL.EXE\r\n\u001b[1;1H\u001b[1;26Hdosrun: C:/FMAVEN/INSTALL.EXE: can't run opcode EC (at 1099:0603)\r\ndosrun: unsupported IN port 0006, AL=46 AX=B846; bytes at 1099:05FA: FC 0A DB 74 16 AC 8A D8 EC A8 01 75 FB FA EC A8\r\n",
+      "checks": [
+        {
+          "expect": "can't run opcode EC",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.2
+    },
+    {
+      "case": "fm-main",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/catalog2-audit/catalog2.img",
+      "command": "dosrun C:/FMAVEN/FMAVEN.EXE",
+      "timeout_seconds": 12,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/FMAVEN/FMAVEN.EXE\r\ndosrun: C:/FMAVEN/FMAVEN.EXE: can't run opcode EC (at 36C9:0603)\r\ndosrun: unsupported IN port 0006, AL=52 AX=B852; bytes at 36C9:05FA: FC 0A DB 74 16 AC 8A D8 EC A8 01 75 FB FA EC A8\r\n",
+      "checks": [
+        {
+          "expect": "can't run opcode EC",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.3
+    },
+    {
+      "case": "fm-launcher",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/catalog2-audit/catalog2.img",
+      "command": "dosrun C:/FMAVEN/FM3.EXE",
+      "timeout_seconds": 12,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/FMAVEN/FM3.EXE\r\ndosrun: C:/FMAVEN/FM3.EXE: can't run opcode EC (at 1063:0603)\r\ndosrun: unsupported IN port 0006, AL=4C AX=B84C; bytes at 1063:05FA: FC 0A DB 74 16 AC 8A D8 EC A8 01 75 FB FA EC A8\r\n",
+      "checks": [
+        {
+          "expect": "can't run opcode EC",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.2
+    },
+    {
+      "case": "ability-main",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/office-audit/office.img",
+      "command": "dosrun C:/AB3/AB30.EXE",
+      "timeout_seconds": 12,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/AB3/AB30.EXE\r\ndosrun: C:/AB3/AB30.EXE: can't run opcode DB (at 10EA:2582)\r\n",
+      "checks": [
+        {
+          "expect": "can't run opcode DB",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.4
+    },
+    {
+      "case": "ability-install",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/office-audit/office.img",
+      "command": "dosrun C:/AB3/INSTALL.EXE",
+      "timeout_seconds": 12,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/AB3/INSTALL.EXE\r\ndosrun: C:/AB3/INSTALL.EXE: can't run opcode 66 (at 1010:165A)\r\n",
+      "checks": [
+        {
+          "expect": "can't run opcode 66",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.1
+    },
+    {
+      "case": "visicalc",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/office-audit/office.img",
+      "command": "dosrun C:/VC/VC.COM",
+      "timeout_seconds": 12,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": false,
+      "output": "dosrun C:/VC/VC.COM\r\n",
+      "screenshot": "/home/zyg/Dokumentai/ChatGPT/ManiOS/retest-026/shots/visicalc.png",
+      "checks": [
+        {
+          "no_return_observed": true,
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 17.2
+    },
+    {
+      "case": "warcraft",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/warcraft-audit/war-test.img",
+      "command": "dosrun C:/WAR.EXE",
+      "timeout_seconds": 12,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/WAR.EXE\r\ndosrun: /n/ata0p1/war.exe: requires 32-bit protected mode (LE/LX DOS extender); dosrun supports real mode only\r\n",
+      "checks": [
+        {
+          "expect": "32-bit",
+          "ok": true
+        },
+        {
+          "expect": "protected",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.3
+    },
+    {
+      "case": "warcraft-install",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/warcraft-audit/war-test.img",
+      "command": "dosrun C:/INSTALL.EXE",
+      "timeout_seconds": 12,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/INSTALL.EXE\r\ndosrun: C:/INSTALL.EXE: can't run opcode E6 (at 1010:4A4C)\r\ndosrun: unsupported OUT port 0043, AL=00 AX=0000; bytes at 1010:4A43: E9 63 B8 C3 9C FA B0 00 E6 43 E8 F6 FF E4 40 8A\r\n",
+      "checks": [
+        {
+          "expect": "can't run opcode E6",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.1
+    },
+    {
+      "case": "more-paging",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/MORE.EXE C:/INPUT60.TXT",
+      "timeout_seconds": 20,
+      "first_screen": "dosrun C:/MORE.EXE C:/INPUT60.TXT\r\nline 01\r\r\r\nline 02\r\r\r\nline 03\r\r\r\nline 04\r\r\r\nline 05\r\r\r\nline 06\r\r\r\nline 07\r\r\r\nline 08\r\r\r\nline 09\r\r\r\nline 10\r\r\r\nline 11\r\r\r\nline 12\r\r\r\nline 13\r\r\r\nline 14\r\r\r\nline 15\r\r\r\nline 16\r\r\r\nline 17\r\r\r\nline 18\r\r\r\nline 19\r\r\r\nline 20\r\r\r\nline 21\r\r\r\nline 22\r\r\r\nline 23\r\r\r\nline 24\r\r\r\n-- More -- INPUT60.TXT (24)--",
+      "paused_before_25": true,
+      "after_space": " \r\n                                        \rline 25\r\r\r\nline 26\r\r\r\nline 27\r\r\r\nline 28\r\r\r\nline 29\r\r\r\nline 30\r\r\r\nline 31\r\r\r\nline 32\r\r\r\nline 33\r\r\r\nline 34\r\r\r\nline 35\r\r\r\nline 36\r\r\r\nline 37\r\r\r\nline 38\r\r\r\nline 39\r\r\r\nline 40\r\r\r\nline 41\r\r\r\nline 42\r\r\r\nline 43\r\r\r\nline 44\r\r\r\nline 45\r\r\r\nline 46\r\r\r\nline 47\r\r\r\nline 48\r\r\r\n-- More -- INPUT60.TXT (48)--                                        \rline 49\r\r\r\nline 50\r\r\r\nline 51\r\r\r\nline 52\r\r\r\nline 53\r\r\r\nline 54\r\r\r\nline 55\r\r\r\nline 56\r\r\r\nline 57\r\r\r\nline 58\r\r\r\nline 59\r\r\r\nline 60\r\r\r\nmanios% ",
+      "advanced_past_25": true,
+      "returned": true,
+      "screenshot": "/home/zyg/Dokumentai/ChatGPT/ManiOS/retest-026/shots/more-paging-after.png",
+      "passed": true,
+      "seconds": 10.3
+    },
+    {
+      "case": "checks-balances",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/checks-audit/checks-test.img",
+      "command": "dosrun C:/CHECK.EXE",
+      "timeout_seconds": 20,
+      "inputs": [
+        "2: IBM colour/ANSI terminal",
+        "1: Epson or similar printer",
+        "6: save configuration and run",
+        "C:DEMO demo data",
+        "Enter: default date",
+        "SH: show demonstration transactions"
+      ],
+      "after_choices": "",
+      "after_printer": " or 0 for none of the above: ",
+      "after_save": ": ",
+      "after_demo": ":  <\u001b[15;48H> \u001b[18;1HPlease consult your manual as to which disk drive to use for your data files.\u001b[19;1HThe drive specification preceeds your file name, as in 'B:DEMO' for drive \"B\"\u001b[24;2H  Most questions are answered in the manual, addendum and help screens.\u001b[2;2H-----------------------------------------------------------------------------\u001b[3;2H|   Welcome to CHECKS & BALANCES\u001b[3;41HVersion - 4.0-g\u001b[3;78H|\u001b[4;2H|   This program is copyright by C.D.E. Software (c)1983, 1984, 1985, 1986  |\u001b[5;2H-----------------------------------------------------------------------------\u001b[6;21H----------------------------------\u001b[7;21H| California Digital Engineering |\u001b[8;21H|\u001b[8;29H948 Tularosa Drive\u001b[8;54H|\u001b[9;21H|  Los Angeles, California 90026 |\u001b[10;21H----------------------------------\u001b[12;9HComputer type selected: IBM COLOR with ANSI.SYS\u001b[13;6HPrinter you have selected: IBM OR SIMILAR\u001b[15;38H",
+      "after_date": "'s date or enter a new date as MM/DD/YY.\u001b[15;25H",
+      "after_show": ". Enter HELP for assistance & additional commands.\u001b[2;2H                                                                             \u001b[3;1HGETTING STARTED                  \u001b[3;41H REPORT GENERATION\u001b[3;78H \u001b[4;1H=====================================    =======================================\u001b[5;1HINit    - Define Categories              PRint  - All or part, as specified   \u001b[6;21H                     SUm    - Category summaries\u001b[7;1HTRANSACTION ENTRY and DISPLAY                         \u001b[8;1H=====================================    CHECK PRINTING\u001b[9;1HENter   - New transaction entry          =======================================\u001b[10;1HSHow\u001b[10;9H- Display selected entries       SEtup  - Define your check form\u001b[11;1HBIlls   - Display and pay bills\u001b[11;42HCHecks - Print checks\u001b[12;1HBAlance - Check off outstanding items    NAmes  - Rolodex with PAYEE addresses\u001b[13;1HSOrt    - Put it all in order                 \u001b[14;42HOTHER COMMANDS\u001b[15;1HBUDGETING\u001b[15;42H=======================================\u001b[16;1H=====================================\u001b[16;42HTOtal  - Category, account totals\u001b[17;1HBUdget  - Display and change budget\u001b[17;42HMOnth  - Period for reports and SHOW\u001b[18;1H--------------------------------------------------------------------------------\u001b[19;14H>>>---> Use BYE to exit NEVER RESET COMPUTER <---<<<\u001b[20;1HEnter first two letters or the full command.\u001b[21;28HPress RETURN for more commands and function key usage\u001b[22;1H\u001b[30;46m10/07/26  Period covers entire year\u001b[22;70H-- All --\u001b[23;17HRolodex=CDENAMES   TRUE $\u001b[23;46H2450.20 BANK $\u001b[23;65H279.04\u001b[24;1H\u001b[37;44m",
+      "screenshot": "/home/zyg/Dokumentai/ChatGPT/ManiOS/retest-026/shots/checks-balances.png",
+      "saw_demo_totals": true,
+      "passed": true,
+      "seconds": 8.8
+    },
+    {
+      "case": "windows-setup",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/windows101-audit/windows.img",
+      "command": "dosrun --mount A=/n/ata0p1 C:/SETUP.EXE",
+      "inputs": [
+        "c",
+        "<Enter>",
+        "c",
+        "<Enter>",
+        "<Enter>",
+        "c",
+        "c",
+        "n",
+        "c",
+        "c"
+      ],
+      "timeout_seconds": 70,
+      "returned": true,
+      "output": "dosrun --mount A=/n/ata0p1 C:/SETUP.EXE\r\n\u001b[16;5H\u001b[13;51H\u001b[1;1H\u001b[37;40m                                                                                \u001b[2;1H\u001b[37;40m                                                                                \u001b[3;1H\u001b[37;40m    Setup prepares Microsoft Windows to run on your computer.                   \u001b[4;1H\u001b[37;40m    It also helps you set up your disks in the most efficient way for:          \u001b[5;1H\u001b[37;40m                                                                                \u001b[6;1H\u001b[37;40m        - starting Microsoft Windows                                            \u001b[7;1H\u001b[37;40m        - running Windows applications                                          \u001b[8;1H\u001b[37;40m        - printing from Microsoft Windows                                       \u001b[9;1H\u001b[37;40m                                                                                \u001b[10;1H\u001b[37;40m    When you're   \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u037b                      \u001b[11;1H\u001b[37;40m    ready:        \ufffd TO                          PRESS    \ufffd                      \u001b[12;1H\u001b[37;40m                  \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u0136                      \u001b[13;1H\u001b[37;40m                  \ufffd Continue                      C      \ufffd                      \u001b[14;1H\u001b[37;40m                  \ufffd Quit                          Q      \ufffd                      \u001b[15;1H\u001b[37;40m                  \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u037c                      \u001b[16;1H\u001b[37;40m                                                                                \u001b[17;1H\u001b[37;40m                                                                                \u001b[18;1H\u001b[37;40m                                                                                \u001b[19;1H\u001b[37;40m                                                                                \u001b[20;1H\u001b[37;40m                                                                                \u001b[21;1H\u001b[37;40m                                                                                \u001b[22;1H\u001b[37;40m                                                                                \u001b[23;1H\u001b[37;40m                                                                                \u001b[24;1H\u001b[37;40m                                                                                \u001b[25;1H\u001b[37;40m                                                                                \u001b[0m\u001b[13;51Hc\r\n\u001b[17;5H\u001b[3;5H\u001b[37;40mNow Setup will\u001b[3;20H\u001b[37;40mcopy the Windows files to your hard disk. \u001b[4;5H\u001b[37;40m  \u001b[4;8H\u001b[37;40m    \u001b[4;13H\u001b[37;40m     \u001b[4;19H\u001b[37;40m   \u001b[4;23H\u001b[37;40m   \u001b[4;27H\u001b[37;40m  \u001b[4;30H\u001b[37;40m    \u001b[4;35H\u001b[37;40m     \u001b[4;41H\u001b[37;40m  \u001b[4;44H\u001b[37;40m   \u001b[4;48H\u001b[37;40m    \u001b[4;53H\u001b[37;40m         \u001b[4;63H\u001b[37;40m   \u001b[4;67H\u001b[37;40m    \u001b[5;5H\u001b[37;40mPlease\u001b[5;12H\u001b[37;40mtype\u001b[5;17H\u001b[37;40mbelow\u001b[5;23H\u001b[37;40mthe\u001b[5;27H\u001b[37;40mfull\u001b[5;32H\u001b[37;40mpathname\u001b[5;41H\u001b[37;40mof\u001b[5;44H\u001b[37;40mthe\u001b[5;48H\u001b[37;40mdirectory\u001b[6;5H\u001b[37;40mwhere\u001b[6;11H\u001b[37;40myou would like SETUP to put\u001b[6;39H\u001b[37;40mthe\u001b[6;43H\u001b[37;40mWindows\u001b[6;51H\u001b[37;40mfiles.\u001b[7;9H\u001b[37;40m \u001b[7;11H\u001b[37;40m       \u001b[7;19H\u001b[37;40m       \u001b[7;27H\u001b[37;40m            \u001b[8;5H\u001b[37;40mTo\u001b[8;8H\u001b[37;40maccept \\WINDOWS as the directory: \u001b[9;9H\u001b[37;40m-\u001b[9;11H\u001b[37;40mpress\u001b[9;17H\u001b[37;40mthe\u001b[9;21H\u001b[37;40m\u0011\ufffd\ufffd\u001b[9;25H\u001b[37;40mkey.\u001b[10;5H\u001b[37;40m    \u001b[10;10H\u001b[37;40m      \u001b[10;19H\u001b[37;40m                                        \u001b[11;5H\u001b[37;40mTo specify\u001b[11;16H\u001b[37;40ma\u001b[11;18H\u001b[37;40mdifferent\u001b[11;28H\u001b[37;40mdirectory:\u001b[11;49H\u001b[37;40m     \u001b[11;58H\u001b[37;40m \u001b[12;9H\u001b[37;40m-\u001b[12;11H\u001b[37;40mUse\u001b[12;15H\u001b[37;40mthe\u001b[12;19H\u001b[37;40mBackspace key to delete characters      \u001b[13;9H\u001b[37;40m-\u001b[13;11H\u001b[37;40mType\u001b[13;16H\u001b[37;40mthe new d\u001b[13;26H\u001b[37;40mrectory\u001b[13;34H\u001b[37;40mname\u001b[13;39H\u001b[37;40m(for\u001b[13;44H\u001b[37;40mexample:\u001b[13;53H\u001b[37;40mC:\\PROGRAMS)\u001b[14;9H\u001b[37;40m-\u001b[14;11H\u001b[37;40mpress\u001b[14;17H\u001b[37;40mthe\u001b[14;21H\u001b[37;40m\u0011\ufffd\ufffd key.\u001b[14;51H\u001b[37;40m \u001b[14;58H\u001b[37;40m \u001b[15;19H\u001b[37;40m                                        \u001b[16;5H\u001b[37;40m[\u001b[16;70H\u001b[37;40m]\u001b[0m\u001b[17;5H\u001b[16;16H\u001b[16;6H\u001b[37;40mC:\\WINDOWS\u001b[0m\u001b[16;16H\r\n\u001b[24;5H\u001b[21;51H\u001b[3;5H\u001b[37;40mT\u001b[3;7H\u001b[37;40m setup Microsoft Windows on a\u001b[3;37H\u001b[37;40mhard disk you\u001b[3;51H\u001b[37;40mnee\u001b[3;55H\u001b[37;40m:     \u001b[5;5H\u001b[37;40m    - the Microsof\u001b[5;24H\u001b[37;40m Windows Setup disk\u001b[5;44H\u001b[37;40m   \u001b[5;48H\u001b[37;40m         \u001b[6;5H\u001b[37;40m    -\u001b[6;11H\u001b[37;40mthe\u001b[6;15H\u001b[37;40mMicrosoft Windows Build\u001b[6;39H\u001b[37;40mdisk       \u001b[6;51H\u001b[37;40m      \u001b[7;9H\u001b[37;40m-\u001b[7;11H\u001b[37;40mthe\u001b[7;15H\u001b[37;40mMicrosoft\u001b[7;25H\u001b[37;40mWindows\u001b[7;33H\u001b[37;40mUtilities\u001b[7;43H\u001b[37;40mdisk\u001b[8;5H\u001b[37;40m  \u001b[8;8H\u001b[37;40m - the\u001b[8;15H\u001b[37;40mMicrosoft Windows D\u001b[8;35H\u001b[37;40msktop Applications\u001b[8;54H\u001b[37;40mdisk\u001b[9;11H\u001b[37;40mth\u001b[9;14H\u001b[37;40m Microsoft\u001b[9;25H\u001b[37;40mWrite\u001b[9;31H\u001b[37;40mProgram\u001b[9;39H\u001b[37;40mdisk\u001b[11;5H\u001b[37;40mY\u001b[11;7H\u001b[37;40mu n\u001b[11;11H\u001b[37;40med to know th\u001b[11;25H\u001b[37;40m following:  \u001b[12;9H\u001b[37;40m \u001b[12;11H\u001b[37;40m   \u001b[12;15H\u001b[37;40m   \u001b[12;19H\u001b[37;40m         \u001b[12;29H\u001b[37;40m   \u001b[12;33H\u001b[37;40m  \u001b[12;36H\u001b[37;40m      \u001b[12;43H\u001b[37;40m          \u001b[13;11H\u001b[37;40mwhat\u001b[13;16H\u001b[37;40mkind of\u001b[13;24H\u001b[37;40mpointer devic\u001b[13;40H\u001b[37;40mm\u001b[13;42H\u001b[37;40mus\u001b[13;45H\u001b[37;40m) you have, if any  \u001b[14;11H\u001b[37;40mwhat kind\u001b[14;21H\u001b[37;40mof graphics\u001b[14;33H\u001b[37;40madaptor\u001b[14;41H\u001b[37;40myou\u001b[14;45H\u001b[37;40mhave\u001b[15;9H\u001b[37;40m-\u001b[15;11H\u001b[37;40mwhat\u001b[15;16H\u001b[37;40mkind\u001b[15;21H\u001b[37;40mof\u001b[15;24H\u001b[37;40mprinter(s)\u001b[15;35H\u001b[37;40myou\u001b[15;39H\u001b[37;40mhave,\u001b[15;45H\u001b[37;40mif\u001b[15;48H\u001b[37;40many\u001b[16;5H\u001b[37;40m    - how each\u001b[16;20H\u001b[37;40mprinter\u001b[16;28H\u001b[37;40mis\u001b[16;31H\u001b[37;40mconnected\u001b[16;41H\u001b[37;40mto\u001b[16;44H\u001b[37;40myour\u001b[16;49H\u001b[37;40mcomputer\u001b[16;70H\u001b[37;40m \u001b[18;5H\u001b[37;40mWhen\u001b[18;10H\u001b[37;40myou're\u001b[18;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u037b\u001b[19;5H\u001b[37;40mready:\u001b[19;19H\u001b[37;40m\ufffd\u001b[19;21H\u001b[37;40mTO\u001b[19;49H\u001b[37;40mPRESS\u001b[19;58H\u001b[37;40m\ufffd\u001b[20;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u0136\u001b[21;19H\u001b[37;40m\ufffd\u001b[21;21H\u001b[37;40mContinue\u001b[21;51H\u001b[37;40mC\u001b[21;58H\u001b[37;40m\ufffd\u001b[22;19H\u001b[37;40m\ufffd\u001b[22;21H\u001b[37;40mQuit\u001b[22;51H\u001b[37;40mQ\u001b[22;58H\u001b[37;40m\ufffd\u001b[23;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u037c\u001b[0m\u001b[21;51Hc\r\n\u001b[21;5H\u001b[3;5H\u001b[37;40mIn\u001b[3;8H\u001b[37;40morder\u001b[3;14H\u001b[37;40mto opera\u001b[3;23H\u001b[37;40me correctly, Mic\u001b[3;40H\u001b[37;40mosoft Windows needs\u001b[3;60H\u001b[37;40mto\u001b[3;63H\u001b[37;40mknow\u001b[4;5H\u001b[37;40mwhat\u001b[4;10H\u001b[37;40mkind\u001b[4;15H\u001b[37;40mof\u001b[4;18H\u001b[37;40mpointing\u001b[4;27H\u001b[37;40mdevice\u001b[4;34H\u001b[37;40myou\u001b[4;38H\u001b[37;40mhave.\u001b[5;9H\u001b[37;40m \u001b[5;11H\u001b[37;40m   \u001b[5;15H\u001b[37;40m         \u001b[5;25H\u001b[37;40m       \u001b[5;33H\u001b[37;40m     \u001b[5;39H\u001b[37;40m    \u001b[6;5H\u001b[37;40mFollow these       \u001b[6;25H\u001b[37;40m  - Find your\u001b[6;39H\u001b[37;40mpointing\u001b[6;48H\u001b[37;40mdevice\u001b[6;55H\u001b[37;40mon\u001b[6;58H\u001b[37;40mthis\u001b[6;63H\u001b[37;40mlist.\u001b[7;5H\u001b[37;40msteps:   \u001b[7;15H\u001b[37;40m         \u001b[7;25H\u001b[37;40m  - Type \u001b[7;35H\u001b[37;40mhe number for\u001b[7;49H\u001b[37;40myour\u001b[7;54H\u001b[37;40mpointing\u001b[7;63H\u001b[37;40mdevice.\u001b[8;9H\u001b[37;40m \u001b[8;11H\u001b[37;40m   \u001b[8;15H\u001b[37;40m         \u001b[8;25H\u001b[37;40m    (Or\u001b[8;33H\u001b[37;40menter Q\u001b[8;41H\u001b[37;40mto quit Setup)   \u001b[9;9H\u001b[37;40m \u001b[9;11H\u001b[37;40m   \u001b[9;15H\u001b[37;40m         \u001b[9;25H\u001b[37;40m  - Press the\u001b[9;39H\u001b[37;40m\u0011\ufffd\ufffd key.\u001b[11;2H\u001b[37;40m1:\u001b[11;5H\u001b[37;40mN\u001b[11;7H\u001b[37;40m pointing\u001b[11;17H\u001b[37;40mdevice  \u001b[11;26H\u001b[37;40m          \u001b[12;2H\u001b[37;40m2:\u001b[12;5H\u001b[37;40mMicrosoft\u001b[12;15H\u001b[37;40mMouse\u001b[12;21H\u001b[37;40m(Bus/Serial)\u001b[13;2H\u001b[37;40m3:\u001b[13;5H\u001b[37;40mMouse\u001b[13;11H\u001b[37;40mSys\u001b[13;15H\u001b[37;40mems or VisiO\u001b[13;28H\u001b[37;40m Mous\u001b[13;34H\u001b[37;40m (COM1)     \u001b[13;47H\u001b[37;40m   \u001b[13;51H\u001b[37;40m     \u001b[13;57H\u001b[37;40m  \u001b[13;60H\u001b[37;40m   \u001b[14;2H\u001b[37;40m4:\u001b[14;5H\u001b[37;40mMouse\u001b[14;11H\u001b[37;40mSys\u001b[14;15H\u001b[37;40mems or VisiOn Mouse (COM2)   \u001b[14;45H\u001b[37;40m    \u001b[15;2H\u001b[37;40m5:\u001b[15;5H\u001b[37;40mLogitec\u001b[15;13H\u001b[37;40m Ser\u001b[15;18H\u001b[37;40mal\u001b[15;21H\u001b[37;40mMouse        \u001b[15;35H\u001b[37;40m   \u001b[15;39H\u001b[37;40m     \u001b[15;45H\u001b[37;40m  \u001b[15;48H\u001b[37;40m   \u001b[16;2H\u001b[37;40m6:\u001b[16;5H\u001b[37;40mKraft\u001b[16;11H\u001b[37;40mJ\u001b[16;13H\u001b[37;40mysti\u001b[16;18H\u001b[37;40mk\u001b[16;20H\u001b[37;40mMouse  \u001b[16;28H\u001b[37;40m  \u001b[16;31H\u001b[37;40m         \u001b[16;41H\u001b[37;40m  \u001b[16;44H\u001b[37;40m    \u001b[16;49H\u001b[37;40m        \u001b[17;2H\u001b[37;40m7:\u001b[17;5H\u001b[37;40mthe\u001b[17;9H\u001b[37;40mLite-Pen\u001b[17;18H\u001b[37;40mCompany\u001b[17;26H\u001b[37;40m-\u001b[17;28H\u001b[37;40mLightpen\u001b[18;2H\u001b[37;40m8:\u001b[18;5H\u001b[37;40mFTG Data Systems Lightpen and Single Pixel Board      \u001b[19;5H\u001b[37;40m      \u001b[19;19H\u001b[37;40m \u001b[19;21H\u001b[37;40m  \u001b[19;49H\u001b[37;40m     \u001b[19;58H\u001b[37;40m \u001b[20;13H\u001b[37;40mpointing device:                              \u001b[21;19H\u001b[37;40m \u001b[21;21H\u001b[37;40m        \u001b[21;51H\u001b[37;40m \u001b[21;58H\u001b[37;40m \u001b[22;19H\u001b[37;40m \u001b[22;21H\u001b[37;40m    \u001b[22;51H\u001b[37;40m \u001b[22;58H\u001b[37;40m \u001b[23;19H\u001b[37;40m                                        \u001b[0m\u001b[21;5H\u001b[20;30H\u001b[20;30H\u001b[37;40m1\u001b[0m\u001b[20;30H\r\n\u001b[19;5H\u001b[18;31H\u001b[4;18H\u001b[37;40mgraph\u001b[4;24H\u001b[37;40mcs\u001b[4;27H\u001b[37;40madapt\u001b[4;33H\u001b[37;40mr you have.\u001b[6;39H\u001b[37;40mgraph\u001b[6;45H\u001b[37;40mcs\u001b[6;48H\u001b[37;40madapt\u001b[6;54H\u001b[37;40mr on this list.\u001b[7;54H\u001b[37;40mgraph\u001b[7;60H\u001b[37;40mcs\u001b[7;63H\u001b[37;40madapt\u001b[7;69H\u001b[37;40mr.\u001b[11;5H\u001b[37;40mIBM (or compatibl\u001b[11;23H\u001b[37;40m)\u001b[11;25H\u001b[37;40mColor/Graphics\u001b[11;40H\u001b[37;40mAdapter\u001b[11;48H\u001b[37;40mor\u001b[11;51H\u001b[37;40mCOMPAQ\u001b[11;58H\u001b[37;40mPersonal\u001b[11;67H\u001b[37;40mComputer\u001b[12;5H\u001b[37;40mHercules Graphics Card (or compatible)\u001b[12;44H\u001b[37;40mwith\u001b[12;49H\u001b[37;40mMonochrome\u001b[12;60H\u001b[37;40mDisplay\u001b[13;5H\u001b[37;40mEnhanced Graphics Adapter (EGA) with\u001b[13;42H\u001b[37;40mMonochrome\u001b[13;53H\u001b[37;40mPersonal\u001b[13;62H\u001b[37;40mComputer\u001b[13;71H\u001b[37;40mDisplay\u001b[14;5H\u001b[37;40mEGA with Enhanced Color\u001b[14;29H\u001b[37;40mDisplay (Black\u001b[14;44H\u001b[37;40mand\u001b[14;48H\u001b[37;40mWhite\u001b[14;54H\u001b[37;40monly)\u001b[15;5H\u001b[37;40mEGA wit\u001b[15;14H\u001b[37;40mEnhanced Color\u001b[15;29H\u001b[37;40mDisplay\u001b[15;37H\u001b[37;40mor\u001b[15;40H\u001b[37;40mPersonal\u001b[15;49H\u001b[37;40mComputer\u001b[15;58H\u001b[37;40mColor\u001b[15;64H\u001b[37;40mDisplay\u001b[16;5H\u001b[37;40mEGA (more \u001b[16;16H\u001b[37;40mhan\u001b[16;20H\u001b[37;40m64K) with\u001b[16;30H\u001b[37;40mEnhanced\u001b[16;39H\u001b[37;40mColor\u001b[16;45H\u001b[37;40mDisplay\u001b[17;2H\u001b[37;40m  \u001b[17;5H\u001b[37;40m   \u001b[17;9H\u001b[37;40m        \u001b[17;18H\u001b[37;40m       \u001b[17;26H\u001b[37;40m \u001b[17;28H\u001b[37;40m        \u001b[18;2H\u001b[37;40m  \u001b[18;5H\u001b[37;40m   \u001b[18;9H\u001b[37;40m    graphic\u001b[18;22H\u001b[37;40madap\u001b[18;27H\u001b[37;40mer:\u001b[18;31H\u001b[37;40m1  \u001b[18;35H\u001b[37;40m      \u001b[18;42H\u001b[37;40m     \u001b[18;48H\u001b[37;40m     \u001b[20;13H\u001b[37;40m        \u001b[20;22H\u001b[37;40m       \u001b[20;30H\u001b[37;40m \u001b[0m\u001b[18;31H\r\n\u001b[5;5H\u001b[3;5H\u001b[37;40mSetup is\u001b[3;14H\u001b[37;40mc\u001b[3;16H\u001b[37;40mpying files from the Setup disk to the     \u001b[3;60H\u001b[37;40m  \u001b[3;63H\u001b[37;40m    \u001b[4;5H\u001b[37;40mC:\\WINDOWS\\ di\u001b[4;20H\u001b[37;40mectory.       \u001b[4;35H\u001b[37;40m   \u001b[4;39H\u001b[37;40m     \u001b[6;5H\u001b[37;40m      \u001b[6;12H\u001b[37;40m     \u001b[6;27H\u001b[37;40m \u001b[6;29H\u001b[37;40m    \u001b[6;34H\u001b[37;40m    \u001b[6;39H\u001b[37;40m        \u001b[6;48H\u001b[37;40m       \u001b[6;56H\u001b[37;40m  \u001b[6;59H\u001b[37;40m    \u001b[6;64H\u001b[37;40m     \u001b[7;5H\u001b[37;40m      \u001b[7;27H\u001b[37;40m \u001b[7;29H\u001b[37;40m    \u001b[7;34H\u001b[37;40m   \u001b[7;38H\u001b[37;40m      \u001b[7;45H\u001b[37;40m   \u001b[7;49H\u001b[37;40m    \u001b[7;54H\u001b[37;40m        \u001b[7;63H\u001b[37;40m        \u001b[8;29H\u001b[37;40m   \u001b[8;33H\u001b[37;40m     \u001b[8;39H\u001b[37;40m \u001b[8;41H\u001b[37;40m  \u001b[8;44H\u001b[37;40m    \u001b[8;49H\u001b[37;40m      \u001b[9;27H\u001b[37;40m \u001b[9;29H\u001b[37;40m     \u001b[9;35H\u001b[37;40m   \u001b[9;39H\u001b[37;40m   \u001b[9;43H\u001b[37;40m    \u001b[11;2H\u001b[37;40m  \u001b[11;5H\u001b[37;40m   \u001b[11;9H\u001b[37;40m   \u001b[11;13H\u001b[37;40m           \u001b[11;25H\u001b[37;40m              \u001b[11;40H\u001b[37;40m       \u001b[11;48H\u001b[37;40m  \u001b[11;51H\u001b[37;40m      \u001b[11;58H\u001b[37;40m        \u001b[11;67H\u001b[37;40m        \u001b[12;2H\u001b[37;40m  \u001b[12;5H\u001b[37;40m        \u001b[12;14H\u001b[37;40m        \u001b[12;23H\u001b[37;40m    \u001b[12;28H\u001b[37;40m   \u001b[12;32H\u001b[37;40m           \u001b[12;44H\u001b[37;40m    \u001b[12;49H\u001b[37;40m          \u001b[12;60H\u001b[37;40m       \u001b[13;2H\u001b[37;40m  \u001b[13;5H\u001b[37;40m        \u001b[13;14H\u001b[37;40m        \u001b[13;23H\u001b[37;40m       \u001b[13;31H\u001b[37;40m     \u001b[13;37H\u001b[37;40m    \u001b[13;42H\u001b[37;40m          \u001b[13;53H\u001b[37;40m        \u001b[13;62H\u001b[37;40m        \u001b[13;71H\u001b[37;40m       \u001b[14;2H\u001b[37;40m  \u001b[14;5H\u001b[37;40m   \u001b[14;9H\u001b[37;40m    \u001b[14;14H\u001b[37;40m        \u001b[14;23H\u001b[37;40m     \u001b[14;29H\u001b[37;40m       \u001b[14;37H\u001b[37;40m      \u001b[14;44H\u001b[37;40m   \u001b[14;48H\u001b[37;40m     \u001b[14;54H\u001b[37;40m     \u001b[15;2H\u001b[37;40m  \u001b[15;5H\u001b[37;40m   \u001b[15;9H\u001b[37;40m    \u001b[15;14H\u001b[37;40m        \u001b[15;23H\u001b[37;40m     \u001b[15;29H\u001b[37;40m       \u001b[15;37H\u001b[37;40m  \u001b[15;40H\u001b[37;40m        \u001b[15;49H\u001b[37;40m        \u001b[15;58H\u001b[37;40m     \u001b[15;64H\u001b[37;40m       \u001b[16;2H\u001b[37;40m  \u001b[16;5H\u001b[37;40m   \u001b[16;9H\u001b[37;40m     \u001b[16;15H\u001b[37;40m    \u001b[16;20H\u001b[37;40m    \u001b[16;25H\u001b[37;40m    \u001b[16;30H\u001b[37;40m        \u001b[16;39H\u001b[37;40m     \u001b[16;45H\u001b[37;40m       \u001b[18;13H\u001b[37;40m        \u001b[18;22H\u001b[37;40m        \u001b[18;31H\u001b[37;40m \u001b[0m\u001b[5;5H\u001b[24;11H\u001b[37;40mg\u001b[24;13H\u001b[37;40mfile\u001b[24;18H\u001b[37;40m4\u001b[0m\u001b[5;5H\u001b[24;11H\u001b[37;40m \u001b[24;13H\u001b[37;40m    \u001b[24;18H\u001b[37;40m \u001b[0m\u001b[5;5H\u001b[24;16H\u001b[37;40me\u001b[24;18H\u001b[37;40m15\u001b[0m\u001b[5;5H\u001b[24;6H\u001b[37;40mopying\u001b[24;13H\u001b[37;40mfil\u001b[24;19H\u001b[37;40m8\u001b[0m\u001b[5;5H\u001b[24;5H\u001b[37;40mC\u001b[24;18H\u001b[37;40m  \u001b[0m\u001b[5;5H\u001b[24;9H\u001b[37;40m   \u001b[24;13H\u001b[37;40m    \u001b[0m\u001b[5;5H\u001b[24;5H\u001b[37;40m    \u001b[0m\u001b[5;5H\u001b[24;19H\u001b[37;40m3\u001b[0m\u001b[5;5H\u001b[24;11H\u001b[37;40mg\u001b[24;13H\u001b[37;40mfile\u001b[24;18H\u001b[37;40m56\u001b[0m\u001b[5;5H\u001b[24;5H\u001b[37;40mCopyin\u001b[24;19H\u001b[37;40m9\u001b[0m\u001b[5;5H\u001b[24;18H\u001b[37;40m6 \u001b[0m\u001b[5;5H\u001b[24;13H\u001b[37;40m    \u001b[24;18H\u001b[37;40m \u001b[0m\u001b[5;5H\u001b[24;13H\u001b[37;40mfile\u001b[24;18H\u001b[37;40m67\u001b[0m\u001b[5;5H\u001b[20;5H\u001b[18;51H\u001b[3;11H\u001b[37;40mnow needs to r\u001b[3;26H\u001b[37;40mad the\u001b[3;33H\u001b[37;40mBuild disk.   \u001b[3;48H\u001b[37;40m  \u001b[3;51H\u001b[37;40m   \u001b[4;5H\u001b[37;40mPlease insert it in drive\u001b[4;31H\u001b[37;40mA:\u001b[6;32H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u013f\u001b[7;32H\u001b[37;40m\ufffd\u001b[7;49H\u001b[37;40m\ufffd\u001b[8;32H\u001b[37;40m\ufffd\u001b[8;34H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\u0375\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u001b[8;49H\u001b[37;40m\ufffd\u001b[9;32H\u001b[37;40m\ufffd\u001b[9;49H\u001b[37;40m\ufffd\u001b[10;32H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u001b[12;32H\u001b[37;40mPut\u001b[12;36H\u001b[37;40mthe\u001b[12;40H\u001b[37;40mBuild\u001b[12;46H\u001b[37;40mdisk\u001b[13;34H\u001b[37;40minto\u001b[13;39H\u001b[37;40mdrive\u001b[13;45H\u001b[37;40mA:\u001b[15;5H\u001b[37;40mWhen\u001b[15;10H\u001b[37;40myou're\u001b[15;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u037b\u001b[16;5H\u001b[37;40mready:\u001b[16;19H\u001b[37;40m\ufffd\u001b[16;21H\u001b[37;40mTO\u001b[16;49H\u001b[37;40mPRESS\u001b[16;58H\u001b[37;40m\ufffd\u001b[17;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u0136\u001b[18;19H\u001b[37;40m\ufffd\u001b[18;21H\u001b[37;40mContinue\u001b[18;51H\u001b[37;40mC\u001b[18;58H\u001b[37;40m\ufffd\u001b[19;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u037c\u001b[24;5H\u001b[37;40m       \u001b[24;13H\u001b[37;40m    \u001b[24;18H\u001b[37;40m  \u001b[0m\u001b[18;51Hc\r\n\u001b[5;5H\u001b[3;11H\u001b[37;40mis copying fil\u001b[3;26H\u001b[37;40ms from\u001b[3;33H\u001b[37;40mthe Build disk\u001b[3;48H\u001b[37;40mto\u001b[3;51H\u001b[37;40mthe\u001b[4;5H\u001b[37;40mC:\\WINDOWS\\ directory.   \u001b[4;31H\u001b[37;40m  \u001b[6;32H\u001b[37;40m                  \u001b[7;32H\u001b[37;40m \u001b[7;49H\u001b[37;40m \u001b[8;32H\u001b[37;40m \u001b[8;34H\u001b[37;40m              \u001b[8;49H\u001b[37;40m \u001b[9;32H\u001b[37;40m \u001b[9;49H\u001b[37;40m \u001b[10;32H\u001b[37;40m                  \u001b[12;32H\u001b[37;40m   \u001b[12;36H\u001b[37;40m   \u001b[12;40H\u001b[37;40m     \u001b[12;46H\u001b[37;40m    \u001b[13;34H\u001b[37;40m    \u001b[13;39H\u001b[37;40m     \u001b[13;45H\u001b[37;40m  \u001b[15;5H\u001b[37;40m    \u001b[15;10H\u001b[37;40m      \u001b[15;19H\u001b[37;40m                                        \u001b[16;5H\u001b[37;40m      \u001b[16;19H\u001b[37;40m \u001b[16;21H\u001b[37;40m  \u001b[16;49H\u001b[37;40m     \u001b[16;58H\u001b[37;40m \u001b[17;19H\u001b[37;40m                                        \u001b[18;19H\u001b[37;40m \u001b[18;21H\u001b[37;40m        \u001b[18;51H\u001b[37;40m \u001b[18;58H\u001b[37;40m \u001b[19;19H\u001b[37;40m                                        \u001b[24;5H\u001b[37;40mCopying\u001b[24;13H\u001b[37;40mfile\u001b[0m\u001b[5;5H\u001b[24;9H\u001b[37;40m   \u001b[24;13H\u001b[37;40m    \u001b[0m\u001b[5;5H\u001b[24;5H\u001b[37;40m    \u001b[0m\u001b[5;5H\u001b[24;5H\u001b[37;40mCopying\u001b[24;13H\u001b[37;40mfile\u001b[24;18H\u001b[37;40m74\u001b[0m\u001b[5;5H\u001b[5;5H\u001b[3;14H\u001b[37;40mwrit\u001b[3;22H\u001b[37;40mthe Wind\u001b[3;31H\u001b[37;40mws startup files\u001b[24;5H\u001b[37;40m       \u001b[24;13H\u001b[37;40m    \u001b[24;18H\u001b[37;40m  \u001b[0m\u001b[5;5H\u001b[20;5H\u001b[3;11H\u001b[37;40mnow needs to read the Utili\u001b[3;39H\u001b[37;40mies disk.  \u001b[3;51H\u001b[37;40m   \u001b[4;5H\u001b[37;40mPlease insert it in drive\u001b[4;31H\u001b[37;40mA:\u001b[6;32H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u013f\u001b[7;32H\u001b[37;40m\ufffd\u001b[7;49H\u001b[37;40m\ufffd\u001b[8;32H\u001b[37;40m\ufffd\u001b[8;34H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\u0375\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u001b[8;49H\u001b[37;40m\ufffd\u001b[9;32H\u001b[37;40m\ufffd\u001b[9;49H\u001b[37;40m\ufffd\u001b[10;32H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u001b[12;30H\u001b[37;40mPut\u001b[12;34H\u001b[37;40mthe\u001b[12;38H\u001b[37;40mUtilities\u001b[12;48H\u001b[37;40mdisk\u001b[13;34H\u001b[37;40minto\u001b[13;39H\u001b[37;40mdrive\u001b[13;45H\u001b[37;40mA:\u001b[15;5H\u001b[37;40mWhen\u001b[15;10H\u001b[37;40myou're\u001b[15;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u037b\u001b[16;5H\u001b[37;40mready:\u001b[16;19H\u001b[37;40m\ufffd\u001b[16;21H\u001b[37;40mTO\u001b[16;49H\u001b[37;40mPRESS\u001b[16;58H\u001b[37;40m\ufffd\u001b[17;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u0136\u001b[18;19H\u001b[37;40m\ufffd\u001b[18;21H\u001b[37;40mContinue\u001b[18;51H\u001b[37;40mC\u001b[18;58H\u001b[37;40m\ufffd\u001b[19;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u037c\u001b[0m\u001b[20;5H\u001b[18;51Hc\r\n\u001b[5;5H\u001b[3;11H\u001b[37;40mis copying fil\u001b[3;26H\u001b[37;40ms from\u001b[3;33H\u001b[37;40mthe U\u001b[3;40H\u001b[37;40mlitie\u001b[3;46H\u001b[37;40m disk\u001b[3;52H\u001b[37;40mto\u001b[3;55H\u001b[37;40mthe\u001b[4;5H\u001b[37;40mC:\\WINDOWS\\ directory.   \u001b[4;31H\u001b[37;40m  \u001b[6;32H\u001b[37;40m                  \u001b[7;32H\u001b[37;40m \u001b[7;49H\u001b[37;40m \u001b[8;32H\u001b[37;40m \u001b[8;34H\u001b[37;40m              \u001b[8;49H\u001b[37;40m \u001b[9;32H\u001b[37;40m \u001b[9;49H\u001b[37;40m \u001b[10;32H\u001b[37;40m                  \u001b[12;30H\u001b[37;40m   \u001b[12;34H\u001b[37;40m   \u001b[12;38H\u001b[37;40m         \u001b[12;48H\u001b[37;40m    \u001b[13;34H\u001b[37;40m    \u001b[13;39H\u001b[37;40m     \u001b[13;45H\u001b[37;40m  \u001b[15;5H\u001b[37;40m    \u001b[15;10H\u001b[37;40m      \u001b[15;19H\u001b[37;40m                                        \u001b[16;5H\u001b[37;40m      \u001b[16;19H\u001b[37;40m \u001b[16;21H\u001b[37;40m  \u001b[16;49H\u001b[37;40m     \u001b[16;58H\u001b[37;40m \u001b[17;19H\u001b[37;40m                                        \u001b[18;19H\u001b[37;40m \u001b[18;21H\u001b[37;40m        \u001b[18;51H\u001b[37;40m \u001b[18;58H\u001b[37;40m \u001b[19;19H\u001b[37;40m                                        \u001b[24;11H\u001b[37;40mg\u001b[24;13H\u001b[37;40mfile\u001b[24;18H\u001b[37;40m75\u001b[0m\u001b[5;5H\u001b[24;11H\u001b[37;40m \u001b[24;13H\u001b[37;40m    \u001b[24;18H\u001b[37;40m  \u001b[0m\u001b[5;5H\u001b[24;5H\u001b[37;40mCopying\u001b[24;13H\u001b[37;40mfile\u001b[24;18H\u001b[37;40m78\u001b[0m\u001b[5;5H\u001b[24;5H\u001b[37;40m       \u001b[24;13H\u001b[37;40m    \u001b[24;18H\u001b[37;40m  \u001b[0m\u001b[5;5H\u001b[24;5H\u001b[37;40mCopying\u001b[24;13H\u001b[37;40mfile\u001b[24;18H\u001b[37;40m81\u001b[0m\u001b[5;5H\u001b[11;5H\u001b[3;5H\u001b[37;40mWould\u001b[3;11H\u001b[37;40myou like to set up a printer/plotter?   \u001b[3;52H\u001b[37;40m  \u001b[3;55H\u001b[37;40m   \u001b[4;5H\u001b[37;40m           \u001b[4;17H\u001b[37;40m          \u001b[5;5H\u001b[37;40mWhen\u001b[5;10H\u001b[37;40myou're\u001b[5;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u037b\u001b[6;5H\u001b[37;40mready:\u001b[6;19H\u001b[37;40m\ufffd\u001b[6;21H\u001b[37;40mTO\u001b[6;49H\u001b[37;40mPRESS\u001b[6;58H\u001b[37;40m\ufffd\u001b[7;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u0136\u001b[8;19H\u001b[37;40m\ufffd\u001b[8;21H\u001b[37;40mSet\u001b[8;25H\u001b[37;40mup\u001b[8;28H\u001b[37;40ma\u001b[8;30H\u001b[37;40mprinter/plotter\u001b[8;51H\u001b[37;40mY\u001b[8;58H\u001b[37;40m\ufffd\u001b[9;19H\u001b[37;40m\ufffd\u001b[9;21H\u001b[37;40mContinue\u001b[9;51H\u001b[37;40mN\u001b[9;58H\u001b[37;40m\ufffd\u001b[10;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u037c\u001b[24;5H\u001b[37;40m       \u001b[24;13H\u001b[37;40m    \u001b[24;18H\u001b[37;40m  \u001b[0m\u001b[11;5H\u001b[8;51Hn\r\n\u001b[21;5H\u001b[3;5H\u001b[37;40mSetup\u001b[3;11H\u001b[37;40mn\u001b[3;13H\u001b[37;40mw\u001b[3;15H\u001b[37;40mneeds to read the Desktop Applications\u001b[3;54H\u001b[37;40mdisk.\u001b[4;5H\u001b[37;40mPlease\u001b[4;12H\u001b[37;40minsert\u001b[4;19H\u001b[37;40mit\u001b[4;22H\u001b[37;40min\u001b[4;25H\u001b[37;40mdrive\u001b[4;31H\u001b[37;40mA:\u001b[5;5H\u001b[37;40m    \u001b[5;10H\u001b[37;40m      \u001b[5;19H\u001b[37;40m                                        \u001b[6;5H\u001b[37;40m      \u001b[6;19H\u001b[37;40m \u001b[6;21H\u001b[37;40m  \u001b[6;32H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u013f    \u001b[6;58H\u001b[37;40m \u001b[7;19H\u001b[37;40m             \ufffd                \ufffd         \u001b[8;19H\u001b[37;40m \u001b[8;21H\u001b[37;40m   \u001b[8;25H\u001b[37;40m  \u001b[8;28H\u001b[37;40m \u001b[8;30H\u001b[37;40m  \ufffd \ufffd\ufffd\ufffd\ufffd\u0375\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u001b[8;49H\u001b[37;40m\ufffd\u001b[8;51H\u001b[37;40m \u001b[8;58H\u001b[37;40m \u001b[9;19H\u001b[37;40m \u001b[9;21H\u001b[37;40m        \u001b[9;32H\u001b[37;40m\ufffd\u001b[9;49H\u001b[37;40m\ufffd\u001b[9;51H\u001b[37;40m \u001b[9;58H\u001b[37;40m \u001b[10;19H\u001b[37;40m             \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd         \u001b[12;24H\u001b[37;40mPut\u001b[12;28H\u001b[37;40mthe\u001b[12;32H\u001b[37;40mDesktop\u001b[12;40H\u001b[37;40mApplications\u001b[12;53H\u001b[37;40mdisk\u001b[13;34H\u001b[37;40minto\u001b[13;39H\u001b[37;40mdrive\u001b[13;45H\u001b[37;40mA:\u001b[15;5H\u001b[37;40mWhen\u001b[15;10H\u001b[37;40myou're\u001b[15;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u037b\u001b[16;5H\u001b[37;40mready:\u001b[16;19H\u001b[37;40m\ufffd\u001b[16;21H\u001b[37;40mTO\u001b[16;49H\u001b[37;40mPRESS\u001b[16;58H\u001b[37;40m\ufffd\u001b[17;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u0136\u001b[18;19H\u001b[37;40m\ufffd\u001b[18;21H\u001b[37;40mContinue\u001b[18;51H\u001b[37;40mC\u001b[18;58H\u001b[37;40m\ufffd\u001b[19;19H\u001b[37;40m\ufffd\u001b[19;21H\u001b[37;40mQuit\u001b[19;51H\u001b[37;40mQ\u001b[19;58H\u001b[37;40m\ufffd\u001b[20;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u037c\u001b[0m\u001b[21;5H\u001b[18;51Hc\r\n\u001b[5;5H\u001b[3;11H\u001b[37;40mis copying fil\u001b[3;26H\u001b[37;40ms from\u001b[3;33H\u001b[37;40mthe Deskto\u001b[3;44H\u001b[37;40m Appl\u001b[3;50H\u001b[37;40mcation\u001b[3;57H\u001b[37;40m disk\u001b[3;63H\u001b[37;40mto\u001b[3;66H\u001b[37;40mthe\u001b[4;5H\u001b[37;40mC:\\WINDOWS\\ directory.   \u001b[4;31H\u001b[37;40m  \u001b[6;32H\u001b[37;40m                  \u001b[7;32H\u001b[37;40m \u001b[7;49H\u001b[37;40m \u001b[8;32H\u001b[37;40m \u001b[8;34H\u001b[37;40m              \u001b[8;49H\u001b[37;40m \u001b[9;32H\u001b[37;40m \u001b[9;49H\u001b[37;40m \u001b[10;32H\u001b[37;40m                  \u001b[12;24H\u001b[37;40m   \u001b[12;28H\u001b[37;40m   \u001b[12;32H\u001b[37;40m       \u001b[12;40H\u001b[37;40m            \u001b[12;53H\u001b[37;40m    \u001b[13;34H\u001b[37;40m    \u001b[13;39H\u001b[37;40m     \u001b[13;45H\u001b[37;40m  \u001b[15;5H\u001b[37;40m    \u001b[15;10H\u001b[37;40m      \u001b[15;19H\u001b[37;40m                                        \u001b[16;5H\u001b[37;40m      \u001b[16;19H\u001b[37;40m \u001b[16;21H\u001b[37;40m  \u001b[16;49H\u001b[37;40m     \u001b[16;58H\u001b[37;40m \u001b[17;19H\u001b[37;40m                                        \u001b[18;19H\u001b[37;40m \u001b[18;21H\u001b[37;40m        \u001b[18;51H\u001b[37;40m \u001b[18;58H\u001b[37;40m \u001b[19;19H\u001b[37;40m \u001b[19;21H\u001b[37;40m    \u001b[19;51H\u001b[37;40m \u001b[19;58H\u001b[37;40m \u001b[20;19H\u001b[37;40m                                        \u001b[0m\u001b[5;5H\u001b[24;14H\u001b[37;40mile\u001b[24;18H\u001b[37;40m97\u001b[0m\u001b[5;5H\u001b[24;6H\u001b[37;40mopying\u001b[24;13H\u001b[37;40mf\u001b[24;18H\u001b[37;40m100\u001b[0m\u001b[5;5H\u001b[24;5H\u001b[37;40mC\u001b[24;18H\u001b[37;40m   \u001b[0m\u001b[5;5H\u001b[24;5H\u001b[37;40m       \u001b[24;13H\u001b[37;40m    \u001b[0m\u001b[5;5H\u001b[24;9H\u001b[37;40ming\u001b[24;13H\u001b[37;40mfile\u001b[24;18H\u001b[37;40m120\u001b[0m\u001b[5;5H\u001b[24;5H\u001b[37;40mCopy\u001b[24;19H\u001b[37;40m  \u001b[0m\u001b[5;5H\u001b[24;8H\u001b[37;40m    \u001b[24;13H\u001b[37;40m    \u001b[24;18H\u001b[37;40m \u001b[0m\u001b[5;5H\u001b[24;5H\u001b[37;40m   \u001b[0m\u001b[5;5H\u001b[24;11H\u001b[37;40mg\u001b[24;13H\u001b[37;40mfile\u001b[24;18H\u001b[37;40m140\u001b[0m\u001b[5;5H\u001b[24;5H\u001b[37;40mCopyin\u001b[24;19H\u001b[37;40m  \u001b[0m\u001b[5;5H\u001b[24;7H\u001b[37;40m     \u001b[24;13H\u001b[37;40m    \u001b[24;18H\u001b[37;40m \u001b[0m\u001b[5;5H\u001b[24;5H\u001b[37;40m  \u001b[0m\u001b[5;5H\u001b[24;18H\u001b[37;40m157\u001b[0m\u001b[5;5H\u001b[24;5H\u001b[37;40mCopying\u001b[24;13H\u001b[37;40mfile\u001b[24;19H\u001b[37;40m60\u001b[0m\u001b[5;5H\u001b[24;18H\u001b[37;40m   \u001b[0m\u001b[5;5H\u001b[24;6H\u001b[37;40m      \u001b[24;13H\u001b[37;40m    \u001b[0m\u001b[5;5H\u001b[24;5H\u001b[37;40m \u001b[0m\u001b[5;5H\u001b[24;5H\u001b[37;40mCopying\u001b[24;13H\u001b[37;40mfile\u001b[24;18H\u001b[37;40m174\u001b[0m\u001b[5;5H\u001b[21;5H\u001b[3;11H\u001b[37;40mnow needs to r\u001b[3;26H\u001b[37;40mad the\u001b[3;33H\u001b[37;40mMicrosof\u001b[3;42H\u001b[37;40m Write Program disk.\u001b[3;63H\u001b[37;40m  \u001b[3;66H\u001b[37;40m   \u001b[4;5H\u001b[37;40mPlease insert it in drive\u001b[4;31H\u001b[37;40mA:\u001b[6;32H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u013f\u001b[7;32H\u001b[37;40m\ufffd\u001b[7;49H\u001b[37;40m\ufffd\u001b[8;32H\u001b[37;40m\ufffd\u001b[8;34H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\u0375\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u001b[8;49H\u001b[37;40m\ufffd\u001b[9;32H\u001b[37;40m\ufffd\u001b[9;49H\u001b[37;40m\ufffd\u001b[10;32H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u001b[12;23H\u001b[37;40mPut\u001b[12;27H\u001b[37;40mthe\u001b[12;31H\u001b[37;40mMicrosoft\u001b[12;41H\u001b[37;40mWrite\u001b[12;47H\u001b[37;40mProgram\u001b[12;55H\u001b[37;40mdisk\u001b[13;34H\u001b[37;40minto\u001b[13;39H\u001b[37;40mdrive\u001b[13;45H\u001b[37;40mA:\u001b[15;5H\u001b[37;40mWhen\u001b[15;10H\u001b[37;40myou're\u001b[15;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u037b\u001b[16;5H\u001b[37;40mready:\u001b[16;19H\u001b[37;40m\ufffd\u001b[16;21H\u001b[37;40mTO\u001b[16;49H\u001b[37;40mPRESS\u001b[16;58H\u001b[37;40m\ufffd\u001b[17;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u0136\u001b[18;19H\u001b[37;40m\ufffd\u001b[18;21H\u001b[37;40mContinue\u001b[18;51H\u001b[37;40mC\u001b[18;58H\u001b[37;40m\ufffd\u001b[19;19H\u001b[37;40m\ufffd\u001b[19;21H\u001b[37;40mQuit\u001b[19;51H\u001b[37;40mQ\u001b[19;58H\u001b[37;40m\ufffd\u001b[20;19H\u001b[37;40m\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\u037c\u001b[24;5H\u001b[37;40m       \u001b[24;13H\u001b[37;40m    \u001b[24;18H\u001b[37;40m   \u001b[0m\u001b[21;5H\u001b[18;51Hc\r\n\u001b[5;5HMicrosoft Windows is set up to operate on your computer.\r\r\nYou are now in the Windows directory.\r\r\n\r\r\nTo start Microsoft Windows:\r\r\n\r\r\n    - Type WIN\r\r\n    - Press the \u0011\ufffd\ufffd key.\r\r\n\u001b[3;11H\u001b[37;40mis copying fil\u001b[3;26H\u001b[37;40ms from\u001b[3;33H\u001b[37;40mthe Microsoft Write Program disk\u001b[3;66H\u001b[37;40mto\u001b[3;69H\u001b[37;40mthe\u001b[4;5H\u001b[37;40mC:\\WINDOWS\\ directory.   \u001b[4;31H\u001b[37;40m  \u001b[6;32H\u001b[37;40m                  \u001b[7;32H\u001b[37;40m \u001b[7;49H\u001b[37;40m \u001b[8;32H\u001b[37;40m \u001b[8;34H\u001b[37;40m              \u001b[8;49H\u001b[37;40m \u001b[9;32H\u001b[37;40m \u001b[9;49H\u001b[37;40m \u001b[10;32H\u001b[37;40m                  \u001b[12;23H\u001b[37;40m   \u001b[12;27H\u001b[37;40m   \u001b[12;31H\u001b[37;40m         \u001b[12;41H\u001b[37;40m     \u001b[12;47H\u001b[37;40m       \u001b[12;55H\u001b[37;40m    \u001b[13;34H\u001b[37;40m    \u001b[13;39H\u001b[37;40m     \u001b[13;45H\u001b[37;40m  \u001b[15;5H\u001b[37;40m    \u001b[15;10H\u001b[37;40m      \u001b[15;19H\u001b[37;40m                                        \u001b[16;5H\u001b[37;40m      \u001b[16;19H\u001b[37;40m \u001b[16;21H\u001b[37;40m  \u001b[16;49H\u001b[37;40m     \u001b[16;58H\u001b[37;40m \u001b[17;19H\u001b[37;40m                                        \u001b[18;19H\u001b[37;40m \u001b[18;21H\u001b[37;40m        \u001b[18;51H\u001b[37;40m \u001b[18;58H\u001b[37;40m \u001b[19;19H\u001b[37;40m \u001b[19;21H\u001b[37;40m    \u001b[19;51H\u001b[37;40m \u001b[19;58H\u001b[37;40m \u001b[20;19H\u001b[37;40m                                        \u001b[0m\u001b[5;5H",
+      "screenshot": "/home/zyg/Dokumentai/ChatGPT/ManiOS/retest-026/shots/windows-setup.png",
+      "windows_dir_listing": "::/WINDOWS/WIN100.OVL\n::/WINDOWS/PIF/\n::/WINDOWS/SPOOLER.EXE\n::/WINDOWS/WINOLDAP.MOD\n::/WINDOWS/WINOLDAP.GRB\n::/WINDOWS/MSDOS.EXE\n::/WINDOWS/WIN.COM\n::/WINDOWS/WIN100.BIN\n::/WINDOWS/COURA.FON\n::/WINDOWS/HELVA.FON\n::/WINDOWS/TMSRA.FON\n::/WINDOWS/LOFONTS.FON\n::/WINDOWS/ROMAN.FON\n::/WINDOWS/SCRIPT.FON\n::/WINDOWS/MODERN.FON\n::/WINDOWS/HELLO.COM\n::/WINDOWS/DIGITS.COM\n::/WINDOWS/EXIT7.COM\n::/WINDOWS/HELLO.EXE\n::/WINDOWS/BAD386.COM\n::/WINDOWS/MOVZX.COM\n::/WINDOWS/FLAGS.COM\n::/WINDOWS/CLOCK.COM\n::/WINDOWS/IRET.COM\n::/WINDOWS/VGA.COM\n::/WINDOWS/EXTENDER.EXE\n::/WINDOWS/PACKED.EXA\n::/WINDOWS/LPC.DRV\n::/WINDOWS/SYSTEM.DRV\n::/WINDOWS/EGAHIBW.DRV\n::/WINDOWS/EMM.PC\n::/WINDOWS/SETUP.EXE\n::/WINDOWS/SETUP.LBL\n::/WINDOWS/RAMDRIVE.SYS\n::/WINDOWS/JOYMOUSE.DRV\n::/WINDOWS/MSMOUSE1.DRV\n::/WINDOWS/EGALORES.DRV\n::/WINDOWS/HERCULES.DRV\n::/WINDOWS/WRITE.DAT\n::/WINDOWS/EGAHIRES.DRV\n::/WINDOWS/EMM.AT\n::/WINDOWS/MOUSE.DRV\n::/WINDOWS/NOMOUSE.DRV\n::/WINDOWS/SOUND.DRV\n::/WINDOWS/MSMOUSE2.DRV\n::/WINDOWS/LMOUSE.DRV\n::/WINDOWS/EGAMONO.DRV\n::/WINDOWS/KEYBUS.DRV\n::/WINDOWS/HIFONTS.FON\n::/WINDOWS/COMM.DRV\n::/WINDOWS/CGA.DRV\n::/WINDOWS/KERNEL.EXE\n::/WINDOWS/FTG.DRV\n::/WINDOWS/EGAHIBW.LGO\n::/WINDOWS/BUILD.LBL\n::/WINDOWS/HERCULES.LGO\n::/WINDOWS/EGAHIBW.GRB\n::/WINDOWS/EGALORES.GRB\n::/WINDOWS/HERCULES.GRB\n::/WINDOWS/MSDOSD.EXE\n::/WINDOWS/USER.EXE\n::/WINDOWS/EGAHIRES.LGO\n::/WINDOWS/EGAMONO.LGO\n::/WINDOWS/GDI.EXE\n::/WINDOWS/EGAMONO.GRB\n::/WINDOWS/CGA.LGO\n::/WINDOWS/WIN.INI\n::/WINDOWS/CGA.GRB\n::/WINDOWS/EGAHIRES.GRB\n::/WINDOWS/WIN.CNF\n::/WINDOWS/EGALORES.LGO\n::/WINDOWS/NEC3550.DRV\n::/WINDOWS/HELVC.FON\n::/WINDOWS/TMSRC.FON\n::/WINDOWS/SG10.DRV\n::/WINDOWS/README.DOC\n::/WINDOWS/TMSRB.FON\n::/WINDOWS/HPLASER.DRV\n::/WINDOWS/COURD.FON\n::/WINDOWS/TMSRD.FON\n::/WINDOWS/EPSON.DRV\n::/WINDOWS/LQ1500.DRV\n::/WINDOWS/UTILITY.LBL\n::/WINDOWS/IBMGRX.DRV\n::/WINDOWS/OKI92.DRV\n::/WINDOWS/NECP2.DRV\n::/WINDOWS/TOSH.DRV\n::/WINDOWS/HP747XA.DRV\n::/WINDOWS/HELVD.FON\n::/WINDOWS/TI850.DRV\n::/WINDOWS/CITOH.DRV\n::/WINDOWS/COURB.FON\n::/WINDOWS/HELVB.FON\n::/WINDOWS/COURC.FON\n::/WINDOWS/CLOCK.EXE\n::/WINDOWS/NOTEPAD.EXE\n::/WINDOWS/DOTHIS.TXT\n::/WINDOWS/CONTROL.EXE\n::/WINDOWS/TERMINAL.EXE\n::/WINDOWS/CALENDAR.EXE\n::/WINDOWS/REVERSI.EXE\n::/WINDOWS/CARDFILE.EXE\n::/WINDOWS/CALC.EXE\n::/WINDOWS/ABC.TXT\n::/WINDOWS/PAINT.EXE\n::/WINDOWS/CLIPBRD.EXE\n::/WINDOWS/PRACTICE.DOC\n::/WINDOWS/WRITE.EXE\n",
+      "win_com_present": true,
+      "installed_message": true,
+      "passed": true,
+      "seconds": 60.1
+    },
+    {
+      "case": "windows-start",
+      "command": "dosrun --mount C=/n/ata0p1/windows C:/WIN.COM",
+      "timeout_seconds": 12,
+      "returned": true,
+      "output": "dosrun --mount C=/n/ata0p1/windows C:/WIN.COM\r\n\u001b[15;32HMicrosoft Windows\u001b[16;34HVersion 1.01\u001b[24;9HCopyright (c) Microsoft Corporation, 1985.  All Rights Reserved.\u001b[25;14HMicrosoft is a registered trademark of Microsoft Corp.Incorrect DOS version\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\ufffd\u0010\ufffd\u0010\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\ufffd\ufffd\ufffd\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000WIN.INI\u0000Windows System\u0000Insert \u0000 disk in\u0000Change Disk\u0000\u0007\r\r\nFatalExit code = \u0000 stack overflow\r\r\n\u0000\ufffd\u0001\u0000\ufffdU\ufffd\ufffd\ufffd\b\ufffdV\u0006+\ufffd\ufffdF\ufffd\ufffdV\ufffd\ufffd^\ufffd&\ufffdG\u0014&\u000bG\u0016t+&\ufffd\u007f\u000e\u0000t\r\r\ndosrun: C:/WIN.COM: can't run opcode DB (at 7504:65D1)\r\n",
+      "banner_101": true,
+      "incorrect_dos_version": true,
+      "screenshot": "/home/zyg/Dokumentai/ChatGPT/ManiOS/retest-026/shots/windows-start.png",
+      "passed": true,
+      "seconds": 5.5
+    },
+    {
+      "case": "bsum-usage",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/BSUM.COM",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/BSUM.COM\r\nbsum v1.1 - computes BSD checksums of files (MIT license)\r\r\nCopyright (C) 2017 Mateusz Viste\r\r\n\r\nUsage: bsum file\r\r\n",
+      "checks": [
+        {
+          "expect": "bsum v1.1",
+          "ok": true
+        },
+        {
+          "expect": "Usage: bsum file",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.2
+    },
+    {
+      "case": "bsum-missing",
+      "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/freedos-regression/programs.img",
+      "command": "dosrun C:/BSUM.COM C:/ABSENT.TXT",
+      "timeout_seconds": 8,
+      "banner": [
+        "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+        "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+      ],
+      "returned": true,
+      "output": "dosrun C:/BSUM.COM C:/ABSENT.TXT\r\nERROR\r\r\n",
+      "checks": [
+        {
+          "expect": "ERROR",
+          "ok": true
+        }
+      ],
+      "passed": true,
+      "seconds": 5.1
+    }
+  ],
+  "tse_edit_attempt": {
+    "case": "tse-edit-save",
+    "disk": "/home/zyg/Dokumentai/ChatGPT/ManiOS/tse-audit/tse.img",
+    "command": "dosrun C:/TSE/E.EXE C:/INPUT.TXT",
+    "inputs": [
+      "MANIOS EDIT TEST + Enter",
+      "Ctrl+K S",
+      "Ctrl+K X"
+    ],
+    "timeout_seconds": 25,
+    "banner": [
+      "ManiOS 0.26.0 / ZKT (ZygKernel Technology)",
+      "ManiOS 0.26.0 is ready. Try ls /bin, help, fetch, manide (desktop), dos."
+    ],
+    "opened": true,
+    "open_screenshot": "/home/zyg/Dokumentai/ChatGPT/ManiOS/retest-026/shots/tse-edit-save-open.png",
+    "after_typing": "/home/zyg/Dokumentai/ChatGPT/ManiOS/retest-026/shots/tse-edit-save-typed.png",
+    "after_save": "/home/zyg/Dokumentai/ChatGPT/ManiOS/retest-026/shots/tse-edit-save-saved.png",
+    "quit_returned": false,
+    "after_quit_screen": "/home/zyg/Dokumentai/ChatGPT/ManiOS/retest-026/shots/tse-edit-save-quit-failed.png",
+    "exported": true,
+    "size": 32,
+    "sha256": "a3aa0f771a94ee9cd7061a877759dcf76c12b7557d3db3cb4918a7ea2f50e186",
+    "head": "b'pear\\r\\napple\\r\\nbanana\\r\\napple pie\\r\\n'",
+    "marker_persisted": false,
+    "passed": false,
+    "seconds": 18.3
+  },
+  "regressions": {
+    "command": "python3 tests/{dosrun_host_test,dosrun_string_test,dosrun_runtime_test,dosrun_port_test,dosrun_pit_test,dosrun_exec_test,dosrun_test}.py",
+    "log": "===== dosrun_host_test\nPASS: XMS: allocate, move to it and back\nPASS: EMS: allocate a page and map it\n\nOK: 0 failure(s)\nexit=0\n===== dosrun_string_test\nPASS: byte/word strings, REP/REPE/REPNE, zero counts, direction, segment prefixes, TEST, shifts, XLAT, AAD and DAS\nexit=0\n===== dosrun_runtime_test\nPASS: exhausted FCB slots preserve an existing file on failed create\nPASS: nonblocking keyboard readiness, non-consuming BIOS peek, scan code, DOS status and flush\nPASS: BIOS text attributes, repeated output, cursor position, readback and mode queries\nPASS: direct VGA text writes render once; unchanged cells are not redrawn\nexit=0\n===== dosrun_port_test\nPASS: active display, horizontal blank and recurring vertical retrace; IN preserves AH/flags/registers\nPASS: both-polarity bit 0/3 polling loops terminate with interrupts disabled, including counter wrap\nPASS: unknown/read-only ports, word I/O and truncated immediate port aliases remain unsupported\nexit=0\n===== dosrun_pit_test\nPASS: Windows B6/33/05 and 33/06 tone sequence, partial divisor, gate and speaker enable\nPASS: mode-3 odd/even counts, OUT2 status, frozen/rising gate, latching, zero=65536 and wrap\nPASS: byte IN/OUT instruction semantics, unsupported ports/modes/widths and device cleanup\nexit=0\n===== dosrun_exec_test\nPASS: EXEC COM/MZ, nested return, PSP/environment, DTA, allocation cleanup and errors\nexit=0\n===== dosrun_test\nPASS: mtools independently lists all 40 files across directory clusters\nPASS: independent on-disk FAT timestamp and size after VM shutdown\n\nOK: 0 failure(s)\nexit=0\n"
+  },
+  "summary": {
+    "scripted_cases": 49,
+    "expected_outcomes": 49,
+    "working_component_tasks": 10,
+    "note": "49 scripted cases at expected outcomes is not 49 compatible applications and not a DOS compatibility percentage."
+  }
+}

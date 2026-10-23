@@ -1,0 +1,201 @@
+ManiOS 0.26.0 DOS compatibility retest — 2026-10-23
+
+Build and environment
+---------------------
+- Tested source: commit c10d9f0 ("Add DOS EXEC child processes and prepare
+  ManiOS 0.26.0"), VERSION 0.26.0, clean tree.
+- Kernel: build/manios-zkt.elf, SHA256
+  5553a1934d19165f34dcea365ffcb4aaec0d11b81877521da23ec889726fc88c.
+- DOS sources: cpu.c 67b8b038…, cpu.h 93d903c4…, dosapi.c fdf52194…,
+  dosapi.h e801b9cb…, loader.c 34eb227e…, loader.h a6d70113…,
+  main.c 33f36358…, drives.c 800b958c…, drives.h 5f8a9c60… (full hashes
+  in the JSON evidence).
+- Environment: QEMU 10.0.13 i386, CPU 486, 64 MiB RAM, serial console,
+  one IDE FAT16 disk per case. Each case starts from a fresh disposable
+  copy of a previously used test image; writes therefore reach the copy
+  and generated files are exported with mtools afterwards.
+- Observation limits: 8 s for most utilities, 10-12 s for applications,
+  60 s for Windows setup. A timeout is a bounded observation, not proof of
+  a hang.
+- No runtime source changes were made during this retest. Binaries and
+  media remain outside the repository.
+
+Scope
+-----
+49 scripted cases re-run on 0.26.0: the ten previously verified utility
+workflows, Checks & Balances, the SemWare editor and utilities, Search,
+utf8tocp, uHex, PEDIT, both Maven programs, Ability Plus, Bywater BASIC,
+VisiCalc, Warcraft, and Windows 1.01 setup plus startup. All 49 produced
+their expected 0.26.0 outcome. This is task-specific coverage, not 49
+compatible applications and not a compatibility percentage.
+
+Verified Working utility tasks (unchanged set of ten)
+-----------------------------------------------------
+| Program | 0.26.0 checks |
+| --- | --- |
+| MORE 4.3 | `/?` help; three-line INPUT.TXT; redirected stdin; 60-line file pauses after line 24, Space advances (24→48), q returns to shell. |
+| FC | equal text `No differences`; INPUT.TXT vs OTHER.TXT shows both `banana` lines; `/B` equal; `/B` reports `00000003: 44 D 45 E`. |
+| FDBanner 1.1 | coloured FreeDOS banner rendered through BIOS text services; screenshot inspected. |
+| B64 0.06R | `-h`; `-e` writes exactly `QUJDRA==\r\n` from `ABCD`; `-d` restores exactly `ABCD`. |
+| BSUM 1.1a | `3C36`, `2C14`, empty `0000`, 20,480-byte `BINARY.DAT` `A000`; all match the independent BSD checksum oracle. `bsum v1.1` usage returns; a missing file prints `ERROR`. |
+| SemWare GREP | prints `apple` and `apple pie`, excludes `pear`/`banana`. |
+| SemWare TSORT | writes exactly `apple`, `apple pie`, `banana`, `pear` with CRLF. |
+| SAL compiler SC 2.50e | compiles HELLO.S, announces `c:/hello.mac`, writes the 87-byte MAC, SHA256 8401be5a…cdf8ff. |
+| Search 1.0a | `/?`; finds `C:\TARGET.TXT` and `C:\NESTED\TARGET.TXT`, reports `2 files found`; absent name reports `No files found`. |
+| utf8tocp 20240918 | `-l`; UTF-8↔CP437 and UTF-8↔CP775 in both directions; all four output files byte-identical to independent Python encodings. |
+
+The extra root-path separator printed by Search and the file-byte-only
+evidence for Lithuanian glyphs remain as previously documented.
+
+SemWare TSE 2.50e — file opening now works
+------------------------------------------
+The former `E4` / `IN AL,61h` failure no longer occurs with the 0.26.0
+kernel. `dosrun C:/TSE/E.EXE C:/INPUT.TXT` renders the welcome box, then
+`Loading: c:/input.txt`, the four input lines (`pear`, `apple`, `banana`,
+`apple pie`), `<*** End of File ***>` and the F-key status line. The editor
+was still active at the 10-second limit; the transcript contains no
+instruction fault. Screenshots: 2026-10-23-retest-026-tse-welcome.png and
+2026-10-23-retest-026-tse-file.png.
+
+An edit/save/reopen attempt on a disposable copy sent `MANIOS EDIT TEST`
+plus Enter, `Ctrl+K S` (SaveFile) and `Ctrl+K X` (SaveAndQuitFile), each
+followed by Enter for the cooked terminal. The screen did not change, the
+editor did not exit, and the exported INPUT.TXT is byte-identical to the
+original (SHA256 a3aa0f77…50e186). Typed serial input therefore did not
+reach the editor's keyboard path. Editing, saving, reopening and macro
+execution remain unverified; the editor stays Partial.
+
+Checks & Balances 4.0g
+----------------------
+The scripted configuration flow (terminal 2, printer 1, save/run 6,
+`C:DEMO`, Enter at the date prompt) succeeds on 0.26.0. The command menu
+appears and `SH` displays the demonstration data; the status line contains
+`TRUE $2450.20` and `BANK $279.04`. New ledger entry, save/reopen of an
+entry, reports and printing are still unverified; status stays Partial.
+
+Windows 1.01
+------------
+Setup from the merged five-disk staging image completes again with the
+same inputs (C/Enter, Enter at C:\WINDOWS, C/Enter, Enter no pointer,
+Enter CGA, C/Enter, C/Enter, N/Enter, C/Enter, C/Enter). The guest prints
+"Microsoft Windows is set up to operate on your computer" and returns to
+the shell. The disposable image then contains `WINDOWS/WIN.COM`,
+`WIN100.BIN` and `WIN100.OVL` (verified with mtools). The staging root had
+been reused by the installer, so `WINDOWS` also contains the earlier test
+files; this is the known merged-media artifact, not a new finding.
+
+`dosrun --mount C=/n/ata0p1/windows C:/WIN.COM` now gets past the former
+missing-EXEC message. Observed 0.26.0 result:
+
+    Microsoft Windows
+    Version 1.01
+    Copyright (c) Microsoft Corporation, 1985.  All Rights Reserved.
+    ...
+    Incorrect DOS version
+    ...
+    FatalExit code = 0 stack overflow
+    dosrun: C:/WIN.COM: can't run opcode DB (at 7504:65D1)
+
+The runtime reports DOS 4.00. The earlier host-only probe that returned
+DOS 3.10 reached `INT 21h AX=5203h` (DOS internal list-of-lists) and then
+stalled. The exact origin of the version message inside WIN.COM/WIN100.BIN
+is not isolated, and the following bytes at the fault are not yet decoded;
+the desktop has not run. Status stays Partial. Next work: a compatible
+reported DOS version and the 5203h list-of-lists service, then the DB
+(x87/`FNINIT`) path at 7504:65D1.
+
+Unchanged blockers
+------------------
+| Program | 0.26.0 observation |
+| --- | --- |
+| PEDIT 4.00 and Light | opcode `66` at `1213:03D7`; no document reached. |
+| Directory Maven 1.3 | `DM.EXE ?` stops on `IN AL,DX` port `0006h` at `15F3:0603`; `/sC` stops on opcode `66` at `1656:0C91`. |
+| File Maven 3.5a | installer `IN AL,DX` port `0006h` at `1099:0603`; FMAVEN.EXE at `36C9:0603`; FM3.EXE at `1063:0603`; all opcode `EC`. |
+| Ability Plus 3.0 | AB30.EXE opcode `DB` at `10EA:2582` (host probe: `FNINIT`); INSTALL.EXE opcode `66` at `1010:165A`. |
+| Bywater BASIC 3.30 | LE executable rejected: "requires 32-bit protected mode (LE/LX DOS extender)". |
+| Warcraft: Orcs & Humans | extracted WAR.EXE rejected for the same LE/32-bit reason. INSTALL.EXE now reaches the same opcode `E6` at `1010:4A4C`, with the added diagnostic `unsupported OUT port 0043, AL=00`. |
+| VisiCalc | VC.COM shows no worksheet and does not return within 12 s. |
+| uHex 1.0.4 | usage returns; `INPUT.TXT /ro` shows the correct 34-byte size, filename and hex bytes, but the offset column repeats `00000022` and no shell return occurred within 10 s. |
+
+Regression suites
+-----------------
+Run from the same tree after the application cases; all pass:
+
+    dosrun_host_test.py        OK: 0 failure(s)
+    dosrun_string_test.py      PASS (strings, REP*, XLAT, AAD, DAS, shifts)
+    dosrun_runtime_test.py     PASS (FCB, keyboard, BIOS text, VGA text writes)
+    dosrun_port_test.py        PASS (03DAh status model and rejection paths)
+    dosrun_pit_test.py         PASS (PIT/speaker, IN/OUT semantics)
+    dosrun_exec_test.py        PASS (EXEC COM/MZ, PSP/environment, errors)
+    dosrun_test.py             OK: 0 failure(s) (QEMU DOS runner)
+
+Limits
+------
+No protected mode/DOS extender, no general port I/O, no child TSR/overlay
+EXEC, no timer interrupt delivery, no hardware keyboard integration for
+the tested editor, and only the documented CGA/EGA status and PIT models.
+Keyboard interaction is still limited by the cooked serial console. The
+Warcraft, Windows and media files used here are user-supplied and remain
+outside Git and the APK.
+
+Evidence
+--------
+- Case metadata, full transcripts, screen dumps and exported bytes:
+  2026-10-23-retest-026.json (contains all 49 case records, hashes and the
+  regression log) in this directory.
+- Harness: retest-026/run_retest.py and retest-026/tse_edit.py in the
+  workspace; per-case serial logs in retest-026/logs/.
+- Screenshots: 2026-10-23-retest-026-{fdbanner,tse-welcome,tse-file,uhex,
+  visicalc,checks,windows-setup,windows-start}.png.
+
+Appendix: case index
+--------------------
+| more-help | `dosrun C:/MORE.EXE /?` |   Q q = Quit program |
+| more-file | `dosrun C:/MORE.EXE C:/INPUT.TXT` | Apple green |
+| more-stdin | `dosrun C:/MORE.EXE < /n/ata0p1/input.txt` | Apple green |
+| fc-equal | `dosrun C:/FC.EXE C:/INPUT.TXT C:/INPUT.TXT` | No differences |
+| fc-different | `dosrun C:/FC.EXE C:/INPUT.TXT C:/OTHER.TXT` | ***** |
+| fc-binary-equal | `dosrun C:/FC.EXE /B C:/RAW.TXT C:/RAW.TXT` | No differences |
+| fc-binary-different | `dosrun C:/FC.EXE /B C:/RAW.TXT C:/DIFF.TXT` | 00000003:     44  D      45  E |
+| fdbanner | `dosrun C:/FDBANNER.COM` | [11;1H[37;40m [0m[11;1H[11;2H[11;2H[37;40m [0m[11;2H[11;3H[11;3H[37;40m [0m[11;3H[11;4H[11;4H |
+| b64-help | `dosrun C:/B64.EXE -h` |   Release: 0.06.00, Sun Aug 19 14:30:00 2001, ANSI-SOURCE C |
+| b64-encode | `dosrun C:/B64.EXE -e C:/RAW.TXT C:/ENC.TXT` | dosrun C:/B64.EXE -e C:/RAW.TXT C:/ENC.TXT |
+| b64-decode | `dosrun C:/B64.EXE -d C:/ENCIN.TXT C:/DEC.TXT` | dosrun C:/B64.EXE -d C:/ENCIN.TXT C:/DEC.TXT |
+| bsum-text | `dosrun C:/BSUM.COM C:/INPUT.TXT` | 3C36 |
+| bsum-modified | `dosrun C:/BSUM.COM C:/OTHER.TXT` | 2C14 |
+| bsum-empty | `dosrun C:/BSUM.COM C:/EMPTY.TXT` | 0000 |
+| bsum-binary | `dosrun C:/BSUM.COM C:/BINARY.DAT` | A000 |
+| tse-grep | `dosrun C:/TSE/GREP.COM apple C:/INPUT.TXT` |      apple pie |
+| tse-tsort | `dosrun C:/TSE/TSORT.COM C:INPUT.TXT C:SORTED.TXT` | dosrun C:/TSE/TSORT.COM C:INPUT.TXT C:SORTED.TXT |
+| tse-sal | `dosrun C:/TSE/SC.EXE C:/HELLO.S` | Writing output to file 'c:/hello.mac' |
+| tse-editor-start | `dosrun C:/TSE/E.EXE` | welcome dialog and file prompt; active at 8 s |
+| tse-editor-file | `dosrun C:/TSE/E.EXE C:/INPUT.TXT` | input text rendered; editor still active at 10 s |
+| search-help | `dosrun C:/SEARCH.EXE /?` |   /?              Displays this help message |
+| search-find | `dosrun C:/SEARCH.EXE TARGET.TXT` | 2 files found |
+| search-missing | `dosrun C:/SEARCH.EXE ABSENT.ZZZ` | No files found |
+| utf8-list | `dosrun C:/UTF8TOCP.COM -l` |   maz    Mazovia (a.k.a. CP667, CP790 or CP991) |
+| utf8-enc437 | `dosrun C:/UTF8TOCP.COM 437 C:/UTF8.TXT C:/ENC.TXT` | dosrun C:/UTF8TOCP.COM 437 C:/UTF8.TXT C:/ENC.TXT |
+| utf8-dec437 | `dosrun C:/UTF8TOCP.COM -r 437 C:/CP437.TXT C:/DEC.TXT` | dosrun C:/UTF8TOCP.COM -r 437 C:/CP437.TXT C:/DEC.TXT |
+| utf8-enc775 | `dosrun C:/UTF8TOCP.COM 775 C:/LTUTF8.TXT C:/LTENC.TXT` | dosrun C:/UTF8TOCP.COM 775 C:/LTUTF8.TXT C:/LTENC.TXT |
+| utf8-dec775 | `dosrun C:/UTF8TOCP.COM -r 775 C:/LT775.TXT C:/LTDEC.TXT` | dosrun C:/UTF8TOCP.COM -r 775 C:/LT775.TXT C:/LTDEC.TXT |
+| bwbasic | `dosrun C:/BWBASIC.EXE C:/SUM.BAS` | dosrun: /n/ata0p1/bwbasic.exe: requires 32-bit protected mode (LE/LX DOS extender); dosrun supports real mode  |
+| pedit-file | `dosrun C:/PEDIT/PEDIT.EXE C:/INPUT.TXT` | dosrun: C:/PEDIT/PEDIT.EXE: can't run opcode 66 (at 1213:03D7) |
+| pedit-light | `dosrun C:/PEDIT/PEDITLGT.EXE C:/INPUT.TXT` | dosrun: C:/PEDIT/PEDITLGT.EXE: can't run opcode 66 (at 1213:03D7) |
+| uhex-usage | `dosrun C:/UHEX/PROGS/UHEX/UHEX.COM` |   /ro     opens the file in read-only mode |
+| uhex-file | `dosrun C:/UHEX/PROGS/UHEX/UHEX.COM C:/INPUT.TXT /ro` | file name/size and hex bytes visible; no shell return within 10 s |
+| dm-help | `dosrun C:/DMAVEN/DM.EXE ?` | dosrun: unsupported IN port 0006, AL=44 AX=B844; bytes at 15F3:05FA: FC 0A DB 74 16 AC 8A D8 EC A8 01 75 FB FA |
+| dm-scan | `dosrun C:/DMAVEN/DM.EXE /sC` | dosrun: C:/DMAVEN/DM.EXE: can't run opcode 66 (at 1656:0C91) |
+| fm-install | `dosrun C:/FMAVEN/INSTALL.EXE` | dosrun: unsupported IN port 0006, AL=46 AX=B846; bytes at 1099:05FA: FC 0A DB 74 16 AC 8A D8 EC A8 01 75 FB FA |
+| fm-main | `dosrun C:/FMAVEN/FMAVEN.EXE` | dosrun: unsupported IN port 0006, AL=52 AX=B852; bytes at 36C9:05FA: FC 0A DB 74 16 AC 8A D8 EC A8 01 75 FB FA |
+| fm-launcher | `dosrun C:/FMAVEN/FM3.EXE` | dosrun: unsupported IN port 0006, AL=4C AX=B84C; bytes at 1063:05FA: FC 0A DB 74 16 AC 8A D8 EC A8 01 75 FB FA |
+| ability-main | `dosrun C:/AB3/AB30.EXE` | dosrun: C:/AB3/AB30.EXE: can't run opcode DB (at 10EA:2582) |
+| ability-install | `dosrun C:/AB3/INSTALL.EXE` | dosrun: C:/AB3/INSTALL.EXE: can't run opcode 66 (at 1010:165A) |
+| visicalc | `dosrun C:/VC/VC.COM` | no worksheet, no shell return within 12 s |
+| warcraft | `dosrun C:/WAR.EXE` | dosrun: /n/ata0p1/war.exe: requires 32-bit protected mode (LE/LX DOS extender); dosrun supports real mode only |
+| warcraft-install | `dosrun C:/INSTALL.EXE` | dosrun: unsupported OUT port 0043, AL=00 AX=0000; bytes at 1010:4A43: E9 63 B8 C3 9C FA B0 00 E6 43 E8 F6 FF E |
+| more-paging | `dosrun C:/MORE.EXE C:/INPUT60.TXT` | paused after line 24; Space advanced to line 48; q returned to shell |
+| checks-balances | `dosrun C:/CHECK.EXE` | configuration saved; DEMO opened; SH menu shows TRUE $2450.20 / BANK $279.04 |
+| windows-setup | `dosrun --mount A=/n/ata0p1 C:/SETUP.EXE` | setup completed; WIN.COM, WIN100.BIN and WIN100.OVL written; shell returned |
+| windows-start | `dosrun --mount C=/n/ata0p1/windows C:/WIN.COM` | 1.01 banner; "Incorrect DOS version"; FatalExit text; opcode DB at 7504:65D1 |
+| bsum-usage | `dosrun C:/BSUM.COM` | prints bsum v1.1 usage and returns |
+| bsum-missing | `dosrun C:/BSUM.COM C:/ABSENT.TXT` | prints ERROR and returns |
