@@ -2,7 +2,7 @@
 
 Last updated: **2026-10-23**. ManiOS version: **0.26.0**.
 
-**48 programs:** 🟢 **12 Working** · 🟡 **8 Partial** · 🔴 **28 Broken/unsupported** · ⚪ **0 Untested**
+**51 programs:** 🟢 **14 Working** · 🟡 **9 Partial** · 🔴 **28 Broken/unsupported** · ⚪ **0 Untested**
 
 This is task-specific coverage, not a compatibility percentage: a green
 entry means the listed task completed, not that every feature of the
@@ -18,10 +18,11 @@ program works. The full test history is in
 | 🔴 | Unsupported | A required CPU mode, subsystem or interface is missing. |
 | ⚪ | Untested | No current result. |
 
-## 🟢 Working (12)
+## 🟢 Working (14)
 
 | Application | Version / media | Verified task | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
+| [Adventure (350-point DECUS port)](compatibility/details.md#adventure-350-point-decus-port) | Kevin Black DOS build, `adv350kb.zip` | Starts, accepts a 20-character instructions answer, and completes look, inventory, movement and quit; the quit score is 32/350. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
 | [B64](compatibility/details.md#b64) | 0.06R (rev A), FD14 BonusCD | Help, Base64 encoding of `ABCD` and decoding of `QUJDRA==` are byte-exact. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [BSUM](compatibility/details.md#bsum) | 1.1a, FD14 BonusCD | Text, empty-file and 20 KiB binary checksums match an independent oracle; usage and missing-file errors verified. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [FDBanner](compatibility/details.md#fdbanner) | 1.1, FD14 BonusCD | Coloured banner rendered through BIOS text services; screenshot checked. | [screenshot](compatibility/2026-10-23-retest-026-fdbanner.png) | 2026-10-23 |
@@ -34,8 +35,9 @@ program works. The full test history is in
 | [SemWare GREP](compatibility/details.md#semware-tse-250e) | bundled with TSE 2.50e | Finds exactly the two `apple` lines in the fixture. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [SemWare TSORT](compatibility/details.md#semware-tse-250e) | bundled with TSE 2.50e | Sorts four input lines into the expected order. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [utf8tocp](compatibility/details.md#utf8tocp-20240918) | 20240918, FD14 BonusCD | Exact UTF-8 ↔ CP437 and UTF-8 ↔ CP775 conversions, including Lithuanian letters and CRLF. | [transcript](compatibility/2026-10-23-search-utf8-basic.txt) | 2026-10-23 |
+| [Zork I: The Great Underground Empire](compatibility/details.md#zork-i-the-great-underground-empire) | MIT historicalsource release, `zork1.z3` (86,838 bytes), ZIP 2.00 | ZIP 2.00 starts the story; room text, commands, inventory, score, save/restore and quit work. The status line still clips its right edge. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
 
-## 🟡 Partial (8)
+## 🟡 Partial (9)
 
 | Application | Version / media | Partial result | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
@@ -44,6 +46,7 @@ program works. The full test history is in
 | [EDITV](compatibility/details.md#editv-41) | 4.1 US, `editv41u.zip` | Opens and displays a file and accepts typed text; save and reopen are unverified. | [screenshot](compatibility/2026-10-23-dosprograms-editv-typed.png) | 2026-10-23 |
 | [Life2](compatibility/details.md#life2) | text-mode Conway Life, `life2.zip` | Instructions and EDIT mode render; starting RUN mode stops on `OUT` port `0040h` (PIT channel 0) before a generation. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
 | [Microsoft Windows 1.01](compatibility/details.md#microsoft-windows-101) | 1.01, five 360 KB floppy images | Setup completes and writes `WIN.COM`/`WIN100.BIN`; startup prints `Incorrect DOS version` and faults; desktop unavailable. | [screenshot](compatibility/2026-10-23-retest-026-windows-start.png) | 2026-10-23 |
+| [Planetfall (Infocom Sampler demo)](compatibility/details.md#planetfall-infocom-sampler-demo) | official 1984 Infocom Sampler, `sampler1_R26.z3` (112,610 bytes) | The sampler starts and accepts `planet`, but the Planetfall sample text does not render past its first line under ZIP/JZIP; full-game testing was skipped for licensing. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
 | [SemWare Editor Professional](compatibility/details.md#semware-tse-250e) | 2.50e, `tse250e.zip` | An input file opens and renders, but typed input does not reach the editor; editing, save and reopen are unverified. | [screenshot](compatibility/2026-10-23-retest-026-tse-file.png) | 2026-10-23 |
 | [uHex](compatibility/details.md#uhex-104) | 1.0.4 DOS | Help and the 34-byte read-only view work, with display defects; editing, save and reopen are unverified. | [screenshot](compatibility/2026-10-23-retest-026-uhex.png) | 2026-10-23 |
 | [VIEW](compatibility/details.md#view-172) | 17.2, `view.zip` | Opens the 23-page `VIEW.DOC` and a short file; Esc exits. Header overlap and screen remnants remain; paging is untested. | [screenshot](compatibility/2026-10-23-dosprograms-view-doc.png) | 2026-10-23 |
@@ -87,7 +90,7 @@ No entries are currently untested.
 
 ## Scope and method
 
-Tested against ManiOS 0.26.0 (`c10d9f0`, kernel `5553a1934d19165f34dcea365ffcb4aaec0d11b81877521da23ec889726fc88c`). Environment: QEMU i386, CPU 486, 64 MiB RAM, serial console; disposable FAT16 images and 6-12 s observations unless a longer setup run is recorded.
+Tested against ManiOS 0.26.0 (`55a788a`, kernel `8599009f47058371966bf01f622ce6991fccf7229de26742bc43c72639cdd7cd`). Environment: QEMU i386, CPU 486, 64 MiB RAM, serial console; disposable FAT16 images and 6-12 s observations unless a longer setup run is recorded.
 
 Applications are started with `dosrun` from a fresh disposable FAT16
 image per case. Transcripts and screenshots are stored in

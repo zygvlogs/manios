@@ -19,7 +19,7 @@ and include earlier builds, so a section can predate the current result; use it
 for commands, timings, hashes and exact failure addresses. The 2026-10-23
 [dosprograms.info.tt catalog](https://dosprograms.info.tt/apps.htm) batch is
 followed by the compat4 Info-ZIP, DOSStart, Spectra and PasswordBox batch and
-the FreeDOS-repo Games batch at the end.
+the FreeDOS-repo Games batch, followed by the text-adventure batch at the end.
 
 ## Warcraft: Orcs & Humans
 
@@ -1357,5 +1357,117 @@ Screenshots: [Champ Galagon](2026-10-23-compat4-games-galagon.png),
 [Life2](2026-10-23-compat4-games-life2.png),
 [ShuffleV](2026-10-23-compat4-games-shufflev.png),
 [TypeFast](2026-10-23-compat4-games-typefast.png).
+
+## Zork I: The Great Underground Empire
+
+- **Tested build:** ManiOS 0.26.0, source commit
+  `55a788a1f78d53636604f4c4d114401cd34b909b`; kernel SHA-256
+  `8599009f47058371966bf01f622ce6991fccf7229de26742bc43c72639cdd7cd`.
+- **Story:** [historicalsource/zork1](https://github.com/historicalsource/zork1)
+  `COMPILED/zork1.z3`, 86,838 bytes, MIT license. SHA-256
+  `37084966477dff679282de42974b2077156b1bd68fad92a65d4ea94d8eb64d79`.
+- **Interpreter:** ZIP 2.00 (`ZIP.EXE`), SHA-256
+  `2bb2577f47e6900154995c9a8138ddb74e3de5cdf94b31426987fcdf4b8794d7`.
+- **Command:** `dosrun C:/ZIP.EXE ZORK1.Z3`
+- **Status:** **Working**.
+
+ZIP 2.00 starts the story and renders the title, `West of House` and the
+mailbox description. `look`, `open mailbox`, `read leaflet`, `north`,
+`inventory` and `score` produce readable output. The game accepts ordinary
+printable commands and Enter; no function or cursor keys are needed.
+
+`save` asks for a file name, writes `ZORK1.SAV` (13,330 bytes) and reports
+`OK.`. After `quit`, `y` and the final `[Hit any key to exit.]` keypress,
+control returns to the `manios%` prompt. A fresh boot and `restore` of the
+same file reports `OK.`; `look` returns to West of House. The save file was
+kept outside the repository; its SHA-256 is
+`db9e1cd6c4ca8d0f7d8276ddb6c99d799531658a011aa8f9525c213021a0e199`.
+
+The status line still clips its right side: `Score: 0` and `Moves` are not
+both fully visible in every frame, and a black rectangle remains at the
+bottom-right of the text screen. Both are cosmetic for the tested commands.
+
+Screenshots: [start](2026-10-23-text-zork1-start.png),
+[look](2026-10-23-text-zork1-look.png),
+[save](2026-10-23-text-zork1-save.png),
+[restore](2026-10-23-text-zork1-restore.png).
+
+## Adventure (350-point DECUS port)
+
+- **Tested build:** ManiOS 0.26.0, source commit
+  `55a788a1f78d53636604f4c4d114401cd34b909b`; kernel SHA-256
+  `8599009f47058371966bf01f622ce6991fccf7229de26742bc43c72639cdd7cd`.
+- **Program:** Kevin Black's DOS build of the DECUS 350-point version from
+  [rickadams.org](https://rickadams.org/adventure/e_downloads.html),
+  `adv350kb.zip`. Archive SHA-256
+  `15688040a21163a236aa2639022807d4aa380e06fb1056fd25aff12e8146dd8a`;
+  `ADVENTUR.EXE` SHA-256
+  `26bbe95ee8a3097f022bf87a4c3c41a3eb3b357da5dbe32dc70ed9d2f69425f0`.
+- **Command:** `dosrun C:/ADVENTUR.EXE`
+- **Status:** **Working**.
+
+The welcome screen appears and the game asks `Would you like
+instructions?`. The answer is read as a 20-character FORTRAN record
+(`FORMAT(20A1)`), so `N` followed by 19 spaces is accepted; an unpadded
+`n`, `N`, `no` or `NO` is rejected with `Please answer the question.`.
+This is an input-format detail of the program, not a general DOS input
+failure.
+
+After the answer, `look`, `inventory`, `north`, `quit` and `Y` work. The
+quit message reports 32 of a possible 350 points in 4 turns and returns to
+the `manios%` prompt. Screenshots:
+[look](2026-10-23-text-adventure-look.png),
+[quit](2026-10-23-text-adventure-quit.png).
+
+## Planetfall (Infocom Sampler demo)
+
+- **Tested build:** ManiOS 0.26.0, source commit
+  `55a788a1f78d53636604f4c4d114401cd34b909b`; kernel SHA-256
+  `8599009f47058371966bf01f622ce6991fccf7229de26742bc43c72639cdd7cd`.
+- **Story:** official 1984 Infocom Sampler
+  [`sampler1_R26.z3`](https://www.ifarchive.org/if-archive/infocom/demos/),
+  112,610 bytes. SHA-256
+  `8a333e2381095439acb66db43385f4f94ba5fe63c478c95079ae764bacd2942b`.
+  The sampler contains a Planetfall sample alongside Zork I, Infidel and
+  The Witness. The full commercial Planetfall story was not tested or
+  committed.
+- **Commands:** `dosrun C:/ZIP.EXE SAMPLE.Z3`, then `planet`; repeated
+  with `JZIP.EXE`.
+- **Status:** **Partial**.
+
+The sampler starts under ZIP 2.00 and JZIP, renders the introduction and
+shows `(Hit the RETURN key now to start the tutorial.)>>`. Entering
+`planet` selects the Planetfall sample. Under ZIP the text window is
+cleared to blue and the sample text is not readable. Under JZIP only the
+first line, `Briefly, here are the instructions for Planetfall. You are a
+lowly Ensign`, appears at the bottom of the screen and the sample does not
+advance. The sampler's own selection prompt and the first sample line are
+therefore demonstrated, but Planetfall gameplay is not.
+
+The likely remaining gap is the text-window scroll/presentation path used
+after the sample clears the window and prints a page of text; ZIP/JZIP do
+not keep the sample readable. Full Planetfall was skipped for licensing
+reasons, so no commercial story file is part of this test.
+
+Screenshots: [sampler start](2026-10-23-text-planetfall-sampler-start.png),
+[Planetfall selection](2026-10-23-text-planetfall-sampler-select.png).
+
+### Text-adventure interpreter notes
+
+- **ZIP 2.00** is the working interpreter for Zork I and the selected
+  interpreter for this batch.
+- **JZIP** starts Zork I and the sampler, but its status-line and screen
+  formatting are poor, and the sampler stalls after its first sample line.
+- **Frotz 2.55** and **Frotz 2.53** stop at `OUT 0043h` (PIT channel 0
+  control) before the game.
+- **DZIP** stops at `OUT 00F0h`.
+- The `dosapi.c` change in this batch implements BIOS `INT 10h`
+  `AH=06h/07h` text-window scrolling and bottom-row scrolling for DOS
+  console output. It made Zork I's room text and commands readable; the
+  status-line clipping and bottom-right unpainted area remain.
+
+The full transcript and hashes are in
+[2026-10-23-text-adventures.txt](2026-10-23-text-adventures.txt) and
+[2026-10-23-text-adventures.json](2026-10-23-text-adventures.json).
 
 No application binaries, ZIP archives or disk images are committed.

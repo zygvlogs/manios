@@ -1,0 +1,123 @@
+Text-adventure compatibility batch (2026-10-23)
+================================================
+
+Build: ManiOS 0.26.0, source commit 55a788a1f78d53636604f4c4d114401cd34b909b.
+Kernel: build/manios-zkt.elf, SHA-256
+8599009f47058371966bf01f622ce6991fccf7229de26742bc43c72639cdd7cd.
+Environment: QEMU i386, CPU 486, 64 MiB RAM, serial console, fresh 16 MiB
+FAT16 image per case. Downloads, binaries and disk images are not committed.
+
+The kernel in this batch includes the dosrun change that implements BIOS
+INT 10h AH=06h/07h text-window scrolling and scrolls the active text page
+when DOS console output reaches the bottom row. The i686-elf cross compiler
+was absent, so the kernel was linked with the host gcc -m32 fallback.
+
+Interpreter
+-----------
+ZIP 2.00 (ZIP.EXE)
+SHA-256 2bb2577f47e6900154995c9a8138ddb74e3de5cdf94b31426987fcdf4b8794d7
+
+Zork I: The Great Underground Empire
+-----------------------------------
+Status: Working
+Story: historicalsource/zork1 COMPILED/zork1.z3, 86,838 bytes, MIT license.
+SHA-256 37084966477dff679282de42974b2077156b1bd68fad92a65d4ea94d8eb64d79
+
+Command: dosrun C:/ZIP.EXE ZORK1.Z3
+
+Observed:
+- The title and "West of House" room text render.
+- look, open mailbox, read leaflet, north, inventory and score work.
+- save prompts for a file name; ZORK1.SAV is written (13,330 bytes) and
+  the game reports OK.
+- quit, y and the final "[Hit any key to exit.]" key return to manios%.
+- A fresh boot and restore of ZORK1.SAV reports OK; look returns to West of
+  House.
+- The status line still clips its right side (Score/Moves); this is cosmetic
+  for the tested commands.
+- A black rectangle remains at the bottom-right of the text screen.
+
+ZORK1.SAV SHA-256:
+db9e1cd6c4ca8d0f7d8276ddb6c99d799531658a011aa8f9525c213021a0e199
+The save file is retained outside the repository as an artifact.
+
+Screenshots: 2026-10-23-text-zork1-start.png,
+2026-10-23-text-zork1-look.png, 2026-10-23-text-zork1-save.png,
+2026-10-23-text-zork1-restore.png.
+
+Adventure (350-point DECUS port)
+--------------------------------
+Status: Working
+Source: https://rickadams.org/adventure/e_downloads.html, adv350kb.zip.
+Archive SHA-256:
+15688040a21163a236aa2639022807d4aa380e06fb1056fd25aff12e8146dd8a
+
+ADVENTUR.EXE SHA-256:
+26bbe95ee8a3097f022bf87a4c3c41a3eb3b357da5dbe32dc70ed9d2f69425f0
+ADVENTUR.CTL SHA-256:
+17777719f3466382efe2a17514af8ee5e77c57daa22d8358733fc0c636da1e59
+ADVENTUR.MTX SHA-256:
+37711940a7b9da72a9f7baaa04f620c9c505a0b09c8f241200f78b49901f6c27
+
+Command: dosrun C:/ADVENTUR.EXE
+
+Observed:
+- The welcome screen appears and the game asks "Would you like
+  instructions?".
+- The answer is read as a 20-character FORTRAN record. "N" followed by 19
+  spaces is accepted; an unpadded n, N, no or NO is rejected with "Please
+  answer the question.".
+- look, inventory, north, quit and y work.
+- The quit message reports 32 of a possible 350 points in 4 turns and
+  returns to manios%.
+
+Screenshots: 2026-10-23-text-adventure-look.png,
+2026-10-23-text-adventure-quit.png.
+
+Planetfall (Infocom Sampler demo)
+---------------------------------
+Status: Partial
+Story: IF Archive infocom/demos sampler1_R26.z3, 112,610 bytes.
+SHA-256 8a333e2381095439acb66db43385f4f94ba5fe63c478c95079ae764bacd2942b
+This is the official 1984 Infocom Sampler, containing a Planetfall sample
+alongside Zork I, Infidel and The Witness. The full commercial Planetfall
+story was neither tested nor committed.
+
+Commands:
+  dosrun C:/ZIP.EXE SAMPLE.Z3
+  planet
+  dosrun C:/JZIP.EXE SAMPLE.Z3
+  planet
+
+Observed:
+- The sampler starts under ZIP 2.00 and JZIP and renders the introduction
+  and the Hit RETURN prompt.
+- Entering "planet" selects the Planetfall sample.
+- Under ZIP the text window is cleared to blue and the sample text is not
+  readable. Under JZIP only the first line ("Briefly, here are the
+  instructions for Planetfall...") appears at the bottom and the sample
+  does not advance.
+- Result: Partial. Selection works, but the Planetfall sample is not
+  playable through the tested interpreter/display path. Full Planetfall
+  gameplay is unverified.
+
+Screenshots: 2026-10-23-text-planetfall-sampler-start.png,
+2026-10-23-text-planetfall-sampler-select.png.
+
+Other interpreters
+-------------------
+- JZIP: starts Zork I and the sampler, but status-line and screen
+  formatting are poor and the sampler stalls after its first sample line.
+- Frotz 2.55 and 2.53: stop at OUT 0043h (PIT channel 0 control) before
+  the game.
+- DZIP: stops at OUT 00F0h.
+
+Remaining limitations
+---------------------
+- Zork I status line clips Score/Moves at the right edge.
+- Bottom-right black rectangle in the text display.
+- Frotz and DZIP need additional PIT/FPU or hardware support.
+- Full Planetfall is blocked by licensing; only the official sampler demo
+  was used.
+- The kernel was linked with the host gcc fallback, not the missing
+  i686-elf cross toolchain.

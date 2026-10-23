@@ -1,0 +1,138 @@
+{
+  "date": "2026-10-23",
+  "build": {
+    "version": "0.26.0",
+    "source_commit": "55a788a1f78d53636604f4c4d114401cd34b909b",
+    "kernel_sha256": "8599009f47058371966bf01f622ce6991fccf7229de26742bc43c72639cdd7cd",
+    "note": "Kernel built from the source tree with the host gcc -m32 fallback because the i686-elf cross toolchain is absent. The dosrun change adds BIOS INT 10h AH=06h/07h text-window scrolling and bottom-row scrolling for DOS console output."
+  },
+  "environment": "QEMU i386, CPU 486, 64 MiB RAM, serial console; fresh 16 MiB FAT16 test images. Binaries and disk images remain outside the repository.",
+  "interpreter": {
+    "name": "ZIP 2.00",
+    "file": "ZIP.EXE",
+    "sha256": "2bb2577f47e6900154995c9a8138ddb74e3de5cdf94b31426987fcdf4b8794d7"
+  },
+  "cases": [
+    {
+      "id": "zork1",
+      "name": "Zork I: The Great Underground Empire",
+      "status": "Working",
+      "story": {
+        "source": "https://github.com/historicalsource/zork1",
+        "file": "COMPILED/zork1.z3",
+        "bytes": 86838,
+        "sha256": "37084966477dff679282de42974b2077156b1bd68fad92a65d4ea94d8eb64d79",
+        "license": "MIT"
+      },
+      "command": "dosrun C:/ZIP.EXE ZORK1.Z3",
+      "observed": [
+        "ZIP 2.00 starts the story and renders the title, West of House and the mailbox description.",
+        "look, open mailbox, read leaflet, north, inventory and score produce readable output.",
+        "save asks for a file name; ZORK1.SAV is written (13330 bytes) and reports OK.",
+        "quit, y and the final key return to the manios% shell prompt.",
+        "A fresh boot and restore of ZORK1.SAV reports OK; look returns to West of House.",
+        "The status line still clips the right side: only Moves is visible in some frames, and Score can be cut off. This is cosmetic for the tested commands.",
+        "A black rectangle remains at the bottom-right of the text screen."
+      ],
+      "commands": [
+        "look",
+        "open mailbox",
+        "read leaflet",
+        "north",
+        "inventory",
+        "score",
+        "save",
+        "ZORK1.SAV",
+        "quit",
+        "y",
+        "[Hit any key to exit.]"
+      ],
+      "save_file": {
+        "name": "ZORK1.SAV",
+        "bytes": 13330,
+        "sha256": "db9e1cd6c4ca8d0f7d8276ddb6c99d799531658a011aa8f9525c213021a0e199",
+        "committed": false
+      },
+      "screenshots": [
+        "2026-10-23-text-zork1-start.png",
+        "2026-10-23-text-zork1-look.png",
+        "2026-10-23-text-zork1-save.png",
+        "2026-10-23-text-zork1-restore.png"
+      ]
+    },
+    {
+      "id": "adventure",
+      "name": "Adventure (350-point DECUS port)",
+      "status": "Working",
+      "program": {
+        "source": "https://rickadams.org/adventure/e_downloads.html",
+        "archive": "adv350kb.zip",
+        "archive_sha256": "15688040a21163a236aa2639022807d4aa380e06fb1056fd25aff12e8146dd8a",
+        "files": {
+          "ADVENTUR.EXE": "26bbe95ee8a3097f022bf87a4c3c41a3eb3b357da5dbe32dc70ed9d2f69425f0",
+          "ADVENTUR.CTL": "17777719f3466382efe2a17514af8ee5e77c57daa22d8358733fc0c636da1e59",
+          "ADVENTUR.MTX": "37711940a7b9da72a9f7baaa04f620c9c505a0b09c8f241200f78b49901f6c27"
+        }
+      },
+      "command": "dosrun C:/ADVENTUR.EXE",
+      "observed": [
+        "The game prints the welcome screen and asks Would you like instructions?",
+        "The instructions answer is read as a 20-character FORTRAN record. N followed by 19 spaces is accepted; an unpadded n, N, no or NO is rejected with Please answer the question.",
+        "look, inventory, north, quit and y work; the quit message reports a score of 32 out of a possible 350 using 4 turns and returns to the manios% shell prompt."
+      ],
+      "commands": [
+        "N                   ",
+        "look",
+        "inventory",
+        "north",
+        "quit",
+        "Y                   "
+      ],
+      "screenshots": [
+        "2026-10-23-text-adventure-look.png",
+        "2026-10-23-text-adventure-quit.png"
+      ]
+    },
+    {
+      "id": "planetfall-sampler",
+      "name": "Planetfall (Infocom Sampler demo)",
+      "status": "Partial",
+      "story": {
+        "source": "https://www.ifarchive.org/if-archive/infocom/demos/",
+        "file": "sampler1_R26.z3",
+        "bytes": 112610,
+        "sha256": "8a333e2381095439acb66db43385f4f94ba5fe63c478c95079ae764bacd2942b",
+        "note": "Official 1984 Infocom Sampler. It contains a Planetfall sample alongside Zork I, Infidel and The Witness. The full commercial Planetfall story was not tested or committed."
+      },
+      "commands": [
+        "dosrun C:/ZIP.EXE SAMPLE.Z3",
+        "planet",
+        "dosrun C:/JZIP.EXE SAMPLE.Z3",
+        "planet"
+      ],
+      "observed": [
+        "The sampler starts under ZIP 2.00 and JZIP and renders the introduction and the Hit RETURN prompt.",
+        "Entering planet selects the Planetfall sample. Under ZIP the text window is cleared to blue and the sample text is not readable; under JZIP only the first line (Briefly, here are the instructions for Planetfall...) appears at the bottom and the sample does not advance.",
+        "The result is recorded as Partial: selection works, but the Planetfall sample itself is not playable with the tested interpreter/display path. Full Planetfall gameplay is unverified for licensing and rendering reasons."
+      ],
+      "screenshots": [
+        "2026-10-23-text-planetfall-sampler-start.png",
+        "2026-10-23-text-planetfall-sampler-select.png"
+      ]
+    }
+  ],
+  "interpreter_results": {
+    "zip200": "Working for Zork I; selected as the text-adventure interpreter.",
+    "jzip": "Starts Zork I and the sampler, but status-line and screen formatting are poor and the sampler stalls after its first sample line.",
+    "frotz255": "Stops at OUT 0043h (PIT channel 0 control) before the game; unsupported runner gap.",
+    "frotz253": "Stops at OUT 0043h (PIT channel 0 control) before the game; unsupported runner gap.",
+    "dzip": "Stops at OUT 00F0h; unsupported runner gap."
+  },
+  "limitations": [
+    "The status line in Zork I still clips Score/Moves at the right edge.",
+    "A bottom-right black rectangle remains in the text display.",
+    "Frotz and DZIP need additional PIT/FPU or hardware support.",
+    "Planetfall full-game testing is blocked by licensing; only the official sampler demo was used.",
+    "The kernel was linked with the host gcc fallback, not the missing i686-elf cross toolchain."
+  ]
+}

@@ -70,7 +70,7 @@ preserve drive/CWD state; these changes do not change the shell's directory.
 | Interrupt | What it serves |
 |---|---|
 | `INT 21h` | DOS: the console (1, 2, 6-9, 0Ah, 0Bh), the date and time (2Ah, 2Ch), the version (30h), the interrupt vectors (25h, 35h), the PSP (51h, 62h), directory functions (39h-3Bh, 47h), file functions (3Ch-43h), duplication (45h/46h), MCB memory blocks (48h-4Ah), directory searches (4Eh/4Fh), FAT modification timestamps (57h) and legacy FCB record I/O |
-| `INT 10h` | BIOS video: mode 13h and text character/attribute/cursor services |
+| `INT 10h` | BIOS video: mode 13h, text character/attribute/cursor services and `AH=06h/07h` text-window scrolling |
 | `INT 16h` | BIOS keyboard: reading a key and non-consuming readiness queries |
 | `INT 1Ah` | BIOS clock: the tick count and the RTC time |
 
@@ -166,7 +166,9 @@ preservation, both polling polarities with interrupts disabled, counter wrap
 and rejection of unsupported ports. It is also included in `make test`.
 
 FCB zero-count block writes cannot truncate through the current filesystem API
-and return an explicit failure. BIOS text scrolling is incomplete. Keyboard
+and return an explicit failure. BIOS `INT 10h AH=06h/07h` scrolling and
+bottom-row DOS console scrolling are implemented for the active 80x25 text
+page; mode-specific and arbitrary window behavior remains limited. Keyboard
 input uses the terminal's line discipline (Enter is needed); direct VGA writes,
 extended scan-code sequences and game input are not fully emulated. UPX-packed
 MZ startup stubs are not supported. The fixed DOS date/time responses remain.
@@ -298,3 +300,29 @@ several limits that are broader than any one title:
   screen; TypeFast remains running with a blank console. The exact failing
   services were not isolated, so these are recorded as observed results rather
   than assigned causes.
+
+### Text-adventure batch (2026-10-23)
+
+Zork I, Adventure and the official Infocom Sampler were tested with ZIP 2.00;
+JZIP, Frotz 2.55/2.53 and DZIP were also tried. The detailed records are in
+[compatibility/details.md](compatibility/details.md).
+
+- **Scrolling.** `INT 10h AH=06h/07h` now scrolls a rectangular text window
+  on the active 80x25 page, and DOS console output scrolls the page when a
+  newline reaches the bottom row. This made Zork I's room text and command
+  echo readable. The bottom-right unpainted rectangle and Zork I's clipped
+  status line remain.
+- **Zork I.** ZIP 2.00 starts the MIT `zork1.z3`, accepts commands, renders
+  room text, and completes inventory, score, save, restore and quit. The save
+  file is written and read back.
+- **Adventure.** The 350-point DECUS DOS build starts and completes look,
+  inventory, movement and quit. Its instruction prompt is a FORTRAN
+  `FORMAT(20A1)` read, so the answer must be padded to 20 characters.
+- **Planetfall.** Only the official 1984 Infocom Sampler was used. It starts
+  and accepts `planet`, but ZIP clears the sample text and JZIP shows only the
+  first sample line before stalling. Full Planetfall was skipped for licensing.
+- **Interpreter gaps.** Frotz 2.55 and 2.53 stop at `OUT 0043h` (PIT channel 0
+  control), and DZIP stops at `OUT 00F0h`. JZIP's status-line and screen
+  formatting are poor.
+- **Build note.** The kernel for this batch was linked with a host
+  `gcc -m32` fallback because the i686-elf cross toolchain was unavailable.

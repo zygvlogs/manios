@@ -3,8 +3,8 @@
   "updated": "2026-10-23",
   "build": {
     "version": "0.26.0",
-    "commit": "c10d9f0",
-    "kernel_sha256": "5553a1934d19165f34dcea365ffcb4aaec0d11b81877521da23ec889726fc88c",
+    "commit": "55a788a",
+    "kernel_sha256": "8599009f47058371966bf01f622ce6991fccf7229de26742bc43c72639cdd7cd",
     "environment": "QEMU i386, CPU 486, 64 MiB RAM, serial console; disposable FAT16 images and 6-12 s observations unless a longer setup run is recorded"
   },
   "details": "details.md",
@@ -535,6 +535,39 @@
       "summary": "Starts and remains running, but the console stays blank; no prompts or game screen appear, so no task is completed.",
       "anchor": "typefast",
       "evidence": "2026-10-23-compat4-games.txt",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "zork1",
+      "name": "Zork I: The Great Underground Empire",
+      "version": "MIT historicalsource release, `zork1.z3` (86,838 bytes), ZIP 2.00",
+      "status": "Working",
+      "kind": "game",
+      "summary": "ZIP 2.00 starts the story; room text, commands, inventory, score, save/restore and quit work. The status line still clips its right edge.",
+      "anchor": "zork-i-the-great-underground-empire",
+      "evidence": "2026-10-23-text-adventures.json",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "adventure-350",
+      "name": "Adventure (350-point DECUS port)",
+      "version": "Kevin Black DOS build, `adv350kb.zip`",
+      "status": "Working",
+      "kind": "game",
+      "summary": "Starts, accepts a 20-character instructions answer, and completes look, inventory, movement and quit; the quit score is 32/350.",
+      "anchor": "adventure-350-point-decus-port",
+      "evidence": "2026-10-23-text-adventures.json",
+      "last_tested": "2026-10-23"
+    },
+    {
+      "id": "planetfall-sampler",
+      "name": "Planetfall (Infocom Sampler demo)",
+      "version": "official 1984 Infocom Sampler, `sampler1_R26.z3` (112,610 bytes)",
+      "status": "Partial",
+      "kind": "game",
+      "summary": "The sampler starts and accepts `planet`, but the Planetfall sample text does not render past its first line under ZIP/JZIP; full-game testing was skipped for licensing.",
+      "anchor": "planetfall-infocom-sampler-demo",
+      "evidence": "2026-10-23-text-adventures.json",
       "last_tested": "2026-10-23"
     }
   ],
