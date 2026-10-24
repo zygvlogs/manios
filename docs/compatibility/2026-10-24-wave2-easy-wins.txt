@@ -1,0 +1,77 @@
+ManiDOS Compatibility Wave 2 — Easy Wins
+Test date: 2026-10-24 (Europe/Vilnius)
+
+Environment
+- ManiOS 0.26.0-10232026, current local worktree kernel
+- QEMU i386, CPU 486, 64 MiB RAM, serial console
+- One disposable 8 MiB MBR/FAT16 image per batch, mtools-managed
+- Fresh test image held FIND.COM, ATTRIB.COM, DELTREE.COM, MEM.EXE,
+  VCHOICE.COM, VCLS.COM, INPUT.TXT, FLAG.TXT, and a nested TREE fixture.
+- Original ISO and ZIP files were read-only inputs; no application archive was
+  modified. All image and output files stayed under /tmp.
+
+Sources
+- FreeDOS FIND package: local ../freedos-find-audit/find.zip; package LSM
+  identifies FIND 01Nov2003 and GPL-2. FIND.COM is 7,671 bytes.
+- Remaining binaries were extracted unchanged from the local
+  ../freedos-bonus-audit/FD14BNS.iso FreeDOS BonusCD. No binary was copied into
+  the repository.
+- SHA-256 (tested binaries):
+0cf1515263147cdb2de7d214e6685c5a208dd5504f8890e09b996ea14aee9fa8  ../freedos-find-audit/package/BIN/FIND.COM
+63e5932a6f6604c584f77691ba55f882439f1c4c8637fb6e45f4ee5bc41f0414  /tmp/manios-wave2-wkkuxw7j/ATTRIB.COM
+72b6b5596048979a7a8526c73753892e0b13408821441cd3154e8d0b5fb013cb  /tmp/manios-wave2-wkkuxw7j/DELTREE.COM
+6f850921e0fdd40ad172099ec126831c17397e250963402fb03f4eb7c79dc9f4  /tmp/manios-wave2-wkkuxw7j/MEM.EXE
+fdefe05bf1601ba89dfec459b8f2ec3712f1326a7752e6fefec7c481f9b03d8b  /tmp/manios-wave2-wkkuxw7j/VCHOICE.COM
+86f0f881b164b0af472ecd90e873a5a03814835164aa5b74e6ec0c8173fefe53  /tmp/manios-wave2-wkkuxw7j/VCLS.COM
+
+Results
+
+FreeDOS FIND (01Nov2003)
+- Ran `FIND.COM "apple" INPUT.TXT`, `FIND.COM /I "apple" INPUT.TXT`, and
+  `FIND.COM /V "banana" INPUT.TXT` from the root of the FAT16 volume.
+- All three reported `FIND: INPUT.TXT: Cannot open file`; no matching lines
+  or search counts were produced. Independently checked that INPUT.TXT exists
+  on the image and contains the expected three CRLF lines. Classified Broken.
+
+FreeDOS ATTRIB (BonusCD binary; version unverified)
+- `ATTRIB C:/FLAG.TXT` displayed `[----A]`.
+- `ATTRIB +R C:/FLAG.TXT` reported `[----A] -> [---RA]`; a following listing
+  again displayed `[----A]`. `ATTRIB -R` also reported the original state.
+- Independently inspected the FAT directory entry after QEMU exited; it still
+  carried only the archive attribute. Reading/listing works, but attribute
+  changes are not saved. Classified Partial.
+
+FreeDOS DELTREE (displayed build v1.02g)
+- `DELTREE /Y C:/TREE` launched and identified `C:\TREE`, then displayed its
+  root-safety warning and interactive confirmation prompt. No confirmation was
+  accepted, so deletion and recursive deletion were not verified.
+- A follow-up relative `SUB` invocation failed because the DOS runner starts
+  each invocation at the drive root (`C:\SUB` was sought). Classified Partial;
+  a successful delete remains unverified.
+
+FreeDOS MEM (BonusCD binary; version unverified)
+- `MEM.EXE` immediately reported: `The MCB chain is corrupted (no Z MCB after
+  last M MCB, but 0 at seg 0x0).` No memory summary was produced. Classified
+  Broken.
+
+FreeDOS VCHOICE (BonusCD binary; version unverified)
+- `VCHOICE.COM /?` rendered cursor/position control sequences, then reported
+  `HELPPATH environment variable is not set.` The ManiDOS shell does not
+  implement `set`, so the documented help-path prerequisite could not be
+  configured in this test. No menu selection workflow was completed. Classified
+  Unsupported pending a valid HELPPATH setup and interactive test.
+
+FreeDOS VCLS (BonusCD binary; version unverified)
+- `VCLS.COM` returned, emitting cursor-hide, home, cursor-show and cursor-shape
+  control sequences. A QEMU VGA capture after the run still showed the prior
+  console contents, so the screen was not cleared. Classified Broken.
+- Screenshot: [post-run VGA screen](2026-10-24-wave2-vcls-screen.png).
+
+Reproduction
+1. Build a disposable FAT16 image with these six binaries and the fixtures.
+2. Boot the local ManiOS kernel in QEMU i386/486 with 64 MiB RAM.
+3. Run the commands above from `dosrun`; inspect the FAT16 image afterward with
+   mtools. The screen capture is the guest VGA output after VCLS returns.
+
+No compatibility-layer change was made during this batch. No new Working
+classification is justified by these results.

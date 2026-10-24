@@ -16,6 +16,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import time
 
 import console_test
 from console_test import SHELL_PROMPT, Machine, TestFailure, run_command
@@ -174,6 +175,135 @@ def filetime_com():
     return bytes(code)
 
 
+def fileops_com():
+    """Create NEW.TXT exclusively, write to it, then rename it."""
+    code = bytearray()
+    refs = {}
+
+    def emit(data):
+        code.extend(data)
+
+    def imm16(op, value):
+        emit(bytes(op) + b"\0\0")
+        refs.setdefault(value, []).append(len(code) - 2)
+
+    def jcc(op, label):
+        emit(bytes([op, 0]))
+        refs.setdefault((label, "rel"), []).append(len(code) - 1)
+
+    # Create NEW.TMP with AH=5Bh, then write four bytes through its handle.
+    imm16([0xBA], "old")                     # mov dx,old
+    emit(b"\xB8\x00\x5B\xB9\x00\x00\xCD\x21")  # create new
+    jcc(0x72, "fail")                        # jc fail
+    emit(b"\x89\xC3")                       # mov bx,ax
+    imm16([0xBA], "data")                    # mov dx,data
+    emit(b"\xB9\x04\x00\xB4\x40\xCD\x21")  # write 4 bytes
+    emit(b"\x3D\x04\x00")                 # cmp ax,4
+    jcc(0x75, "fail")                        # jne fail
+    emit(b"\xB4\x3E\xCD\x21")            # close handle
+    emit(b"\xB8\x00\x56")                 # mov ax,5600h
+    imm16([0xBA], "old")                     # mov dx,old
+    imm16([0xBF], "new")                     # mov di,new
+    emit(b"\xCD\x21")                       # rename DS:DX to ES:DI
+    jcc(0x72, "fail")                        # jc fail
+    imm16([0xBA], "ok")                      # print success marker
+    emit(b"\xB4\x09\xCD\x21\xB8\x00\x4C\xCD\x21")
+    labels = {"fail": len(code)}
+    imm16([0xBA], "failed")
+    emit(b"\xB4\x09\xCD\x21\xB8\x01\x4C\xCD\x21")
+    labels.update({"old": len(code)})
+    code.extend(b"C:\\OLD.TMP\0")
+    labels["new"] = len(code)
+    code.extend(b"C:\\NEW.TXT\0")
+    labels["data"] = len(code)
+    code.extend(b"DATA")
+    labels["ok"] = len(code)
+    code.extend(b"FILEOPS OK\r\n$")
+    labels["failed"] = len(code)
+    code.extend(b"FILEOPS FAIL\r\n$")
+
+    for label, offsets in refs.items():
+        if isinstance(label, tuple):
+            name = label[0]
+            for pos in offsets:
+                rel = labels[name] - (pos + 1)
+                if not -128 <= rel <= 127:
+                    raise AssertionError("file operation branch out of range")
+                code[pos] = rel & 0xFF
+        else:
+            for pos in offsets:
+                code[pos] = (0x100 + labels[label]) & 0xFF
+                code[pos + 1] = (0x100 + labels[label]) >> 8
+    return bytes(code)
+
+
+def pgdn_probe_com():
+    """Wait for BIOS PgDn and print a marker only for scan code 51h."""
+    code = bytearray(bytes.fromhex("b400 cd16 80fc51 7500"))
+    branch = len(code) - 1
+    code.extend(b"\xBA\0\0\xB4\x09\xCD\x21\xB8\x00\x4C\xCD\x21")
+    bad = len(code)
+    code.extend(b"\xBA\0\0\xB4\x09\xCD\x21\xB8\x01\x4C\xCD\x21")
+    ok_msg, bad_msg = len(code), len(code) + len(b"PGDN OK\r\n$")
+    code.extend(b"PGDN OK\r\n$PGDN BAD\r\n$")
+    code[branch] = (bad - (branch + 1)) & 0xFF
+    code[10] = (0x100 + ok_msg) & 0xFF
+    code[11] = (0x100 + ok_msg) >> 8
+    code[bad + 1] = (0x100 + bad_msg) & 0xFF
+    code[bad + 2] = (0x100 + bad_msg) >> 8
+    return bytes(code)
+
+
+def keyboard_port_probe_com():
+    """Read an extended PgDn from the emulated 8042 data/status ports."""
+    code = bytearray(bytes.fromhex(
+        "ba6400 ec a801 74f8 "       # wait for output-buffer-full
+        "ba6000 ec 3ce0 7500 "       # extended-key prefix
+        "ba6400 ec a801 7400 "       # second scan byte is queued
+        "ba6000 ec 3c51 7500"))      # PgDn scan 51h
+    fail_branches = [15, 23, 31]
+    code.extend(bytes.fromhex("ba0000 b409 cd21 b8004ccd21"))
+    fail = len(code)
+    code.extend(bytes.fromhex("ba0000 b409 cd21 b8014ccd21"))
+    ok_msg = len(code)
+    code.extend(b"KBD PORT OK\r\n$")
+    fail_msg = len(code)
+    code.extend(b"KBD PORT FAIL\r\n$")
+    for at in fail_branches:
+        code[at] = (fail - (at + 1)) & 0xFF
+    # The first success message pointer starts at code offset 33.
+    code[33] = (0x100 + ok_msg) & 0xFF
+    code[34] = (0x100 + ok_msg) >> 8
+    code[fail + 1] = (0x100 + fail_msg) & 0xFF
+    code[fail + 2] = (0x100 + fail_msg) >> 8
+    return bytes(code)
+
+
+def fcb_rename_com():
+    """Rename NEW.TXT to RENAMED.TXT with legacy INT 21h/AH=17h."""
+    code = bytearray(b"\xBA\0\0\xB4\x17\xCD\x21\x3C\x00\x75\0")
+    branch = len(code) - 1
+    code.extend(b"\xBA\0\0\xB4\x09\xCD\x21\xB8\x00\x4C\xCD\x21")
+    fail = len(code)
+    code.extend(b"\xBA\0\0\xB4\x09\xCD\x21\xB8\x01\x4C\xCD\x21")
+    fcb = len(code)
+    code.extend(bytes([3]) + b"NEW     TXT" + bytes(5) + b"RENAMED TXT")
+    ok_msg = len(code)
+    code.extend(b"FCB RENAME OK\r\n$")
+    fail_msg = len(code)
+    code.extend(b"FCB RENAME FAIL\r\n$")
+    code[branch] = (fail - (branch + 1)) & 0xFF
+    code[1] = (0x100 + fcb) & 0xFF
+    code[2] = (0x100 + fcb) >> 8
+    # Each `mov dx,imm16` points at the corresponding '$'-terminated result.
+    code[12] = (0x100 + ok_msg) & 0xFF
+    code[13] = (0x100 + ok_msg) >> 8
+    failure_dx = fail
+    code[failure_dx + 1] = (0x100 + fail_msg) & 0xFF
+    code[failure_dx + 2] = (0x100 + fail_msg) >> 8
+    return bytes(code)
+
+
 def readonly_filetime_com():
     # Get metadata on a read-only FAT volume; setting it must be refused.
     code = bytearray(b"\xBA\0\0\xB8\0\x3D\xCD\x21")
@@ -293,6 +423,10 @@ def build_disk(path):
     put(path, "BADIO.COM", bytes([0xB0, 0xB7, 0xE6, 0x43, 0xF4]), srcdir)
     put(path, "RTIME.COM", readonly_filetime_com(), srcdir)
     put(path, "FTIME.COM", filetime_com(), srcdir)
+    put(path, "FILEOPS.COM", fileops_com(), srcdir)
+    put(path, "PGDN.COM", pgdn_probe_com(), srcdir)
+    put(path, "KBDPORT.COM", keyboard_port_probe_com(), srcdir)
+    put(path, "FCBREN.COM", fcb_rename_com(), srcdir)
     put(path, "MKDIR.COM", directory_com(), srcdir)
     put(path, "IRET.COM", iret_com(), srcdir)
     put(path, "VGA.COM", vga_text_com(), srcdir)
@@ -373,6 +507,28 @@ def main():
         step("DOS timestamps persist across close/reopen and reject unsupported handles",
              lambda: run_command(m, "serial", "dosrun C:/FTIME.COM",
                                  ["FILETIME OK"], SHELL_PROMPT))
+        step("DOS create-new and rename work through INT 21h",
+             lambda: run_command(m, "serial", "dosrun C:/FILEOPS.COM",
+                                 ["FILEOPS OK"], SHELL_PROMPT))
+        step("DOS legacy FCB rename works through INT 21h/AH=17h",
+             lambda: run_command(m, "serial", "dosrun C:/FCBREN.COM",
+                                 ["FCB RENAME OK"], SHELL_PROMPT))
+        def probe_pgdn():
+            m.type_serial("dosrun C:/PGDN.COM\n")
+            time.sleep(0.25)
+            m.monitor.sendall(b"sendkey pgdn 100\n")
+            out = m.expect(SHELL_PROMPT, timeout=5)
+            if "PGDN OK" not in out:
+                raise TestFailure(f"PgDn BIOS scan probe failed:\n{out}")
+        step("PS/2 Page Down reaches DOS BIOS INT 16h with scan 51h", probe_pgdn)
+        def probe_keyboard_ports():
+            m.type_serial("dosrun C:/KBDPORT.COM\n")
+            time.sleep(0.25)
+            m.monitor.sendall(b"sendkey pgdn 100\n")
+            out = m.expect(SHELL_PROMPT, timeout=5)
+            if "KBD PORT OK" not in out:
+                raise TestFailure(f"8042 keyboard-port probe failed:\n{out}")
+        step("PS/2 Page Down reaches DOS 8042 status/data ports", probe_keyboard_ports)
         step("a short direct-VGA text program renders before exit",
              lambda: run_command(m, "serial", "dosrun C:/VGA.COM",
                                  ["VGA OK"], SHELL_PROMPT))
@@ -387,6 +543,14 @@ def main():
                                  ["usage"], SHELL_PROMPT))
     finally:
         m.close()
+    # Verify DOS create/write/rename on the persistent FAT16 image independently.
+    renamed = os.path.join(workdir, "renamed.txt")
+    mt(disk, "mcopy", "::/RENAMED.TXT", renamed)
+    with open(renamed, "rb") as f:
+        if f.read() != b"DATA":
+            print("FAIL: DOS create/write/FCB rename file bytes"); failures += 1
+        else:
+            print("PASS: mtools confirms RENAMED.TXT contains DATA")
     m = Machine(kernel, ["-drive", f"file={disk},format=raw,if=none,id=ro,readonly=on",
                          "-device", "virtio-blk-pci,drive=ro"])
     try:

@@ -20,6 +20,7 @@ HARNESS = r"""
 #include "loader.h"
 #include "cpu.h"
 #include "dosapi.h"
+#include "drives.h"
 #include "loader.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,6 +38,15 @@ int main(int argc, char **argv)
 		printf("LOADFAIL %s\n", err);
 		return 1;
 	}
+	/* C: is the directory holding the test program, so FCB file tests
+	 * exercise the same path mapping as the guest runner. */
+	char mountdir[512];
+	snprintf(mountdir, sizeof(mountdir), "%s", argv[1]);
+	char *slash = strrchr(mountdir, '/');
+	if (slash) *slash = '\0';
+	else snprintf(mountdir, sizeof(mountdir), ".");
+	dos_mount('C', mountdir);
+	dos_set_drive('C' - 'A');
 	struct dos_state *d = dos_new(&c);
 	dos_set_program(d, 0x1000, 0x1010);
 	dos_build_psp(d);
@@ -49,6 +59,7 @@ int main(int argc, char **argv)
 		if (s == CPU_FAULT) { printf("FAULT %s\n", cpu_fault_name(c.fault_opcode)); return 0; }
 		if (s == CPU_INT) {
 			enum cpu_stop r = dos_int(d, &c, c.int_no);
+			if (r == CPU_GUEST) continue;
 			if (r == CPU_EXIT) { printf("EXIT %d\n", c.exit_code); return 0; }
 			c.ip = pop16(&c); c.sreg[1] = pop16(&c); c.flags = pop16(&c);
 		}
@@ -176,6 +187,39 @@ def interrupt_flags_com(code, branch):
     """Exit successfully only if a service's returned flags reach the caller."""
     return bytes(code) + bytes([branch, 5, 0xB8, 1, 0x4C, 0xCD, 0x21,
                                0xB8, 0, 0x4C, 0xCD, 0x21])
+
+
+def fcb_close_com():
+    """Open an FCB and close it twice. MS-DOS FCBIO.ASM explicitly makes
+    successive closes return success because real applications do this."""
+    code = bytearray()
+    dx_offsets = []
+
+    def dx_fcb():
+        dx_offsets.append(len(code) + 1)
+        code.extend(b"\xBA\x00\x00")       # mov dx,fcb
+
+    def check_ok():
+        code.extend(b"\x08\xC0\x75\x00")   # or al,al; jne fail
+        return len(code) - 1
+
+    dx_fcb()
+    code.extend(b"\xB4\x0F\xCD\x21")       # open
+    jumps = [check_ok()]
+    for _ in range(2):
+        dx_fcb()
+        code.extend(b"\xB4\x10\xCD\x21")   # close
+        jumps.append(check_ok())
+    code.extend(b"\xB8\x00\x4C\xCD\x21")   # exit 0
+    fail_at = len(code)
+    code.extend(b"\xB8\x01\x4C\xCD\x21")   # fail: exit 1
+    for at in jumps:
+        code[at] = (fail_at - (at + 1)) & 0xFF
+    fcb = 0x100 + len(code)
+    for at in dx_offsets:
+        code[at:at + 2] = struct.pack("<H", fcb)
+    code.extend(bytes([0]) + b"FCBTEST " + b"TXT" + bytes(25))
+    return com(bytes(code))
 
 
 def mz_image(image, cs=0, header_size=32):
@@ -444,6 +488,11 @@ def main():
     check("EMS: allocate a page and map it",
           run(exe, workdir, "ems.com", ems_com()),
           "EMS OK\nEXIT 0\n")
+    with open(os.path.join(workdir, "fcbtest.txt"), "wb") as f:
+        f.write(b"FCB DATA")
+    check("an FCB may be closed more than once",
+          run(exe, workdir, "fcbclose.com", fcb_close_com()),
+          "EXIT 0\n")
 
     print(f"\n{'FAILED' if failures else 'OK'}: {failures} failure(s)")
     return 1 if failures else 0

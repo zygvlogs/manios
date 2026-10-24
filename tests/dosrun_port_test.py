@@ -20,7 +20,7 @@ int main(void) {
  CHECK(cpu_step(&c)==CPU_FAULT); /* No implicit device on a bare CPU. */
  struct dos_state *d=dos_new(&c);CHECK(d&&c.port_in8);
  /* The master PIC mask register is persistent software state; it does not
-  * imply that the runner delivers the corresponding hardware interrupts. */
+  * imply that this isolated port test raises a hardware interrupt. */
  uint8_t mask=0;CHECK(c.port_in8(&c,0x21,&mask)==0&&mask==0xFC);
  code(in,sizeof(in));c.r[DX]=0x21;c.r[AX]=0xAB00;c.flags=0xAD7;
  CHECK(cpu_step(&c)==CPU_OK&&c.ip==1&&c.r[AX]==0xABFC&&c.flags==0xAD7);
@@ -29,6 +29,21 @@ int main(void) {
  CHECK(out_stop==CPU_OK&&c.ip==1&&c.r[AX]==0xA5F9&&c.flags==0xAD7);
  CHECK(c.port_in8(&c,0x21,&mask)==0&&mask==0xF9);
  CHECK(c.port_out8(&c,0x21,0xFC)==0);
+	/* An idle emulated 8042 reports no output-buffer data through its status
+	 * or data ports; a live PS/2 key is covered by dosrun_test.py. */
+	code(in,sizeof(in));c.r[DX]=0x64;c.r[AX]=0xABFF;c.flags=0xAD7;
+	CHECK(cpu_step(&c)==CPU_OK&&c.r[AX]==0xAB00&&c.flags==0xAD7);
+	code(in,sizeof(in));c.r[DX]=0x60;c.r[AX]=0xABFF;c.flags=0xAD7;
+	CHECK(cpu_step(&c)==CPU_OK&&c.r[AX]==0xAB00&&c.flags==0xAD7);
+ /* CGA mode and color-select writes are harmless in the BIOS-backed text
+  * renderer; programs that poke them must continue without host VGA mode
+  * changes or a DOS runner fault. */
+ uint16_t cga_ports[]={0x3D8,0x3D9};
+ for(unsigned i=0;i<sizeof(cga_ports)/sizeof(cga_ports[0]);i++) {
+  code(outpic,sizeof(outpic));c.r[DX]=cga_ports[i];c.r[AX]=0x5AA5;c.flags=0xAD7;
+  CHECK(cpu_step(&c)==CPU_OK&&c.ip==1&&c.r[AX]==0x5AA5&&c.flags==0xAD7);
+ }
+ puts("PASS: CGA mode/color writes are accepted by the text-backed video layer");
  unsigned seen=0,previous=0,vertical_edges=0;
  code(in,sizeof(in));c.insns=0;c.flags=0xAD7;c.r[DX]=0x3DA;c.r[BX]=0x1234;
  for(int i=0;i<16384;i++) {
@@ -59,7 +74,7 @@ int main(void) {
   CHECK(done&&!(c.flags&FLAG_IF));
  }
  puts("PASS: both-polarity bit 0/3 polling loops terminate with interrupts disabled, including counter wrap");
- uint16_t ports[]={0,6,0x60,0x3BA,0x3DB,0xFFFF};
+	uint16_t ports[]={0,6,0x3BA,0x3DB,0xFFFF};
  for(unsigned k=0;k<sizeof(ports)/sizeof(ports[0]);k++) {
   code(in,sizeof(in));c.r[DX]=ports[k];c.r[AX]=0xBEEF;c.flags=0xAD7;
   CHECK(cpu_step(&c)==CPU_FAULT&&c.fault_opcode==0xEC&&c.r[AX]==0xBEEF&&c.flags==0xAD7);

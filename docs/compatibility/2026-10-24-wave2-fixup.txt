@@ -1,0 +1,97 @@
+ManiOS / ManiDOS Compatibility Wave 2 fix-up
+Date: 2026-10-24
+Kernel: 0.26.0-10232026, QEMU i386/486, 64 MiB
+All destructive application attempts used newly created disposable FAT16 images.
+The FreeDOS archives and original image fixtures were not modified.
+
+FIND — invocation corrected; no ManiDOS file-open fix was needed
+The original candidate loaded FIND from C: but put INPUT.TXT on C:. The binary
+selects A: before opening relative filenames, so these runs looked on A:.
+Rerun with the same disposable FAT16 mounted as A:
+  dosrun --mount A=/n/ata0p1 A:/FIND.COM "apple" INPUT.TXT
+    ---------------- INPUT.TXT
+    apple red
+  dosrun --mount A=/n/ata0p1 A:/FIND.COM /I "apple" INPUT.TXT
+    ---------------- INPUT.TXT
+    apple red
+    Apple green
+  dosrun --mount A=/n/ata0p1 A:/FIND.COM /V "banana" INPUT.TXT
+    ---------------- INPUT.TXT
+    apple red
+    Apple green
+  dosrun --mount A=/n/ata0p1 A:/FIND.COM "apple" MISSING.TXT
+    FIND: MISSING.TXT: No such file
+Missing-file exit code is not printed by the ManiOS shell, so only the exact
+failure message is recorded here.
+
+ATTRIB — FAT attribute persistence and directory-search metadata fixed
+Initial read:
+  [----A] C:/FLAG.TXT
+Set read-only:
+  [----A] -> [---RA] C:/FLAG.TXT
+A separate dosrun invocation then listed:
+  [---RA] C:/FLAG.TXT
+Clear read-only:
+  [---RA] -> [----A] C:/FLAG.TXT
+After the guest exited, mtools mattrib independently showed:
+  A          ::/FLAG.TXT
+A separate +R-only run was also inspected before clearing; mattrib showed:
+  A    R     ::/FLAG.TXT
+The implementation adds a filesystem-native FAT attribute operation via
+SYS_FILEATTR; INT 21h/AH=43h no longer claims success without doing the work.
+DOS search DTA records now contain actual FAT attributes, which ATTRIB uses to
+list them. tests/dosrun_runtime_test.py covers get/set/clear, missing paths,
+invalid masks and invalid subfunctions (host DOS API adapter).
+
+VCLS — BIOS video BDA fixed
+VCLS reads BIOS data-area bytes directly. The DOS video service reported mode 3
+and text geometry internally but did not initialize the BDA's mode, columns,
+row count, active page, and page-offset fields. Those values are now initialized
+and kept in sync with BIOS mode/page changes. A BIOS full-window clear also
+emits the terminal's full-screen erase while preserving its cursor position.
+The VGA capture after VCLS shows only the returned ManiOS prompt on a blank
+screen: 2026-10-24-wave2-fixup-vcls.png. The DOS runtime test checks the BDA,
+full-screen clear in B800 memory, the emitted erase sequence, and subsequent
+text rendering.
+
+DELTREE — deletion remains unverified
+Version/build banner: DEFAULT-BUILD v1.02g; ROOT-SAFETY-CHECK enabled.
+The nested target was on a disposable FAT16 image. With a fully qualified path,
+DELTREE displayed:
+  Warning! DELTREE called in root directory with "/Y" specified!
+  Filespec to delete: "C:\TREE"
+  Do you REALLY want to do this???
+  [Y] [N] [Q], [ENTER] ?
+The runner's DOS current directory remains the drive root. The safety
+confirmation was not accepted by the harness. No deletion was performed, and
+no root-safety protection was disabled.
+
+MEM — MCB entry point fixed; CPU instruction support remains a blocker
+INT 21h/AH=52h now returns ES:BX for a DOS list-of-lists whose preceding word
+points to the initial MCB at segment 0x0FFF. Regression checks verify the Z
+header, owner, size, allocation/resizing/freeing, and chain termination at
+0xA000. MEM no longer reports the prior MCB-chain corruption; it now stops at
+  dosrun: C:/MEM.EXE: can't run opcode 66 (at 1010:03D5)
+It produces no memory summary. Supporting the required instruction is outside
+the contained MCB fix.
+
+VCHOICE — environment limitation separated from app behavior
+The old test invoked "set HELPPATH=C:\" in ManiOS sh, which reported:
+  sh: set: not found
+VCHOICE /? then reported:
+  HELPPATH environment variable is not set.
+This does not establish that the DOS shell lacks environment handling; ManiDOS
+has SET, while dosrun starts a separate process with its own fixed environment.
+VCHOICE's primary interactive selection flow was not verified. The catalog now
+marks it Untested instead of Unsupported.
+
+Compatibility statuses after verified reruns:
+  Working: FIND, ATTRIB, VCLS
+  Partial: DELTREE
+  Broken: MEM
+  Untested: VCHOICE
+
+Regression commands for this fix-up:
+  python3 tests/dosrun_runtime_test.py
+  make test
+  git diff --check

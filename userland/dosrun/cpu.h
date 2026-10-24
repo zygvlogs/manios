@@ -41,6 +41,7 @@ enum cpu_stop {
 	CPU_INT,     /* an INT instruction or a hardware interrupt: see cpu->int_no */
 	CPU_IRET,    /* IRET: the caller may treat it as the end of an interrupt */
 	CPU_FAULT,   /* an instruction the interpreter can't run: cpu->fault says which */
+	CPU_GUEST,   /* dos_int: execute the installed guest handler, keeping its frame */
 	CPU_EXIT,    /* the program asked to end (INT 21h AH=4Ch): cpu->exit_code */
 };
 
@@ -68,6 +69,8 @@ struct cpu {
 	 * ticked): a bit per IRQ line, checked between instructions when
 	 * IF is set. */
 	uint16_t irq_pending;
+	uint8_t irq_shadow; /* STI/MOV SS/POP SS defer IRQs through the next instruction. */
+	int (*irq_ack)(struct cpu *c); /* PIC acknowledge; -1 if no eligible IRQ. */
 };
 
 void cpu_init(struct cpu *c);

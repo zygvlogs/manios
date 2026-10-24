@@ -243,12 +243,12 @@ SC compilation and advances TSORT to missing AAD. XLAT now preserves AH and flag
 supports source-segment overrides and wraps BX+AL to 16 bits; AAD folds the two
 bytes using its immediate base and updates SF/ZF/PF.
 
-The editor also writes directly to emulated B800 text memory. The new renderer
+The editor also writes directly to emulated B800 text memory. The renderer
 copies changed spans of the active 80x25 colour page to the terminal, retaining
 attributes and cursor position. DOS/BIOS character writes update the shadow to
 avoid redrawing ordinary console output. Pending direct writes flush before a
-blocking BIOS key read and before program exit. Monochrome/high-row modes,
-text-mode scrolling and hardware keyboard integration are not completed here.
+blocking BIOS key read and before program exit. Monochrome/high-row modes and
+some text-mode scrolling remain unverified.
 
 Pre-0.26.0 baseline (the 0.26.0 retest follows the table):
 
@@ -277,6 +277,16 @@ cooked console) changed nothing and left `INPUT.TXT` byte-identical. Typed input
 does not yet reach the editor's keyboard path, so editing, save and reopen remain
 unverified. The editor stays Partial.
 
+**Keyboard and save follow-up (2026-10-23):** `dosrun` now polls physical
+keyboard input into the BIOS data-area buffer for legacy editors, exposes
+8042 status/data reads, and preserves BIOS scan codes for Ctrl-letter keys.
+TSE accepted a physical `z` at the start of `INPUT.TXT`; Ctrl+K S saved it and
+Alt+X exited. A second launch displayed `zpear`, and mtools read back the same
+saved bytes followed by the original remaining lines. This updates the TSE
+application status to Working for the tested edit/save/reopen workflow; the
+keyboard and display evidence is in
+[the interactive app record](2026-10-23-int10-interactive-apps.txt).
+
 The 31 host checks, string/runtime state suites, both QEMU DOS suites and a new
 short direct-VGA program regression pass. Five representative FreeDOS tasks were
 also rerun successfully. Results apply to source/kernel hashes in the evidence,
@@ -293,26 +303,71 @@ Evidence: [transcripts](2026-10-22-tse.txt),
 
 ## VisiCalc
 
-These are the pre-fix observations. See the [video-status retest](#video-status-emulation-and-retest) for the current Broken result.
+**History.** The earliest retained test is from 2026-10-23 on ManiOS 0.25.0,
+commit `8446024`. It returned to the shell at unsupported opcode `EC`
+(`IN AL,DX`, port `03DAh`). After video-status input was added, a 0.26.0
+12-second retest no longer faulted but still showed no worksheet. Both reports
+use the same unchanged 27,520-byte `VC.COM` (SHA-256
+`06b80d1c56b69232fd85cf55dee0b3369c2af3197bfbda5c4c584490e0418495`). The
+user reports that VisiCalc had worked during earlier development; no successful
+earlier test or screenshot was retained in Git or the test evidence. The first
+successful recorded workflow is the 2026-10-24 retest below.
 
-- **Input:** user-supplied `visicalc-executable.zip`, containing an unchanged
-  27,520-byte `VC.COM`. The archive records 1981-12-17; exact version is unverified.
-- **Tested build:** ManiOS 0.25.0, commit `8446024`; DOS sources match the local
-  build tree. Kernel and source SHA256 hashes are recorded in the evidence.
-- **Environment:** QEMU i386, CPU 486, 64 MiB RAM, FAT16 disk; fresh snapshot
-  and working directory `/n/ata0p1/vc`. Program observation limit: 12 seconds.
-- **Command:** `dosrun C:/VC/VC.COM`.
-- **Observed result:** returns to the shell with unsupported opcode `EC` at
-  `1000:6A3E`. A separate host CPU probe confirms `IN AL,DX`, with `DX=03DAh`,
-  followed by `TEST AL,01h` and a conditional branch back to the input instruction.
-  This is video status-port polling, which the runtime does not emulate.
-- **Status before video-status fix:** Unsupported. No usable worksheet was reached; data entry,
-  formulas, calculation, saving and reopening remain unverified.
-- **Next work:** implement and test the relevant video-status port semantics,
-  then retest the application. Passing this first instruction would not establish
-  spreadsheet compatibility.
-- **Evidence:** [guest transcripts and instruction probes](2026-10-23-visicalc-ability.txt),
-  [commands and archive/program/kernel/source hashes](2026-10-23-visicalc-ability.json).
+**Root cause of the blank screen.** `VC.COM` selects BIOS text mode 2 and writes
+its worksheet directly to `B800` text memory. `dosrun` mirrored direct text
+writes only in mode 3, and mode 2 did not initialize the BIOS data area or
+visible text page. The app had built its worksheet in emulated memory, but the
+screen renderer ignored it.
+
+**Fix.** `dosrun` now initializes and renders BIOS mode 2 using the existing
+80x25 text-page path. A runtime regression checks the mode-2 BDA fields,
+readback mode, page reset and direct VGA text rendering.
+
+**Root cause of the saved-sheet load failure.** After reading the worksheet,
+VisiCalc closes the same FCB twice. MS-DOS 4.0's `FCBIO.ASM` explicitly returns
+success for successive closes because real applications close FCBs more than
+once. ManiDOS released the slot on the first close, so the second `INT 21h`
+`AH=10h` returned `FFh`; VisiCalc interpreted that status as `ERROR: File not
+found` and discarded the loaded sheet. The diagnostic trace in
+[the earlier FCB report](2026-10-24-visicalc-final-fcb-trace.txt) shows the
+successful open/read/first close followed by the failing second close.
+
+**Fix.** The DOS FCB close path (`INT 21h` `AH=10h`) now closes the underlying
+descriptor only when a valid slot remains and always returns `AL=0`. This
+matches MS-DOS's tolerant repeated-close behavior and also covers a close of an
+FCB that was never opened. It is a general DOS compatibility fix, not a
+VisiCalc-specific path. `tests/dosrun_host_test.py` adds
+`an FCB may be closed more than once`, which opens a file through an FCB and
+closes it twice; it passes.
+
+**Current workflow (2026-10-24).** QEMU i386, Intel 486, 64 MiB, and a
+disposable FAT16 copy of the office test image; launched as
+`dosrun C:/VC/VC.COM` from `/n/ata0p1/vc`. The worksheet and headers render.
+Emulated keyboard input moves between cells; A1=10, B1=20 and C1=`+A1+B1` were
+entered, with C1 displaying 30. `/SS` saved `TEST.VC` (128 bytes, SHA-256
+`30a79fedb90b1e9bffd791f88743ebb75aa616bbe9e37d256a6a75aebc46801b`), and `/SQ`
+followed by `Y` returned to the ManiOS shell. A second launch loaded the sheet
+with `/SL TEST.VC`; A1 displayed 10, B1 displayed 20, C1 displayed 30, and the
+formula line showed `+A1+B1`. `/SQ` followed by `Y` returned to the shell again.
+The serial stream shows VisiCalc's transient `ERROR` indicator while the sheet
+is being parsed (the saved records put the formula before its inputs); it is
+cleared by the final redraw, and the restored sheet is correct.
+
+**Status: Working.** Worksheet rendering, navigation, editing, calculation,
+saving, clean exit and reopening a saved worksheet are verified. Broader
+features such as printing, recalculations beyond the tested formula and other
+file operations remain untested.
+
+**Evidence:** [successful save/reopen serial transcript](2026-10-24-visicalc-save-reopen-qemu.txt),
+[machine-readable results and hashes](2026-10-24-visicalc-save-reopen-qemu.json),
+[entered values and formula result](2026-10-24-visicalc-save-reopen-formula.png),
+[reopened worksheet](2026-10-24-visicalc-save-reopen-reopened.png),
+[shell after reopening](2026-10-24-visicalc-save-reopen-shell.png),
+[earlier failing-load transcript](2026-10-24-visicalc-final-qemu.txt),
+[earlier failing-load results](2026-10-24-visicalc-final-qemu.json),
+[FCB diagnostic trace](2026-10-24-visicalc-final-fcb-trace.txt),
+[earlier opcode and video-status reports](2026-10-23-visicalc-ability.txt),
+[video-status QEMU retest](2026-10-23-video-status.txt).
 
 ## Ability Plus 3.0
 
@@ -634,15 +689,15 @@ installer interface. Installation, driver configuration, produced `WIN.COM`,
 Windows desktop, application execution, mouse and GUI graphics remain unverified.
 The directory screen has display remnants; full screen rendering is not claimed.
 
-### VisiCalc after video status
+### VisiCalc after video status (historical 2026-10-23 retest)
 
 The unchanged `VC.COM` no longer reports the previous `EC` error at `1000:6A3E`.
 In the 12-second QEMU observation it displays no usable worksheet and does not
 return to the shell. A separate bounded host probe ends in a BIOS keyboard-status
 polling path at `1000:5FF1`; this identifies a later execution path, not a
-successful spreadsheet workflow or proof of an infinite hang. Current status
-is **Broken**. Input, worksheet rendering, calculations, save/reopen and the
-cause of the remaining blank screen need further investigation.
+successful spreadsheet workflow or proof of an infinite hang. This was the
+historical result before the mode-2 renderer fix documented in the current
+[VisiCalc recheck](#visicalc) above.
 
 All tests use independent snapshots and original program hashes. Kernel/source
 hashes, exact inputs/outputs and regression logs are retained in the evidence.
@@ -882,9 +937,9 @@ of a hang. Downloads and disk images remain outside the repository.
 
 `dosrun C:/DF.COM` renders the directory list for `C:\`, the
 `Directory Freedom / Version 4.61B` box and the F1-F10 function menu. It was
-still active at the 7-second limit. Cursor and function-key navigation was not
-testable through the serial console, so no copy/delete/rename operation is
-claimed. See the [Directory Freedom screenshot](2026-10-23-dosprograms-directory-freedom.png).
+still active at the 7-second limit in this initial display-only run. The later
+keyboard retest verified F1 copy, F2 delete and F4 rename on disposable FAT16
+images; see the [interactive app retest](2026-10-23-int10-interactive-apps.txt).
 
 ### Costa GUI 1.8.0
 
@@ -916,8 +971,20 @@ untested. See the [AUMenu screenshot](2026-10-23-dosprograms-aumenu.png).
 (`1 of 23`, `82%`) with the title/status bars; Esc returns to the shell.
 `dosrun C:/VIEW.EXE C:/INPUT.TXT` reports `Lines 1 to 3 of 3`, but the document
 text overlaps the header rows and shell text remains visible in both runs.
-PgUp/PgDn and cursor keys need BIOS scan codes that the serial console cannot
-send, so only opening, first-page rendering and Esc exit are verified.
+The keyboard retest delivers PgDn to BIOS INT 16h as scan `51h` and confirms
+Esc returns to the shell, but the page and 18% indicator remain unchanged;
+multi-page navigation was unverified in that run.
+
+On 2026-10-24 the rebuilt checkout navigated the original 35,362-byte
+VIEW.DOC. A separate console bug immediately scrolled when writing the
+bottom-right cell, corrupting redraws behind the DOS render cache. Deferred
+wrapping fixes that corruption. Three PgDn presses now show lines 24–46,
+47–69 and 70–92; PgUp restores 47–69, and Esc exits cleanly. The previous
+18% stall was not reproduced and its cause is unresolved. Status remains
+Partial because broader VIEW features have not been validated. See the
+[investigation report](2026-10-24-view-paging.md),
+[native API trace](2026-10-24-view-api-trace.txt), and
+[third PgDn screenshot](2026-10-24-view-pgdn-3.png).
 
 Two auxiliary programs of the same package did not add a Working task:
 VIEWSEEK 3.1 searched a file containing `alpha` but reported no matches and
@@ -969,11 +1036,10 @@ command-line task with the correct output. See the
 
 `dosrun C:/EDITV.EXE C:/INPUT.TXT` opens the file in a Turbo Vision editor and
 shows all three lines. Sending `Z` plus Enter inserted `Z` before `alpha`
-(cursor moved to line 2, column 1), so keyboard editing reaches the program.
-F2 save and reopen are unverified because function-key scan codes are not
-deliverable on the serial console. See the
+(cursor moved to line 2, column 1). The later retest verified cursor movement,
+insertion, Backspace, F2 save and reopening from the same FAT16 image. See the
 [EDITV screenshot](2026-10-23-dosprograms-editv.png) and
-[typed-text screenshot](2026-10-23-dosprograms-editv-typed.png).
+[multiedit/reopen screenshot](2026-10-23-int10-editv-multiedit.png).
 
 ### MinEd 2022.27
 
@@ -1482,3 +1548,179 @@ by guest instruction count; they do not deliver hardware interrupts. Costa GUI,
 DATES and Cash Register now pass their earlier PIC/timer port faults but still
 stop on unrelated runtime or instruction gaps. Life2 enters RUN mode, though a
 generation was not verified. See the [retest record](2026-10-23-10232026-retest.txt).
+
+## Life2 keyboard navigation retest
+
+The DOS runner now opens `/dev/kbd` while a DOS program is active and maps
+PS/2 arrows and function keys to DOS/BIOS scan codes. It still accepts cooked
+serial input; serial ANSI cursor sequences are decoded when the terminal
+preserves the ESC byte. A fresh Life2 disk was launched in QEMU (486, 64 MiB).
+Using PS/2 input, the test drew a 2x2 pattern and entered RUN mode without a
+runtime fault. The board remained visible. This closes the input/navigation
+gap, but the current evidence does not establish a deterministic generation
+transition, so Life2 remains Partial. See the
+[test record](2026-10-23-life2-keyboard.txt).
+
+## BIOS INT 10h text display follow-up
+
+The DOS BIOS text services now use the `BH` fill attribute for `AH=06h/07h`
+window scrolling (the previous code incorrectly used `BL`). Setting mode 3
+clears all eight 80x25 text pages and resets their cursors. Switching pages
+repaints the newly active page, and `AH=01h` sends cursor visibility and an
+approximate block/underline/bar shape to the terminal. The VGA text driver
+now applies ANSI cursor visibility and style sequences to its hardware
+cursor. `tests/dosrun_runtime_test.py` covers rectangular scroll up/down,
+clear-with-zero-lines, untouched cells, fill attributes, page switching,
+cursor shape readback, and text-mode reset. The runtime suite, DOS QEMU test,
+and kernel build passed.
+
+The compatibility test fixtures were present under the audit directories, so
+the four target applications were also rerun with a fresh copy of each FAT
+image. SemWare `E.EXE` now opens its sample file without the old XLAT fault;
+VIEW opens its documentation, and Page Down advances after the CGA port stub
+without a DOS fault, though the paged screen still has layout defects;
+EDITV displays the file and accepts the typed `Z`; Directory Freedom draws
+its file list and function-key menu. No file operation or save/reopen flow was
+verified for this batch, so all four remain Partial. The new screenshots and
+transcript are in the [BIOS INT 10h test record](2026-10-23-bios-int10-text.txt).
+
+### Interactive application checks after the BIOS INT 10h update (2026-10-23)
+
+Follow-up work on fresh disposable FAT16 copies improved three interactive
+applications. EDITV supports insertion, cursor movement, Backspace, F2 save and
+reopen. TSE accepts physical keyboard input, Ctrl+K S save and Alt+X exit; the
+reopened file contains the inserted `z`. Directory Freedom now completes F1
+copy, F2 delete and F4 rename; the F1 copy was independently checked byte for
+byte. These applications are marked Working for these tested basic workflows.
+
+VIEW remains Partial. PgDn reaches BIOS INT 16h as scan `51h`, and Esc returns to
+the shell, but repeated PgDn leaves the visible page and `18% of file read`
+unchanged. The input/key buffering changes and all test results are recorded in
+the [interactive app record](2026-10-23-int10-interactive-apps.txt). Evidence:
+[EDITV reopened after edits](2026-10-23-int10-editv-multiedit.png),
+[TSE reopened file](2026-10-23-int10-semware-reopened.png),
+[Directory Freedom F1 copy](2026-10-23-int10-directory-freedom-copy.png),
+[Directory Freedom F4 rename](2026-10-23-int10-directory-freedom-rename.png),
+[F2 delete prompt](2026-10-23-int10-directory-freedom-delete-prompt.png),
+and [VIEW page](2026-10-23-int10-view-page.png).
+
+
+## VIEW and Life2 focused follow-up — 2026-10-24
+
+VIEW traversed the original document to EOF with 35 PgDn presses and returned
+to the initial page with 35 PgUp presses. Home/End and two consecutive F2
+searches for `bookmarks` passed, followed by clean Esc. These checks extend
+the earlier three-page test; printing and other formats remain untested.
+
+Life2's blinker did not complete an unattended cycle in the bounded native
+run. Its sound routine hooks INT 08h, programs PIT channel 0 and waits for a
+counter that the handler decrements. ManiDOS models the PIT counter but does
+not deliver that IRQ to the installed handler. Synthetic IRQ0 plus valid
+PIC EOI handling in an isolated host experiment restores repeated horizontal
+and vertical generations. That experiment is diagnostic evidence, not a
+production fix. Life2 remains Partial.
+
+See the [follow-up report](2026-10-24-navigation-followup.md) for evidence,
+limitations and reproduction commands. No production code changed in this
+follow-up; original disk fixtures were preserved.
+
+
+## PIT0 / IRQ0 implementation and Life2 — 2026-10-24
+
+The earlier Life2 timer limitation is now addressed by PIT0 oscillator
+clocks, edge-latched master-PIC IRQ0, mask/IF/EOI handling, execution of
+installed guest interrupt vectors, and a chainable BIOS INT 08h / INT 1Ch
+path. Native Life2 now completes a horizontal → vertical → horizontal
+blinker cycle without extra input and exits through Q followed by Esc.
+VIEW's full document traversal/search and existing DOS regression suites
+also pass. Life2 remains Partial for untested patterns and broader features.
+See the [timer implementation report](2026-10-24-pit-irq0.md), including
+scope limits and the separate correction to the old PIT test.
+
+
+## Current tested-workflow status — 2026-10-24
+
+The following entries are **Working** for the confirmed workflows below.
+Earlier dated Partial observations remain as test history; this decision
+supersedes those status labels for VIEW and Life2.
+
+| Program | Confirmed workflow | Current status |
+| --- | --- | --- |
+| EDITV 4.1 | Editing, cursor movement, Backspace, save and reopen | Working |
+| Directory Freedom 4.61B | File copy, rename and delete | Working |
+| SemWare TSE 2.50e | Editing, save and reopen | Working |
+| VIEW 17.2 | PgDn/PgUp through the document, Home/End, repeated F2 search, Esc | Working |
+| Life2 | Pattern creation, RUN, horizontal/vertical/horizontal blinker evolution, Q/Esc exit | Working |
+
+Working describes these tested workflows, not every application feature.
+Life2's isolated BASIC runtime error during an earlier marking run remains
+unresolved and documented in the [timer report](2026-10-24-pit-irq0.md).
+The historical VIEW 18% stall remains unreproduced. Printing, other document
+formats and broader Life2 patterns are not included in the confirmed scope.
+
+## Compatibility Wave 2 — easy utility candidates
+
+Tested on 2026-10-24 against the local ManiOS 0.26.0-10232026 kernel in QEMU
+486 / 64 MiB with a disposable FAT16 image. The six unchanged FreeDOS binaries
+were taken from local archives; see the [batch transcript and hashes](2026-10-24-wave2-easy-wins.txt).
+
+### FreeDOS FIND 01Nov2003
+
+**Working.** The initial failure was an invocation mismatch: FIND selects A:
+before it opens relative filenames, while the fixture was placed on C:. With
+the disposable FAT16 disk mounted as A:, "apple" printed apple red, /I "apple"
+printed apple red and Apple green, and /V "banana" printed both nonmatching
+lines. MISSING.TXT reported FIND: MISSING.TXT: No such file. The package
+identifies this GPL-2 binary as version 01Nov2003.
+
+### FreeDOS ATTRIB
+
+**Working.** The DOS INT 21h/AH=43h service had returned success without reading
+or changing attributes. A new filesystem-backed path operation reads and
+writes FAT directory-entry attribute bits, and DOS search records now carry
+those bits too. On a disposable FAT16 image, ATTRIB listed [----A], changed
++R to [---RA], a fresh dosrun listed [---RA], and -R restored [----A].
+mattrib independently showed A R after setting and only A after clearing.
+Invalid attribute masks and missing files are covered by the DOS API regression
+test. The BonusCD binary's version was not verified.
+
+### FreeDOS DELTREE
+
+**Partial.** Build v1.02g identifies the disposable nested target. A fully
+qualified target still triggers its root-safety prompt because a fresh dosrun
+starts with its DOS current directory at the drive root. /Y does not bypass
+that protection. The confirmation input was not accepted by the test harness,
+so recursion was not verified and no target was deleted.
+
+### FreeDOS MEM
+
+**Broken.** ManiOS's initial MCB existed, but INT 21h/AH=52h did not expose a
+DOS list-of-lists pointer. The service now points to the MCB at segment 0x0FFF,
+and regression checks validate the MCB header and chain termination after
+allocation, resize, and free cycles. MEM now passes that failure and stops at
+unsupported opcode 66h at 1010:03D5; it still produces no memory summary.
+Its version was not verified.
+
+### FreeDOS VCHOICE
+
+**Untested.** The earlier /? help attempt reported that HELPPATH was not set,
+and the attempted DOS-style set command was run in ManiOS sh, which does not
+implement it. ManiDOS's SET command and dosrun's separate fixed environment
+were not used to establish that workflow. VCHOICE's primary interactive
+selection flow remains untested.
+Its version was not verified.
+
+### FreeDOS VCLS
+
+**Working.** VCLS reads BIOS video geometry directly from the BIOS data area.
+ManiOS reported mode and cursor geometry through BIOS calls but left the
+corresponding BDA bytes zero, so VCLS calculated the wrong screen range. The
+BDA now reports mode 3, 80 columns, 25 rows and the active page. VCLS clears the
+visible VGA screen; the capture shows the shell prompt redrawn on an otherwise
+blank display. The [fixed VCLS screen capture](2026-10-24-wave2-fixup-vcls.png)
+records the result. Its version was not verified.
+
+Three of the six applications now meet their primary workflow. Historical
+failure evidence remains in the original [Wave 2 transcript](2026-10-24-wave2-easy-wins.txt);
+the corrected reruns and remaining limitations are in the
+[fix-up transcript](2026-10-24-wave2-fixup.txt).

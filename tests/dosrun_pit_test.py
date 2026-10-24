@@ -28,10 +28,10 @@ int main(void) {
   * divisor. Programs can reprogram, latch and poll its count. */
  CHECK(latched0()==0);
  out(0x43,0x36);load0(6);CHECK(latched0()==6);
- c.insns+=2;CHECK(latched0()==2);c.insns++;CHECK(latched0()==6);
- out(0x43,0x34);load0(6);c.insns+=5;CHECK(latched0()==1);
- c.insns++;CHECK(latched0()==6);
- out(0x43,0x30);load0(6);c.insns+=7;CHECK(latched0()==0);
+ dos_timer_advance(d,2);CHECK(latched0()==2);dos_timer_advance(d,1);CHECK(latched0()==6);
+ out(0x43,0x34);load0(6);dos_timer_advance(d,5);CHECK(latched0()==1);
+ dos_timer_advance(d,1);CHECK(latched0()==6);
+ out(0x43,0x30);load0(6);dos_timer_advance(d,7);CHECK(latched0()==0);
  unsigned ch0_count=latched0();CHECK(c.port_out8(&c,0x43,0x32)<0&&latched0()==ch0_count);
  puts("PASS: PIT channel 0 BIOS default, mode 3/mode 2 periodic counts, mode 0 completion and latching");
  /* A control word is required, not simply swallowed. */
@@ -69,6 +69,7 @@ int main(void) {
  out(0x61,0x0F);CHECK((in(0x61)&15)==15);out(0x61,in(0x61));CHECK((in(0x61)&15)==15);
  /* Actual immediate/DX opcodes consume exactly their operands and preserve
   * flags, AX on OUT, AH on IN, and unrelated registers. */
+ out(0x21,0xFF); /* Opcode tests run without asynchronous timer delivery. */
  for(int dx=0;dx<2;dx++) {
   code(dx?0xEE:0xE6,0x43);c.r[DX]=0x43;c.r[AX]=0xAAB6;c.flags=0xAD7;
   CHECK(cpu_step(&c)==CPU_OK&&c.ip==(dx?1:2)&&c.r[AX]==0xAAB6&&c.flags==0xAD7&&c.r[DX]==0x43);
@@ -78,7 +79,7 @@ int main(void) {
  }
  unsigned ops[]={0xE4,0xE6,0xEC,0xEE,0xE5,0xE7,0xED,0xEF};
  for(unsigned i=0;i<sizeof(ops)/sizeof(ops[0]);i++) {
-  code(ops[i],0x60);c.r[DX]=0x60;c.r[AX]=0xBEEF;c.flags=0xAD7;
+  code(ops[i],0x65);c.r[DX]=0x65;c.r[AX]=0xBEEF;c.flags=0xAD7;
   CHECK(cpu_step(&c)==CPU_FAULT&&c.ip==1&&c.r[AX]==0xBEEF&&c.flags==0xAD7);
  }
  dos_free(d);CHECK(!c.port_in8&&!c.port_out8&&!c.port_context);

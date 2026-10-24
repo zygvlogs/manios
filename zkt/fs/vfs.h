@@ -54,6 +54,8 @@ struct vnode_ops {
 	int (*truncate)(struct vnode *v, uint32_t size);
 	/* Native FAT modification stamp (date high, time low). NULL: unsupported. */
 	int (*filetime)(struct vnode *v, uint32_t *stamp, bool set);
+	/* DOS/FAT directory-entry attributes. NULL: unsupported. */
+	int (*fileattr)(struct vnode *v, uint8_t *attr, bool set);
 	/* Called when the last reference goes; frees the vnode. */
 	void (*release)(struct vnode *v);
 	/* Whether a read would return without blocking: 1 or 0. Called with
@@ -121,6 +123,8 @@ int vfs_unlink(const char *path);
 int vfs_rmdir(const char *path);
 /* Both paths must be in the same directory (EXDEV otherwise). */
 int vfs_rename(const char *from, const char *to);
+/* Reads or updates filesystem-native DOS attributes for a file path. */
+int vfs_fileattr(const char *path, uint8_t *attr, bool set);
 
 /* Namespace changes in the calling thread's namespace. Like Plan 9's
  * bind(2): `old` then resolves to `new` (BIND_REPLACE), or to a union of

@@ -1,0 +1,60 @@
+ManiOS DOS interactive compatibility follow-up
+Date: 2026-10-23
+Kernel: build/manios-zkt.elf
+Kernel SHA-256: 515adf8307cc430040b63b672990a6ed8d67e767f72dadd48730b28d28eb7c69
+Source HEAD: 26f37f1 (working tree includes uncommitted changes)
+Machine: QEMU i386, CPU 486, 64 MiB RAM
+Disk safety: each run used a disposable FAT16 image; audit originals were not mounted writable.
+
+EDITV 4.1 — basic edit, save and reopen verified
+------------------------------------------------
+On a fresh FAT16 copy, moved to the start, inserted `Z`, moved right, inserted
+`Y`, then removed it with Backspace. F2 saved the result. After closing the
+VM, `mcopy` read `Zalpha one\r\nbravo two\r\ncharlie three\r\n`; a new VM
+opened the same file and displayed the saved contents. Evidence:
+`2026-10-23-int10-editv-multiedit.png`.
+
+SemWare TSE Professional 2.50e — basic keyboard editing, save and reopen verified
+--------------------------------------------------------------------------------
+Added BIOS data-area keyboard buffering and retained the physical key's BIOS
+scan code for Ctrl-letter combinations. In `E.EXE C:/INPUT.TXT`, inserted `z`
+at the beginning, saved with Ctrl+K S, and exited with Alt+X. After a fresh
+launch, the editor displayed `zpear`; `mcopy` independently confirmed:
+`zpear\r\napple\r\nbanana\r\napple pie\r\n`. Evidence:
+`2026-10-23-int10-semware-reopened.png` and
+`2026-10-23-int10-semware-saved.txt`.
+
+Directory Freedom 4.61B — copy, delete and rename verified
+---------------------------------------------------------
+On separate disposable FAT16 copies:
+- F1 copied `AR.COM` to `COPYTEST.COM`; the 13,920-byte files had identical
+  SHA-256 `3d0b714b511c3b721ba3fb942fa287bdfb0df0afeedb146d077c1cdb24e51734`.
+- F2 deleted the selected `AR.COM`; `mdir` showed it absent.
+- F4 renamed `AR.COM` to `AR.BAK`; `mdir` showed `AR.BAK` at 13,920 bytes.
+
+Legacy DOS rename/create calls can provide the target directory separately
+from the replacement name typed through BIOS keyboard input. `dosrun` now
+completes a directory target with the last submitted name. Screenshots:
+`2026-10-23-int10-directory-freedom-copy.png`,
+`2026-10-23-int10-directory-freedom-rename.png`, and the earlier F2 prompt
+`2026-10-23-int10-directory-freedom-delete-prompt.png`.
+
+VIEW 17.2 — opening and keyboard exit verified; PgDn remains unresolved
+---------------------------------------------------------------------
+Opened `VIEW.DOC`, delivered three physical PgDn presses, then Esc. The
+keyboard path returned BIOS scan `51h` for PgDn; Esc returned the program to
+the shell (`Thank you for using VIEW.`). The screenshot and `18% of file read`
+indicator remained unchanged after PgDn, so multi-page navigation is not
+claimed. Evidence: `2026-10-23-int10-view-page.png`.
+
+Regression checks after these changes
+-------------------------------------
+- `make -j2 build/manios-zkt.elf`: PASS (only the existing GNU-stack linker warnings).
+- `python3 tests/dosrun_runtime_test.py`: PASS, including BIOS scan codes,
+  Ctrl+X scan translation, BDA key buffering and text services.
+- `python3 tests/dosrun_port_test.py`: PASS, including idle 8042 status/data reads.
+- `python3 tests/dosrun_test.py build/manios-zkt.elf`: PASS, including BIOS
+  PgDn scan delivery and extended PgDn through 8042 ports.
+- `git diff --check`: PASS.
+
+No commit or push was created.

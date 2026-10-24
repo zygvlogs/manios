@@ -23,13 +23,29 @@ static void init(void) {
 }
 static void instruction(const unsigned char *code,size_t n) { c.ip=0; memcpy(c.mem+0x10000,code,n); }
 #define CODE(...) do { unsigned char code[]={__VA_ARGS__}; instruction(code,sizeof(code)); } while(0)
-static void call(int vec,int ax) {
- c.r[AX]=ax; push16(&c,c.flags); push16(&c,c.sreg[1]); push16(&c,c.ip);
+static void dispatch(int vec) {
+ push16(&c,c.flags); push16(&c,c.sreg[1]); push16(&c,c.ip);
  CHECK(dos_int(d,&c,vec)==CPU_OK);
  c.ip=pop16(&c); c.sreg[1]=pop16(&c); c.flags=pop16(&c);
 }
+static void call(int vec,int ax) { c.r[AX]=ax; dispatch(vec); }
 static void text(uint16_t seg,uint16_t off,const char *s) {
  do { wr8(&c,seg,off++,*s); } while(*s++);
+}
+static void ticks(unsigned ms) {
+ for(unsigned i=0;i<ms;i++) {
+  dos_clock_advance(d,1);
+  if(c.irq_ack(&c)>=0) {
+   uint16_t cs,ip,sp=c.r[SP];cpu_enter_interrupt(&c,8,&cs,&ip);c.sreg[1]=cs;c.ip=ip;
+   for(int n=0;n<32;n++) {
+    enum cpu_stop stop=cpu_step(&c);
+    if(stop==CPU_INT){enum cpu_stop r=dos_int(d,&c,c.int_no);CHECK(r==CPU_OK||r==CPU_IRET||r==CPU_GUEST);
+     if(r!=CPU_GUEST){c.ip=pop16(&c);c.sreg[1]=pop16(&c);c.flags=pop16(&c);}}
+    else if(stop==CPU_IRET){if(c.r[SP]==sp)break;}
+    else CHECK(stop==CPU_OK);
+   }
+  }
+ }
 }
 int main(void) {
  /* Every addressing form must choose DS or SS from its BP dependency. */
@@ -64,6 +80,7 @@ int main(void) {
  puts("PASS: DAA packed-decimal addition for all 10,000 pairs from 00 to 99");
  puts("PASS: addressing segments, POPA, LAHF/SAHF, far CALL, IRET, ROL and INC/DEC flags");
  init();d=dos_new(&c);CHECK(d);dos_set_program(d,0x1000,0x1010);dos_build_psp(d);dos_mount('C',".");
+ CHECK(rd8(&c,0x40,0x49)==3&&rd16(&c,0x40,0x4A)==80&&rd8(&c,0x40,0x84)==24);
  /* Timestamp changes must survive close/reopen, as an installer requires. */
  text(0x3000,0x900,"C:\\A.TXT");c.r[DX]=0x900;call(0x21,0x3D00);
  CHECK(!(c.flags&FLAG_CF));unsigned fh=c.r[AX];
@@ -76,17 +93,31 @@ int main(void) {
  c.r[BX]=fh;call(0x21,0x3E00);call(0x21,0x5700);CHECK((c.flags&FLAG_CF)&&c.r[AX]==6);
  c.r[BX]=0xFFFF;call(0x21,0x5701);CHECK((c.flags&FLAG_CF)&&c.r[AX]==6);
  puts("PASS: file timestamps persist across close/reopen; invalid handles/subfunctions fail");
+ /* INT 21h/43h must report real file state, persist read-only changes, and
+  * reject missing paths and unsupported attribute bits. */
+ text(0x3000,0x900,"C:\\A.TXT");c.r[DX]=0x900;c.r[CX]=0;call(0x21,0x4300);
+ CHECK(!(c.flags&FLAG_CF)&&(c.r[CX]&0x20));
+ c.r[DX]=0x900;c.r[CX]=0x21;call(0x21,0x4301);CHECK(!(c.flags&FLAG_CF));
+ struct stat attr_stat;CHECK(stat("a.txt",&attr_stat)==0&&!(attr_stat.st_mode&(S_IWUSR|S_IWGRP|S_IWOTH)));
+ c.r[DX]=0x900;c.r[CX]=0;call(0x21,0x4300);CHECK(!(c.flags&FLAG_CF)&&(c.r[CX]&1));
+ c.r[DX]=0x900;c.r[CX]=0x20;call(0x21,0x4301);CHECK(!(c.flags&FLAG_CF));
+ CHECK(stat("a.txt",&attr_stat)==0&&(attr_stat.st_mode&S_IWUSR));
+ text(0x3000,0x900,"C:\\MISSING.TXT");c.r[DX]=0x900;c.r[CX]=0;call(0x21,0x4300);
+ CHECK((c.flags&FLAG_CF)&&c.r[AX]==2);
+ c.r[DX]=0x900;c.r[CX]=0x80;call(0x21,0x4301);CHECK((c.flags&FLAG_CF)&&c.r[AX]==12);
+ c.r[DX]=0x900;call(0x21,0x4302);CHECK((c.flags&FLAG_CF)&&c.r[AX]==1);
+ puts("PASS: DOS file attributes read, set, clear, persist and reject invalid requests");
  /* Real elapsed time must advance both direct BDA polls and INT 1Ah.
   * Sub-tick updates retain their fraction, and midnight is read/cleared. */
- dos_clock_advance(d,54);CHECK(mem_r16(&c,0x46C)==0);
- dos_clock_advance(d,1);CHECK(mem_r16(&c,0x46C)==1);
- for(int ms=0;ms<945;ms++)dos_clock_advance(d,1);
+ ticks(54);CHECK(mem_r16(&c,0x46C)==0);
+ ticks(1);CHECK(mem_r16(&c,0x46C)==1);
+ for(int ms=0;ms<945;ms++)ticks(1);
  call(0x1A,0);CHECK(c.r[CX]==0&&c.r[DX]==18&&c.r[AX]==0);
  mem_w16(&c,0x46C,0xFFFF);mem_w16(&c,0x46E,0);
- dos_clock_advance(d,1000);call(0x1A,0);
+ ticks(1000);call(0x1A,0);
  CHECK(c.r[CX]==1&&c.r[DX]==17&&c.r[AX]==0);
  mem_w16(&c,0x46C,0x00AF);mem_w16(&c,0x46E,0x18);
- dos_clock_advance(d,55);call(0x1A,0);
+ ticks(55);call(0x1A,0);
  CHECK(c.r[CX]==0&&c.r[DX]==0&&c.r[AX]==1&&mem_r8(&c,0x470)==0);
  call(0x1A,0);CHECK(c.r[AX]==0);
  puts("PASS: BIOS ticks, fractional updates, word carry and midnight rollover");
@@ -95,6 +126,8 @@ int main(void) {
  uint16_t env=rd16(&c,0x1000,0x2C);CHECK(env!=0&&rd8(&c,env,0)=='P');
  int end=0;while(end<4094&&(rd8(&c,env,end)||rd8(&c,env,end+1)))end++;
  CHECK(end<4094&&rd16(&c,env,end+2)==1&&rd8(&c,env,end+4)=='C');
+ call(0x21,0x5200);CHECK(c.sreg[0]==0x0E00&&c.r[BX]==2&&rd16(&c,0x0E00,0)==0x0FFF);
+ CHECK(rd8(&c,0x0FFF,0)=='Z'&&rd16(&c,0x0FFF,1)==0x1000&&rd16(&c,0x0FFF,3)==0x9000);
  c.sreg[0]=0x1000;c.r[BX]=0x200;call(0x21,0x4A00);CHECK(!(c.flags&FLAG_CF)&&rd16(&c,0x1000,2)==0x1200);
  c.r[BX]=0xFFFF;call(0x21,0x4800);CHECK((c.flags&FLAG_CF)&&c.r[AX]==8&&c.r[BX]==0x8DFF);
  c.r[BX]=0x100;call(0x21,0x4800);CHECK(!(c.flags&FLAG_CF));uint16_t one=c.r[AX];CHECK(one==0x1201);
@@ -105,7 +138,16 @@ int main(void) {
  c.sreg[0]=one;call(0x21,0x4900);CHECK(!(c.flags&FLAG_CF));call(0x21,0x4900);CHECK((c.flags&FLAG_CF)&&c.r[AX]==9);
  c.r[BX]=0x8DFF;call(0x21,0x4800);CHECK(!(c.flags&FLAG_CF)&&c.r[AX]==one);
  c.sreg[0]=0xE000;call(0x21,0x4900);CHECK((c.flags&FLAG_CF)&&c.r[AX]==9);
+ uint16_t mcb=rd16(&c,0x0E00,0);int terminated=0;
+ for(int blocks=0;blocks<16;blocks++) {
+  uint8_t kind=rd8(&c,mcb,0);CHECK(kind=='M'||kind=='Z');
+  uint32_t next=(uint32_t)mcb+1+rd16(&c,mcb,3);CHECK(next<=0xA000);
+  if(kind=='Z'){CHECK(next==0xA000);terminated=1;break;}
+  mcb=(uint16_t)next;
+ }
+ CHECK(terminated);
  puts("PASS: PSP/environment, memory shrink, allocate, exhaustion, growth, coalescing and invalid free");
+ puts("PASS: DOS list-of-lists MCB pointer and chain termination after allocation/free cycles");
  c.sreg[3]=0x1500;c.r[DX]=0x100;call(0x21,0x1A00);
  c.sreg[3]=0x1600;call(0x21,0x2F00);CHECK(c.sreg[0]==0x1500&&c.r[BX]==0x100);
  text(0x1600,0x200,"C:/a.txt");c.r[DX]=0x200;c.r[CX]=0;call(0x21,0x4E00);CHECK(!(c.flags&FLAG_CF));
@@ -213,8 +255,34 @@ int main(void) {
  call(0x21,0x0B00);CHECK((c.r[AX]&255)==0);
  CHECK(write(input[1],"old",3)==3);c.r[DX]=255;call(0x21,0x0C06);CHECK(c.flags&FLAG_ZF);
  CHECK(write(input[1],"\n",1)==1);c.r[DX]=255;call(0x21,0x0600);CHECK((c.r[AX]&255)==13);
+	const char up_key[]="\033[A";
+	CHECK(write(input[1],up_key,sizeof(up_key)-1)==sizeof(up_key)-1);
+	call(0x16,0x0100);CHECK(!(c.flags&FLAG_ZF)&&c.r[AX]==0x4800);
+	call(0x16,0x0000);CHECK(c.r[AX]==0x4800);
+	CHECK(write(input[1],"\033[Z",3)==3);
+	call(0x16,0x0000);CHECK(c.r[AX]==0x011B);
+	call(0x16,0x0000);CHECK(c.r[AX]==0x005B);
+	call(0x16,0x0000);CHECK(c.r[AX]==0x2C5A);
+	CHECK(write(input[1],"\033[B",3)==3);
+	c.r[DX]=255;call(0x21,0x0600);CHECK(!(c.flags&FLAG_ZF)&&(c.r[AX]&255)==0);
+	c.r[DX]=255;call(0x21,0x0600);CHECK(!(c.flags&FLAG_ZF)&&(c.r[AX]&255)==0x50);
+	CHECK(write(input[1],"\033[A",3)==3);
+	c.sreg[3]=0x3000;c.r[BX]=0;c.r[CX]=2;c.r[DX]=0xA00;call(0x21,0x3F00);
+	CHECK(!(c.flags&FLAG_CF)&&c.r[AX]==2&&rd8(&c,0x3000,0xA00)==0&&rd8(&c,0x3000,0xA01)==0x48);
+	int keyboard[2];CHECK(pipe(keyboard)==0);dos_set_keyboard_fd(d,keyboard[0]);
+	unsigned char up=0x80,f1=0x90,right=0x83;
+	CHECK(write(keyboard[1],&up,1)==1);call(0x16,0x0100);CHECK(!(c.flags&FLAG_ZF)&&c.r[AX]==0x4800);
+	call(0x16,0x0000);CHECK(c.r[AX]==0x4800);
+	CHECK(write(keyboard[1],&f1,1)==1);call(0x16,0x0000);CHECK(c.r[AX]==0x3B00);
+	uint8_t ctrl_x=0x18;CHECK(write(keyboard[1],&ctrl_x,1)==1);call(0x16,0x0000);CHECK(c.r[AX]==0x2D18);
+	CHECK(write(keyboard[1],&right,1)==1);c.r[DX]=255;call(0x21,0x0600);
+	CHECK((c.r[AX]&255)==0);c.r[DX]=255;call(0x21,0x0600);CHECK((c.r[AX]&255)==0x4D);
+	uint8_t pgdn=0x87;CHECK(write(keyboard[1],&pgdn,1)==1);dos_keyboard_poll(d);
+	CHECK(rd16(&c,0x40,0x1A)==0x1E&&rd16(&c,0x40,0x1C)==0x20&&rd16(&c,0x40,0x1E)==0x5100);
+	call(0x16,0x0000);CHECK(c.r[AX]==0x5100&&rd16(&c,0x40,0x1A)==0x20);
+	close(keyboard[1]);
  CHECK(dup2(saved_stdin,0)>=0);close(saved_stdin);close(input[1]);
- puts("PASS: nonblocking keyboard readiness, non-consuming BIOS peek, scan code, DOS status and flush");
+	 puts("PASS: BIOS scan codes, ANSI arrows, raw PS/2 keys and DOS extended-key pairs");
  c.r[BX]=0x0100;c.r[DX]=0x0203;call(0x10,0x0200);
  c.r[BX]=0x011E;c.r[CX]=3;call(0x10,0x0958);
  CHECK(mem_r16(&c,0xB8000+4096+(2*80+3)*2)==0x1E58);
@@ -222,11 +290,71 @@ int main(void) {
  call(0x10,0x0800);CHECK(c.r[AX]==0x1E58);
  call(0x10,0x0F00);CHECK(c.r[AX]==0x5003&&(c.r[BX]>>8)==0);
  puts("PASS: BIOS text attributes, repeated output, cursor position, readback and mode queries");
+ /* BIOS scroll services move complete character/attribute cells inside
+  * the inclusive rectangle, clear with BH, and support AL=0 clear. */
+ c.r[BX]=0;call(0x10,0x0500);
+ for(int row=0;row<5;row++)for(int col=0;col<6;col++)
+  mem_w16(&c,0xB8000+((row*80+col)*2),(uint16_t)('A'+row)|(uint16_t)(0x10+row)<<8);
+ c.r[AX]=0x0601;c.r[BX]=0x1E00;c.r[CX]=0x0102;c.r[DX]=0x0304;dispatch(0x10);
+ CHECK(mem_r16(&c,0xB8000+((1*80+2)*2))==((uint16_t)'C'|0x1200));
+ CHECK(mem_r16(&c,0xB8000+((2*80+4)*2))==((uint16_t)'D'|0x1300));
+ CHECK(mem_r16(&c,0xB8000+((3*80+2)*2))==0x1E20);
+ CHECK(mem_r16(&c,0xB8000+((1*80+1)*2))==((uint16_t)'B'|0x1100));
+ c.r[AX]=0x0701;c.r[BX]=0x2A00;c.r[CX]=0x0102;c.r[DX]=0x0304;dispatch(0x10);
+ CHECK(mem_r16(&c,0xB8000+((1*80+2)*2))==0x2A20);
+ CHECK(mem_r16(&c,0xB8000+((2*80+2)*2))==((uint16_t)'C'|0x1200));
+ CHECK(mem_r16(&c,0xB8000+((3*80+4)*2))==((uint16_t)'D'|0x1300));
+ c.r[AX]=0x0600;c.r[BX]=0x4F00;c.r[CX]=0x0102;c.r[DX]=0x0304;dispatch(0x10);
+ for(int row=1;row<=3;row++)for(int col=2;col<=4;col++)
+  CHECK(mem_r16(&c,0xB8000+((row*80+col)*2))==0x4F20);
+ c.r[CX]=0x2B0F;call(0x10,0x0100);c.r[BX]=0;call(0x10,0x0300);
+ CHECK(c.r[CX]==0x2B0F);
+ mem_w16(&c,0xB8000+4096,0x4E51);c.r[BX]=0x0100;call(0x10,0x0500);
+ CHECK(mem_r16(&c,0xB8000+4096)==0x4E51&&(c.r[BX]>>8)==1);
+ c.r[BX]=0;call(0x10,0x0500);
+ c.r[BX]=0x0100;c.r[DX]=0x0203;call(0x10,0x0200);
+ int cursor_saved_out=dup(1),cursor_capture[2];CHECK(pipe(cursor_capture)==0);
+ CHECK(dup2(cursor_capture[1],1)>=0);close(cursor_capture[1]);
+ c.r[CX]=0x2B0F;call(0x10,0x0100);c.r[CX]=0x0E0F;call(0x10,0x0100);
+ CHECK(dup2(cursor_saved_out,1)>=0);close(cursor_saved_out);
+ char cursor_sequences[32];long cursor_size=read(cursor_capture[0],cursor_sequences,sizeof(cursor_sequences));close(cursor_capture[0]);
+ CHECK(cursor_size==17&&!memcmp(cursor_sequences,"\033[?25l\033[?25h\033[4 q",17));
+ c.r[BX]=0x0100;call(0x10,0x0300);
+ CHECK(c.r[DX]==0x0203&&c.r[CX]==0x0E0F);
+ c.r[BX]=0;call(0x10,0x0300);CHECK(c.r[DX]==0);
+ call(0x10,0x0003);
+ CHECK(mem_r16(&c,0xB8000)==0x0720&&mem_r16(&c,0xB8000+4096)==0x0720);
+ c.r[BX]=0;call(0x10,0x0300);CHECK(c.r[DX]==0&&c.r[CX]==0x0607);
+ c.r[BX]=0x0100;call(0x10,0x0300);CHECK(c.r[DX]==0);
+ call(0x10,0x0F00);CHECK((c.r[AX]&255)==3&&(c.r[BX]>>8)==0);
+ puts("PASS: BIOS window scrolling, rectangle clear, cursor shape, page switch and text-mode reset");
+ /* A full-window BIOS clear must reach the visible terminal even when its
+  * character-cell render cache already says the target cells are blank. */
+ mem_w16(&c,0xB8000,0x1E58);int clear_saved=dup(1),clear_pipe[2];CHECK(pipe(clear_pipe)==0);
+ CHECK(dup2(clear_pipe[1],1)>=0);close(clear_pipe[1]);
+ c.r[BX]=0x0700;c.r[CX]=0;c.r[DX]=0x184F;call(0x10,0x0600);
+ CHECK(dup2(clear_saved,1)>=0);close(clear_saved);
+ char clear_bytes[256];long clear_len=read(clear_pipe[0],clear_bytes,sizeof(clear_bytes));close(clear_pipe[0]);
+ CHECK(clear_len>=4&&memmem(clear_bytes,(size_t)clear_len,"\033[2J",4));
+ CHECK(mem_r16(&c,0xB8000)==0x0720);
+ puts("PASS: full-screen BIOS clear updates both the text buffer and visible terminal");
  fflush(stdout);int saved_out=dup(1), capture[2];CHECK(pipe(capture)==0);CHECK(dup2(capture[1],1)>=0);close(capture[1]);
  mem_w16(&c,0xB8000,0x1E58);dos_video_present(d);dos_video_present(d);
  CHECK(dup2(saved_out,1)>=0);close(saved_out);char rendered[256];long size_out=read(capture[0],rendered,sizeof(rendered));close(capture[0]);
  CHECK(size_out>0&&size_out<(long)sizeof(rendered));int xs=0;for(long i=0;i<size_out;i++)if(rendered[i]=='X')xs++;CHECK(xs==1);
  puts("PASS: direct VGA text writes render once; unchanged cells are not redrawn");
+	/* VisiCalc selects BIOS mode 2: an 80x25 text mode that still uses the
+	 * colour text page on a VGA-compatible adapter. */
+	call(0x10,0x0002);
+	CHECK(rd8(&c,0x40,0x49)==2&&rd16(&c,0x40,0x4A)==80&&
+	      rd16(&c,0x40,0x4C)==0x1000&&rd8(&c,0x40,0x62)==0);
+	CHECK(mem_r16(&c,0xB8000)==0x0720);
+	call(0x10,0x0F00);CHECK(c.r[AX]==0x5002&&(c.r[BX]>>8)==0);
+	fflush(stdout);saved_out=dup(1);CHECK(pipe(capture)==0);CHECK(dup2(capture[1],1)>=0);close(capture[1]);
+	mem_w16(&c,0xB8000,0x1E58);dos_video_present(d);dos_video_present(d);
+	CHECK(dup2(saved_out,1)>=0);close(saved_out);size_out=read(capture[0],rendered,sizeof(rendered));close(capture[0]);
+	CHECK(size_out>0&&size_out<(long)sizeof(rendered));xs=0;for(long i=0;i<size_out;i++)if(rendered[i]=='X')xs++;CHECK(xs==1);
+	puts("PASS: BIOS mode 2 initializes its 80x25 BDA and renders direct VGA text writes");
  dos_free(d);cpu_free(&c);return 0;
 }
 '''

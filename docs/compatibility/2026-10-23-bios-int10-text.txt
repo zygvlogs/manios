@@ -1,0 +1,48 @@
+ManiOS DOS BIOS INT 10h text display follow-up
+Date: 2026-10-23
+Base revision: 26f37f1 (v0.26.0-10232026)
+Kernel artifact: build/manios-zkt.elf
+Kernel SHA256: d0ae1358ff472408725cc2923719114d6b90e754253de87d4a2730f8a5c11a5c
+
+Changes exercised
+-----------------
+- INT 10h AH=06h and AH=07h rectangular scroll up/down.
+- BH supplies the fill attribute, including AL=0 rectangle clear.
+- INT 10h AH=01h cursor shape/visibility output; AH=03h shape/position readback.
+- INT 10h AH=05h active page switch and redraw.
+- INT 10h AH=00h mode 3 clears all eight 80x25 text pages and resets cursors.
+- VGA text driver's ANSI cursor visibility/style handling.
+- CGA mode and color-select writes to ports 03D8h/03D9h are accepted as no-ops
+  by the text-backed renderer. VIEW writes 03D8h during paging.
+
+Validation
+----------
+- python3 tests/dosrun_runtime_test.py: PASS, including rectangle boundaries,
+  preserved neighboring cells, scroll fill attributes, clear, page state,
+  cursor visibility/style sequences, and mode 3 reset.
+- python3 tests/dosrun_port_test.py: PASS, including accepted CGA mode/color
+  writes, recurring vertical retrace, and rejected unsupported ports.
+- python3 tests/dosrun_test.py build/manios-zkt.elf: PASS, 24 QEMU cases,
+  0 failures.
+- make -j2 build/manios-zkt.elf: PASS (linker emitted existing GNU-stack warnings).
+- git diff --check: PASS.
+
+Application retests (fresh copies of the existing audit FAT images)
+-------------------------------------------------------------------
+- SemWare TSE 2.50e: `E.EXE C:/INPUT.TXT` opens the editor and displays the
+  file, without the prior XLAT fault. A real edit/save/reopen was not verified.
+  Screenshot: `2026-10-23-int10-semware.png`.
+- Directory Freedom 4.61B: file list and F1-F10 menu render. No file operation
+  was exercised. Screenshot: `2026-10-23-int10-directory-freedom.png`.
+- VIEW 17.2: `VIEW.DOC` opens. Page Down advances without the prior unsupported
+  OUT-to-03D8h fault, but the paged screen still has layout defects and Esc did
+  not return to the shell in the observed run. Screenshots:
+  `2026-10-23-int10-view.png` and `2026-10-23-int10-view-pagedown.png`.
+- EDITV 4.1: `INPUT.TXT` opens and serial `Z` input appears at the start of the
+  file. Save and reopen remain unverified. Screenshot:
+  `2026-10-23-int10-editv-typed.png`.
+
+All four application records remain Partial. The BIOS unit/QEMU tests verify
+the underlying services but do not establish complete compatibility.
+
+No commit or push was created for this work.

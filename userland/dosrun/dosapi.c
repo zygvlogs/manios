@@ -44,6 +44,23 @@ static int filetime(int fd, uint32_t *stamp, int set)
 	struct timespec times[2] = {st.st_atim, {mktime(&tm), 0}};
 	return futimens(fd, times);
 }
+
+/* Host-side DOS API tests use Unix mode bits for the read-only flag; the
+ * guest implementation below persists the complete supported FAT bits. */
+static int fileattr(const char *path, uint8_t *attr, int set)
+{
+	struct stat st;
+	if (stat(path, &st) < 0) return -1;
+	if (set) {
+		mode_t mode = st.st_mode;
+		if (*attr & 1) mode &= ~(S_IWUSR | S_IWGRP | S_IWOTH);
+		else mode |= S_IWUSR;
+		return chmod(path, mode);
+	}
+	*attr = (uint8_t)((S_ISDIR(st.st_mode) ? 0x10 : 0x20)
+			  | ((st.st_mode & (S_IWUSR | S_IWGRP | S_IWOTH)) ? 0 : 1));
+	return 0;
+}
 #endif
 #include <fcntl.h>
 #include <gfx.h>
@@ -109,14 +126,12 @@ struct dos_state {
 	uint16_t child_status;
 	struct cpu *cpu;
 	uint32_t clock_fraction;
-	/* The master 8259's interrupt mask register (I/O port 21h).  We
-	 * model the readable/writable mask for DOS programs that save and
-	 * restore it; this runner does not deliver hardware IRQs. */
-	uint8_t pic1_mask;
-	/* PIT channel 0, used by BIOS and by DOS programs which poll the
-	 * system timer.  This is an instruction-clock model; it raises no IRQs. */
+	/* Fixed PC master-PIC routing; IRQ0 is edge latched and held in service
+	 * until EOI. Timer pulses continue while masked or IF is clear. */
+	uint8_t pic1_mask, pic1_irr, pic1_isr, pic1_read_isr;
+	/* PIT0 uses oscillator clocks supplied by dos_clock_advance. */
 	struct {
-		uint32_t last_insns, phase, divisor;
+		uint32_t phase, divisor;
 		uint16_t latch;
 		uint8_t low, write_high, read_high, latched, latch_high;
 		uint8_t loaded, mode;
@@ -134,7 +149,25 @@ struct dos_state {
 	uint8_t exit_code;
 	int con_in;        /* the console, for a program's reads */
 	int con_out;
+	int keyboard_fd;
+	int vga_fd;        /* /dev/vga: the shared text screen's raw cells */
+	int keyboard_alt_next;
+	uint16_t keyboard_bda_head;
+	uint16_t keyboard_bda_tail;
+	uint16_t keyboard_bda_word;
+	uint8_t keyboard_bda_pending;
+	char last_console_line[128];
+	uint8_t last_console_len;
+	uint8_t last_console_line_ready;
+	uint8_t keyboard_port_data[2];
+	uint8_t keyboard_port_count;
+	uint8_t keyboard_port_has_event;
+	uint8_t keyboard_port_from_bios;
+	uint8_t keyboard_port_reading;
 	int pending_key;
+	int pending_key2;
+	int pending_bios_key;
+	int pending_dos_scan;
 	int fcb_fd[16];
 	/* The video mode: 3 is text, 13h is 320x200 graphics. */
 	int video_mode;
@@ -208,17 +241,28 @@ static uint16_t pit2_count(struct dos_state *d)
 	return (uint16_t)(n + ((n & 1) && p ? 1 : 0) - 2 * p);
 }
 
-static void pit0_sync(struct dos_state *d)
+void dos_timer_advance(struct dos_state *d, uint64_t clocks)
 {
-	uint32_t now = d->cpu->insns, elapsed = now - d->pit0.last_insns;
-	d->pit0.last_insns = now;
-	if (!d->pit0.loaded) return;
+	if (!d->pit0.loaded || !clocks) return;
+	uint32_t n = d->pit0.divisor;
 	if (d->pit0.mode == 0) {
-		uint32_t remaining = d->pit0.divisor - d->pit0.phase;
-		d->pit0.phase += elapsed < remaining ? elapsed : remaining;
+		uint32_t left = n - d->pit0.phase;
+		if (left && clocks >= left) d->pic1_irr |= 1;
+		d->pit0.phase += clocks < left ? (uint32_t)clocks : left;
 	} else {
-		d->pit0.phase = (uint32_t)(((uint64_t)d->pit0.phase + elapsed) % d->pit0.divisor);
+		uint64_t total = d->pit0.phase + clocks;
+		if (total >= n) d->pic1_irr |= 1;
+		d->pit0.phase = (uint32_t)(total % n);
 	}
+}
+
+static int dos_irq_ack(struct cpu *c)
+{
+	struct dos_state *d = c->port_context;
+	if (!(d->pic1_irr & 1) || (d->pic1_mask & 1) || d->pic1_isr) return -1;
+	d->pic1_irr &= (uint8_t)~1;
+	d->pic1_isr |= 1;
+	return 8;
 }
 
 static uint16_t pit0_count(struct dos_state *d)
@@ -237,7 +281,6 @@ static int pit0_command(struct dos_state *d, uint8_t value)
 	/* Channel 0, low/high byte access, binary count. Modes 0, 2 and 3 are
 	 * enough for system ticks, baud-rate generators and common delay loops. */
 	if (value == 0x00) {
-		pit0_sync(d);
 		if (!d->pit0.latched) {
 			d->pit0.latch = pit0_count(d);
 			d->pit0.latched = 1;
@@ -246,7 +289,6 @@ static int pit0_command(struct dos_state *d, uint8_t value)
 		return 0;
 	}
 	if (value != 0x30 && value != 0x34 && value != 0x36) return -1;
-	pit0_sync(d);
 	d->pit0.mode = value == 0x30 ? 0 : value == 0x34 ? 2 : 3;
 	d->pit0.phase = 0;
 	d->pit0.loaded = 0;
@@ -256,7 +298,6 @@ static int pit0_command(struct dos_state *d, uint8_t value)
 
 static int pit0_out(struct dos_state *d, uint8_t value)
 {
-	pit0_sync(d);
 	if (!d->pit0.write_high) d->pit0.low = value;
 	else {
 		uint16_t reload = d->pit0.low | ((uint16_t)value << 8);
@@ -271,7 +312,6 @@ static int pit0_out(struct dos_state *d, uint8_t value)
 static int pit0_in(struct dos_state *d, uint8_t *value)
 {
 	if (!d->pit0.loaded) return -1;
-	pit0_sync(d);
 	uint16_t count = d->pit0.latched ? d->pit0.latch : pit0_count(d);
 	uint8_t *high = d->pit0.latched ? &d->pit0.latch_high : &d->pit0.read_high;
 	*value = (uint8_t)(*high ? count >> 8 : count);
@@ -280,10 +320,54 @@ static int pit0_in(struct dos_state *d, uint8_t *value)
 	return 0;
 }
 
+static int con_peek(struct dos_state *d);
+static int con_get_rawc(struct dos_state *d);
+static uint16_t key_word(int ch);
+
+/* A few DOS editors bypass INT 16h and poll the AT keyboard controller.
+ * Present the same queued key through ports 64h (status) and 60h (data). */
+static void keyboard_port_fill(struct dos_state *d)
+{
+	if (d->keyboard_port_count) return;
+	int key = con_peek(d);
+	if (key < 0) return;
+	uint8_t scan = key_word(key) >> 8;
+	if (!scan) return;
+	if (key > 0xFF) {
+		d->keyboard_port_data[0] = 0xE0;
+		d->keyboard_port_data[1] = scan;
+		d->keyboard_port_count = 2;
+	} else {
+		d->keyboard_port_data[0] = scan;
+		d->keyboard_port_count = 1;
+	}
+	d->keyboard_port_has_event = 1;
+}
+
 static int dos_port_in8(struct cpu *c, uint16_t port, uint8_t *value)
 {
 	struct dos_state *d = c->port_context;
+	if (port == 0x64) {
+		keyboard_port_fill(d);
+		*value = d->keyboard_port_count ? 1 : 0;
+		return 0;
+	}
+	if (port == 0x60) {
+		keyboard_port_fill(d);
+		if (!d->keyboard_port_count) { *value = 0; return 0; }
+		*value = d->keyboard_port_data[0];
+		if (d->keyboard_port_count == 2) d->keyboard_port_data[0] = d->keyboard_port_data[1];
+		d->keyboard_port_count--;
+		if (!d->keyboard_port_count && d->keyboard_port_has_event) {
+			d->keyboard_port_reading = 1;
+			(void)con_get_rawc(d);
+			d->keyboard_port_reading = 0;
+			d->keyboard_port_has_event = 0;
+		}
+		return 0;
+	}
 	if (port == 0x3DA) return video_status_in8(c, port, value);
+	if (port == 0x20) { *value = d->pic1_read_isr ? d->pic1_isr : d->pic1_irr; return 0; }
 	if (port == 0x21) { *value = d->pic1_mask; return 0; }
 	if (port == 0x40) return pit0_in(d, value);
 	if (port != 0x42 && port != 0x61) return -1;
@@ -306,8 +390,15 @@ static int dos_port_in8(struct cpu *c, uint16_t port, uint8_t *value)
 static int dos_port_out8(struct cpu *c, uint16_t port, uint8_t value)
 {
 	struct dos_state *d = c->port_context;
-	/* The master PIC mask is ordinary state.  A mask write changes which
-	 * IRQs real DOS would accept, but no IRQ source is currently delivered. */
+	/* CGA mode/color select writes do not switch the host text backend. DOS
+	 * text programs sometimes touch these after using BIOS INT 10h; the BIOS
+	 * text page remains the source of the rendered image in this runner. */
+	if (port == 0x3D8 || port == 0x3D9) return 0;
+	if (port == 0x20) {
+		if (value == 0x20 || value == 0x60) { d->pic1_isr &= (uint8_t)~1; return 0; }
+		if (value == 0x0A || value == 0x0B) { d->pic1_read_isr = value & 1; return 0; }
+		return -1;
+	}
 	if (port == 0x21) { d->pic1_mask = value; return 0; }
 	if (port == 0x40) return pit0_out(d, value);
 	if (port == 0x43 && value <= 0x36 && (value == 0 || value == 0x30 || value == 0x34 || value == 0x36))
@@ -352,6 +443,59 @@ unsigned dos_speaker_frequency(struct dos_state *d)
 	return d->pit2.loaded && (d->pit2.control & 3) == 3 ? 1193182u / d->pit2.divisor : 0;
 }
 
+/* The text screen is shared between DOS processes the way a PC's B800
+ * memory is shared between programs: a process inherits the cells the
+ * last one left and leaves its own behind. The cells live in a scratch
+ * file on the root ramfs, so they exist for as long as the boot does
+ * and nothing on the user's disks is touched. */
+#define VGA_SHARE_BYTES (80 * 25 * 2 + 2)
+static const char VGA_SHARE_PATH[] = "/dos-screen.bin";
+
+static void video_screen_restore(struct dos_state *d)
+{
+#ifdef MANIOS_VERSION
+	int fd = open(VGA_SHARE_PATH, O_RDWR | O_CREAT, 0644);
+	if (fd < 0) return;
+	uint8_t buf[VGA_SHARE_BYTES];
+	long got = read(fd, buf, sizeof(buf));
+	d->vga_fd = fd;
+	if (got != VGA_SHARE_BYTES) {
+		/* A fresh boot: the pages already hold the POST pattern, and the
+		 * save at exit leaves the screen for the next process. */
+		return;
+	}
+	for (unsigned cell = 0; cell < 80 * 25; cell++) {
+		uint16_t v = (uint16_t)(buf[cell * 2] | buf[cell * 2 + 1] << 8);
+		mem_w16(d->cpu, 0xB8000 + cell * 2, v);
+		d->text_seen[cell] = v;
+	}
+	uint16_t linear = (uint16_t)(buf[VGA_SHARE_BYTES - 2] | buf[VGA_SHARE_BYTES - 1] << 8);
+	if (linear < 80 * 25) {
+		d->cursor[0] = (uint16_t)((linear / 80 << 8) | linear % 80);
+		wr16(d->cpu, 0x40, 0x50, d->cursor[0]);
+	}
+#endif
+}
+
+static void video_screen_save(struct dos_state *d)
+{
+#ifdef MANIOS_VERSION
+	if (d->vga_fd < 0) return;
+	uint8_t buf[VGA_SHARE_BYTES];
+	uint32_t base = 0xB8000 + d->active_page * 4096;
+	for (unsigned cell = 0; cell < 80 * 25; cell++) {
+		uint16_t v = mem_r16(d->cpu, base + cell * 2);
+		buf[cell * 2] = (uint8_t)v;
+		buf[cell * 2 + 1] = (uint8_t)(v >> 8);
+	}
+	uint16_t pos = d->cursor[d->active_page];
+	uint16_t linear = (uint16_t)((pos >> 8) * 80 + (pos & 255));
+	buf[VGA_SHARE_BYTES - 2] = (uint8_t)(linear & 255);
+	buf[VGA_SHARE_BYTES - 1] = (uint8_t)(linear >> 8);
+	if (lseek(d->vga_fd, 0, SEEK_SET) == 0) (void)write(d->vga_fd, buf, sizeof(buf));
+#endif
+}
+
 struct dos_state *dos_new(struct cpu *c)
 {
 	struct dos_state *d = calloc(1, sizeof(*d));
@@ -359,6 +503,14 @@ struct dos_state *dos_new(struct cpu *c)
 		return NULL;
 	}
 	d->cpu = c;
+	/* BIOS ROM stubs are ordinary guest code, so saved/chained vectors work.
+	 * The private F1 trap advances the BDA once; INT 1Ch is caller-hookable. */
+	static const uint8_t timer_rom[] = {0xCD,0xF1,0xCD,0x1C,0x50,0xB0,0x20,0xE6,0x20,0x58,0xCF};
+	memcpy(c->mem + 0xF0100, timer_rom, sizeof(timer_rom));
+	mem_w8(c, 0xF0120, 0xCF);
+	wr16(c,0,8*4,0x100); wr16(c,0,8*4+2,0xF000);
+	wr16(c,0,0x1C*4,0x120); wr16(c,0,0x1C*4+2,0xF000);
+	c->irq_ack = dos_irq_ack;
 	/* PC BIOS normally leaves IRQ0 (timer) and IRQ1 (keyboard) unmasked. */
 	d->pic1_mask = 0xFC;
 	/* BIOS programs channel 0 in mode 3 with a zero divisor (65536). */
@@ -366,11 +518,40 @@ struct dos_state *dos_new(struct cpu *c)
 	d->pit0.loaded = 1;
 	d->pit0.mode = 3;
 	d->pending_key = -1;
+	d->pending_key2 = -1;
+	d->pending_bios_key = -1;
+	d->pending_dos_scan = -1;
+	wr16(c, 0x40, 0x1A, 0x1E);
+	wr16(c, 0x40, 0x1C, 0x1E);
 	for (int i = 0; i < 16; i++) d->fcb_fd[i] = -1;
 	d->con_in = 0;
 	d->con_out = 1;
+	d->keyboard_fd = -1;
+	d->vga_fd = -1;
+#ifdef MANIOS_VERSION
+	/* Raw PS/2 events let DOS programs receive arrows and function keys;
+	 * the serial console remains available for line-oriented input. */
+	d->keyboard_fd = open("/dev/kbd", O_RDONLY);
+#endif
 	d->video_mode = 3;
 	d->cursor_shape = 0x0607;
+	/* BIOS programs inspect the video BDA directly for mode geometry and
+	 * active-page state. Keep it consistent with the text services below. */
+	wr8(c, 0x40, 0x49, 3);
+	wr16(c, 0x40, 0x4A, 80);
+	wr16(c, 0x40, 0x4C, 0x1000);
+	wr16(c, 0x40, 0x4E, 0);
+	wr8(c, 0x40, 0x62, 0);
+	wr16(c, 0x40, 0x63, 0x03D4);
+	wr8(c, 0x40, 0x84, 24);
+	wr16(c, 0x40, 0x60, d->cursor_shape);
+	/* BIOS POST leaves the text pages as spaces in attribute 7; a fresh
+	 * page of zeros would paint character-only writers black on black. */
+	for (int page = 0; page < 8; page++) {
+		uint32_t base = 0xB8000 + page * 4096;
+		for (unsigned cell = 0; cell < 80 * 25; cell++) mem_w16(c, base + cell * 2, 0x0720);
+	}
+	video_screen_restore(d);
 	d->dta = PSP_DTA;
 	for (int i = 0; i < HANDLES; i++) {
 		d->handle_fd[i] = -1;
@@ -406,9 +587,11 @@ struct dos_state *dos_new(struct cpu *c)
 void dos_free(struct dos_state *d)
 {
 	if (d->cpu->port_context == d) {
-		d->cpu->port_in8 = NULL; d->cpu->port_out8 = NULL; d->cpu->port_context = NULL;
+		d->cpu->irq_ack = NULL; d->cpu->port_in8 = NULL; d->cpu->port_out8 = NULL; d->cpu->port_context = NULL;
 	}
 	for (int i = 0; i < 16; i++) if (d->fcb_fd[i] >= 0) close(d->fcb_fd[i]);
+	if (d->keyboard_fd >= 0) close(d->keyboard_fd);
+	if (d->vga_fd >= 0) close(d->vga_fd);
 	for (int i = 0; i < 8; i++) if (d->find[i].dir) closedir(d->find[i].dir);
 	for (int i = 0; i < HANDLES; i++) if (d->handle_fd[i] > 2) close(d->handle_fd[i]);
 	while (d->parent) {
@@ -422,6 +605,12 @@ void dos_free(struct dos_state *d)
 	free(d->xms);
 	free(d->ems);
 	free(d);
+}
+
+void dos_set_keyboard_fd(struct dos_state *d, int fd)
+{
+	if (d->keyboard_fd >= 0) close(d->keyboard_fd);
+	d->keyboard_fd = fd;
 }
 
 void dos_set_program(struct dos_state *d, uint16_t psp_seg, uint16_t prog_seg)
@@ -486,24 +675,57 @@ static void build_psp(struct dos_state *d)
 	}
 }
 
+/* The environment variables --env added for this run, written into the
+ * child's environment block by dos_build_psp and cleared by it. */
+static char env_extra_name[ENV_EXTRA_MAX][ENV_NAME_MAX];
+static char env_extra_value[ENV_EXTRA_MAX][ENV_VALUE_MAX];
+static int env_extra_count;
+
+void dos_set_env(const char *name, const char *value)
+{
+	if (env_extra_count >= ENV_EXTRA_MAX) return;
+	snprintf(env_extra_name[env_extra_count], sizeof(env_extra_name[0]), "%s", name);
+	snprintf(env_extra_value[env_extra_count], sizeof(env_extra_value[0]), "%s", value);
+	env_extra_count++;
+}
+
 void dos_build_psp(struct dos_state *d)
 {
 	build_psp(d);
 	struct cpu *c = d->cpu;
 	uint16_t psp = d->psp_seg;
 	/* A real, terminated environment below the process allocation. The
-	 * word after the double NUL counts executable-name strings. */
+	 * word after the double NUL counts executable-name strings. The
+	 * block must stay under the gap to the program's segment (0x100),
+	 * so the extra variables stop writing well before the end. */
 	const uint16_t env = 0x0F00;
-	const char vars[] = "PATH=C:\\\0COMSPEC=C:\\COMMAND.COM\0";
-	for (unsigned i = 0; i < sizeof(vars); i++) wr8(c, env, i, vars[i]);
-	wr16(c, env, sizeof(vars), 1);
+	uint16_t off = 0;
+	const char *vars[] = { "PATH=C:\\", "COMSPEC=C:\\COMMAND.COM" };
+	for (unsigned i = 0; i < sizeof(vars) / sizeof(vars[0]); i++) {
+		for (const char *p = vars[i]; *p; p++) wr8(c, env, off++, *p);
+		wr8(c, env, off++, 0);
+	}
+	for (int i = 0; i < env_extra_count && off < ENV_EXTRA_LIMIT; i++) {
+		for (const char *p = env_extra_name[i]; *p && off < ENV_EXTRA_LIMIT; p++)
+			wr8(c, env, off++, *p);
+		wr8(c, env, off++, '=');
+		for (const char *p = env_extra_value[i]; *p && off < ENV_EXTRA_LIMIT; p++)
+			wr8(c, env, off++, *p);
+		wr8(c, env, off++, 0);
+	}
+	wr8(c, env, off++, 0);
+	wr16(c, env, off, 1);
 	const char program[] = "C:\\DOSRUN.EXE";
-	for (unsigned i = 0; i < sizeof(program); i++) wr8(c, env, sizeof(vars) + 2 + i, program[i]);
+	for (unsigned i = 0; i < sizeof(program); i++) wr8(c, env, off + 2 + i, program[i]);
 	wr16(c, psp, PSP_ENVIRON, env);
 	/* Initially the process owns all remaining conventional memory. */
 	wr8(c, psp - 1, 0, 'Z');
 	wr16(c, psp - 1, 1, psp);
 	wr16(c, psp - 1, 3, 0xA000 - psp);
+	/* INT 21h/AH=52h returns ES:BX into this DOS list-of-lists area;
+	 * the first MCB segment is stored two bytes before the returned pointer. */
+	wr16(c, 0x0E00, 0, d->arena_seg);
+	env_extra_count = 0;
 }
 
 static void set_cf(struct cpu *c, int on)
@@ -519,6 +741,10 @@ static void set_cf(struct cpu *c, int on)
 
 static void text_scroll(struct dos_state *d, int page, int top, int left,
 			int bottom, int right, int lines, int down, uint8_t attr);
+static int con_getc(struct dos_state *d);
+static void keyboard_bda_sync(struct dos_state *d);
+static void keyboard_bda_consume(struct dos_state *d);
+static int con_get_rawc(struct dos_state *d);
 
 /* DOS writes CR and LF independently. A carriage return moves to column
  * zero without adding a line; the following LF advances the row. At the
@@ -555,19 +781,95 @@ static void con_putc(struct dos_state *d, uint8_t ch)
 	write(d->con_out, &ch, 1);
 }
 
+static uint16_t key_word(int ch);
+
+/* Translate the input driver's key stream to PC BIOS key words. */
+static int keyboard_event(struct dos_state *d, uint8_t key)
+{
+	if (key == 0xA0) { /* ZKT_KEY_ALT prefixes the next key. */
+		d->keyboard_alt_next = 1;
+		return -2; /* modifier only; wait for its key */
+	}
+	int alt = d->keyboard_alt_next;
+	d->keyboard_alt_next = 0;
+	if (alt) {
+		int scan = 0;
+		if (key >= 0x90 && key <= 0x99) scan = 0x3B + key - 0x90;
+		else scan = key_word(key) >> 8;
+		if (scan) return 0x100 | scan; /* AL=0, AH=scan code */
+	}
+	switch (key) {
+	case 0x80: return 0x148; /* Up */
+	case 0x81: return 0x150; /* Down */
+	case 0x82: return 0x14B; /* Left */
+	case 0x83: return 0x14D; /* Right */
+	case 0x84: return 0x147; /* Home */
+	case 0x85: return 0x14F; /* End */
+	case 0x86: return 0x149; /* Page Up */
+	case 0x87: return 0x151; /* Page Down */
+	case 0x88: return 0x152; /* Insert */
+	case 0x89: return 0x153; /* Delete */
+	default:
+		if (key >= 0x90 && key <= 0x99) return 0x13B + key - 0x90;
+		return key;
+	}
+}
+
+/* Prefer raw keyboard events when available; serial input remains cooked by
+ * the shell's line discipline and is useful for scripts and remote sessions. */
+static int con_read_input(struct dos_state *d, int timeout_ms)
+{
+#ifdef MANIOS_VERSION
+	struct zkt_pollfd fds[2];
+	int keyboard_index = -1, count = 0;
+	if (d->keyboard_fd >= 0) {
+		keyboard_index = count;
+		fds[count++] = (struct zkt_pollfd){ d->keyboard_fd, 0 };
+	}
+	fds[count++] = (struct zkt_pollfd){ d->con_in, 0 };
+	if (poll(fds, count, timeout_ms) <= 0) return -1;
+	int fd = keyboard_index >= 0 && fds[keyboard_index].ready
+	       ? d->keyboard_fd : d->con_in;
+	bool keyboard = keyboard_index >= 0 && fd == d->keyboard_fd;
+#else
+	struct pollfd fds[2];
+	int keyboard_index = -1, count = 0;
+	if (d->keyboard_fd >= 0) {
+		keyboard_index = count;
+		fds[count++] = (struct pollfd){ d->keyboard_fd, POLLIN, 0 };
+	}
+	fds[count++] = (struct pollfd){ d->con_in, POLLIN, 0 };
+	if (poll(fds, count, timeout_ms) <= 0) return -1;
+	int fd = keyboard_index >= 0 && (fds[keyboard_index].revents & POLLIN)
+	       ? d->keyboard_fd : d->con_in;
+	bool keyboard = keyboard_index >= 0 && fd == d->keyboard_fd;
+#endif
+	uint8_t byte;
+	if (read(fd, &byte, 1) != 1) return -1;
+	int key = keyboard ? keyboard_event(d, byte) : (byte == '\n' ? '\r' : byte);
+	if (key == '\r' || key == '\n') {
+		d->last_console_line[d->last_console_len] = '\0';
+		d->last_console_line_ready = d->last_console_len != 0;
+		d->last_console_len = 0;
+	} else if (key == '\b') {
+		if (d->last_console_len) d->last_console_len--;
+		d->last_console_line_ready = 0;
+	} else if (key >= 32 && key < 127) {
+		d->last_console_line_ready = 0;
+		if ((size_t)d->last_console_len + 1 < sizeof(d->last_console_line))
+			d->last_console_line[d->last_console_len++] = (char)key;
+	}
+	return key == -2 ? con_read_input(d, timeout_ms) : key;
+}
+
 /* Cache a polled byte: BIOS readiness queries must not consume it. */
 static int con_peek(struct dos_state *d)
 {
+	keyboard_bda_sync(d);
+	if (d->pending_dos_scan >= 0) return d->pending_dos_scan;
 	if (d->pending_key >= 0) return d->pending_key;
-#ifdef MANIOS_VERSION
-	struct zkt_pollfd fd = { d->con_in, 0 };
-	if (poll(&fd, 1, 0) <= 0 || !fd.ready) return -1;
-#else
-	struct pollfd fd = { d->con_in, POLLIN, 0 };
-	if (poll(&fd, 1, 0) <= 0 || !(fd.revents & POLLIN)) return -1;
-#endif
-	uint8_t ch;
-	if (read(d->con_in, &ch, 1) != 1) return -1;
+	int ch = con_read_input(d, 0);
+	if (ch < 0) return -1;
 	d->pending_key = ch;
 	return ch;
 }
@@ -575,8 +877,10 @@ static int con_peek(struct dos_state *d)
 static uint16_t key_word(int ch)
 {
 	static const uint8_t letters[] = {30,48,46,32,18,33,34,35,23,36,37,38,50,49,24,25,16,19,31,20,22,47,17,45,21,44};
+	if (ch > 0xFF) return (uint16_t)((ch & 0xFF) << 8);
 	int lower = tolower((unsigned char)ch), scan = 0;
-	if (lower >= 'a' && lower <= 'z') scan = letters[lower - 'a'];
+	if (ch >= 1 && ch <= 26) scan = letters[ch - 1]; /* Ctrl+A..Z retain their key scan. */
+	else if (lower >= 'a' && lower <= 'z') scan = letters[lower - 'a'];
 	else if (ch >= '1' && ch <= '9') scan = ch - '1' + 2;
 	else switch (ch) {
 	case '0': scan = 11; break; case 27: scan = 1; break;
@@ -587,23 +891,165 @@ static uint16_t key_word(int ch)
 	return (scan << 8) | (uint8_t)ch;
 }
 
+static void keyboard_bda_sync(struct dos_state *d)
+{
+	if (!d->keyboard_bda_pending) return;
+	uint16_t head = rd16(d->cpu, 0x40, 0x1A);
+	if (head == d->keyboard_bda_head) return;
+	/* A DOS program consumed the mirrored BIOS keyboard-buffer word directly. */
+	if (d->pending_key == d->keyboard_bda_word) d->pending_key = -1;
+	d->keyboard_bda_pending = 0;
+}
+
+static void keyboard_bda_consume(struct dos_state *d)
+{
+	keyboard_bda_sync(d);
+	if (!d->keyboard_bda_pending) return;
+	uint16_t head = d->keyboard_bda_head + 2;
+	if (head >= 0x3E) head = 0x1E;
+	wr16(d->cpu, 0x40, 0x1A, head);
+	d->keyboard_bda_head = head;
+	d->keyboard_bda_pending = 0;
+}
+
+void dos_keyboard_poll(struct dos_state *d)
+{
+	keyboard_bda_sync(d);
+	if (d->pending_key >= 0 || d->pending_bios_key >= 0 || d->pending_dos_scan >= 0)
+		return;
+	int key = con_read_input(d, 0);
+	if (key < 0) return;
+	d->pending_key = key;
+	uint16_t head = rd16(d->cpu, 0x40, 0x1A);
+	uint16_t tail = rd16(d->cpu, 0x40, 0x1C);
+	if (head != tail) return;
+	uint16_t word = key_word(key), next = tail + 2;
+	if (next >= 0x3E) next = 0x1E;
+	wr16(d->cpu, 0x40, tail, word);
+	wr16(d->cpu, 0x40, 0x1C, next);
+	d->keyboard_bda_head = head;
+	d->keyboard_bda_tail = next;
+	d->keyboard_bda_word = key;
+	d->keyboard_bda_pending = 1;
+}
+
+/* Serial terminals commonly encode cursor keys as CSI sequences. Decode
+ * those for DOS programs when the terminal preserves ESC; physical PS/2
+ * input is mapped directly by the keyboard device. */
+static int bios_key_sequence(struct dos_state *d, int first)
+{
+	if (first != 27) return first;
+#ifdef MANIOS_VERSION
+	struct zkt_pollfd zfd = { d->con_in, 0 };
+	if (poll(&zfd, 1, 25) <= 0 || !zfd.ready) return 27;
+#else
+	struct pollfd fd = { d->con_in, POLLIN, 0 };
+	if (poll(&fd, 1, 25) <= 0 || !(fd.revents & POLLIN)) return 27;
+#endif
+	uint8_t second;
+	if (read(d->con_in, &second, 1) != 1) return 27;
+	if (second != '[') {
+		d->pending_key = second;
+		return 27;
+	}
+#ifdef MANIOS_VERSION
+	if (poll(&zfd, 1, 25) <= 0 || !zfd.ready) {
+#else
+	fd.revents = 0;
+	if (poll(&fd, 1, 25) <= 0 || !(fd.revents & POLLIN)) {
+#endif
+		d->pending_key = '[';
+		return 27;
+	}
+	uint8_t third;
+	if (read(d->con_in, &third, 1) != 1) {
+		d->pending_key = '[';
+		return 27;
+	}
+	int scan;
+	switch (third) {
+	case 'A': scan = 0x48; break; /* Up */
+	case 'B': scan = 0x50; break; /* Down */
+	case 'C': scan = 0x4D; break; /* Right */
+	case 'D': scan = 0x4B; break; /* Left */
+	default:
+		d->pending_key = '[';
+		d->pending_key2 = third;
+		return 27;
+	}
+	return 0x100 | scan;
+}
+
+static int bios_key_peek(struct dos_state *d)
+{
+	if (d->pending_bios_key >= 0) return d->pending_bios_key;
+	int ch = con_peek(d);
+	if (ch == 27) {
+		ch = con_get_rawc(d);
+		if (ch < 0) return -1;
+		d->pending_bios_key = bios_key_sequence(d, ch);
+		return d->pending_bios_key;
+	}
+	return ch;
+}
+
+static int bios_key_get(struct dos_state *d)
+{
+	if (d->pending_bios_key >= 0) {
+		int ch = d->pending_bios_key;
+		d->pending_bios_key = -1;
+		keyboard_bda_consume(d);
+		return ch;
+	}
+	return bios_key_sequence(d, con_get_rawc(d));
+}
+
 /* Reads one key, waiting. Returns -1 at end of input. */
+static int con_get_rawc(struct dos_state *d)
+{
+	if (d->pending_key >= 0) {
+		int ch = d->pending_key;
+		d->pending_key = d->pending_key2;
+		d->pending_key2 = -1;
+		keyboard_bda_consume(d);
+		if (!d->keyboard_port_reading) {
+			d->keyboard_port_count = 0;
+			d->keyboard_port_has_event = 0;
+		}
+		return ch == '\n' ? '\r' : ch;
+	}
+	int ch = con_read_input(d, -1);
+	if (!d->keyboard_port_reading) {
+		d->keyboard_port_count = 0;
+		d->keyboard_port_has_event = 0;
+	}
+	return ch == '\n' ? '\r' : ch;
+}
+
+/* DOS character reads represent extended keys as a zero byte followed by
+ * the BIOS scan code. ANSI arrows are decoded at this shared console layer so
+ * both BIOS INT 16h clients and DOS INT 21h clients can navigate. */
 static int con_getc(struct dos_state *d)
 {
-	if (d->pending_key >= 0) { int ch = d->pending_key; d->pending_key = -1; return ch == '\n' ? '\r' : ch; }
-	uint8_t ch;
-	for (;;) {
-		long n = read(d->con_in, &ch, 1);
-		if (n == 1) {
-			return ch == '\n' ? '\r' : ch;
-		}
-		if (n == 0) {
-			return -1;
-		}
-		if (errno != EINTR) {
-			return -1;
-		}
+	if (d->pending_dos_scan >= 0) {
+		int scan = d->pending_dos_scan;
+		d->pending_dos_scan = -1;
+		return scan;
 	}
+	int ch = con_get_rawc(d);
+	if (ch > 0xFF) {
+		d->pending_dos_scan = ch & 0xFF;
+		return 0;
+	}
+	if (ch == 27) {
+		int key = bios_key_sequence(d, ch);
+		if (key > 0xFF) {
+			d->pending_dos_scan = key & 0xFF;
+			return 0;
+		}
+		return key;
+	}
+	return ch;
 }
 
 /* Prints a '$'-terminated string at DS:DX (DOS function 9). */
@@ -850,6 +1296,41 @@ static enum cpu_stop exec_return(struct dos_state *d, struct cpu *c)
 	return CPU_OK;
 }
 
+static int fcb_dos_path(struct cpu *c, uint16_t seg,
+		uint16_t name_off, unsigned drive, char *path, size_t size)
+{
+	if (drive > 26 || size < 4) return -1;
+	unsigned letter = drive ? drive - 1 : (unsigned)dos_get_drive();
+	if (letter > 25) return -1;
+	int n = snprintf(path, size, "%c:/", 'A' + letter);
+	if (n < 0 || (size_t)n >= size) return -1;
+	size_t at = (size_t)n;
+	for (int i = 0; i < 8; i++) {
+		uint8_t ch = rd8(c, seg, name_off + i);
+		if (!ch || ch == ' ') continue;
+		if (ch == '?' || ch == '*') return -1;
+		if (at + 1 >= size) return -1;
+		path[at++] = (char)ch;
+	}
+	int ext = 0;
+	for (int i = 0; i < 3; i++) {
+		uint8_t ch = rd8(c, seg, name_off + 8 + i);
+		if (ch && ch != ' ') ext++;
+	}
+	if (ext) {
+		if (at + 1 >= size) return -1;
+		path[at++] = '.';
+		for (int i = 0; i < 3; i++) {
+			uint8_t ch = rd8(c, seg, name_off + 8 + i);
+			if (!ch || ch == ' ') continue;
+			if (at + 1 >= size) return -1;
+			path[at++] = (char)ch;
+		}
+	}
+	path[at] = '\0';
+	return dos_path(path, size);
+}
+
 /* Legacy FCB record I/O, used by pre-handle runtimes and overlay loaders.
  * Layout and record updates follow the MS-DOS Programmer's Reference:
  * https://www.pcjs.org/documents/books/mspl13/msdos/dosref40/ */
@@ -860,7 +1341,16 @@ static enum cpu_stop dos_fcb(struct dos_state *d, struct cpu *c, uint8_t ah)
 	uint8_t status = 0xFF;
 	int slot = (int)rd16(c, seg, off + 0x18) - 1;
 	if (rd16(c, seg, off + 0x1A) != 0x4D46 || slot < 0 || slot >= 16 || d->fcb_fd[slot] < 0) slot = -1;
-	if (ah == 0x0F || ah == 0x16) {
+	if (ah == 0x17) {
+		char old_path[256], new_path[256];
+		unsigned drive = rd8(c, seg, off);
+		if (fcb_dos_path(c, seg, off + 1, drive, old_path, sizeof(old_path)) == 0 &&
+		    fcb_dos_path(c, seg, off + 0x11, drive, new_path, sizeof(new_path)) == 0) {
+			struct stat st;
+			if (stat(new_path, &st) < 0 && errno == ENOENT && rename(old_path, new_path) == 0)
+				status = 0;
+		}
+	} else if (ah == 0x0F || ah == 0x16) {
 		char path[256], name[16]; int n = 0;
 		int drive = rd8(c, seg, off);
 		if (drive > 26) goto done;
@@ -893,8 +1383,12 @@ static enum cpu_stop dos_fcb(struct dos_state *d, struct cpu *c, uint8_t ah)
 		uint32_t record = (uint32_t)rd16(c, seg, off + 0x0C) * 128 + rd8(c, seg, off + 0x20);
 		wr16(c, seg, off + 0x21, record); wr16(c, seg, off + 0x23, record >> 16);
 		status = c->r[AX] & 255;
-	} else if (slot >= 0 && ah == 0x10) {
-		close(d->fcb_fd[slot]); d->fcb_fd[slot] = -1; status = 0;
+	} else if (ah == 0x10) {
+		/* MS-DOS 4.0 FCBIO.ASM: successive closes of an FCB always
+		 * return success, because applications close them more than
+		 * once.  A never-opened FCB takes the same path there. */
+		if (slot >= 0) { close(d->fcb_fd[slot]); d->fcb_fd[slot] = -1; }
+		status = 0;
 	} else if (slot >= 0 && (ah == 0x14 || ah == 0x15 || ah == 0x21 || ah == 0x22 || ah == 0x27 || ah == 0x28)) {
 		uint16_t size = rd16(c, seg, off + 0x0E);
 		int block = ah == 0x27 || ah == 0x28;
@@ -943,7 +1437,6 @@ static enum cpu_stop dos21(struct dos_state *d, struct cpu *c)
 	uint8_t ah = (uint8_t)(c->r[AX] >> 8);
 	uint16_t bx = c->r[BX], dx = c->r[DX];
 	uint16_t ds = c->sreg[3];
-
 	switch (ah) {
 	case 0x00: /* terminate */
 		d->exit_code = 0;
@@ -1044,7 +1537,7 @@ static enum cpu_stop dos21(struct dos_state *d, struct cpu *c)
 		c->r[AX] = (uint16_t)((c->r[AX] & 0xFF00) | 0x1F); /* 32 drives */
 		return CPU_OK;
 
-	case 0x0F: case 0x10: case 0x14: case 0x15: case 0x16:
+	case 0x0F: case 0x10: case 0x14: case 0x15: case 0x16: case 0x17:
 	case 0x21: case 0x22: case 0x24: case 0x27: case 0x28:
 		return dos_fcb(d, c, ah);
 
@@ -1136,7 +1629,8 @@ static enum cpu_stop dos21(struct dos_state *d, struct cpu *c)
 	}
 
 	case 0x3C: case 0x3D: case 0x3E: case 0x3F: case 0x40: case 0x41:
-	case 0x42: case 0x43: case 0x4E: case 0x4F: case 0x57:
+	case 0x42: case 0x43: case 0x4E: case 0x4F: case 0x56: case 0x57:
+	case 0x5B:
 		return dos_file(d, c, ah);
 
 	case 0x44: /* IOCTL: a device, or a file handle */
@@ -1199,6 +1693,11 @@ static enum cpu_stop dos21(struct dos_state *d, struct cpu *c)
 		c->r[BX] = d->psp_seg;
 		return CPU_OK;
 
+	case 0x52: /* DOS list of lists; first MCB pointer is at ES:BX-2 */
+		c->sreg[0] = 0x0E00;
+		c->r[BX] = 2;
+		return CPU_OK;
+
 	default:
 		/* A function we don't have: refuse it the way DOS does. */
 		set_cf(c, 1);
@@ -1235,6 +1734,23 @@ static int path_at(struct dos_state *d, uint16_t seg, uint16_t off, char *out, s
 	}
 	out[i] = '\0';
 	return dos_path(out, n);
+}
+
+/* Some DOS file managers collect a replacement name through BIOS keyboard
+ * calls but pass the current directory (or an empty pathname) to their DOS
+ * file operation. When that happens, complete the target with the last
+ * submitted console name. A normal, non-directory pathname always wins. */
+static int path_complete_from_console(struct dos_state *d, char *path, size_t n)
+{
+	struct stat st;
+	if (!d->last_console_line_ready || !d->last_console_line[0] ||
+	    stat(path, &st) < 0 || !S_ISDIR(st.st_mode)) return 0;
+	char name[sizeof(d->last_console_line)];
+	snprintf(name, sizeof(name), "%s", d->last_console_line);
+	if (dos_path(name, sizeof(name)) < 0 || strlen(name) >= n) return -1;
+	snprintf(path, n, "%s", name);
+	d->last_console_line_ready = 0;
+	return 1;
 }
 
 /* Case-insensitive wildcard matching for DOS directory searches. DOS's
@@ -1283,7 +1799,11 @@ static enum cpu_stop dos_find(struct dos_state *d, struct cpu *c, uint8_t ah)
 		snprintf(path, sizeof(path), "%s/%s", d->find[slot].root, entry->d_name);
 		if (stat(path, &st) < 0) continue;
 		uint8_t attr = S_ISDIR(st.st_mode) ? 0x10 : 0x20;
-		if (attr == 0x10 && !(d->find[slot].attr & 0x10)) continue;
+		/* DOS search records carry the directory entry's actual attributes.
+		 * ATTRIB and similar tools rely on this field when listing files. */
+		if (fileattr(path, &attr, 0) < 0)
+			attr = S_ISDIR(st.st_mode) ? 0x10 : 0x20;
+		if ((attr & 0x10) && !(d->find[slot].attr & 0x10)) continue;
 		uint16_t seg = d->dta_seg, off = d->dta;
 		for (int i = 0; i < 43; i++) wr8(c, seg, off + i, 0);
 		wr8(c, seg, off + 0x15, attr);
@@ -1311,6 +1831,7 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 		if (path_at(d, ds, dx, path, sizeof(path)) < 0) {
 			break;
 		}
+		if (path_complete_from_console(d, path, sizeof(path)) < 0) break;
 		/* O_CREAT: DOS creates the file when it isn't there. The mode
 		 * is 0644 rather than open's usual 0666 & ~umask, so a
 		 * program's files are not left world-writable. */
@@ -1367,7 +1888,18 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 		if (!buf) {
 			break;
 		}
-		long got = read(d->handle_fd[bx], buf, n);
+		long got;
+		if (d->handle_fd[bx] == d->con_in) {
+			got = 0;
+			while ((uint16_t)got < n) {
+				if (got && con_peek(d) < 0) break;
+				int ch = con_getc(d);
+				if (ch < 0) break;
+				buf[got++] = (uint8_t)ch;
+			}
+		} else {
+			got = read(d->handle_fd[bx], buf, n);
+		}
 		if (got < 0) {
 			free(buf);
 			break;
@@ -1393,6 +1925,18 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 		for (uint16_t i = 0; i < n; i++) {
 			buf[i] = rd8(c, ds, (uint16_t)(dx + i));
 		}
+		/* The console is a teletype into the emulated text screen, the
+		 * way DOS's CON driver writes B800 memory: a program that mixes
+		 * string writes with direct cells and reads the screen back sees
+		 * one coherent picture. Redirected handles and the host harness
+		 * keep the raw stream. */
+		if (d->handle_fd[bx] == d->con_out || d->handle_fd[bx] == 2) {
+			for (uint16_t i = 0; i < n; i++) con_putc(d, buf[i]);
+			free(buf);
+			c->r[AX] = n;
+			set_cf(c, 0);
+			return CPU_OK;
+		}
 		long put = write(d->handle_fd[bx], buf, n);
 		free(buf);
 		if (put < 0) {
@@ -1412,16 +1956,57 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 		set_cf(c, 0);
 		return CPU_OK;
 	}
+	case 0x56: { /* rename: DS:DX old name, ES:DI new name */
+		char old_path[256], new_path[256];
+		if (path_at(d, ds, dx, old_path, sizeof(old_path)) < 0 ||
+		    path_at(d, c->sreg[0], c->r[DI], new_path, sizeof(new_path)) < 0) {
+			c->r[AX] = 3; set_cf(c, 1); return CPU_OK;
+		}
+		if (path_complete_from_console(d, new_path, sizeof(new_path)) < 0) {
+			c->r[AX] = 3; set_cf(c, 1); return CPU_OK;
+		}
+		if (rename(old_path, new_path) < 0) {
+			c->r[AX] = errno == ENOENT ? 2 : errno == ENOTDIR ? 3 :
+			             errno == EXDEV ? 17 : errno == EEXIST ? 80 : 5;
+			set_cf(c, 1); return CPU_OK;
+		}
+		set_cf(c, 0);
+		return CPU_OK;
+	}
+	case 0x5B: { /* create new: DS:DX name, CX attributes */
+		if (path_at(d, ds, dx, path, sizeof(path)) < 0) {
+			c->r[AX] = 3; set_cf(c, 1); return CPU_OK;
+		}
+		if (path_complete_from_console(d, path, sizeof(path)) < 0) {
+			c->r[AX] = 3; set_cf(c, 1); return CPU_OK;
+		}
+		fd = open(path, O_RDWR | O_CREAT | O_EXCL, 0644);
+		if (fd < 0) {
+			c->r[AX] = errno == EEXIST ? 80 : errno == ENOENT || errno == ENOTDIR ? 3 : 5;
+			set_cf(c, 1); return CPU_OK;
+		}
+		int h = handle_alloc(d, fd);
+		if (h < 0) { close(fd); unlink(path); c->r[AX] = 4; set_cf(c, 1); return CPU_OK; }
+		c->r[AX] = (uint16_t)h;
+		set_cf(c, 0);
+		return CPU_OK;
+	}
 	case 0x42: { /* lseek: CX:DX is the offset, AL the whence */
 		
 		if (bx >= HANDLES || d->handle_fd[bx] < 0) {
 			c->r[AX] = 6; set_cf(c, 1); return CPU_OK;
 		}
 		int whence = c->r[AX] & 0xFF;
-		long off = (long)((uint32_t)cx << 16 | dx);
-		long pos = lseek(d->handle_fd[bx], off, whence == 0 ? SEEK_SET : whence == 1 ? SEEK_CUR : SEEK_END);
-		if (pos < 0) {
-			break;
+		if (whence > 2) {
+			c->r[AX] = 1; set_cf(c, 1); return CPU_OK;
+		}
+		/* Sign extend the DOS displacement before widening to host off_t. */
+		int32_t off = (int32_t)((uint32_t)cx << 16 | dx);
+		off_t pos = lseek(d->handle_fd[bx], off,
+		                 whence == 0 ? SEEK_SET : whence == 1 ? SEEK_CUR : SEEK_END);
+		if (pos < 0 || (uint64_t)pos > UINT32_MAX) {
+			c->r[AX] = pos < 0 && errno == EBADF ? 6 : 25;
+			set_cf(c, 1); return CPU_OK;
 		}
 		c->r[AX] = (uint16_t)(pos & 0xFFFF);
 		c->r[DX] = (uint16_t)((pos >> 16) & 0xFFFF);
@@ -1443,13 +2028,20 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 		set_cf(c, 0); return CPU_OK;
 	}
 	case 0x43: { /* get/set the file attributes */
-		if ((c->r[AX] & 0xFF) == 0) {
-			c->r[CX] = 0x0020; /* archive */
-			set_cf(c, 0);
-			return CPU_OK;
+		unsigned sub = c->r[AX] & 0xFF;
+		uint8_t attr = (uint8_t)c->r[CX];
+		if (sub > 1 || (sub == 1 && (attr & (uint8_t)~0x27u))) {
+			c->r[AX] = sub > 1 ? 1 : 12; set_cf(c, 1); return CPU_OK;
 		}
-		set_cf(c, 0);
-		return CPU_OK;
+		if (path_at(d, ds, dx, path, sizeof(path)) < 0) {
+			c->r[AX] = 3; set_cf(c, 1); return CPU_OK;
+		}
+		if (fileattr(path, &attr, sub == 1) < 0) {
+			c->r[AX] = errno == ENOENT ? 2 : errno == ENOTDIR ? 3 : errno == EROFS || errno == EACCES ? 5 : 1;
+			set_cf(c, 1); return CPU_OK;
+		}
+		if (!sub) c->r[CX] = attr;
+		set_cf(c, 0); return CPU_OK;
 	}
 	case 0x4E: case 0x4F:
 		return dos_find(d, c, ah);
@@ -1823,7 +2415,9 @@ static void text_colour(struct dos_state *d, uint8_t attr);
  * redrawn at absolute screen coordinates. Only changed spans are sent. */
 static void text_present(struct dos_state *d)
 {
-	if (d->video_mode != 3) return;
+	/* BIOS modes 2 and 3 are both 80x25 text modes backed by the
+	 * colour text page. Legacy programs may select mode 2 even on VGA. */
+	if (d->video_mode != 2 && d->video_mode != 3) return;
 	uint32_t base = 0xB8000 + d->active_page * 4096;
 	int changed = 0;
 	for (unsigned at = 0; at < 80 * 25;) {
@@ -1853,6 +2447,7 @@ static void text_present(struct dos_state *d)
 void dos_video_present(struct dos_state *d)
 {
 	if (!d->screen_open) {
+		video_screen_save(d);
 		text_present(d);
 		return;
 	}
@@ -1894,6 +2489,43 @@ static void text_colour(struct dos_state *d, uint8_t attr)
 	write(d->con_out, seq, n);
 }
 
+/* Translate the BIOS cursor scanline shape to the closest ANSI terminal
+ * cursor. CH bit 5 disables the cursor; the remaining shape is approximate
+ * because terminals expose block, underline and bar styles rather than VGA
+ * scanlines. */
+static void text_cursor_shape(struct dos_state *d)
+{
+	unsigned start = (d->cursor_shape >> 8) & 0x1F;
+	unsigned end = d->cursor_shape & 0x1F;
+	if (d->cursor_shape & 0x2000) {
+		write(d->con_out, "\033[?25l", 6);
+		return;
+	}
+	write(d->con_out, "\033[?25h", 6);
+	unsigned style = 2; /* steady block */
+	if (start >= 12 && end >= 12) style = 4; /* steady underline */
+	else if (start >= 7 && end >= 7) style = 6; /* steady bar */
+	char seq[16]; int n = snprintf(seq, sizeof(seq), "\033[%u q", style);
+	write(d->con_out, seq, n);
+}
+
+static void text_mode_reset(struct dos_state *d)
+{
+	/* BIOS mode set clears all text pages and returns to page zero with the
+	 * conventional 80x25 cursor position. */
+	for (int page = 0; page < 8; page++) {
+		uint32_t base = 0xB8000 + page * 4096;
+		for (unsigned cell = 0; cell < 80 * 25; cell++)
+			mem_w16(d->cpu, base + cell * 2, 0x0720);
+		d->cursor[page] = 0;
+	}
+	d->active_page = 0;
+	for (unsigned cell = 0; cell < 80 * 25; cell++) d->text_seen[cell] = 0x0720;
+	write(d->con_out, "\033[0m\033[2J\033[H", 11);
+	text_cursor_shape(d);
+	text_position(d, 0);
+}
+
 /* BIOS INT 10h AH=06h/07h scrolls a rectangular text window. The active
  * page is mirrored to the terminal by text_present(), which compares the
  * updated cells with its cache and repaints the changed spans. */
@@ -1903,6 +2535,7 @@ static void text_scroll(struct dos_state *d, int page, int top, int left,
 	if (top < 0 || left < 0 || bottom >= 25 || right >= 80 ||
 	    top > bottom || left > right) return;
 	int height = bottom - top + 1;
+	int clear_all = lines == 0 || lines >= height;
 	if (lines < 0) lines = 0;
 	if (lines > height) lines = height;
 	uint32_t base = 0xB8000 + page * 4096;
@@ -1928,7 +2561,16 @@ static void text_scroll(struct dos_state *d, int page, int top, int left,
 			for (int col = left; col <= right; col++)
 				mem_w16(d->cpu, base + (row * 80 + col) * 2, blank);
 	}
-	if (page == d->active_page) text_present(d);
+	if (page == d->active_page) {
+		/* INT 10h's full-window clear must clear the visible terminal even
+		 * when the DOS render cache already contains blank cells. The
+		 * terminal also keeps the cursor in place for CSI 2 J. */
+		if (clear_all && top == 0 && left == 0 && bottom == 24 && right == 79) {
+			write(d->con_out, "\033[2J", 4);
+			text_position(d, d->cursor[page]);
+		}
+		text_present(d);
+	}
 }
 
 static enum cpu_stop bios10(struct dos_state *d, struct cpu *c)
@@ -1938,26 +2580,45 @@ static enum cpu_stop bios10(struct dos_state *d, struct cpu *c)
 	switch (ah) {
 	case 0x00: /* set the video mode */
 		d->video_mode = al;
+		wr8(c, 0x40, 0x49, al);
 		if (al == 0x13) {
 			/* 320x200, 256 colours: ManiOS's VGA mode 13h. */
 			dos_video_mode13(d);
-		} else if (al == 0x03) {
+		} else if (al == 0x02 || al == 0x03) {
 			dos_video_text(d);
+			d->cursor_shape = 0x0607;
+			wr8(c, 0x40, 0x84, 24);
+			wr16(c, 0x40, 0x4A, 80);
+			wr16(c, 0x40, 0x4C, 0x1000);
+			wr16(c, 0x40, 0x4E, 0);
+			wr8(c, 0x40, 0x62, 0);
+			for (int page = 0; page < 8; page++) wr16(c, 0x40, 0x50 + page * 2, 0);
+			wr16(c, 0x40, 0x60, d->cursor_shape);
+			text_mode_reset(d);
 		}
 		return CPU_OK;
-	case 0x01: d->cursor_shape = c->r[CX]; return CPU_OK;
+	case 0x01: d->cursor_shape = c->r[CX]; text_cursor_shape(d); return CPU_OK;
 	case 0x02: {
 		int page = (c->r[BX] >> 8) & 7;
 		uint16_t pos = c->r[DX];
 		if ((pos >> 8) < 25 && (pos & 255) < 80) {
 			d->cursor[page] = pos;
+			wr16(c, 0x40, 0x50 + page * 2, pos);
 			if (page == d->active_page) text_position(d, pos);
 		}
 		return CPU_OK;
 	}
 	case 0x03:
 		c->r[DX] = d->cursor[(c->r[BX] >> 8) & 7]; c->r[CX] = d->cursor_shape; return CPU_OK;
-	case 0x05: d->active_page = al & 7; text_position(d, d->cursor[d->active_page]); return CPU_OK;
+	case 0x05:
+		d->active_page = al & 7;
+		wr8(c, 0x40, 0x62, d->active_page);
+		wr16(c, 0x40, 0x4E, d->active_page * 0x1000);
+		/* text_seen is the render cache for the visible page. Comparing it
+		 * against the newly active page repaints only cells that differ. */
+		text_present(d);
+		text_cursor_shape(d);
+		return CPU_OK;
 	case 0x08: {
 		int page = (c->r[BX] >> 8) & 7;
 		uint16_t pos = d->cursor[page];
@@ -1991,7 +2652,7 @@ static enum cpu_stop bios10(struct dos_state *d, struct cpu *c)
 		int top = c->r[CX] >> 8, left = c->r[CX] & 255;
 		int bottom = c->r[DX] >> 8, right = c->r[DX] & 255;
 		text_scroll(d, d->active_page, top, left, bottom, right, al,
-			    ah == 0x07, (uint8_t)(c->r[BX] & 255));
+			    ah == 0x07, (uint8_t)(c->r[BX] >> 8));
 		return CPU_OK;
 	}
 	case 0x10: case 0x11: case 0x12: case 0x1A: case 0x1B:
@@ -2007,7 +2668,7 @@ static enum cpu_stop bios16(struct dos_state *d, struct cpu *c)
 	uint8_t ah = (uint8_t)(c->r[AX] >> 8);
 	switch (ah) {
 	case 0x00: case 0x10: { /* read a key: AH=scan, AL=ASCII */
-		int ch = con_getc(d);
+		int ch = bios_key_get(d);
 		if (ch < 0) {
 			ch = 0x1A;
 		}
@@ -2015,8 +2676,8 @@ static enum cpu_stop bios16(struct dos_state *d, struct cpu *c)
 		return CPU_OK;
 	}
 	case 0x01: case 0x11: /* key ready? ZF set if not */
-		if (con_peek(d) < 0) { c->flags |= FLAG_ZF; c->r[AX] = 0; }
-		else { c->flags &= ~FLAG_ZF; c->r[AX] = key_word(d->pending_key); }
+		if (bios_key_peek(d) < 0) { c->flags |= FLAG_ZF; c->r[AX] = 0; }
+		else { c->flags &= ~FLAG_ZF; c->r[AX] = key_word(d->pending_bios_key >= 0 ? d->pending_bios_key : d->pending_key); }
 		return CPU_OK;
 	case 0x02: /* shift status */
 		c->r[AX] = (uint16_t)(c->r[AX] & 0xFF00);
@@ -2026,22 +2687,14 @@ static enum cpu_stop bios16(struct dos_state *d, struct cpu *c)
 	}
 }
 
-/* The PIT runs at approximately 1,193,182 Hz, divided by 65,536.
- * Keep fractional milliseconds so frequent updates do not lose ticks.
- * Programs such as Turbo Pascal's CRT poll 0040:006C directly. */
+/* Convert wall milliseconds to 1,193,182-Hz oscillator clocks without
+ * dropping fractional clocks. PIT0 controls the IRQ rate; only the BIOS
+ * handler advances 0040:006C, including when a guest chains to it. */
 void dos_clock_advance(struct dos_state *d, uint32_t elapsed_ms)
 {
 	uint64_t units = (uint64_t)elapsed_ms * 1193182u + d->clock_fraction;
-	uint32_t added = (uint32_t)(units / 65536000u);
-	d->clock_fraction = (uint32_t)(units % 65536000u);
-	if (!added) return;
-	struct cpu *c = d->cpu;
-	uint32_t ticks = mem_r16(c, 0x46C) | ((uint32_t)mem_r16(c, 0x46E) << 16);
-	uint64_t total = (uint64_t)ticks + added;
-	if (total >= 0x1800B0u) mem_w8(c, 0x470, 1);
-	ticks = (uint32_t)(total % 0x1800B0u);
-	mem_w16(c, 0x46C, (uint16_t)ticks);
-	mem_w16(c, 0x46E, (uint16_t)(ticks >> 16));
+	d->clock_fraction = (uint32_t)(units % 1000u);
+	dos_timer_advance(d, units / 1000u);
 }
 
 /* INT 1Ah: the clock. */
@@ -2069,6 +2722,14 @@ static enum cpu_stop bios1a(struct dos_state *d, struct cpu *c)
 static enum cpu_stop dispatch_int(struct dos_state *d, struct cpu *c, uint8_t vector)
 {
 	switch (vector) {
+	case 0xF1: { /* Internal BIOS INT 08h ROM trap, never a guest API. */
+		if (rd16(c,c->sreg[2],c->r[SP]+2) != 0xF000 || rd16(c,c->sreg[2],c->r[SP]) != 0x102)
+			return CPU_IRET;
+		uint32_t ticks = mem_r16(c,0x46C) | (uint32_t)mem_r16(c,0x46E)<<16;
+		if (++ticks >= 0x1800B0u) { ticks = 0; mem_w8(c,0x470,1); }
+		mem_w16(c,0x46C,(uint16_t)ticks); mem_w16(c,0x46E,(uint16_t)(ticks>>16));
+		return CPU_OK;
+	}
 	case 0x20: /* terminate */
 		c->exit_code = 0;
 		return CPU_EXIT;
@@ -2097,6 +2758,10 @@ static enum cpu_stop dispatch_int(struct dos_state *d, struct cpu *c, uint8_t ve
 
 enum cpu_stop dos_int(struct dos_state *d, struct cpu *c, uint8_t vector)
 {
+	/* A nonzero IVT entry was resolved by cpu_enter_interrupt. Execute
+	 * guest hooks (including BIOS ROM stubs), rather than discarding them. */
+	uint16_t target_off = rd16(c,0,vector*4), target_seg = rd16(c,0,vector*4+2);
+	if ((target_seg || target_off) && c->sreg[1] == target_seg && c->ip == target_off) return CPU_GUEST;
 	if (vector == 0x16 && ((c->r[AX] >> 8) == 0 || (c->r[AX] >> 8) == 0x10)) dos_video_present(d);
 	enum cpu_stop stop = dispatch_int(d, c, vector);
 	if (stop == CPU_EXIT && d->parent) stop = exec_return(d, c);

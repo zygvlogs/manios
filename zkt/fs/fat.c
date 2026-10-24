@@ -1377,6 +1377,27 @@ static int fat_filetime(struct vnode *v, uint32_t *stamp, bool set)
 	return rc;
 }
 
+static int fat_fileattr(struct vnode *v, uint8_t *attr, bool set)
+{
+	struct fat_node *n = (struct fat_node *)v;
+	struct fat_fs *fs = n->fs;
+	struct fat_node dir;
+	uint8_t e[DIRENT_SIZE];
+	int rc = 0;
+	if (!n->has_entry) return -EINVAL;
+	if (set && fs->read_only) return -EROFS;
+	mutex_lock(&fs->lock);
+	dir_at(fs, n->entry_dir_fixed, n->entry_dir_cluster, &dir);
+	if (node_read(&dir, n->entry_off, e, DIRENT_SIZE) != DIRENT_SIZE) rc = -EIO;
+	else if (e[0] == ENTRY_DELETED) rc = -ENOENT;
+	else if (set) {
+		e[11] = (uint8_t)((e[11] & ~0x27u) | (*attr & 0x27u));
+		if (node_write(&dir, n->entry_off, e, DIRENT_SIZE) != DIRENT_SIZE) rc = -EIO;
+	} else *attr = e[11];
+	mutex_unlock(&fs->lock);
+	return rc;
+}
+
 static void fat_release(struct vnode *v)
 {
 	kfree(v);
@@ -1392,6 +1413,7 @@ static const struct vnode_ops fat_ops = {
 	.rename = fat_rename,
 	.truncate = fat_truncate,
 	.filetime = fat_filetime,
+	.fileattr = fat_fileattr,
 	.release = fat_release,
 };
 
@@ -1401,6 +1423,7 @@ static const struct vnode_ops fat_ro_ops = {
 	.read = fat_read,
 	.readdir = fat_readdir,
 	.filetime = fat_filetime,
+	.fileattr = fat_fileattr,
 	.release = fat_release,
 };
 

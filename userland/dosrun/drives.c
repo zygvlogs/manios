@@ -89,6 +89,7 @@ void dos_mount_defaults(void)
 	}
 }
 
+
 int dos_path(char *path, size_t n)
 {
 	int d = current;

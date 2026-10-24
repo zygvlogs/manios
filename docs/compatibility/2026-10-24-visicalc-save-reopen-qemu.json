@@ -1,0 +1,100 @@
+{
+  "test": "VisiCalc worksheet save and reopen",
+  "date": "2026-10-24",
+  "build": {
+    "version": "0.26.0-10232026",
+    "kernel": "build/manios-zkt.elf",
+    "kernel_sha256": "dde8b1fe02608e902ee9fa2a7aac6d46a2dd00dcd11e837deb413d012d3c89ee"
+  },
+  "environment": {
+    "emulator": "QEMU i386",
+    "cpu": "Intel 486",
+    "memory_mib": 64,
+    "serial_console": true,
+    "disk": "disposable FAT16 copy; original image unchanged"
+  },
+  "application": {
+    "name": "VisiCalc",
+    "program": "VC.COM",
+    "size": 27520,
+    "sha256": "06b80d1c56b69232fd85cf55dee0b3369c2af3197bfbda5c4c584490e0418495",
+    "banner": "VC-176Y2-IBM-TEST",
+    "launch": "dosrun C:/VC/VC.COM from /n/ata0p1/vc"
+  },
+  "workflow": [
+    {
+      "step": "launch",
+      "result": "worksheet and headers rendered"
+    },
+    {
+      "step": "enter A1=10",
+      "result": "A1 displayed 10"
+    },
+    {
+      "step": "enter B1=20",
+      "result": "B1 displayed 20"
+    },
+    {
+      "step": "enter C1=+A1+B1",
+      "result": "C1 displayed 30"
+    },
+    {
+      "step": "save /SS TEST.VC",
+      "result": "TEST.VC written to the disposable FAT16 disk"
+    },
+    {
+      "step": "exit /SQ then Y",
+      "result": "returned to the ManiOS shell"
+    },
+    {
+      "step": "relaunch dosrun C:/VC/VC.COM",
+      "result": "worksheet rendered"
+    },
+    {
+      "step": "load /SL TEST.VC",
+      "result": "A1=10, B1=20, C1=30 and formula +A1+B1 displayed; no persistent error"
+    },
+    {
+      "step": "exit /SQ then Y",
+      "result": "returned to the ManiOS shell"
+    }
+  ],
+  "saved_file": {
+    "name": "TEST.VC",
+    "size": 128,
+    "sha256": "30a79fedb90b1e9bffd791f88743ebb75aa616bbe9e37d256a6a75aebc46801b",
+    "lines": [
+      ">C1:+A1+B1",
+      ">B1:20",
+      ">A1:10",
+      "/W1",
+      "/GOC",
+      "/GRA",
+      "/GC9",
+      "/X>A1:>C1:"
+    ]
+  },
+  "disk_image": {
+    "path": "visi-e2e.img",
+    "size": 8388608,
+    "sha256": "0351e9b7bba831471995903e42ab950f2d4e2e60fa66f0583c6b46252fb7719a",
+    "note": "disposable copy of the office test image; not committed"
+  },
+  "root_cause": {
+    "symptom": "The saved worksheet was read successfully, but VisiCalc displayed ERROR: File not found after the second FCB close.",
+    "cause": "ManiDOS returned FFh for a repeated AH=10h FCB close because the slot had already been released. MS-DOS 4.0 FCBIO.ASM deliberately returns success for successive closes: applications close FCBs more than once.",
+    "reference": "https://raw.githubusercontent.com/microsoft/MS-DOS/master/v4.0/src/DOS/FCBIO.ASM",
+    "fix": "AH=10h now closes the descriptor only when the slot is valid and always returns AL=0."
+  },
+  "regression_test": {
+    "file": "tests/dosrun_host_test.py",
+    "name": "an FCB may be closed more than once",
+    "result": "PASS"
+  },
+  "evidence": {
+    "serial": "2026-10-24-visicalc-save-reopen-qemu.txt",
+    "formula_screenshot": "2026-10-24-visicalc-save-reopen-formula.png",
+    "reopened_screenshot": "2026-10-24-visicalc-save-reopen-reopened.png",
+    "shell_screenshot": "2026-10-24-visicalc-save-reopen-shell.png"
+  }
+}

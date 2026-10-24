@@ -16,8 +16,8 @@
  *   Version 2 (0.17.1): SYS_SEEK on a pipe fails with ESPIPE. For a
  *   version-1 program it succeeds, as before, moving an offset that
  *   pipe reads ignore. Version 2 also gained, additively (M22):
- *   SYS_UNLINK, SYS_MKDIR, SYS_RMDIR and SYS_RENAME, and the O_CREAT,
- *   O_TRUNC and O_EXCL flags SYS_OPEN takes in its mode. A program
+ *   SYS_UNLINK, SYS_MKDIR, SYS_RMDIR, SYS_RENAME and SYS_FILEATTR, and the
+ *   O_CREAT, O_TRUNC and O_EXCL flags SYS_OPEN takes in its mode. A program
  *   built before them never calls them, and an open mode without the
  *   flags means what it always did. */
 #define ZKT_ABI_VERSION 2
@@ -80,6 +80,7 @@
  * Reading requires a filesystem with metadata support; writes also require
  * a writable filesystem. Existing dirent/STAT ABI stays unchanged. */
 #define SYS_FILETIME 30 /* (int fd, uint32_t *stamp, int set [0 or 1]) -> 0 */
+#define SYS_FILEATTR 31 /* (const char *path, uint8_t *attr, int set [0 or 1]) -> 0 */
 
 /* Paths may be relative to the process's current directory ("/" for a
  * program the kernel starts; a child inherits its parent's). They are

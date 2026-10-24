@@ -1,8 +1,8 @@
 # DOS software compatibility
 
-Last updated: **2026-10-23**. ManiOS version: **0.26.0**.
+Last updated: **2026-10-24**. ManiOS version: **0.26.0-10232026**.
 
-**51 programs:** 🟢 **14 Working** · 🟡 **9 Partial** · 🔴 **28 Broken/unsupported** · ⚪ **0 Untested**
+**57 programs:** 🟢 **23 Working** · 🟡 **5 Partial** · 🔴 **28 Broken/unsupported** · ⚪ **1 Untested**
 
 This is task-specific coverage, not a compatibility percentage: a green
 entry means the listed task completed, not that every feature of the
@@ -18,38 +18,43 @@ program works. The full test history is in
 | 🔴 | Unsupported | A required CPU mode, subsystem or interface is missing. |
 | ⚪ | Untested | No current result. |
 
-## 🟢 Working (14)
+## 🟢 Working (23)
 
 | Application | Version / media | Verified task | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
 | [Adventure (350-point DECUS port)](compatibility/details.md#adventure-350-point-decus-port) | Kevin Black DOS build, `adv350kb.zip` | Starts, accepts a 20-character instructions answer, and completes look, inventory, movement and quit; the quit score is 32/350. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
 | [B64](compatibility/details.md#b64) | 0.06R (rev A), FD14 BonusCD | Help, Base64 encoding of `ABCD` and decoding of `QUJDRA==` are byte-exact. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [BSUM](compatibility/details.md#bsum) | 1.1a, FD14 BonusCD | Text, empty-file and 20 KiB binary checksums match an independent oracle; usage and missing-file errors verified. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
+| [Directory Freedom](compatibility/details.md#directory-freedom-461b) | 4.61B, `df461b.zip` | On disposable FAT16 copies, F1 copied AR.COM to COPYTEST.COM byte-for-byte, F2 deleted AR.COM, and F4 renamed AR.COM to AR.BAK. The directory listing and function menu render; originals were unchanged. | [screenshot](compatibility/2026-10-23-int10-directory-freedom-copy.png) | 2026-10-23 |
+| [EDITV](compatibility/details.md#editv-41) | 4.1 US, `editv41u.zip` | Inserted `Z`, moved right, inserted then removed `Y` with Backspace, saved with F2, and reopened. The disposable FAT16 file independently contains `Zalpha one` followed by the original remaining lines. | [screenshot](compatibility/2026-10-23-int10-editv-multiedit.png) | 2026-10-23 |
 | [FDBanner](compatibility/details.md#fdbanner) | 1.1, FD14 BonusCD | Coloured banner rendered through BIOS text services; screenshot checked. | [screenshot](compatibility/2026-10-23-retest-026-fdbanner.png) | 2026-10-23 |
 | [Figlet](compatibility/details.md#figlet-22) | 2.2 DOS port, `figdos22.zip` | Correct `ManiOS` standard-font banner; `-I 1` prints `20200`. | [screenshot](compatibility/2026-10-23-dosprograms-figlet.png) | 2026-10-23 |
+| [FreeDOS ATTRIB](compatibility/details.md#freedos-attrib) | FD14 BonusCD; version unverified | Lists FAT attributes and persists `+R`/`-R`; a fresh DOS execution reads the changed state and `mattrib` independently confirms it on disk. | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
 | [FreeDOS FC](compatibility/details.md#freedos-fc) | FD14 BonusCD; version unverified | Equal/different text and `/B` binary comparisons produce the correct results. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
+| [FreeDOS FIND](compatibility/details.md#freedos-find-01nov2003) | 01Nov2003, FreeDOS package (GPL-2) | With the test disk mounted as A: (FIND selects A: before opening relative paths), exact, case-insensitive and inverted searches return the expected lines; a missing file reports `No such file`. | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
 | [FreeDOS MORE](compatibility/details.md#freedos-more) | 4.3, FD14 BonusCD | Help, exact short-file text, redirected stdin and 24-line paging/quit verified. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
+| [FreeDOS VCLS](compatibility/details.md#freedos-vcls) | FD14 BonusCD; version unverified | Reads the BIOS video geometry from the initialized BDA, clears the visible VGA text screen, and returns to the redrawn ManiOS prompt. | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
 | [Info-ZIP UnZip](compatibility/details.md#info-zip-unzip-600) | 6.00 (20 Apr 2009), DOS 16-bit large, `unz600x3.exe` | Lists and CRC-tests `KNOWN.ZIP`; extracts all four members including `SUB/THREE.TXT` with exact hashes; `-p` and `FUNZIP` print the correct text. | [transcript](compatibility/2026-10-23-compat4-infozip.txt) | 2026-10-23 |
+| [Life2](compatibility/details.md#life2) | text-mode Conway Life, `life2.zip` | Native timer IRQ0 delivery now executes the installed SOUND handler. Blinker horizontal/vertical/horizontal evolution and Q/Esc exit verified on a disposable FAT16 image. Working for pattern creation, RUN, verified blinker evolution and Q/Esc exit. One earlier marking run reported a BASIC runtime error; its cause remains unresolved. Other patterns/features remain untested. | [evidence](compatibility/2026-10-24-pit-irq0.md) | 2026-10-24 |
 | [SAL compiler SC](compatibility/details.md#semware-tse-250e) | 2.50e, bundled with TSE | Compiles a minimal macro to an 87-byte MAC with the expected signature and message. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [Search](compatibility/details.md#search-10a) | 1.0a, FD14 BonusCD | Finds both root and nested matches once; totals and the missing-file result are correct. | [transcript](compatibility/2026-10-23-search-utf8-basic.txt) | 2026-10-23 |
+| [SemWare Editor Professional](compatibility/details.md#semware-tse-250e) | 2.50e, `tse250e.zip` | Physical keyboard editing works: inserted `z` at the start of INPUT.TXT, saved with Ctrl+K S, exited with Alt+X, and reopened. mtools confirmed persisted `zpear` followed by the original remaining lines. | [screenshot](compatibility/2026-10-23-int10-semware-reopened.png) | 2026-10-23 |
 | [SemWare GREP](compatibility/details.md#semware-tse-250e) | bundled with TSE 2.50e | Finds exactly the two `apple` lines in the fixture. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [SemWare TSORT](compatibility/details.md#semware-tse-250e) | bundled with TSE 2.50e | Sorts four input lines into the expected order. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [utf8tocp](compatibility/details.md#utf8tocp-20240918) | 20240918, FD14 BonusCD | Exact UTF-8 ↔ CP437 and UTF-8 ↔ CP775 conversions, including Lithuanian letters and CRLF. | [transcript](compatibility/2026-10-23-search-utf8-basic.txt) | 2026-10-23 |
+| [VIEW](compatibility/details.md#view-172) | 17.2, `view.zip` | Original VIEW.DOC verified from start to EOF and back with PgDn/PgUp, Home/End, repeated F2 search and clean Esc. Console redraw corruption fixed. Historical 18% stall remains unreproduced; printing and other formats untested. | [screenshot](compatibility/2026-10-24-view-pgdn-3.png) | 2026-10-24 |
+| [VisiCalc](compatibility/details.md#visicalc) | `VC.COM`, 27,520 bytes; version unverified | Mode-2 worksheet renders; A1=10, B1=20 and C1=+A1+B1 (30) were saved as TEST.VC, the app exited cleanly, and a fresh launch reopened the sheet with the values and formula intact. | [transcript](compatibility/2026-10-24-visicalc-save-reopen-qemu.json) | 2026-10-24 |
 | [Zork I: The Great Underground Empire](compatibility/details.md#zork-i-the-great-underground-empire) | MIT historicalsource release, `zork1.z3` (86,838 bytes), ZIP 2.00 | ZIP 2.00 starts the story; room text, commands, inventory, score, save/restore and quit work. The status line still clips its right edge. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
 
-## 🟡 Partial (9)
+## 🟡 Partial (5)
 
 | Application | Version / media | Partial result | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
 | [Checks & Balances](compatibility/details.md#checks--balances) | 4.0g (1986), two 360 KB floppies | Configuration and the supplied DEMO work (`TRUE $2450.20`, `BANK $279.04`); ledger entry, save and reopen are unverified. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
-| [Directory Freedom](compatibility/details.md#directory-freedom-461b) | 4.61B, `df461b.zip` | Directory listing, version 4.61B and the F1-F10 menu render; no file operation was exercised. | [screenshot](compatibility/2026-10-23-dosprograms-directory-freedom.png) | 2026-10-23 |
-| [EDITV](compatibility/details.md#editv-41) | 4.1 US, `editv41u.zip` | Opens and displays a file and accepts typed text; save and reopen are unverified. | [screenshot](compatibility/2026-10-23-dosprograms-editv-typed.png) | 2026-10-23 |
-| [Life2](compatibility/details.md#life2) | text-mode Conway Life, `life2.zip` | Instructions and EDIT mode render; starting RUN mode stops on `OUT` port `0040h` (PIT channel 0) before a generation. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
+| [FreeDOS DELTREE](compatibility/details.md#freedos-deltree) | BonusCD build v1.02g | Build v1.02g identifies the disposable nested target. The runner starts on the DOS drive root, so `/Y` invokes the root-safety confirmation; recursive deletion remains unverified. | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
 | [Microsoft Windows 1.01](compatibility/details.md#microsoft-windows-101) | 1.01, five 360 KB floppy images | Setup completes and writes `WIN.COM`/`WIN100.BIN`; startup prints `Incorrect DOS version` and faults; desktop unavailable. | [screenshot](compatibility/2026-10-23-retest-026-windows-start.png) | 2026-10-23 |
 | [Planetfall (Infocom Sampler demo)](compatibility/details.md#planetfall-infocom-sampler-demo) | official 1984 Infocom Sampler, `sampler1_R26.z3` (112,610 bytes) | The sampler starts and accepts `planet`, but the Planetfall sample text does not render past its first line under ZIP/JZIP; full-game testing was skipped for licensing. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
-| [SemWare Editor Professional](compatibility/details.md#semware-tse-250e) | 2.50e, `tse250e.zip` | An input file opens and renders, but typed input does not reach the editor; editing, save and reopen are unverified. | [screenshot](compatibility/2026-10-23-retest-026-tse-file.png) | 2026-10-23 |
 | [uHex](compatibility/details.md#uhex-104) | 1.0.4 DOS | Help and the 34-byte read-only view work, with display defects; editing, save and reopen are unverified. | [screenshot](compatibility/2026-10-23-retest-026-uhex.png) | 2026-10-23 |
-| [VIEW](compatibility/details.md#view-172) | 17.2, `view.zip` | Opens the 23-page `VIEW.DOC` and a short file; Esc exits. Header overlap and screen remnants remain; paging is untested. | [screenshot](compatibility/2026-10-23-dosprograms-view-doc.png) | 2026-10-23 |
 
 ## 🔴 Broken and unsupported (28)
 
@@ -59,16 +64,17 @@ program works. The full test history is in
 | [As-Easy-As](compatibility/details.md#as-easy-as-57) | 5.7, DOS files from archive.org item | 🔴 **Unsupported** | FPU probe writes `OUT 0F0h`, then runs `FNINIT`/`FSTSW`; no worksheet. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
 | [AUMenu](compatibility/details.md#aumenu-143a) | 1.4.3a archive; reports 1.4.3b Unix edition | 🔴 **Broken** | The linked ZIP is the Unix edition: a $79 registration splash appears instead of the DOS menu. | [screenshot](compatibility/2026-10-23-dosprograms-aumenu.png) | 2026-10-23 |
 | [Bywater BASIC](compatibility/details.md#bywater-basic-330) | 3.30, FD14 BonusCD | 🔴 **Unsupported** | LE protected-mode executable rejected; the supplied arithmetic program was not executed. | [transcript](compatibility/2026-10-23-search-utf8-basic.txt) | 2026-10-23 |
-| [Cash Register](compatibility/details.md#cash-register-71j) | 7.1j, `POS71J.ZIP` | 🔴 **Unsupported** | `POS.EXE` startup stops on `IN AL,21h`; no register screen. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
+| [Cash Register](compatibility/details.md#cash-register-71j) | 7.1j, `POS71J.ZIP` | 🔴 **Unsupported** | After PIC and PIT0 support, some text renders before unsupported `ARPL` at `6DCC:0293`; no register operation. | [transcript](compatibility/2026-10-23-10232026-retest.txt) | 2026-10-23 |
 | [Champ Galagon](compatibility/details.md#champ-galagon) | 1.0 (registered, 1997), `galagon.zip` | 🔴 **Unsupported** | Returns to the shell in under 0.6 s with no console output or title screen; no VGA/game frame is reached. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
-| [Costa GUI](compatibility/details.md#costa-gui-180) | 1.8.0, `costa180.zip` | 🔴 **Unsupported** | Launcher reports `DESKTOP.EXE not found.`; direct `DESKTOP.EXE` stops on `IN AL,21h`. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
-| [DATES](compatibility/details.md#dates-200208) | 2002.08, `DATE0208.ZIP` | 🔴 **Unsupported** | Startup stops on `IN AL,21h` (port `0021h`); no date list or usage text. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
+| [Costa GUI](compatibility/details.md#costa-gui-180) | 1.8.0, `costa180.zip` | 🔴 **Unsupported** | After PIC support, `DESKTOP.EXE` reaches COSTALIB but stops with `Illegal function call` at `15CA:2E00`; no usable desktop. | [transcript](compatibility/2026-10-23-10232026-retest.txt) | 2026-10-23 |
+| [DATES](compatibility/details.md#dates-200208) | 2002.08, `DATE0208.ZIP` | 🔴 **Unsupported** | After PIC support, startup faults on opcode `FF` at `0A34:5CD8`; no date list or usage screen. | [transcript](compatibility/2026-10-23-10232026-retest.txt) | 2026-10-23 |
 | [Directory Maven](compatibility/details.md#directory-maven-13) | 1.3 | 🔴 **Unsupported** | The scan path stops on `66h`; help stops at `IN AL,DX`. | [transcript](compatibility/2026-10-23-maven.txt) | 2026-10-23 |
 | [DOSStart](compatibility/details.md#dosstart-19b) | 1.9b build 7.08.2002, `dosstart.zip` | 🔴 **Unsupported** | `DANSHELL.EXE` stops on `IN AL,21h` at `1FBB:6B78`; no launcher screen. | [transcript](compatibility/2026-10-23-compat4-extra.txt) | 2026-10-23 |
 | [Dr Mind Lite](compatibility/details.md#dr-mind-lite) | LITE variant, 2019, `drlite.zip` | 🔴 **Unsupported** | Stops on `OUT 0x3C8` (VGA DAC palette) at `1010:02CA`; no game board. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
 | [Drobos](compatibility/details.md#drobos) | 1.3 (DRoboWHOids), `drobos.zip` | 🔴 **Unsupported** | Stops on x87 opcode `D8` at `1010:0487`; no game screen. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
 | [File Maven](compatibility/details.md#file-maven-35a) | 3.5a | 🔴 **Broken** | Installer, main executable and launcher pass the clock wait, then fail on `IN AL,DX`; no usable manager. | [transcript](compatibility/2026-10-23-maven.txt) | 2026-10-23 |
 | [Ford Driving Simulator](compatibility/details.md#ford-driving-simulator) | 1988 models, `ford.zip` | 🔴 **Unsupported** | Stops on `IN` port `0021h` (PIC) at `1010:10C8`; no simulator screen. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
+| [FreeDOS MEM](compatibility/details.md#freedos-mem) | FD14 BonusCD; version unverified | 🔴 **Broken** | The DOS list-of-lists now points to a valid terminated MCB chain, but MEM stops at unsupported opcode 66h before producing a memory summary. | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
 | [Hanoi](compatibility/details.md#hanoi) | 1.3 (2000), `hanoi.zip` | 🔴 **Unsupported** | LZEXE startup unpacks, then stops on `IN` port `0006h` at `115B:0603`; no board. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
 | [Info-ZIP Zip](compatibility/details.md#info-zip-zip-232) | 2.32, 16-bit and 32-bit DOS builds, `zip232x.zip` | 🔴 **Unsupported** | 16-bit builds stop at `0000:0001` (`E5`/`EF`); the 32-bit build reports `no DPMI`; no archive is created. | [transcript](compatibility/2026-10-23-compat4-infozip.txt) | 2026-10-23 |
 | [Mahjong!](compatibility/details.md#mahjong) | 1996/1997 SoftSpot, `mahjong.zip` | 🔴 **Unsupported** | Stops on operand-size prefix `66h` at `101D:0990`; no screen. The package requires SVGA 1024x768 VESA graphics and a mouse. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
@@ -81,16 +87,17 @@ program works. The full test history is in
 | [Spectra](compatibility/details.md#spectra-10) | 1.0, `spec10.zip` | 🔴 **Unsupported** | `HITECH.EXE` stops on `IN AL,21h` at `1345:2710`; no GUI. | [transcript](compatibility/2026-10-23-compat4-extra.txt) | 2026-10-23 |
 | [TypeFast](compatibility/details.md#typefast) | typing drill, `typefast.zip` | 🔴 **Broken** | Starts and remains running, but the console stays blank; no prompts or game screen appear, so no task is completed. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
 | [VIEWSEEK](compatibility/details.md#viewseek-31-auxiliary) | 3.1, VIEW package (auxiliary) | 🔴 **Broken** | Search reports no match for text that is present, then exits with `run-time error R6001`. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
-| [VisiCalc](compatibility/details.md#visicalc) | `VC.COM`, 27,520 bytes; version unverified | 🔴 **Broken** | No usable worksheet or shell return during the retest; the blank screen remains. | [screenshot](compatibility/2026-10-23-retest-026-visicalc.png) | 2026-10-23 |
 | [Warcraft: Orcs & Humans](compatibility/details.md#warcraft-orcs--humans) | 1994 DOS CD; exact patch unverified | 🔴 **Unsupported** | Extracted `war.exe` needs a DOS/4GW protected-mode payload; the installer stops on `OUT 43h` (`E6`). | [transcript](compatibility/2026-10-22-warcraft.txt) | 2026-10-23 |
 
-## ⚪ Untested (0)
+## ⚪ Untested (1)
 
-No entries are currently untested.
+| Application | Version / media | Evidence | Last tested |
+| --- | --- | --- | --- |
+| [FreeDOS VCHOICE](compatibility/details.md#freedos-vchoice) | FD14 BonusCD; version unverified | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
 
 ## Scope and method
 
-Tested against ManiOS 0.26.0 (`55a788a`, kernel `8599009f47058371966bf01f622ce6991fccf7229de26742bc43c72639cdd7cd`). Environment: QEMU i386, CPU 486, 64 MiB RAM, serial console; disposable FAT16 images and 6-12 s observations unless a longer setup run is recorded.
+Tested against ManiOS 0.26.0-10232026 (`26f37f1 (uncommitted working tree)`, kernel `dde8b1fe02608e902ee9fa2a7aac6d46a2dd00dcd11e837deb413d012d3c89ee`). Environment: QEMU i386, CPU 486, 64 MiB RAM, serial console; disposable FAT16 images and 6-12 s observations unless a longer setup run is recorded.
 
 Applications are started with `dosrun` from a fresh disposable FAT16
 image per case. Transcripts and screenshots are stored in

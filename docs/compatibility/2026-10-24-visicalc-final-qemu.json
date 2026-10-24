@@ -1,0 +1,28 @@
+{
+  "environment": "QEMU i386, CPU 486, 64 MiB; disposable FAT16 image",
+  "kernel_sha256": "9fb1e52fa3a91784c8a36067af5b648237b98002505b8f002d45e11f82d46f7b",
+  "vc_com_sha256": "06b80d1c56b69232fd85cf55dee0b3369c2af3197bfbda5c4c584490e0418495",
+  "command": "dosrun C:/VC/VC.COM",
+  "results": {
+    "entry_and_formula": {
+      "worksheet_banner": true,
+      "a1_3": true,
+      "b1_4": true,
+      "formula_7": true
+    },
+    "first_exit_returned": true,
+    "reopen": {
+      "attempted": true,
+      "reports_file_not_found": true,
+      "still_in_dosrun": true,
+      "evidence_screenshot": "2026-10-24-visicalc-final-reopen-result.png"
+    },
+    "disk_file": {
+      "listed": true,
+      "listing": "::/HELLO.COM\n::/DIGITS.COM\n::/EXIT7.COM\n::/HELLO.EXE\n::/BAD386.COM\n::/MOVZX.COM\n::/FLAGS.COM\n::/IRET.COM\n::/VGA.COM\n::/EXTENDER.EXE\n::/PACKED.EXA\n::/vc/\n::/ab3/\n::/VCHECK.VC\n",
+      "disk_sha256": "21b2f2d478d93290c2b36b815ad8a44141ccb7bc2a97b5ac78e38d055df797d1",
+      "saved_file_sha256": "2ec978d30cae755306e3d7e25029321f76a338e8eba0985a3e3fb4a3199bb58f",
+      "saved_file_bytes": 128
+    }
+  }
+}

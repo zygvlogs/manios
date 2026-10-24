@@ -776,17 +776,23 @@ enum cpu_stop cpu_step(struct cpu *c)
 	/* A pending hardware interrupt, if the program allows them. The
 	 * frame is pushed and CS:IP set here, as the CPU does; the caller
 	 * runs the handler and IRETs. */
-	if (c->irq_pending && (c->flags & FLAG_IF)) {
-		for (int i = 0; i < 16; i++) {
-			if (c->irq_pending & (1u << i)) {
+	int inhibited = c->irq_shadow != 0;
+	if (inhibited) c->irq_shadow--;
+	if (!inhibited && (c->flags & FLAG_IF)) {
+		int vector = c->irq_ack ? c->irq_ack(c) : -1;
+		if (vector < 0 && c->irq_pending) {
+			for (int i = 0; i < 16; i++) if (c->irq_pending & (1u << i)) {
 				c->irq_pending &= (uint16_t)~(1u << i);
-				c->int_no = (uint8_t)(0x08 + i); /* the PIC's vectors */
-				uint16_t cs, ip;
-				cpu_enter_interrupt(c, c->int_no, &cs, &ip);
-				c->sreg[1] = cs;
-				c->ip = ip;
-				return CPU_INT;
+				vector = i < 8 ? 0x08 + i : 0x70 + i - 8;
+				break;
 			}
+		}
+		if (vector >= 0) {
+			c->int_no = (uint8_t)vector;
+			uint16_t cs, ip;
+			cpu_enter_interrupt(c, c->int_no, &cs, &ip);
+			c->sreg[1] = cs; c->ip = ip;
+			return CPU_INT;
 		}
 	}
 
@@ -914,7 +920,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 	case 0x07: c->sreg[0] = pop16(c); return CPU_OK;      /* POP ES */
 	case 0x0E: push16(c, c->sreg[1]); return CPU_OK;      /* PUSH CS */
 	case 0x16: push16(c, c->sreg[2]); return CPU_OK;      /* PUSH SS */
-	case 0x17: c->sreg[2] = pop16(c); return CPU_OK;      /* POP SS */
+	case 0x17: c->sreg[2] = pop16(c); c->irq_shadow = 1; return CPU_OK;      /* POP SS */
 	case 0x1E: push16(c, c->sreg[3]); return CPU_OK;      /* PUSH DS */
 	case 0x1F: c->sreg[3] = pop16(c); return CPU_OK;      /* POP DS */
 	case 0x60: { /* PUSHA: pushes the original SP, not the changing one */
@@ -1058,6 +1064,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 			rm.seg = override;
 		}
 		c->sreg[reg & 3] = get16(c, &rm);
+		if ((reg & 3) == 2) c->irq_shadow = 1;
 		return CPU_OK;
 	}
 	case 0x8F: { /* POP rm */
@@ -1413,7 +1420,7 @@ enum cpu_stop cpu_step(struct cpu *c)
 	case 0xF8: set_cf(c, 0); return CPU_OK; /* CLC */
 	case 0xF9: set_cf(c, 1); return CPU_OK; /* STC */
 	case 0xFA: c->flags &= ~FLAG_IF; return CPU_OK; /* CLI */
-	case 0xFB: c->flags |= FLAG_IF; return CPU_OK;  /* STI */
+	case 0xFB: c->flags |= FLAG_IF; c->irq_shadow = 1; return CPU_OK;  /* STI */
 	case 0xFC: c->flags &= ~FLAG_DF; return CPU_OK; /* CLD */
 	case 0xFD: c->flags |= FLAG_DF; return CPU_OK;  /* STD */
 	case 0xFE: { /* INC/DEC rm8 */

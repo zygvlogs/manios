@@ -539,6 +539,24 @@ static long sys_filetime(struct process *p, int fd, uint32_t *ustamp, int set)
 	return copy_to_user(ustamp, &stamp, sizeof(stamp));
 }
 
+static long sys_fileattr(struct process *p, const char *upath, uint8_t *uattr, int set)
+{
+	char path[VFS_PATH_MAX + 1];
+	uint8_t attr;
+	long rc;
+	if (set != 0 && set != 1) return -EINVAL;
+	rc = copy_path(p, path, upath);
+	if (rc) return rc;
+	if (set) {
+		rc = copy_from_user(&attr, uattr, sizeof(attr));
+		if (rc) return rc;
+		if (attr & (uint8_t)~0x27u) return -EINVAL;
+	}
+	rc = vfs_fileattr(path, &attr, set != 0);
+	if (rc || set) return rc;
+	return copy_to_user(uattr, &attr, sizeof(attr));
+}
+
 long syscall_dispatch(uint32_t num, uint32_t a0, uint32_t a1, uint32_t a2,
                       uint32_t a3, uint32_t a4)
 {
@@ -566,6 +584,7 @@ long syscall_dispatch(uint32_t num, uint32_t a0, uint32_t a1, uint32_t a2,
 	case SYS_RENAME: return sys_rename(p, (const char *)a0, (const char *)a1);
 	case SYS_NSFORK: return sys_nsfork();
 	case SYS_FILETIME: return sys_filetime(p, (int)a0, (uint32_t *)a1, (int)a2);
+	case SYS_FILEATTR: return sys_fileattr(p, (const char *)a0, (uint8_t *)a1, (int)a2);
 	case SYS_FSTAT:  return sys_fstat(p, (int)a0, (struct zkt_dirent *)a1);
 	case SYS_UPTIME: return (long)((uint32_t)timer_uptime_ms() & 0x7FFFFFFF);
 	case SYS_SBRK:   return process_sbrk(p, (int32_t)a0);

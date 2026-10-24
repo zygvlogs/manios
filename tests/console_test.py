@@ -568,6 +568,7 @@ def failed_boot_on_screen(kernel):
         reason = m.expect("System halted.")
         if not (reason.startswith("user") or
                 reason.startswith("pmm returned a null or duplicate frame") or
+                reason.startswith("thread_create failed") or
                 reason.startswith("vfs: cannot start the test thread")):
             raise TestFailure(f"unexpected low-memory failure: {reason}")
         screen = screen_text(m)

@@ -1,0 +1,23 @@
+Life2 keyboard navigation retest
+Date: 2026-10-23
+
+Tested source: working tree based on 26f37f1 (release tag v0.26.0-10232026),
+with uncommitted DOS runner keyboard input changes. Kernel SHA256:
+307928f5ae1983cad17af72aa61e5bb6e74fcd07d34fb0ff16d8f75db87ca75e.
+QEMU i386, CPU 486, 64 MiB; a fresh disposable copy of the 16 MiB FAT16
+Life2 image (SHA256 33ccf1a8fdba0e9f7091c2944243586607dbfa0a62238dbf4ca16edfcd024683).
+LIFE2.EXE SHA256 45f45ec0ff09ef9eb7f7a222b255d39ee263f6119467ec28e34a2f042760fd0a.
+
+Run `dosrun C:/LIFE2.EXE`; advance the two instruction pages; use PS/2 keys
+M and arrows to draw a 2x2 live pattern; press R. The runner receives raw PS/2
+keyboard events through `/dev/kbd`, maps arrows to DOS extended-key pairs and
+BIOS scan codes, and remains responsive to serial input. The program entered
+RUN mode and continued drawing without an instruction or port fault. The
+screen shows the pattern in EDIT and RUN modes:
+
+- [2x2 pattern in EDIT mode](2026-10-23-life2-ps2-edit.png)
+- [pattern in RUN mode](2026-10-23-life2-ps2-run.png)
+
+This confirms keyboard navigation and RUN startup. A deterministic generation
+transition was not established in this bounded visual check; retain Partial
+status until a blinker or other changing pattern is verified reproducibly.

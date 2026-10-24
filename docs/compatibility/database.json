@@ -1,10 +1,10 @@
 {
   "schema": 1,
-  "updated": "2026-10-23",
+  "updated": "2026-10-24",
   "build": {
     "version": "0.26.0-10232026",
-    "commit": "62bfebf",
-    "kernel_sha256": "76bc80d0d674bb4c0826f4b4ac1b7d88d80bace9ba3098006e4c8ab6d0a84aae",
+    "commit": "26f37f1 (uncommitted working tree)",
+    "kernel_sha256": "dde8b1fe02608e902ee9fa2a7aac6d46a2dd00dcd11e837deb413d012d3c89ee",
     "environment": "QEMU i386, CPU 486, 64 MiB RAM, serial console; disposable FAT16 images and 6-12 s observations unless a longer setup run is recorded"
   },
   "details": "details.md",
@@ -90,11 +90,11 @@
       "id": "semware-tse",
       "name": "SemWare Editor Professional",
       "version": "2.50e, `tse250e.zip`",
-      "status": "Partial",
+      "status": "Working",
       "kind": "application",
-      "summary": "An input file opens and renders, but typed input does not reach the editor; editing, save and reopen are unverified.",
+      "summary": "Physical keyboard editing works: inserted `z` at the start of INPUT.TXT, saved with Ctrl+K S, exited with Alt+X, and reopened. mtools confirmed persisted `zpear` followed by the original remaining lines.",
       "anchor": "semware-tse-250e",
-      "evidence": "2026-10-23-retest-026-tse-file.png",
+      "evidence": "2026-10-23-int10-semware-reopened.png",
       "last_tested": "2026-10-23"
     },
     {
@@ -134,12 +134,12 @@
       "id": "visicalc",
       "name": "VisiCalc",
       "version": "`VC.COM`, 27,520 bytes; version unverified",
-      "status": "Broken",
+      "status": "Working",
       "kind": "application",
-      "summary": "No usable worksheet or shell return during the retest; the blank screen remains.",
+      "summary": "Mode-2 worksheet renders; A1=10, B1=20 and C1=+A1+B1 (30) were saved as TEST.VC, the app exited cleanly, and a fresh launch reopened the sheet with the values and formula intact.",
       "anchor": "visicalc",
-      "evidence": "2026-10-23-retest-026-visicalc.png",
-      "last_tested": "2026-10-23"
+      "evidence": "2026-10-24-visicalc-save-reopen-qemu.json",
+      "last_tested": "2026-10-24"
     },
     {
       "id": "ability-plus",
@@ -213,7 +213,7 @@
       "version": "20240918, FD14 BonusCD",
       "status": "Working",
       "kind": "utility",
-      "summary": "Exact UTF-8 ↔ CP437 and UTF-8 ↔ CP775 conversions, including Lithuanian letters and CRLF.",
+      "summary": "Exact UTF-8 \u2194 CP437 and UTF-8 \u2194 CP775 conversions, including Lithuanian letters and CRLF.",
       "anchor": "utf8tocp-20240918",
       "evidence": "2026-10-23-search-utf8-basic.txt",
       "last_tested": "2026-10-23"
@@ -244,11 +244,11 @@
       "id": "directory-freedom",
       "name": "Directory Freedom",
       "version": "4.61B, `df461b.zip`",
-      "status": "Partial",
+      "status": "Working",
       "kind": "application",
-      "summary": "Directory listing, version 4.61B and the F1-F10 menu render; no file operation was exercised.",
+      "summary": "On disposable FAT16 copies, F1 copied AR.COM to COPYTEST.COM byte-for-byte, F2 deleted AR.COM, and F4 renamed AR.COM to AR.BAK. The directory listing and function menu render; originals were unchanged.",
       "anchor": "directory-freedom-461b",
-      "evidence": "2026-10-23-dosprograms-directory-freedom.png",
+      "evidence": "2026-10-23-int10-directory-freedom-copy.png",
       "last_tested": "2026-10-23"
     },
     {
@@ -277,12 +277,12 @@
       "id": "view",
       "name": "VIEW",
       "version": "17.2, `view.zip`",
-      "status": "Partial",
+      "status": "Working",
       "kind": "application",
-      "summary": "Opens the 23-page `VIEW.DOC` and a short file; Esc exits. Header overlap and screen remnants remain; paging is untested.",
+      "summary": "Original VIEW.DOC verified from start to EOF and back with PgDn/PgUp, Home/End, repeated F2 search and clean Esc. Console redraw corruption fixed. Historical 18% stall remains unreproduced; printing and other formats untested.",
       "anchor": "view-172",
-      "evidence": "2026-10-23-dosprograms-view-doc.png",
-      "last_tested": "2026-10-23"
+      "evidence": "2026-10-24-view-pgdn-3.png",
+      "last_tested": "2026-10-24"
     },
     {
       "id": "dates",
@@ -321,11 +321,11 @@
       "id": "editv",
       "name": "EDITV",
       "version": "4.1 US, `editv41u.zip`",
-      "status": "Partial",
+      "status": "Working",
       "kind": "application",
-      "summary": "Opens and displays a file and accepts typed text; save and reopen are unverified.",
+      "summary": "Inserted `Z`, moved right, inserted then removed `Y` with Backspace, saved with F2, and reopened. The disposable FAT16 file independently contains `Zalpha one` followed by the original remaining lines.",
       "anchor": "editv-41",
-      "evidence": "2026-10-23-dosprograms-editv-typed.png",
+      "evidence": "2026-10-23-int10-editv-multiedit.png",
       "last_tested": "2026-10-23"
     },
     {
@@ -464,12 +464,12 @@
       "id": "life2",
       "name": "Life2",
       "version": "text-mode Conway Life, `life2.zip`",
-      "status": "Partial",
+      "status": "Working",
       "kind": "game",
-      "summary": "RUN mode now starts past the PIT channel-0 write; no evolving generation was confirmed in the bounded run.",
+      "summary": "Native timer IRQ0 delivery now executes the installed SOUND handler. Blinker horizontal/vertical/horizontal evolution and Q/Esc exit verified on a disposable FAT16 image. Working for pattern creation, RUN, verified blinker evolution and Q/Esc exit. One earlier marking run reported a BASIC runtime error; its cause remains unresolved. Other patterns/features remain untested.",
       "anchor": "life2",
-      "evidence": "2026-10-23-10232026-retest.txt",
-      "last_tested": "2026-10-23"
+      "evidence": "2026-10-24-pit-irq0.md",
+      "last_tested": "2026-10-24"
     },
     {
       "id": "mahjong",
@@ -569,6 +569,72 @@
       "anchor": "planetfall-infocom-sampler-demo",
       "evidence": "2026-10-23-text-adventures.json",
       "last_tested": "2026-10-23"
+    },
+    {
+      "id": "freedos-find",
+      "name": "FreeDOS FIND",
+      "version": "01Nov2003, FreeDOS package (GPL-2)",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "With the test disk mounted as A: (FIND selects A: before opening relative paths), exact, case-insensitive and inverted searches return the expected lines; a missing file reports `No such file`.",
+      "anchor": "freedos-find-01nov2003",
+      "evidence": "2026-10-24-wave2-fixup.txt",
+      "last_tested": "2026-10-24"
+    },
+    {
+      "id": "freedos-attrib",
+      "name": "FreeDOS ATTRIB",
+      "version": "FD14 BonusCD; version unverified",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Lists FAT attributes and persists `+R`/`-R`; a fresh DOS execution reads the changed state and `mattrib` independently confirms it on disk.",
+      "anchor": "freedos-attrib",
+      "evidence": "2026-10-24-wave2-fixup.txt",
+      "last_tested": "2026-10-24"
+    },
+    {
+      "id": "freedos-deltree",
+      "name": "FreeDOS DELTREE",
+      "version": "BonusCD build v1.02g",
+      "status": "Partial",
+      "kind": "utility",
+      "summary": "Build v1.02g identifies the disposable nested target. The runner starts on the DOS drive root, so `/Y` invokes the root-safety confirmation; recursive deletion remains unverified.",
+      "anchor": "freedos-deltree",
+      "evidence": "2026-10-24-wave2-fixup.txt",
+      "last_tested": "2026-10-24"
+    },
+    {
+      "id": "freedos-mem",
+      "name": "FreeDOS MEM",
+      "version": "FD14 BonusCD; version unverified",
+      "status": "Broken",
+      "kind": "utility",
+      "summary": "The DOS list-of-lists now points to a valid terminated MCB chain, but MEM stops at unsupported opcode 66h before producing a memory summary.",
+      "anchor": "freedos-mem",
+      "evidence": "2026-10-24-wave2-fixup.txt",
+      "last_tested": "2026-10-24"
+    },
+    {
+      "id": "freedos-vchoice",
+      "name": "FreeDOS VCHOICE",
+      "version": "FD14 BonusCD; version unverified",
+      "status": "Untested",
+      "kind": "utility",
+      "summary": "Help mode still reports missing HELPPATH. The prior attempt used ManiOS `sh`, which has no DOS-style `set`; VCHOICE's primary interactive selection remains untested.",
+      "anchor": "freedos-vchoice",
+      "evidence": "2026-10-24-wave2-fixup.txt",
+      "last_tested": "2026-10-24"
+    },
+    {
+      "id": "freedos-vcls",
+      "name": "FreeDOS VCLS",
+      "version": "FD14 BonusCD; version unverified",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Reads the BIOS video geometry from the initialized BDA, clears the visible VGA text screen, and returns to the redrawn ManiOS prompt.",
+      "anchor": "freedos-vcls",
+      "evidence": "2026-10-24-wave2-fixup.txt",
+      "last_tested": "2026-10-24"
     }
   ],
   "status_colors": {

@@ -1,0 +1,12 @@
+VisiCalc saved-sheet load diagnostic
+
+A temporary diagnostic build of the same current source was used to inspect DOS FCB calls while loading VCHECK.VC from the disposable FAT16 image. The trace instrumentation only reported calls and return status.
+
+TRACE FCB enter #0 ah=0f
+TRACE FCB done ah=0f status=00 slot=0 size=128 dta=0080
+TRACE FCB enter #1 ah=14
+TRACE FCB done ah=14 status=00 slot=0 size=128 dta=0080
+TRACE FCB enter #2 ah=10
+TRACE FCB done ah=10 status=00 slot=0 size=128 dta=0080
+
+After the FCB open, sequential read and close all returned success, VisiCalc displayed `ERROR: File not found`. The trace does not identify why the application rejects the loaded sheet. The diagnostic build was not retained; the final kernel was rebuilt from the uninstrumented source.

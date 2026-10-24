@@ -1,6 +1,6 @@
 /* dosrun -- run a DOS program (.COM or .EXE) on ManiOS.
  *
- *   dosrun [--mount LETTER=/directory] PROGRAM [ARGS...]
+ *   dosrun [--mount LETTER=/directory] [--env NAME=value] PROGRAM [ARGS...]
  *
  * The program is loaded into an 8086 interpreter (cpu.c), and its DOS
  * and BIOS calls (dosapi.c) are served by ManiOS: the console is this
@@ -33,19 +33,34 @@ extern uint32_t uptime_ms(void);
 int main(int argc, char **argv)
 {
 	char letters[26]; const char *roots[26]; int mounts = 0;
-	while (argc > 1 && !strcmp(argv[1], "--mount")) {
-		struct stat st;
-		if (argc < 4 || mounts == 26 || !isalpha((unsigned char)argv[2][0]) ||
-		    argv[2][1] != '=' || argv[2][2] != '/' || strlen(argv[2] + 2) >= 64 ||
-		    stat(argv[2] + 2, &st) < 0 || !S_ISDIR(st.st_mode)) {
-			fprintf(stderr, "dosrun: --mount requires LETTER=/absolute/directory followed by a program\n");
-			return 2;
+	char envnames[ENV_EXTRA_MAX][ENV_NAME_MAX], envvalues[ENV_EXTRA_MAX][ENV_VALUE_MAX];
+	int envs = 0;
+	while (argc > 1 && (!strcmp(argv[1], "--mount") || !strcmp(argv[1], "--env"))) {
+		if (!strcmp(argv[1], "--mount")) {
+			struct stat st;
+			if (argc < 4 || mounts == 26 || !isalpha((unsigned char)argv[2][0]) ||
+			    argv[2][1] != '=' || argv[2][2] != '/' || strlen(argv[2] + 2) >= 64 ||
+			    stat(argv[2] + 2, &st) < 0 || !S_ISDIR(st.st_mode)) {
+				fprintf(stderr, "dosrun: --mount requires LETTER=/absolute/directory followed by a program\n");
+				return 2;
+			}
+			letters[mounts] = argv[2][0]; roots[mounts++] = argv[2] + 2;
+		} else {
+			char *eq = argc < 3 ? NULL : strchr(argv[2], '=');
+			if (!eq || eq == argv[2] || eq - argv[2] >= ENV_NAME_MAX ||
+			    strlen(eq + 1) >= ENV_VALUE_MAX || envs == ENV_EXTRA_MAX) {
+				fprintf(stderr, "dosrun: --env requires NAME=value followed by a program\n");
+				return 2;
+			}
+			for (int i = 0; argv[2][i] != '='; i++)
+				envnames[envs][i] = toupper((unsigned char)argv[2][i]);
+			snprintf(envvalues[envs], sizeof(envvalues[0]), "%s", eq + 1);
+			envs++;
 		}
-		letters[mounts] = argv[2][0]; roots[mounts++] = argv[2] + 2;
 		argc -= 2; argv += 2;
 	}
 	if (argc < 2) {
-		fprintf(stderr, "usage: dosrun [--mount LETTER=/directory] PROGRAM [ARGS...]\n");
+		fprintf(stderr, "usage: dosrun [--mount LETTER=/directory] [--env NAME=value] PROGRAM [ARGS...]\n");
 		return 2;
 	}
 
@@ -91,6 +106,7 @@ int main(int argc, char **argv)
 		cpu_free(&cpu);
 		return 1;
 	}
+	for (int i = 0; i < envs; i++) dos_set_env(envnames[i], envvalues[i]);
 	dos_set_program(dos, 0x1000, 0x1010);
 	dos_build_psp(dos);
 	dos_set_tail(dos, tail);
@@ -98,14 +114,19 @@ int main(int argc, char **argv)
 	/* Run until the program ends, faults, or runs away. */
 	int status = 0;
 	unsigned long since_present = 0;
+	unsigned since_clock = 0;
 	uint32_t last_clock = uptime_ms();
 	for (;;) {
-		/* Every so often, show a mode 13h program's framebuffer. */
-		if (++since_present >= 20000) {
-			since_present = 0;
+		if (++since_clock >= 1000) {
+			since_clock = 0;
 			uint32_t now = uptime_ms();
 			dos_clock_advance(dos, now - last_clock);
 			last_clock = now;
+		}
+		/* Every so often, show a mode 13h program's framebuffer. */
+		if (++since_present >= 20000) {
+			since_present = 0;
+			dos_keyboard_poll(dos);
 			dos_video_present(dos);
 		}
 		enum cpu_stop stop = cpu_step(&cpu);
@@ -113,10 +134,10 @@ int main(int argc, char **argv)
 		case CPU_OK:
 			break;
 		case CPU_INT: {
-			/* cpu_step pushed the frame and set CS:IP to the
-			 * vector's handler (the IVT is empty, so that is
-			 * 0000:0000). Run the service, then IRET back. */
+			/* Run an installed guest handler with its INT frame intact,
+			 * or serve an unhooked host API and return through IRET. */
 			enum cpu_stop r = dos_int(dos, &cpu, cpu.int_no);
+			if (r == CPU_GUEST) break;
 			if (r == CPU_EXIT) {
 				status = cpu.exit_code;
 				goto done;

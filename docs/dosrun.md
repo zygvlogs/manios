@@ -166,7 +166,10 @@ preservation, both polling polarities with interrupts disabled, counter wrap
 and rejection of unsupported ports. It is also included in `make test`.
 
 FCB zero-count block writes cannot truncate through the current filesystem API
-and return an explicit failure. BIOS `INT 10h AH=06h/07h` scrolling and
+and return an explicit failure. Repeated FCB closes (`INT 21h` `AH=10h`) return
+success, matching MS-DOS's deliberate tolerance for applications that close an
+FCB more than once; VisiCalc's saved-worksheet reopen depends on this. BIOS
+`INT 10h AH=06h/07h` scrolling and
 bottom-row DOS console scrolling are implemented for the active 80x25 text
 page; mode-specific and arbitrary window behavior remains limited. Keyboard
 input uses the terminal's line discipline (Enter is needed); direct VGA writes,
@@ -187,15 +190,35 @@ ports, monochrome/high-row text modes or full hardware keyboard handling.
 
 ### BIOS clock polling
 
-The runner advances the BIOS tick counter at `0040:006C` using elapsed host
-uptime, approximately 18.2 ticks per second. `INT 1Ah/AH=00h` reads the same
-counter and clears its midnight rollover flag. Fractional updates are retained;
-the counter starts at zero for each program, rather than the host time of day.
-This lets startup routines that poll BIOS memory progress during busy loops.
-It does not deliver timer interrupts to guest handlers or implement the PIT's
-hardware ports. DOS date/time and BIOS RTC responses still use fixed values.
-The host runtime suite checks fractions, word carry and midnight rollover; the
-QEMU suite checks a direct-memory polling loop through the actual runner.
+Elapsed host uptime feeds PIT channel 0 at 1,193,182 oscillator clocks per
+second. Ports 40h/43h support binary modes 0, 2 and 3, low/high divisor
+transfers, and counter latching; zero reload means 65,536. The default is
+mode 3 with that divisor. Unlike the instruction-clock channel-2 model,
+PIT0 uses wall time (deterministic tests can feed oscillator clocks directly).
+
+PIT0 rising edges latch IRQ0 in the master PIC. Port 21h masks delivery;
+20h supports IRR/ISR selection and IRQ0 specific/non-specific EOI. Masking
+and IF=0 retain an edge, while further edges coalesce. IRQ0 remains in
+service until EOI. STI, MOV SS and POP SS inhibit delivery for the following
+instruction. Guest IVT handlers execute with their interrupt frame intact.
+
+The default BIOS INT 08h stub updates `0040:006C`, handles midnight rollover,
+calls the hookable INT 1Ch vector and acknowledges IRQ0. `INT 1Ah/AH=00h`
+reads that same counter and clears the rollover flag. A replaced INT 08h
+handler must chain to the saved BIOS vector for BIOS ticks and INT 1Ch to
+continue. Life2 reprograms PIT0 and chains its custom SOUND handler to BIOS
+every 32 pulses; native blinker evolution is now verified.
+
+This is a bounded timer/PIC implementation: PIC initialization/remapping,
+other IRQ sources, PIT1, modes 1/4/5, BCD and read-back remain unsupported.
+Clock checks occur every 1000 interpreted instructions, with millisecond
+host granularity; reload-at-cycle-boundary timing is not modeled. Blocking
+host BIOS input calls suspend guest execution and timer servicing, and HLT
+still ends the runner. It is not cycle-accurate PC emulation. Channel 2
+remains instruction-clocked and has no audio playback backend. Internal
+BIOS ROM stubs use a private INT F1 trap. DOS date/time and BIOS RTC values
+remain fixed. See `tests/dosrun_timer_test.py` and the
+[Life2 timer report](compatibility/2026-10-24-pit-irq0.md).
 
 ### Minimal CGA/EGA-compatible video status
 
@@ -233,7 +256,7 @@ The DOS device model accepts these byte ports through `IN`/`OUT` immediate and
 DX forms, preserving CPU flags and unaffected registers:
 
 - `43h`: `B6h` programs channel 2, binary mode 3, low/high-byte transfers;
-  `80h` latches its count. Other channels, modes, BCD and read-back commands fault.
+  `80h` latches its count. PIT0 commands are described above; other modes, BCD and read-back fault.
 - `42h`: loads a divisor after both bytes have arrived; zero means 65,536.
   Reads return the mode-3 down-counter in low/high order. A count latch remains
   stable until both bytes are read; repeated latch requests preserve an unread latch.
@@ -248,8 +271,8 @@ writes restart the modeled period immediately; cycle-boundary reload delays
 are not modeled. This supports deterministic polling and tone/gate state,
 not cycle-accurate timing or audible sound. `dos_speaker_frequency()` reports
 the nominal logical tone or zero when gated/disconnected; there is no playback
-backend. Channel 0/1 and timer IRQ programming remain unsupported, and the
-existing elapsed-uptime BIOS clock is independent of this device.
+backend. Channel 0 and BIOS timing use the separate wall-time implementation
+described above; channel 1 remains unsupported.
 
 Unsupported I/O reports the port, AL/AX and a guest-byte context window, retaining
 the existing opcode/CS:IP error. `tests/dosrun_pit_test.py` covers partial/full
@@ -291,8 +314,9 @@ several limits that are broader than any one title:
 - **Hardware ports.** Ford Driving Simulator stops on the PIC read
   `IN AL,21h`; Hanoi stops on `IN` port `0006h`. These join DOSStart, Spectra,
   DATES and Cash Register in the same startup gap.
-- **PIT channel 0.** Life2's BASIC `SOUND` writes channel 0 at `OUT 40h`.
-  The current PIT model covers only channel 2 and the PC-speaker gate.
+- **PIT channel 0 (resolved 2026-10-24).** Life2's BASIC `SOUND` also needs
+  its installed IRQ0 handler to run. The timer/PIC path above now allows
+  native horizontal/vertical blinker evolution.
 - **Loader.** LZEXE-compressed ShuffleV and Hanoi both unpack and begin
   execution; the earlier UPX limitation remains specific to those packed
   startup stubs.

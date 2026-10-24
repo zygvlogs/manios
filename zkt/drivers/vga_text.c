@@ -24,7 +24,10 @@ static uint16_t shadow[VGA_WIDTH * VGA_HEIGHT];
 static uint16_t *vga_memory = P2V(VGA_TEXT_PHYS);
 static size_t vga_row = 0;
 static size_t vga_col = 0;
+static bool wrap_pending;
 static uint8_t vga_color = VGA_DEFAULT_COLOR;
+static bool cursor_visible = true;
+static uint8_t cursor_start = 14, cursor_end = 15;
 
 /* A subset of ANSI (ECMA-48) escape sequences, so programs that colour
  * their output (fetch, top) read well here too: SGR colours, cursor
@@ -54,6 +57,10 @@ static void update_cursor(void)
 	outb(CRTC_DATA, (uint8_t)(pos & 0xFF));
 	outb(CRTC_INDEX, CRTC_CURSOR_HIGH);
 	outb(CRTC_DATA, (uint8_t)(pos >> 8));
+	outb(CRTC_INDEX, 0x0A);
+	outb(CRTC_DATA, cursor_start | (cursor_visible ? 0 : 0x20));
+	outb(CRTC_INDEX, 0x0B);
+	outb(CRTC_DATA, cursor_end);
 }
 
 static void erase(size_t from, size_t to)
@@ -68,7 +75,11 @@ void vga_clear(void)
 	erase(0, VGA_WIDTH * VGA_HEIGHT);
 	vga_row = 0;
 	vga_col = 0;
+	wrap_pending = false;
 	vga_color = VGA_DEFAULT_COLOR;
+	cursor_visible = true;
+	cursor_start = 14;
+	cursor_end = 15;
 	esc_state = TEXT;
 	update_cursor();
 }
@@ -86,6 +97,7 @@ static void vga_scroll(void)
 
 static void newline(void)
 {
+	wrap_pending = false;
 	vga_col = 0;
 	if (++vga_row == VGA_HEIGHT) {
 		vga_scroll();
@@ -130,6 +142,8 @@ static void control_sequence(char final)
 {
 	size_t here = vga_row * VGA_WIDTH + vga_col;
 	unsigned n = param(0, 1);
+	if (final == 'H' || final == 'f' || (final >= 'A' && final <= 'D'))
+		wrap_pending = false;
 	switch (final) {
 	case 'm':
 		select_graphic_rendition();
@@ -159,7 +173,25 @@ static void control_sequence(char final)
 		erase(param(0, 0) == 0 ? here : vga_row * VGA_WIDTH,
 		      param(0, 0) == 1 ? here + 1 : (vga_row + 1) * VGA_WIDTH);
 		break;
+	case 'q': { /* DECSCUSR: cursor style */
+		unsigned style = param(0, 0);
+		if (style == 3 || style == 4) {
+			cursor_start = 14; cursor_end = 15;
+		} else if (style == 5 || style == 6) {
+			cursor_start = 0; cursor_end = 1;
+		} else {
+			cursor_start = 0; cursor_end = 15;
+		}
+		break;
 	}
+	}
+}
+
+static void private_sequence(char final)
+{
+	if (esc_count == 0 || esc_params[0] != 25) return;
+	if (final == 'h') cursor_visible = true;
+	else if (final == 'l') cursor_visible = false;
 }
 
 /* Returns whether c belonged to an escape sequence. */
@@ -194,9 +226,8 @@ static bool escape(char c)
 	} else if (c == '?') {
 		esc_private = true;
 	} else if (c >= 0x40 && c <= 0x7E) {
-		if (!esc_private) {
-			control_sequence(c);
-		}
+		if (esc_private) private_sequence(c);
+		else control_sequence(c);
 		esc_state = TEXT;
 	} else if ((unsigned char)c < 0x20 || (unsigned char)c > 0x3F) {
 		esc_state = TEXT; /* not a sequence after all */
@@ -214,24 +245,30 @@ static void vga_putc(char c)
 		newline();
 		return;
 	case '\r':
+		wrap_pending = false;
 		vga_col = 0;
 		return;
 	case '\b':
+		wrap_pending = false;
 		if (vga_col > 0) {
 			vga_col--;
 		}
 		return;
-	case '\t':
-		do {
-			vga_putc(' ');
-		} while (vga_col % TAB_WIDTH);
+	case '\t': {
+		if (wrap_pending) newline();
+		size_t spaces = TAB_WIDTH - vga_col % TAB_WIDTH;
+		while (spaces--) vga_putc(' ');
 		return;
 	}
-
-	vga_memory[vga_row * VGA_WIDTH + vga_col] = vga_entry(c, vga_color);
-	if (++vga_col == VGA_WIDTH) {
-		newline();
 	}
+
+	/* Delay wrapping until another printable character. A DOS screen
+	 * renderer can fill the bottom-right cell and then reposition without
+	 * scrolling the physical display behind its cached video memory. */
+	if (wrap_pending) newline();
+	vga_memory[vga_row * VGA_WIDTH + vga_col] = vga_entry(c, vga_color);
+	if (vga_col == VGA_WIDTH - 1) wrap_pending = true;
+	else vga_col++;
 }
 
 void vga_write(const char *buf, size_t len)

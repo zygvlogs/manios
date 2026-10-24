@@ -53,6 +53,7 @@ int poll(struct zkt_pollfd *fds, int count, int timeout_ms)
 }
 int reap(int *status)                           { return (int)SC1(SYS_REAP, status); }
 int filetime(int fd, uint32_t *stamp, int set) { return (int)SC3(SYS_FILETIME, fd, stamp, set); }
+int fileattr(const char *path, uint8_t *attr, int set) { return (int)SC3(SYS_FILEATTR, path, attr, set); }
 int fstat(int fd, struct zkt_dirent *out)       { return (int)SC2(SYS_FSTAT, fd, out); }
 int spawn(const char *path, char *const argv[]) { return (int)SC2(SYS_SPAWN, path, argv); }
 int wait(int pid, int *status)                  { return (int)SC2(SYS_WAIT, pid, status); }

@@ -181,6 +181,18 @@ int vfs_rename(const char *from, const char *to)
 	return rc;
 }
 
+int vfs_fileattr(const char *path, uint8_t *attr, bool set)
+{
+	struct file *f;
+	int rc = vfs_open(path, OREAD, &f);
+	if (rc) return rc;
+	struct vnode *v = vfs_vnode(f);
+	if (!v->ops->fileattr) rc = -ENOSYS;
+	else rc = v->ops->fileattr(v, attr, set);
+	vfs_close(f);
+	return rc;
+}
+
 int vfs_open(const char *path, int mode, struct file **out)
 {
 	int access = mode & 3;
