@@ -1,8 +1,8 @@
 # DOS software compatibility
 
-Last updated: **2026-10-24**. ManiOS version: **0.26.0-10232026**.
+Last updated: **2026-10-25**. ManiOS version: **0.26.1-10252026**.
 
-**57 programs:** 🟢 **23 Working** · 🟡 **5 Partial** · 🔴 **28 Broken/unsupported** · ⚪ **1 Untested**
+**57 programs:** 🟢 **24 Working** · 🟡 **5 Partial** · 🔴 **28 Broken/unsupported** · ⚪ **0 Untested**
 
 This is task-specific coverage, not a compatibility percentage: a green
 entry means the listed task completed, not that every feature of the
@@ -18,7 +18,7 @@ program works. The full test history is in
 | 🔴 | Unsupported | A required CPU mode, subsystem or interface is missing. |
 | ⚪ | Untested | No current result. |
 
-## 🟢 Working (23)
+## 🟢 Working (24)
 
 | Application | Version / media | Verified task | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
@@ -30,6 +30,7 @@ program works. The full test history is in
 | [FDBanner](compatibility/details.md#fdbanner) | 1.1, FD14 BonusCD | Coloured banner rendered through BIOS text services; screenshot checked. | [screenshot](compatibility/2026-10-23-retest-026-fdbanner.png) | 2026-10-23 |
 | [Figlet](compatibility/details.md#figlet-22) | 2.2 DOS port, `figdos22.zip` | Correct `ManiOS` standard-font banner; `-I 1` prints `20200`. | [screenshot](compatibility/2026-10-23-dosprograms-figlet.png) | 2026-10-23 |
 | [FreeDOS ATTRIB](compatibility/details.md#freedos-attrib) | FD14 BonusCD; version unverified | Lists FAT attributes and persists `+R`/`-R`; a fresh DOS execution reads the changed state and `mattrib` independently confirms it on disk. | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
+| [FreeDOS DELTREE](compatibility/details.md#freedos-deltree) | BonusCD build v1.02g | Six guest cases passed on disposable FAT16 images: confirmed nested deletion, cancellation, /Y root-safety confirmation, root guard, and missing-target handling. The unrelated KEEP.TXT and OTHER survived. | [transcript](compatibility/2026-10-25-dosrun-vchoice-deltree.txt) | 2026-10-25 |
 | [FreeDOS FC](compatibility/details.md#freedos-fc) | FD14 BonusCD; version unverified | Equal/different text and `/B` binary comparisons produce the correct results. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [FreeDOS FIND](compatibility/details.md#freedos-find-01nov2003) | 01Nov2003, FreeDOS package (GPL-2) | With the test disk mounted as A: (FIND selects A: before opening relative paths), exact, case-insensitive and inverted searches return the expected lines; a missing file reports `No such file`. | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
 | [FreeDOS MORE](compatibility/details.md#freedos-more) | 4.3, FD14 BonusCD | Help, exact short-file text, redirected stdin and 24-line paging/quit verified. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
@@ -51,7 +52,7 @@ program works. The full test history is in
 | Application | Version / media | Partial result | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
 | [Checks & Balances](compatibility/details.md#checks--balances) | 4.0g (1986), two 360 KB floppies | Configuration and the supplied DEMO work (`TRUE $2450.20`, `BANK $279.04`); ledger entry, save and reopen are unverified. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
-| [FreeDOS DELTREE](compatibility/details.md#freedos-deltree) | BonusCD build v1.02g | Build v1.02g identifies the disposable nested target. The runner starts on the DOS drive root, so `/Y` invokes the root-safety confirmation; recursive deletion remains unverified. | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
+| [FreeDOS VCHOICE](compatibility/details.md#freedos-vchoice) | FD14 BonusCD; version unverified | Help, arrow+Enter, digit jump, and Escape passed using a shared B800 text screen; the /T 8 /D 1 timeout returned 0 instead of the default choice. | [transcript](compatibility/2026-10-25-dosrun-vchoice-deltree.txt) | 2026-10-25 |
 | [Microsoft Windows 1.01](compatibility/details.md#microsoft-windows-101) | 1.01, five 360 KB floppy images | Setup completes and writes `WIN.COM`/`WIN100.BIN`; startup prints `Incorrect DOS version` and faults; desktop unavailable. | [screenshot](compatibility/2026-10-23-retest-026-windows-start.png) | 2026-10-23 |
 | [Planetfall (Infocom Sampler demo)](compatibility/details.md#planetfall-infocom-sampler-demo) | official 1984 Infocom Sampler, `sampler1_R26.z3` (112,610 bytes) | The sampler starts and accepts `planet`, but the Planetfall sample text does not render past its first line under ZIP/JZIP; full-game testing was skipped for licensing. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
 | [uHex](compatibility/details.md#uhex-104) | 1.0.4 DOS | Help and the 34-byte read-only view work, with display defects; editing, save and reopen are unverified. | [screenshot](compatibility/2026-10-23-retest-026-uhex.png) | 2026-10-23 |
@@ -89,15 +90,13 @@ program works. The full test history is in
 | [VIEWSEEK](compatibility/details.md#viewseek-31-auxiliary) | 3.1, VIEW package (auxiliary) | 🔴 **Broken** | Search reports no match for text that is present, then exits with `run-time error R6001`. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
 | [Warcraft: Orcs & Humans](compatibility/details.md#warcraft-orcs--humans) | 1994 DOS CD; exact patch unverified | 🔴 **Unsupported** | Extracted `war.exe` needs a DOS/4GW protected-mode payload; the installer stops on `OUT 43h` (`E6`). | [transcript](compatibility/2026-10-22-warcraft.txt) | 2026-10-23 |
 
-## ⚪ Untested (1)
+## ⚪ Untested (0)
 
-| Application | Version / media | Evidence | Last tested |
-| --- | --- | --- | --- |
-| [FreeDOS VCHOICE](compatibility/details.md#freedos-vchoice) | FD14 BonusCD; version unverified | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
+No entries are currently untested.
 
 ## Scope and method
 
-Tested against ManiOS 0.26.0-10232026 (`26f37f1 (uncommitted working tree)`, kernel `dde8b1fe02608e902ee9fa2a7aac6d46a2dd00dcd11e837deb413d012d3c89ee`). Environment: QEMU i386, CPU 486, 64 MiB RAM, serial console; disposable FAT16 images and 6-12 s observations unless a longer setup run is recorded.
+Tested against ManiOS 0.26.1-10252026 (`release tag v0.26.1-10252026`, kernel `cc0a429f6278b2d399e81bbefd45d1185165940e07708d5789e10bafee7275c3`). Environment: QEMU i386, CPU 486, 64 MiB RAM, serial console; disposable FAT16 images and 6-12 s observations unless a longer setup run is recorded.
 
 Applications are started with `dosrun` from a fresh disposable FAT16
 image per case. Transcripts and screenshots are stored in

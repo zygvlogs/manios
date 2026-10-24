@@ -1,10 +1,10 @@
 {
   "schema": 1,
-  "updated": "2026-10-24",
+  "updated": "2026-10-25",
   "build": {
-    "version": "0.26.0-10232026",
-    "commit": "26f37f1 (uncommitted working tree)",
-    "kernel_sha256": "dde8b1fe02608e902ee9fa2a7aac6d46a2dd00dcd11e837deb413d012d3c89ee",
+    "version": "0.26.1-10252026",
+    "commit": "release tag v0.26.1-10252026",
+    "kernel_sha256": "cc0a429f6278b2d399e81bbefd45d1185165940e07708d5789e10bafee7275c3",
     "environment": "QEMU i386, CPU 486, 64 MiB RAM, serial console; disposable FAT16 images and 6-12 s observations unless a longer setup run is recorded"
   },
   "details": "details.md",
@@ -213,7 +213,7 @@
       "version": "20240918, FD14 BonusCD",
       "status": "Working",
       "kind": "utility",
-      "summary": "Exact UTF-8 \u2194 CP437 and UTF-8 \u2194 CP775 conversions, including Lithuanian letters and CRLF.",
+      "summary": "Exact UTF-8 ↔ CP437 and UTF-8 ↔ CP775 conversions, including Lithuanian letters and CRLF.",
       "anchor": "utf8tocp-20240918",
       "evidence": "2026-10-23-search-utf8-basic.txt",
       "last_tested": "2026-10-23"
@@ -596,12 +596,12 @@
       "id": "freedos-deltree",
       "name": "FreeDOS DELTREE",
       "version": "BonusCD build v1.02g",
-      "status": "Partial",
+      "status": "Working",
       "kind": "utility",
-      "summary": "Build v1.02g identifies the disposable nested target. The runner starts on the DOS drive root, so `/Y` invokes the root-safety confirmation; recursive deletion remains unverified.",
+      "summary": "Six guest cases passed on disposable FAT16 images: confirmed nested deletion, cancellation, /Y root-safety confirmation, root guard, and missing-target handling. The unrelated KEEP.TXT and OTHER survived.",
       "anchor": "freedos-deltree",
-      "evidence": "2026-10-24-wave2-fixup.txt",
-      "last_tested": "2026-10-24"
+      "evidence": "2026-10-25-dosrun-vchoice-deltree.txt",
+      "last_tested": "2026-10-25"
     },
     {
       "id": "freedos-mem",
@@ -618,12 +618,12 @@
       "id": "freedos-vchoice",
       "name": "FreeDOS VCHOICE",
       "version": "FD14 BonusCD; version unverified",
-      "status": "Untested",
+      "status": "Partial",
       "kind": "utility",
-      "summary": "Help mode still reports missing HELPPATH. The prior attempt used ManiOS `sh`, which has no DOS-style `set`; VCHOICE's primary interactive selection remains untested.",
+      "summary": "Help, arrow+Enter, digit jump, and Escape passed using a shared B800 text screen; the /T 8 /D 1 timeout returned 0 instead of the default choice.",
       "anchor": "freedos-vchoice",
-      "evidence": "2026-10-24-wave2-fixup.txt",
-      "last_tested": "2026-10-24"
+      "evidence": "2026-10-25-dosrun-vchoice-deltree.txt",
+      "last_tested": "2026-10-25"
     },
     {
       "id": "freedos-vcls",

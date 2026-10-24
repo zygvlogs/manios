@@ -18,6 +18,11 @@ void fs_init(void)
 	    || ramfs_mkdir(root, "boot") || ramfs_mkdir(root, "bin") || ramfs_mkdir(root, "mnt/term")) {
 		panic("fs_init: cannot build the root directory");
 	}
+	/* dosrun processes share the B800 text page through this one RAM file.
+	 * Keep the root read-only apart from this explicitly provisioned file. */
+	if (ramfs_add_mutable_file(root, "dos-screen.bin")) {
+		panic("fs_init: cannot create the DOS screen backing file");
+	}
 	struct namespace *ns = ns_create(root);
 	if (!ns) {
 		panic("fs_init: cannot create the kernel namespace");

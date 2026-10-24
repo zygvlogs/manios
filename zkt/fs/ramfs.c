@@ -8,6 +8,7 @@ struct ram_node {
 	struct vnode vnode;
 	char name[VFS_NAME_MAX + 1];
 	const uint8_t *data;       /* files only */
+	uint8_t *owned_data;       /* mutable files only */
 	struct ram_node *children; /* in creation order */
 	struct ram_node *next;     /* sibling */
 };
@@ -56,12 +57,55 @@ static long ram_read(struct vnode *v, uint32_t offset, void *buf, size_t len)
 	return (long)len;
 }
 
+static long ram_write(struct vnode *v, uint32_t offset, const void *buf, size_t len)
+{
+	struct ram_node *n = node_of(v);
+	if (len > UINT32_MAX - offset) return -EINVAL;
+	uint32_t end = offset + (uint32_t)len;
+	if (!len) return 0;
+	uint32_t size = end > v->size ? end : v->size;
+	uint8_t *data = kmalloc(size);
+	if (!data) return -ENOMEM;
+	memset(data, 0, size);
+	if (v->size) memcpy(data, n->data, v->size);
+	memcpy(data + offset, buf, len);
+	if (n->owned_data) kfree(n->owned_data);
+	n->owned_data = data;
+	n->data = data;
+	v->size = size;
+	return (long)len;
+}
+
+static int ram_truncate(struct vnode *v, uint32_t size)
+{
+	struct ram_node *n = node_of(v);
+	if (size == v->size) return 0;
+	uint8_t *data = size ? kmalloc(size) : 0;
+	if (size && !data) return -ENOMEM;
+	if (size) {
+		memset(data, 0, size);
+		uint32_t copy = v->size < size ? v->size : size;
+		if (copy) memcpy(data, n->data, copy);
+	}
+	if (n->owned_data) kfree(n->owned_data);
+	n->owned_data = data;
+	n->data = data;
+	v->size = size;
+	return 0;
+}
+
 /* Nodes belong to their tree: the last reference only ever drops when
  * ramfs_destroy() releases the tree's own, which frees them directly. */
 static const struct vnode_ops ram_ops = {
 	.walk = ram_walk,
 	.read = ram_read,
 	.readdir = ram_readdir,
+};
+
+static const struct vnode_ops ram_writable_file_ops = {
+	.read = ram_read,
+	.write = ram_write,
+	.truncate = ram_truncate,
 };
 
 static struct ram_node *new_node(const char *name)
@@ -152,6 +196,20 @@ int ramfs_add_file(struct vnode *root, const char *path, const void *data, uint3
 	return 0;
 }
 
+int ramfs_add_mutable_file(struct vnode *root, const char *path)
+{
+	int rc;
+	struct ram_node *n = make_path(root, path, &rc);
+	if (!n) return rc;
+	if (n->children || n == node_of(root)) return -EEXIST;
+	n->vnode.type = VNODE_FILE;
+	n->vnode.size = 0;
+	n->data = 0;
+	n->owned_data = 0;
+	n->vnode.ops = &ram_writable_file_ops;
+	return 0;
+}
+
 static void destroy(struct ram_node *n)
 {
 	while (n->children) {
@@ -162,6 +220,7 @@ static void destroy(struct ram_node *n)
 	if (n->vnode.refs != 1) {
 		panic("ramfs_destroy: a node is still referenced (vnode reference leak)");
 	}
+	if (n->owned_data) kfree(n->owned_data);
 	kfree(n);
 }
 

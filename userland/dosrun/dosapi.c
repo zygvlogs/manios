@@ -1930,6 +1930,7 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 		 * string writes with direct cells and reads the screen back sees
 		 * one coherent picture. Redirected handles and the host harness
 		 * keep the raw stream. */
+		#ifdef MANIOS_VERSION
 		if (d->handle_fd[bx] == d->con_out || d->handle_fd[bx] == 2) {
 			for (uint16_t i = 0; i < n; i++) con_putc(d, buf[i]);
 			free(buf);
@@ -1937,6 +1938,7 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 			set_cf(c, 0);
 			return CPU_OK;
 		}
+		#endif
 		long put = write(d->handle_fd[bx], buf, n);
 		free(buf);
 		if (put < 0) {

@@ -1686,11 +1686,13 @@ test. The BonusCD binary's version was not verified.
 
 ### FreeDOS DELTREE
 
-**Partial.** Build v1.02g identifies the disposable nested target. A fully
-qualified target still triggers its root-safety prompt because a fresh dosrun
-starts with its DOS current directory at the drive root. /Y does not bypass
-that protection. The confirmation input was not accepted by the test harness,
-so recursion was not verified and no target was deleted.
+**Working for the tested workflow.** On 2026-10-25, six guest cases on
+disposable FAT16 images verified the nested tree deletion prompt, cancellation,
+`/Y` root-safety confirmation, root protection, and missing-target handling.
+The confirmed deletion removed all of `TESTTREE` while preserving `KEEP.TXT`
+and the unrelated `OTHER` directory. `N` and the root-safety `Q` left the disk
+contents intact. The root target remained guarded. The BonusCD build's version
+is v1.02g.
 
 ### FreeDOS MEM
 
@@ -1703,12 +1705,14 @@ Its version was not verified.
 
 ### FreeDOS VCHOICE
 
-**Untested.** The earlier /? help attempt reported that HELPPATH was not set,
-and the attempted DOS-style set command was run in ManiOS sh, which does not
-implement it. ManiDOS's SET command and dosrun's separate fixed environment
-were not used to establish that workflow. VCHOICE's primary interactive
-selection flow remains untested.
-Its version was not verified.
+**Partial.** On 2026-10-25, a two-item menu drawn by separate VCLS, VFRAME and
+VECHO processes was read by VCHOICE from the shared text screen. Arrow plus
+Enter and digit selection both returned choice 2; Escape returned 0. Help mode
+displayed when `HELPPATH=C:` was passed to `dosrun` and the supplied
+`VCHOICE.EN` file was copied into the test image (the BonusCD has no help
+file). The `/T 8 /D 1` timeout case returned 0 instead of the default choice,
+so timeout selection remains unverified. The BonusCD binary's version was not
+verified.
 
 ### FreeDOS VCLS
 
@@ -1720,7 +1724,8 @@ visible VGA screen; the capture shows the shell prompt redrawn on an otherwise
 blank display. The [fixed VCLS screen capture](2026-10-24-wave2-fixup-vcls.png)
 records the result. Its version was not verified.
 
-Three of the six applications now meet their primary workflow. Historical
-failure evidence remains in the original [Wave 2 transcript](2026-10-24-wave2-easy-wins.txt);
-the corrected reruns and remaining limitations are in the
+Historical failure evidence remains in the original [Wave 2 transcript](2026-10-24-wave2-easy-wins.txt).
+The 2026-10-25 DELTREE and VCHOICE results, including the VCHOICE timeout
+limitation, are in the [DOS-runner verification record](2026-10-25-dosrun-vchoice-deltree.txt).
+Earlier corrected reruns and remaining limitations are in the
 [fix-up transcript](2026-10-24-wave2-fixup.txt).

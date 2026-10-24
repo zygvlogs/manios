@@ -19,6 +19,10 @@ int ramfs_mkdir(struct vnode *root, const char *path);
  * outlive the tree), creating missing parent directories. */
 int ramfs_add_file(struct vnode *root, const char *path, const void *data, uint32_t size);
 
+/* Adds an empty, writable file to an otherwise read-only tree. Writes are
+ * kept in RAM and the tree still refuses creating or removing other paths. */
+int ramfs_add_mutable_file(struct vnode *root, const char *path);
+
 /* Frees the whole tree. Panics if anything outside the tree still holds
  * a reference to one of its nodes, so leaked references show up. */
 void ramfs_destroy(struct vnode *root);

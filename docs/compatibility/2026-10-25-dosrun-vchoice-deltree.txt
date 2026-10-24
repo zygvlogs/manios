@@ -1,0 +1,41 @@
+ManiOS DOS-runner verification — 2026-10-25
+
+Source tree: release tag v0.26.1-10252026.
+Built kernel SHA-256: cc0a429f6278b2d399e81bbefd45d1185165940e07708d5789e10bafee7275c3
+Environment: QEMU i386, 486 CPU, 64 MiB RAM, disposable FAT16 images.
+
+Host DOS API test
+  python3 tests/dosrun_host_test.py
+  PASS — 0 failures. Includes raw host stdout and DOS write checks.
+
+FreeDOS DELTREE guest test (BonusCD v1.02g)
+  python3 deltree_guest.py
+  PASS — all 6 cases:
+    * Confirmed nested-tree deletion removed TESTTREE and kept KEEP.TXT/OTHER.
+    * N cancelled deletion without changing the tree.
+    * /Y still showed root-safety confirmation; Y deleted the test tree.
+    * Q at root-safety confirmation preserved the disk.
+    * A root target remained guarded; the disk remained intact.
+    * A missing target produced the expected not-found result.
+  Captured per-case serial output: wave2finale-audit/probe/dt2-*-serial.log.
+
+FreeDOS VCHOICE guest test (FD14 BonusCD; version unverified)
+  python3 vchoice_guest.py
+  PASS — help rendered with HELPPATH=C: and the supplied VCHOICE.EN;
+         arrow + Enter returned choice 2;
+         digit mode returned choice 2;
+         Escape returned 0.
+  FAIL — /T 8 /D 1 returned 0 instead of the default choice.
+  The test image builder copies VCHOICE.EN into every new image; the BonusCD
+  does not include that help file. Captured per-case serial output:
+  wave2finale-audit/probe/vc2-*-serial.log.
+
+The host root RAMFS was read-only, so the first shared-screen implementation
+could not create /dos-screen.bin. The final candidate provisions that one
+empty writable RAMFS file at boot; the rest of the root remains read-only.
+After that correction, the separate VCLS/VFRAME/VECHO processes' menu was
+visible to VCHOICE, and the arrow and digit selection cases passed.
+
+The timeout case remains a known limitation. VCHOICE is therefore Partial;
+DELTREE is Working for the workflows listed above. No other compatibility
+classification is changed by this evidence.
