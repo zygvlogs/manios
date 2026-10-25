@@ -910,6 +910,138 @@
       "anchor": "mime64-revision-d",
       "evidence": "2026-10-25-decode-utilities.md",
       "last_tested": "2026-10-25"
+    },
+    {
+      "id": "numconv",
+      "name": "NUMCONV",
+      "version": "`NUMCONV.EXE` (COAST archive dated 1988)",
+      "status": "Unsupported",
+      "kind": "utility",
+      "summary": "The interactive converter stops on unsupported VGA CRTC I/O port `03D4` (`OUT`); number conversion was not reached.",
+      "anchor": "numconv",
+      "evidence": "2026-10-25-calculator-menu-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "hexdec",
+      "name": "HEX and DEC",
+      "version": "`HEX.EXE` / `DEC.EXE`; version unverified",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Decimal values `27 78 255` convert to `1B 4E FF`, and decoding them returns `27 78 255`.",
+      "anchor": "hex-and-dec",
+      "evidence": "2026-10-25-calculator-menu-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "eval-calculator",
+      "name": "EVAL",
+      "version": "`EVAL.EXE` (COAST archive dated 1987)",
+      "status": "Unsupported",
+      "kind": "utility",
+      "summary": "The command-line expression test stops at unsupported x87 opcode `DB` before producing a result.",
+      "anchor": "eval",
+      "evidence": "2026-10-25-calculator-menu-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "calculat",
+      "name": "CALCULAT",
+      "version": "Source dated 25 February 1985; version unverified",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Interactive expression `2+3` produces `5.000000`; an empty Return exits to ManiOS.",
+      "anchor": "calculat",
+      "evidence": "2026-10-25-calculator-menu-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "balis-calc",
+      "name": "Bali’s Calc",
+      "version": "1995 shareware release; version unverified",
+      "status": "Unsupported",
+      "kind": "utility",
+      "summary": "The calculator stops on unsupported VGA CRTC I/O port `03D4` during startup, before usable input.",
+      "anchor": "balis-calc",
+      "evidence": "2026-10-25-calculator-menu-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "calc-100",
+      "name": "CALC",
+      "version": "1.00 (1994)",
+      "status": "Unsupported",
+      "kind": "utility",
+      "summary": "The command-line test `2+3` stops on unsupported I/O port `00F0` (`OUT`) before calculating.",
+      "anchor": "calc",
+      "evidence": "2026-10-25-calculator-menu-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "kycalc-207",
+      "name": "KyCalc Scientific Vector Calculator",
+      "version": "2.07 (1987)",
+      "status": "Unsupported",
+      "kind": "utility",
+      "summary": "Nonresident startup (`/n`) stops at unsupported x87 opcode `DB` before the calculator screen opens.",
+      "anchor": "kycalc-scientific-vector-calculator",
+      "evidence": "2026-10-25-calculator-menu-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "vecalc-111",
+      "name": "DRCS-VeCalc",
+      "version": "1.11 (1989)",
+      "status": "Broken",
+      "kind": "utility",
+      "summary": "The documented startup command returns immediately to the ManiOS shell; no calculator UI or first-run `VEC.DAT` appears.",
+      "anchor": "drcs-vecalc",
+      "evidence": "2026-10-25-calculator-menu-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "dos-menu-v2",
+      "name": "MENU",
+      "version": "2.0 (archive `dosmenu.zip`)",
+      "status": "Partial",
+      "kind": "utility",
+      "summary": "The six-item menu renders legibly and the `F` exit choice returns to ManiOS; menu DOS-command execution was not verified.",
+      "anchor": "menu",
+      "evidence": "2026-10-25-calculator-menu-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "diskmenu-10",
+      "name": "DiskMenu",
+      "version": "1.0 (1992)",
+      "status": "Partial",
+      "kind": "utility",
+      "summary": "DMC compiles `SAMPLE.SRC` into `SAMPLE.MNU` and DMENU starts, but its menu display is corrupted in the screen capture; usable selection was not confirmed.",
+      "anchor": "diskmenu",
+      "evidence": "2026-10-25-calculator-menu-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "exemenu-22",
+      "name": "EXEMENU",
+      "version": "2.2 (1991)",
+      "status": "Unsupported",
+      "kind": "utility",
+      "summary": "Startup stops at unsupported `INTO` instruction at `0000:0001`; no file menu opens.",
+      "anchor": "exemenu",
+      "evidence": "2026-10-25-calculator-menu-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "menumate-21",
+      "name": "MenuMate",
+      "version": "2.1 (1992–1994)",
+      "status": "Unsupported",
+      "kind": "utility",
+      "summary": "The program reports that MS-DOS 5.0 or newer is required, then stops on unsupported VGA CRTC I/O port `03D4`; no menu opens.",
+      "anchor": "menumate",
+      "evidence": "2026-10-25-calculator-menu-tests.md",
+      "last_tested": "2026-10-25"
     }
   ],
   "status_colors": {

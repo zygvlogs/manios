@@ -2,7 +2,7 @@
 
 Last updated: **2026-10-25**. ManiOS version: **0.26.1-10252026**.
 
-**82 programs:** 🟢 **34 Working** · 🟡 **11 Partial** · 🔴 **36 Broken/unsupported** · ⚪ **1 Untested**
+**94 programs:** 🟢 **36 Working** · 🟡 **13 Partial** · 🔴 **44 Broken/unsupported** · ⚪ **1 Untested**
 
 This is task-specific coverage, not a compatibility percentage: a green
 entry means the listed task completed, not that every feature of the
@@ -18,7 +18,7 @@ program works. The full test history is in
 | 🔴 | Unsupported | A required CPU mode, subsystem or interface is missing. |
 | ⚪ | Untested | No current result. |
 
-## 🟢 Working (34)
+## 🟢 Working (36)
 
 | Application | Version / media | Verified task | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
@@ -26,6 +26,7 @@ program works. The full test history is in
 | [ASCIFY](compatibility/details.md#ascify-13) | 1.3 (1987) | Encoded the binary fixture as an ASCIFY text file and decoded it to an exact 14-byte match. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
 | [B64](compatibility/details.md#b64) | 0.06R (rev A), FD14 BonusCD | Help, Base64 encoding of `ABCD` and decoding of `QUJDRA==` are byte-exact. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [BSUM](compatibility/details.md#bsum) | 1.1a, FD14 BonusCD | Text, empty-file and 20 KiB binary checksums match an independent oracle; usage and missing-file errors verified. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
+| [CALCULAT](compatibility/details.md#calculat) | Source dated 25 February 1985; version unverified | Interactive expression `2+3` produces `5.000000`; an empty Return exits to ManiOS. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [COMPHEX](compatibility/details.md#comphex) | `COMPHEX.EXE`; package version unverified | Correctly reports zero mismatches for equal Intel HEX files and one mismatch at address `000D` for a one-byte difference. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
 | [Directory Freedom](compatibility/details.md#directory-freedom-461b) | 4.61B, `df461b.zip` | On disposable FAT16 copies, F1 copied AR.COM to COPYTEST.COM byte-for-byte, F2 deleted AR.COM, and F4 renamed AR.COM to AR.BAK. The directory listing and function menu render; originals were unchanged. | [screenshot](compatibility/2026-10-23-int10-directory-freedom-copy.png) | 2026-10-23 |
 | [EDITV](compatibility/details.md#editv-41) | 4.1 US, `editv41u.zip` | Inserted `Z`, moved right, inserted then removed `Y` with Backspace, saved with F2, and reopened. The disposable FAT16 file independently contains `Zalpha one` followed by the original remaining lines. | [screenshot](compatibility/2026-10-23-int10-editv-multiedit.png) | 2026-10-23 |
@@ -38,6 +39,7 @@ program works. The full test history is in
 | [FreeDOS FIND](compatibility/details.md#freedos-find-01nov2003) | 01Nov2003, FreeDOS package (GPL-2) | With the test disk mounted as A: (FIND selects A: before opening relative paths), exact, case-insensitive and inverted searches return the expected lines; a missing file reports `No such file`. | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
 | [FreeDOS MORE](compatibility/details.md#freedos-more) | 4.3, FD14 BonusCD | Help, exact short-file text, redirected stdin and 24-line paging/quit verified. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [FreeDOS VCLS](compatibility/details.md#freedos-vcls) | FD14 BonusCD; version unverified | Reads the BIOS video geometry from the initialized BDA, clears the visible VGA text screen, and returns to the redrawn ManiOS prompt. | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
+| [HEX and DEC](compatibility/details.md#hex-and-dec) | `HEX.EXE` / `DEC.EXE`; version unverified | Decimal values `27 78 255` convert to `1B 4E FF`, and decoding them returns `27 78 255`. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [HEXBIN](compatibility/details.md#hexbin) | `HEXBIN.EXE`; package version unverified | Converts binary data to checksummed Intel HEX and back; the 14-byte FAT16 fixture round-trips byte-exactly. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
 | [Info-ZIP UnZip](compatibility/details.md#info-zip-unzip-600) | 6.00 (20 Apr 2009), DOS 16-bit large, `unz600x3.exe` | Lists and CRC-tests `KNOWN.ZIP`; extracts all four members including `SUB/THREE.TXT` with exact hashes; `-p` and `FUNZIP` print the correct text. | [transcript](compatibility/2026-10-23-compat4-infozip.txt) | 2026-10-23 |
 | [Life2](compatibility/details.md#life2) | text-mode Conway Life, `life2.zip` | Native timer IRQ0 delivery now executes the installed SOUND handler. Blinker horizontal/vertical/horizontal evolution and Q/Esc exit verified on a disposable FAT16 image. Working for pattern creation, RUN, verified blinker evolution and Q/Esc exit. One earlier marking run reported a BASIC runtime error; its cause remains unresolved. Other patterns/features remain untested. | [evidence](compatibility/2026-10-24-pit-irq0.md) | 2026-10-24 |
@@ -57,14 +59,16 @@ program works. The full test history is in
 | [VisiCalc](compatibility/details.md#visicalc) | `VC.COM`, 27,520 bytes; version unverified | Mode-2 worksheet renders; A1=10, B1=20 and C1=+A1+B1 (30) were saved as TEST.VC, the app exited cleanly, and a fresh launch reopened the sheet with the values and formula intact. | [transcript](compatibility/2026-10-24-visicalc-save-reopen-qemu.json) | 2026-10-24 |
 | [Zork I: The Great Underground Empire](compatibility/details.md#zork-i-the-great-underground-empire) | MIT historicalsource release, `zork1.z3` (86,838 bytes), ZIP 2.00 | ZIP 2.00 starts the story; room text, commands, inventory, score, save/restore and quit work. The status line still clips its right edge. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
 
-## 🟡 Partial (11)
+## 🟡 Partial (13)
 
 | Application | Version / media | Partial result | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
 | [Checks & Balances](compatibility/details.md#checks--balances) | 4.0g (1986), two 360 KB floppies | Configuration and the supplied DEMO work (`TRUE $2450.20`, `BANK $279.04`); ledger entry, save and reopen are unverified. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [COMHEX](compatibility/details.md#comhex) | `COMHEX.COM`; package version unverified | Prompts for a COM basename, but aborts with Pascal `I/O error 99` and leaves a zero-byte HEX file; conversion did not complete. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
+| [DiskMenu](compatibility/details.md#diskmenu) | 1.0 (1992) | DMC compiles `SAMPLE.SRC` into `SAMPLE.MNU` and DMENU starts, but its menu display is corrupted in the screen capture; usable selection was not confirmed. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [EDLIN](compatibility/details.md#edlin) | FreeDOS EDLIN 2.24 | Opened the two-line fixture, but ignored both keyboard and serial input at the `*` prompt; edit, save, close and reopen could not be verified. | [evidence](compatibility/2026-10-25-text-editors-workflow.md) | 2026-10-25 |
 | [FreeDOS VCHOICE](compatibility/details.md#freedos-vchoice) | FD14 BonusCD; version unverified | Help, arrow+Enter, digit jump, and Escape passed using a shared B800 text screen; the /T 8 /D 1 timeout returned 0 instead of the default choice. | [transcript](compatibility/2026-10-25-dosrun-vchoice-deltree.txt) | 2026-10-25 |
+| [MENU](compatibility/details.md#menu) | 2.0 (archive `dosmenu.zip`) | The six-item menu renders legibly and the `F` exit choice returns to ManiOS; menu DOS-command execution was not verified. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [Microsoft Windows 1.01](compatibility/details.md#microsoft-windows-101) | 1.01, five 360 KB floppy images | Setup completes and writes `WIN.COM`/`WIN100.BIN`; startup prints `Incorrect DOS version` and faults; desktop unavailable. | [screenshot](compatibility/2026-10-23-retest-026-windows-start.png) | 2026-10-23 |
 | [PC-Outline](compatibility/details.md#pc-outline-334) | 3.34 (`pco334.zip`; README dated 1987) | Shareware screen, menu and filename dialog work; typed `test`, but Enter, keypad Enter and Ctrl+M did not submit it, so editing and save/reopen remain unverified. | [evidence](compatibility/2026-10-25-microemacs-pc-outline.md) | 2026-10-25 |
 | [PC-Talk](compatibility/details.md#pc-talk) | PC-Talk III (1983–1985) | Displays the license/notice screen. A terminal session and modem or serial connection were not tested. | [screenshot](compatibility/2026-10-25-pc-talk.png) | 2026-10-25 |
@@ -73,14 +77,16 @@ program works. The full test history is in
 | [Planetfall (Infocom Sampler demo)](compatibility/details.md#planetfall-infocom-sampler-demo) | official 1984 Infocom Sampler, `sampler1_R26.z3` (112,610 bytes) | The sampler starts and accepts `planet`, but the Planetfall sample text does not render past its first line under ZIP/JZIP; full-game testing was skipped for licensing. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
 | [uHex](compatibility/details.md#uhex-104) | 1.0.4 DOS | Help and the 34-byte read-only view work, with display defects; editing, save and reopen are unverified. | [screenshot](compatibility/2026-10-23-retest-026-uhex.png) | 2026-10-23 |
 
-## 🔴 Broken and unsupported (36)
+## 🔴 Broken and unsupported (44)
 
 | Application | Version / media | Status | Blocker | Evidence | Last tested |
 | --- | --- | --- | --- | --- | --- |
 | [Ability Plus 3.0](compatibility/details.md#ability-plus-30) | 3.0, `AB3.ZIP` | 🔴 **Unsupported** | Main program stops on x87 `FNINIT`; the installer needs a 32-bit operand. | [transcript](compatibility/2026-10-23-visicalc-ability.txt) | 2026-10-23 |
 | [As-Easy-As](compatibility/details.md#as-easy-as-57) | 5.7, DOS files from archive.org item | 🔴 **Unsupported** | FPU probe writes `OUT 0F0h`, then runs `FNINIT`/`FSTSW`; no worksheet. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
 | [AUMenu](compatibility/details.md#aumenu-143a) | 1.4.3a archive; reports 1.4.3b Unix edition | 🔴 **Broken** | The linked ZIP is the Unix edition: a $79 registration splash appears instead of the DOS menu. | [screenshot](compatibility/2026-10-23-dosprograms-aumenu.png) | 2026-10-23 |
+| [Bali’s Calc](compatibility/details.md#balis-calc) | 1995 shareware release; version unverified | 🔴 **Unsupported** | The calculator stops on unsupported VGA CRTC I/O port `03D4` during startup, before usable input. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [Bywater BASIC](compatibility/details.md#bywater-basic-330) | 3.30, FD14 BonusCD | 🔴 **Unsupported** | LE protected-mode executable rejected; the supplied arithmetic program was not executed. | [transcript](compatibility/2026-10-23-search-utf8-basic.txt) | 2026-10-23 |
+| [CALC](compatibility/details.md#calc) | 1.00 (1994) | 🔴 **Unsupported** | The command-line test `2+3` stops on unsupported I/O port `00F0` (`OUT`) before calculating. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [Cash Register](compatibility/details.md#cash-register-71j) | 7.1j, `POS71J.ZIP` | 🔴 **Unsupported** | After PIC and PIT0 support, some text renders before unsupported `ARPL` at `6DCC:0293`; no register operation. | [transcript](compatibility/2026-10-23-10232026-retest.txt) | 2026-10-23 |
 | [Champ Galagon](compatibility/details.md#champ-galagon) | 1.0 (registered, 1997), `galagon.zip` | 🔴 **Unsupported** | Returns to the shell in under 0.6 s with no console output or title screen; no VGA/game frame is reached. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
 | [Costa GUI](compatibility/details.md#costa-gui-180) | 1.8.0, `costa180.zip` | 🔴 **Unsupported** | After PIC support, `DESKTOP.EXE` reaches COSTALIB but stops with `Illegal function call` at `15CA:2E00`; no usable desktop. | [transcript](compatibility/2026-10-23-10232026-retest.txt) | 2026-10-23 |
@@ -89,7 +95,10 @@ program works. The full test history is in
 | [DOS Navigator](compatibility/details.md#dos-navigator) | 1.51 (RIT Labs freeware) | 🔴 **Broken** | Process remains active, but the display contains only the ManiOS banner and a blank screen; no usable file manager UI appeared. | [screenshot](compatibility/2026-10-25-dos-navigator.png) | 2026-10-25 |
 | [DOSStart](compatibility/details.md#dosstart-19b) | 1.9b build 7.08.2002, `dosstart.zip` | 🔴 **Unsupported** | `DANSHELL.EXE` stops on `IN AL,21h` at `1FBB:6B78`; no launcher screen. | [transcript](compatibility/2026-10-23-compat4-extra.txt) | 2026-10-23 |
 | [Dr Mind Lite](compatibility/details.md#dr-mind-lite) | LITE variant, 2019, `drlite.zip` | 🔴 **Unsupported** | Stops on `OUT 0x3C8` (VGA DAC palette) at `1010:02CA`; no game board. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
+| [DRCS-VeCalc](compatibility/details.md#drcs-vecalc) | 1.11 (1989) | 🔴 **Broken** | The documented startup command returns immediately to the ManiOS shell; no calculator UI or first-run `VEC.DAT` appears. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [Drobos](compatibility/details.md#drobos) | 1.3 (DRoboWHOids), `drobos.zip` | 🔴 **Unsupported** | Stops on x87 opcode `D8` at `1010:0487`; no game screen. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
+| [EVAL](compatibility/details.md#eval) | `EVAL.EXE` (COAST archive dated 1987) | 🔴 **Unsupported** | The command-line expression test stops at unsupported x87 opcode `DB` before producing a result. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
+| [EXEMENU](compatibility/details.md#exemenu) | 2.2 (1991) | 🔴 **Unsupported** | Startup stops at unsupported `INTO` instruction at `0000:0001`; no file menu opens. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [File Maven](compatibility/details.md#file-maven-35a) | 3.5a | 🔴 **Broken** | Installer, main executable and launcher pass the clock wait, then fail on `IN AL,DX`; no usable manager. | [transcript](compatibility/2026-10-23-maven.txt) | 2026-10-23 |
 | [Ford Driving Simulator](compatibility/details.md#ford-driving-simulator) | 1988 models, `ford.zip` | 🔴 **Unsupported** | Stops on `IN` port `0021h` (PIC) at `1010:10C8`; no simulator screen. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
 | [FreeDOS MEM](compatibility/details.md#freedos-mem) | FD14 BonusCD; version unverified | 🔴 **Broken** | The DOS list-of-lists now points to a valid terminated MCB chain, but MEM stops at unsupported opcode 66h before producing a memory summary. | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
@@ -97,11 +106,14 @@ program works. The full test history is in
 | [GW-BASIC](compatibility/details.md#gw-basic-323) | 3.23 (1988; GWBASIC.EXE) | 🔴 **Unsupported** | Shows the `Ok` prompt, then stops on opcode EC / unsupported IN port 0201 when keyboard input begins; no statement is accepted. | [evidence](compatibility/2026-10-25-basic-tests.md) | 2026-10-25 |
 | [Hanoi](compatibility/details.md#hanoi) | 1.3 (2000), `hanoi.zip` | 🔴 **Unsupported** | LZEXE startup unpacks, then stops on `IN` port `0006h` at `115B:0603`; no board. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
 | [Info-ZIP Zip](compatibility/details.md#info-zip-zip-232) | 2.32, 16-bit and 32-bit DOS builds, `zip232x.zip` | 🔴 **Unsupported** | 16-bit builds stop at `0000:0001` (`E5`/`EF`); the 32-bit build reports `no DPMI`; no archive is created. | [transcript](compatibility/2026-10-23-compat4-infozip.txt) | 2026-10-23 |
+| [KyCalc Scientific Vector Calculator](compatibility/details.md#kycalc-scientific-vector-calculator) | 2.07 (1987) | 🔴 **Unsupported** | Nonresident startup (`/n`) stops at unsupported x87 opcode `DB` before the calculator screen opens. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [Mahjong!](compatibility/details.md#mahjong) | 1996/1997 SoftSpot, `mahjong.zip` | 🔴 **Unsupported** | Stops on operand-size prefix `66h` at `101D:0990`; no screen. The package requires SVGA 1024x768 VESA graphics and a mouse. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
+| [MenuMate](compatibility/details.md#menumate) | 2.1 (1992–1994) | 🔴 **Unsupported** | The program reports that MS-DOS 5.0 or newer is required, then stops on unsupported VGA CRTC I/O port `03D4`; no menu opens. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [Microsoft BASIC](compatibility/details.md#microsoft-basic-528) | 5.28 (MSBASIC.COM, 1983-05-24) | 🔴 **Broken** | The tested COM binary returns to the ManiOS shell without a BASIC prompt or usable screen. | [evidence](compatibility/2026-10-25-basic-tests.md) | 2026-10-25 |
 | [Mine Mayhem](compatibility/details.md#mine-mayhem) | freeware by Jason Hood, `minemay.zip` | 🔴 **Unsupported** | Stops on operand-size prefix `66h` at `1426:2DC3`; no screen. The executable is a DJGPP/go32 build. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
 | [MinEd](compatibility/details.md#mined-202227) | 2022.27, `mined-2022.27-dos.zip` | 🔴 **Unsupported** | DJGPP/go32 loader reports `Load error: no DPMI`; no editor screen. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
 | [Nero 5](compatibility/details.md#nero-5) | 08.02.2000, `nero5.zip` | 🔴 **Unsupported** | Returns to the shell in under 0.6 s with no console output or menu; BGI EGAVGA 640x480 initialization produces no board. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
+| [NUMCONV](compatibility/details.md#numconv) | `NUMCONV.EXE` (COAST archive dated 1988) | 🔴 **Unsupported** | The interactive converter stops on unsupported VGA CRTC I/O port `03D4` (`OUT`); number conversion was not reached. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [PasswordBox](compatibility/details.md#passwordbox-011) | 0.11 DOS build, `pbox011-dos.zip` | 🔴 **Unsupported** | DJGPP/go32 stub reports `Load error: no DPMI`; no password database. | [transcript](compatibility/2026-10-23-compat4-extra.txt) | 2026-10-23 |
 | [PC-Calc](compatibility/details.md#pc-calc) | PC-Calc+ 2.0 (PC-SIG disk 199) | 🔴 **Unsupported** | The worksheet executable stops at unsupported opcode DB (2E03:00CF) before a usable spreadsheet opens. | [evidence](compatibility/2026-10-25-vintage-app-tests.md) | 2026-10-25 |
 | [PC-File](compatibility/details.md#pc-file) | PC-File+ (PC-SIG disk 5; release unverified) | 🔴 **Unsupported** | The executable stops at unsupported opcode F0 (0000:0024) before a usable database screen opens. | [evidence](compatibility/2026-10-25-vintage-app-tests.md) | 2026-10-25 |

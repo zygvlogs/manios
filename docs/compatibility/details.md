@@ -1880,3 +1880,56 @@ workflows; EDLIN input and terminal hardware workflows remain unverified. The pe
 - **Commands:** `dosrun C:/MIME64.EXE C:/INPUT.TXT` and `dosrun C:/MIME64.EXE C:/MIME.64 C:/MIME.ZIP`.
 - **Result:** the MIME/Base64 attachment decoded to the named `TEST.BIN` and matched the 14-byte fixture exactly. The package's own sample decoded to `MIME.ZIP`; `unzip -t` verified its `mime.txt` member without CRC errors.
 - **Evidence:** [archive hashes and test details](2026-10-25-decode-utilities.md).
+
+
+## Calculator and menu archive tests (2026-10-25)
+
+Twelve user-listed COAST archives were tested on fresh disposable FAT16 images. Full commands, hashes and observed results are in [the test record](2026-10-25-calculator-menu-tests.md).
+
+### NUMCONV
+
+**Unsupported.** The interactive converter stops on unsupported VGA CRTC I/O port `03D4` (`OUT`); number conversion was not reached. [Full test record](2026-10-25-calculator-menu-tests.md).
+
+### HEX and DEC
+
+**Working.** Decimal values `27 78 255` convert to `1B 4E FF`, and decoding them returns `27 78 255`. [Full test record](2026-10-25-calculator-menu-tests.md).
+
+### EVAL
+
+**Unsupported.** The command-line expression test stops at unsupported x87 opcode `DB` before producing a result. [Full test record](2026-10-25-calculator-menu-tests.md).
+
+### CALCULAT
+
+**Working.** Interactive expression `2+3` produces `5.000000`; an empty Return exits to ManiOS. [Full test record](2026-10-25-calculator-menu-tests.md).
+
+### Bali’s Calc
+
+**Unsupported.** The calculator stops on unsupported VGA CRTC I/O port `03D4` during startup, before usable input. [Full test record](2026-10-25-calculator-menu-tests.md).
+
+### CALC
+
+**Unsupported.** The command-line test `2+3` stops on unsupported I/O port `00F0` (`OUT`) before calculating. [Full test record](2026-10-25-calculator-menu-tests.md).
+
+### KyCalc Scientific Vector Calculator
+
+**Unsupported.** Nonresident startup (`/n`) stops at unsupported x87 opcode `DB` before the calculator screen opens. [Full test record](2026-10-25-calculator-menu-tests.md).
+
+### DRCS-VeCalc
+
+**Broken.** The documented startup command returns immediately to the ManiOS shell; no calculator UI or first-run `VEC.DAT` appears. [Full test record](2026-10-25-calculator-menu-tests.md).
+
+### MENU
+
+**Partial.** The six-item menu renders legibly and the `F` exit choice returns to ManiOS; menu DOS-command execution was not verified. [Full test record](2026-10-25-calculator-menu-tests.md).
+
+### DiskMenu
+
+**Partial.** DMC compiles `SAMPLE.SRC` into `SAMPLE.MNU` and DMENU starts, but its menu display is corrupted in the screen capture; usable selection was not confirmed. [Full test record](2026-10-25-calculator-menu-tests.md).
+
+### EXEMENU
+
+**Unsupported.** Startup stops at unsupported `INTO` instruction at `0000:0001`; no file menu opens. [Full test record](2026-10-25-calculator-menu-tests.md).
+
+### MenuMate
+
+**Unsupported.** The program reports that MS-DOS 5.0 or newer is required, then stops on unsupported VGA CRTC I/O port `03D4`; no menu opens. [Full test record](2026-10-25-calculator-menu-tests.md).
