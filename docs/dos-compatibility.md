@@ -2,7 +2,7 @@
 
 Last updated: **2026-10-25**. ManiOS version: **0.26.1-10252026**.
 
-**67 programs:** 🟢 **26 Working** · 🟡 **8 Partial** · 🔴 **32 Broken/unsupported** · ⚪ **1 Untested**
+**67 programs:** 🟢 **27 Working** · 🟡 **8 Partial** · 🔴 **32 Broken/unsupported** · ⚪ **0 Untested**
 
 This is task-specific coverage, not a compatibility percentage: a green
 entry means the listed task completed, not that every feature of the
@@ -18,7 +18,7 @@ program works. The full test history is in
 | 🔴 | Unsupported | A required CPU mode, subsystem or interface is missing. |
 | ⚪ | Untested | No current result. |
 
-## 🟢 Working (26)
+## 🟢 Working (27)
 
 | Application | Version / media | Verified task | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
@@ -44,6 +44,7 @@ program works. The full test history is in
 | [SemWare GREP](compatibility/details.md#semware-tse-250e) | bundled with TSE 2.50e | Finds exactly the two `apple` lines in the fixture. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [SemWare TSORT](compatibility/details.md#semware-tse-250e) | bundled with TSE 2.50e | Sorts four input lines into the expected order. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [TED](compatibility/details.md#ted) | 3.0 (1991) | Inserted `EDITED ` at the start of INPUT.TXT, saved with F7, exited, reopened it, and verified the exact 32 bytes on FAT16. | [evidence](compatibility/2026-10-25-text-editors-workflow.md) | 2026-10-25 |
+| [Turbo Pascal 3.0](compatibility/details.md#turbo-pascal-30) | 3.02A DOS IDE (Turbo Pascal 3.0 distribution) | Created HELLO.PAS in the IDE, saved it on FAT16, compiled and ran it (`TP3 works`), reopened the source, and exited to the ManiOS shell. | [evidence](compatibility/2026-10-25-turbo-pascal-test.md) | 2026-10-25 |
 | [utf8tocp](compatibility/details.md#utf8tocp-20240918) | 20240918, FD14 BonusCD | Exact UTF-8 ↔ CP437 and UTF-8 ↔ CP775 conversions, including Lithuanian letters and CRLF. | [transcript](compatibility/2026-10-23-search-utf8-basic.txt) | 2026-10-23 |
 | [VIEW](compatibility/details.md#view-172) | 17.2, `view.zip` | Original VIEW.DOC verified from start to EOF and back with PgDn/PgUp, Home/End, repeated F2 search and clean Esc. Console redraw corruption fixed. Historical 18% stall remains unreproduced; printing and other formats untested. | [screenshot](compatibility/2026-10-24-view-pgdn-3.png) | 2026-10-24 |
 | [VisiCalc](compatibility/details.md#visicalc) | `VC.COM`, 27,520 bytes; version unverified | Mode-2 worksheet renders; A1=10, B1=20 and C1=+A1+B1 (30) were saved as TEST.VC, the app exited cleanly, and a fresh launch reopened the sheet with the values and formula intact. | [transcript](compatibility/2026-10-24-visicalc-save-reopen-qemu.json) | 2026-10-24 |
@@ -99,11 +100,9 @@ program works. The full test history is in
 | [VIEWSEEK](compatibility/details.md#viewseek-31-auxiliary) | 3.1, VIEW package (auxiliary) | 🔴 **Broken** | Search reports no match for text that is present, then exits with `run-time error R6001`. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
 | [Warcraft: Orcs & Humans](compatibility/details.md#warcraft-orcs--humans) | 1994 DOS CD; exact patch unverified | 🔴 **Unsupported** | Extracted `war.exe` needs a DOS/4GW protected-mode payload; the installer stops on `OUT 43h` (`E6`). | [transcript](compatibility/2026-10-22-warcraft.txt) | 2026-10-23 |
 
-## ⚪ Untested (1)
+## ⚪ Untested (0)
 
-| Application | Version / media | Evidence | Last tested |
-| --- | --- | --- | --- |
-| [Turbo Pascal 3.0](compatibility/details.md#turbo-pascal-30) | 3.0 (1985) | [evidence](compatibility/2026-10-25-vintage-app-targets.md) | Not tested |
+No entries are currently untested.
 
 ## Scope and method
 

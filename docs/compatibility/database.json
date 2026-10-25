@@ -694,13 +694,13 @@
     {
       "id": "turbo-pascal-30",
       "name": "Turbo Pascal 3.0",
-      "version": "3.0 (1985)",
-      "status": "Untested",
+      "version": "3.02A DOS IDE (Turbo Pascal 3.0 distribution)",
+      "status": "Working",
       "kind": "application",
-      "summary": "Not run: the original Turbo Pascal 3.0 media was not available in the workspace.",
+      "summary": "Created HELLO.PAS in the IDE, saved it on FAT16, compiled and ran it (`TP3 works`), reopened the source, and exited to the ManiOS shell.",
       "anchor": "turbo-pascal-30",
-      "evidence": "2026-10-25-vintage-app-targets.md",
-      "last_tested": "Not tested"
+      "evidence": "2026-10-25-turbo-pascal-test.md",
+      "last_tested": "2026-10-25"
     },
     {
       "id": "edlin",

@@ -1734,8 +1734,8 @@ Earlier corrected reruns and remaining limitations are in the
 
 These ten targets were added from the user-supplied list. The tests below used
 archived evaluation versions that were available in the workspace. They are
-bounded application checks. QEdit and TED completed save/reopen verification;
-EDLIN input and terminal hardware workflows remain unverified. The per-program test record is
+bounded application checks. QEdit, TED and Turbo Pascal completed saved-file
+workflows; EDLIN input and terminal hardware workflows remain unverified. The per-program test record is
 [here](2026-10-25-vintage-app-tests.md); the original target list is
 [here](2026-10-25-vintage-app-targets.md).
 
@@ -1761,7 +1761,8 @@ EDLIN input and terminal hardware workflows remain unverified. The per-program t
 
 ### Turbo Pascal 3.0
 
-**Untested.** Tested version/media: 3.0 (1985). Not run: the original Turbo Pascal 3.0 media was not available in the workspace. [Target list](2026-10-25-vintage-app-targets.md).
+**Working.** The supplied Turbo Pascal 3.0 distribution reports IDE version 3.02A. Created, saved, compiled and ran `HELLO.PAS` (`TP3 works`), reopened the source, and exited to ManiOS. [Detailed test record and hashes](2026-10-25-turbo-pascal-test.md); [program output](2026-10-25-turbo-pascal-run.png); [reopened source](2026-10-25-turbo-pascal-reopened.png).
+
 
 ### EDLIN
 
