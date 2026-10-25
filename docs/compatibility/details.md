@@ -1806,17 +1806,18 @@ workflows; EDLIN input and terminal hardware workflows remain unverified. The pe
 
 ## MicroEMACS 3.9
 
-- **Acquisition:** the 1987 release notes identify `EMACSEXE.ARC` as the DOS executable package, with `MEIBM.EXE` for IBM PCs. The exact binary package was not obtained during this attempt.
-- **Result:** **Untested**; no later release was substituted.
-- **Evidence:** [source search record](2026-10-25-priority-apps.md).
+- **Acquisition:** downloaded the exact DOS executable archive [`em39exe.arc`](https://ftp.math.utah.edu/pub/ibmpc/em39exe.arc) from the Utah IBM PC archive. Its contents and dates include `MEIBM.EXE` (77,008 bytes, dated 17 July 1987), matching the 3.9 release notes. Archive SHA-256: `ecfefb169375b6db3c120d5a8334f9501c3e3f10b130fb2d3debed7dc564ce34`; executable SHA-256: `1252e4232867d408aca1d7baaae21cc9d8373f0e9d777f4689bd6839a1732f31`.
+- **Build and environment:** ManiOS 0.26.1-10252026, QEMU i386/486, 64 MiB RAM, disposable FAT16 hard disk; run through `dosrun`.
+- **Result:** `MEIBM.EXE C:/TEST.TXT` opened a new buffer, accepted text, saved it, and returned to ManiOS. Reopened the file, moved to its end, appended `!`, saved, exited cleanly, and reopened it again. The final FAT16 file bytes were exactly `hellomanios!\r\n` (14 bytes).
+- **Evidence:** [test record, commands and byte comparison](2026-10-25-microemacs-pc-outline.md).
 
 ## PC-Outline 3.34
 
 - **Acquisition:** user-supplied `pco334.zip`; `README.1` identifies PC-Outline 3.34. The archive contains `PCO.EXE` (73,315 bytes), documentation and sample outlines.
 - **Build and environment:** ManiOS 0.26.1-10252026, QEMU i386/486, 64 MiB RAM, serial console, disposable FAT16 disk.
-- **Command and input:** `dosrun C:/PCO.EXE`; dismissed the shareware screen, chose “Open a new outline”, and typed `TEST` into the new-outline filename dialog.
-- **Result:** the splash, opening menu and filename dialog render, and ordinary filename characters are accepted. Return did not submit the dialog; the program remained there. Return, keypad Enter and Ctrl+M were tried. The editor, content editing, save, clean close and reopen were not reached. No compatibility claim is made for those operations.
-- **Evidence:** [filename dialog after Return](2026-10-25-pc-outline-filename-prompt.png); [archive and test record](2026-10-25-priority-apps.md).
+- **Command and input:** `dosrun C:/PCO.EXE`; dismissed the shareware screen, chose “Open a new outline”, and typed `test` into the new-outline filename dialog.
+- **Result:** the splash, opening menu and filename dialog render, and ordinary filename characters are accepted. Return, keypad Enter and Ctrl+M did not submit the dialog; the program remained there. The editor, content editing, save, clean close and reopen were not reached. No compatibility claim is made for those operations.
+- **Evidence:** [filename dialog after Return](2026-10-25-pc-outline-filename-prompt.png); [follow-up test record](2026-10-25-microemacs-pc-outline.md); [archive and source notes](2026-10-25-priority-apps.md).
 
 ## PC-TYPE v1 DS
 
@@ -1828,6 +1829,5 @@ workflows; EDLIN input and terminal hardware workflows remain unverified. The pe
 
 ## PC-DeskTeam
 
-- **Acquisition:** historical PC-SIG metadata identifies disk 405 and `DESKTEAM.COM`; period documentation describes an organizer. The checked 13th-edition CD did not contain disk 405, and no executable was obtained.
-- **Result:** **Untested**; the specific release is unknown.
-- **Evidence:** [source search record](2026-10-25-priority-apps.md).
+- **Result:** **Untested** as requested because the required library component is unavailable. No launch or feature test was attempted.
+- **Evidence:** [test scope note](2026-10-25-microemacs-pc-outline.md); [catalog/source notes](2026-10-25-priority-apps.md).

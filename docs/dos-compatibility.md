@@ -2,7 +2,7 @@
 
 Last updated: **2026-10-25**. ManiOS version: **0.26.1-10252026**.
 
-**75 programs:** 🟢 **27 Working** · 🟡 **10 Partial** · 🔴 **36 Broken/unsupported** · ⚪ **2 Untested**
+**75 programs:** 🟢 **28 Working** · 🟡 **10 Partial** · 🔴 **36 Broken/unsupported** · ⚪ **1 Untested**
 
 This is task-specific coverage, not a compatibility percentage: a green
 entry means the listed task completed, not that every feature of the
@@ -18,7 +18,7 @@ program works. The full test history is in
 | 🔴 | Unsupported | A required CPU mode, subsystem or interface is missing. |
 | ⚪ | Untested | No current result. |
 
-## 🟢 Working (27)
+## 🟢 Working (28)
 
 | Application | Version / media | Verified task | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
@@ -37,6 +37,7 @@ program works. The full test history is in
 | [FreeDOS VCLS](compatibility/details.md#freedos-vcls) | FD14 BonusCD; version unverified | Reads the BIOS video geometry from the initialized BDA, clears the visible VGA text screen, and returns to the redrawn ManiOS prompt. | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
 | [Info-ZIP UnZip](compatibility/details.md#info-zip-unzip-600) | 6.00 (20 Apr 2009), DOS 16-bit large, `unz600x3.exe` | Lists and CRC-tests `KNOWN.ZIP`; extracts all four members including `SUB/THREE.TXT` with exact hashes; `-p` and `FUNZIP` print the correct text. | [transcript](compatibility/2026-10-23-compat4-infozip.txt) | 2026-10-23 |
 | [Life2](compatibility/details.md#life2) | text-mode Conway Life, `life2.zip` | Native timer IRQ0 delivery now executes the installed SOUND handler. Blinker horizontal/vertical/horizontal evolution and Q/Esc exit verified on a disposable FAT16 image. Working for pattern creation, RUN, verified blinker evolution and Q/Esc exit. One earlier marking run reported a BASIC runtime error; its cause remains unresolved. Other patterns/features remain untested. | [evidence](compatibility/2026-10-24-pit-irq0.md) | 2026-10-24 |
+| [MicroEMACS](compatibility/details.md#microemacs-39) | 3.9 (1987 DOS release) | Typed and edited `hellomanios!`, saved, exited and reopened it; FAT16 contents matched exactly (`hellomanios!` + CRLF). | [evidence](compatibility/2026-10-25-microemacs-pc-outline.md) | 2026-10-25 |
 | [QEdit](compatibility/details.md#qedit) | Advanced 2.15 (1991 shareware) | Inserted `EDITED ` at the start of INPUT.TXT, saved with Ctrl+K S, exited with Alt+X, reopened it, and verified the exact 32 bytes on FAT16. | [evidence](compatibility/2026-10-25-text-editors-workflow.md) | 2026-10-25 |
 | [SAL compiler SC](compatibility/details.md#semware-tse-250e) | 2.50e, bundled with TSE | Compiles a minimal macro to an 87-byte MAC with the expected signature and message. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [Search](compatibility/details.md#search-10a) | 1.0a, FD14 BonusCD | Finds both root and nested matches once; totals and the missing-file result are correct. | [transcript](compatibility/2026-10-23-search-utf8-basic.txt) | 2026-10-23 |
@@ -58,7 +59,7 @@ program works. The full test history is in
 | [EDLIN](compatibility/details.md#edlin) | FreeDOS EDLIN 2.24 | Opened the two-line fixture, but ignored both keyboard and serial input at the `*` prompt; edit, save, close and reopen could not be verified. | [evidence](compatibility/2026-10-25-text-editors-workflow.md) | 2026-10-25 |
 | [FreeDOS VCHOICE](compatibility/details.md#freedos-vchoice) | FD14 BonusCD; version unverified | Help, arrow+Enter, digit jump, and Escape passed using a shared B800 text screen; the /T 8 /D 1 timeout returned 0 instead of the default choice. | [transcript](compatibility/2026-10-25-dosrun-vchoice-deltree.txt) | 2026-10-25 |
 | [Microsoft Windows 1.01](compatibility/details.md#microsoft-windows-101) | 1.01, five 360 KB floppy images | Setup completes and writes `WIN.COM`/`WIN100.BIN`; startup prints `Incorrect DOS version` and faults; desktop unavailable. | [screenshot](compatibility/2026-10-23-retest-026-windows-start.png) | 2026-10-23 |
-| [PC-Outline](compatibility/details.md#pc-outline-334) | 3.34 (`pco334.zip`; README dated 1987) | Launches the shareware screen and opening menu and accepts a filename in the new-outline dialog, but Return is ignored; the editor, save and reopen were not reached. | [screenshot](compatibility/2026-10-25-pc-outline-filename-prompt.png) | 2026-10-25 |
+| [PC-Outline](compatibility/details.md#pc-outline-334) | 3.34 (`pco334.zip`; README dated 1987) | Shareware screen, menu and filename dialog work; typed `test`, but Enter, keypad Enter and Ctrl+M did not submit it, so editing and save/reopen remain unverified. | [evidence](compatibility/2026-10-25-microemacs-pc-outline.md) | 2026-10-25 |
 | [PC-Talk](compatibility/details.md#pc-talk) | PC-Talk III (1983–1985) | Displays the license/notice screen. A terminal session and modem or serial connection were not tested. | [screenshot](compatibility/2026-10-25-pc-talk.png) | 2026-10-25 |
 | [PC-TYPE](compatibility/details.md#pc-type-v1-ds) | v1 DS evaluation (Jim Button) | Starts a new blank document, but attempted `hello` input renders incorrectly as `qq`; editing and save/reopen are unverified. This is a word processor, not a typing tutor. | [evidence](compatibility/2026-10-25-priority-apps.md) | 2026-10-25 |
 | [PC-Write](compatibility/details.md#pc-write) | 3.03 (1989; PC-SIG disk 78) | Opened INPUT.TXT and displayed its two lines in the editor; editing, save and reopen were not tested. | [screenshot](compatibility/2026-10-25-pc-write.png) | 2026-10-25 |
@@ -106,12 +107,11 @@ program works. The full test history is in
 | [VIEWSEEK](compatibility/details.md#viewseek-31-auxiliary) | 3.1, VIEW package (auxiliary) | 🔴 **Broken** | Search reports no match for text that is present, then exits with `run-time error R6001`. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
 | [Warcraft: Orcs & Humans](compatibility/details.md#warcraft-orcs--humans) | 1994 DOS CD; exact patch unverified | 🔴 **Unsupported** | Extracted `war.exe` needs a DOS/4GW protected-mode payload; the installer stops on `OUT 43h` (`E6`). | [transcript](compatibility/2026-10-22-warcraft.txt) | 2026-10-23 |
 
-## ⚪ Untested (2)
+## ⚪ Untested (1)
 
 | Application | Version / media | Evidence | Last tested |
 | --- | --- | --- | --- |
-| [MicroEMACS](compatibility/details.md#microemacs-39) | 3.9 (1987 DOS release) | [evidence](compatibility/2026-10-25-priority-apps.md) | 2026-10-25 |
-| [PC-DeskTeam](compatibility/details.md#pc-deskteam) | PC-SIG disk 405 (DESKTEAM.COM; version unverified) | [evidence](compatibility/2026-10-25-priority-apps.md) | 2026-10-25 |
+| [PC-DeskTeam](compatibility/details.md#pc-deskteam) | PC-SIG disk 405 (DESKTEAM.COM; version unverified) | [evidence](compatibility/2026-10-25-microemacs-pc-outline.md) | 2026-10-25 |
 
 ## Scope and method
 

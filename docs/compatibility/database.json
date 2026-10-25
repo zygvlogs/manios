@@ -794,11 +794,11 @@
       "id": "microemacs-39",
       "name": "MicroEMACS",
       "version": "3.9 (1987 DOS release)",
-      "status": "Untested",
+      "status": "Working",
       "kind": "application",
-      "summary": "The exact DOS 3.9 executable package (`EMACSEXE.ARC`) was not found in available mirrors; no substitute version was tested.",
+      "summary": "Typed and edited `hellomanios!`, saved, exited and reopened it; FAT16 contents matched exactly (`hellomanios!` + CRLF).",
       "anchor": "microemacs-39",
-      "evidence": "2026-10-25-priority-apps.md",
+      "evidence": "2026-10-25-microemacs-pc-outline.md",
       "last_tested": "2026-10-25"
     },
     {
@@ -807,9 +807,9 @@
       "version": "3.34 (`pco334.zip`; README dated 1987)",
       "status": "Partial",
       "kind": "application",
-      "summary": "Launches the shareware screen and opening menu and accepts a filename in the new-outline dialog, but Return is ignored; the editor, save and reopen were not reached.",
+      "summary": "Shareware screen, menu and filename dialog work; typed `test`, but Enter, keypad Enter and Ctrl+M did not submit it, so editing and save/reopen remain unverified.",
       "anchor": "pc-outline-334",
-      "evidence": "2026-10-25-pc-outline-filename-prompt.png",
+      "evidence": "2026-10-25-microemacs-pc-outline.md",
       "last_tested": "2026-10-25"
     },
     {
@@ -829,9 +829,9 @@
       "version": "PC-SIG disk 405 (DESKTEAM.COM; version unverified)",
       "status": "Untested",
       "kind": "application",
-      "summary": "PC-SIG and period catalogs confirm the package and its organizer features, but the disk image or executable was not obtainable from the available archive mirrors.",
+      "summary": "Untested as requested: the required library component is unavailable; no launch or feature test was attempted.",
       "anchor": "pc-deskteam",
-      "evidence": "2026-10-25-priority-apps.md",
+      "evidence": "2026-10-25-microemacs-pc-outline.md",
       "last_tested": "2026-10-25"
     }
   ],
