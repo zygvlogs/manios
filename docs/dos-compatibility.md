@@ -2,7 +2,7 @@
 
 Last updated: **2026-10-25**. ManiOS version: **0.26.1-10252026**.
 
-**140 programs:** 🟢 **63 Working** · 🟡 **21 Partial** · 🔴 **55 Broken/unsupported** · ⚪ **1 Untested**
+**150 programs:** 🟢 **64 Working** · 🟡 **24 Partial** · 🔴 **61 Broken/unsupported** · ⚪ **1 Untested**
 
 This is task-specific coverage, not a compatibility percentage: a green
 entry means the listed task completed, not that every feature of the
@@ -18,7 +18,7 @@ program works. The full test history is in
 | 🔴 | Unsupported | A required CPU mode, subsystem or interface is missing. |
 | ⚪ | Untested | No current result. |
 
-## 🟢 Working (63)
+## 🟢 Working (64)
 
 | Application | Version / media | Verified task | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
@@ -76,6 +76,7 @@ program works. The full test history is in
 | [SemWare GREP](compatibility/details.md#semware-tse-250e) | bundled with TSE 2.50e | Finds exactly the two `apple` lines in the fixture. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [SemWare TSORT](compatibility/details.md#semware-tse-250e) | bundled with TSE 2.50e | Sorts four input lines into the expected order. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [SQPC](compatibility/details.md#sqpc-131) | 1.31 (Vernon D. Buerg; 1987-06-25 archive) | Squeezed and unsqueezed a mixed text/binary fixture; restored FAT16 bytes matched the source exactly. | [evidence](compatibility/2026-10-25-batch-101-110.md) | 2026-10-25 |
+| [STATUS](compatibility/details.md#status) | 2.01 (1987-04-20) | Displays BIOS equipment-switch meanings and detected memory, DOS and device values. | [evidence](compatibility/2026-10-25-batch-141-150.md) | 2026-10-25 |
 | [TED](compatibility/details.md#ted) | 3.0 (1991) | Inserted `EDITED ` at the start of INPUT.TXT, saved with F7, exited, reopened it, and verified the exact 32 bytes on FAT16. | [evidence](compatibility/2026-10-25-text-editors-workflow.md) | 2026-10-25 |
 | [Turbo Pascal 3.0](compatibility/details.md#turbo-pascal-30) | 3.02A DOS IDE (Turbo Pascal 3.0 distribution) | Created HELLO.PAS in the IDE, saved it on FAT16, compiled and ran it (`TP3 works`), reopened the source, and exited to the ManiOS shell. | [evidence](compatibility/2026-10-25-turbo-pascal-test.md) | 2026-10-25 |
 | [UNUSUAL](compatibility/details.md#unusual) | 1988 archive | Recursively scanned the FAT16 tree and reported no unusual (hidden, system, or read-only) files in the clean test image. | [evidence](compatibility/2026-10-25-batch-130-139.md) | 2026-10-25 |
@@ -86,7 +87,7 @@ program works. The full test history is in
 | [WORDCNT](compatibility/details.md#wordcnt) | version unverified (1989 archive) | Counted three words across two input lines. | [evidence](compatibility/2026-10-25-batch-120-129.md) | 2026-10-25 |
 | [Zork I: The Great Underground Empire](compatibility/details.md#zork-i-the-great-underground-empire) | MIT historicalsource release, `zork1.z3` (86,838 bytes), ZIP 2.00 | ZIP 2.00 starts the story; room text, commands, inventory, score, save/restore and quit work. The status line still clips its right edge. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
 
-## 🟡 Partial (21)
+## 🟡 Partial (24)
 
 | Application | Version / media | Partial result | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
@@ -97,11 +98,13 @@ program works. The full test history is in
 | [Checks & Balances](compatibility/details.md#checks--balances) | 4.0g (1986), two 360 KB floppies | Configuration and the supplied DEMO work (`TRUE $2450.20`, `BANK $279.04`); ledger entry, save and reopen are unverified. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [COMHEX](compatibility/details.md#comhex) | `COMHEX.COM`; package version unverified | Prompts for a COM basename, but aborts with Pascal `I/O error 99` and leaves a zero-byte HEX file; conversion did not complete. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
 | [CONCAT](compatibility/details.md#concat) | 1.0 (1989-05-01) | Read both input files but prefixed each file’s contents with its filename, unlike the documented raw concatenation. | [evidence](compatibility/2026-10-25-batch-101-110.md) | 2026-10-25 |
+| [DELETEM](compatibility/details.md#deletem) | 1.0 (1988-02-15 archive) | The program displayed its delete banner and “DELETING DELETE.TMP,” but the temporary file remained after the bounded keyboard-input attempt. | [evidence](compatibility/2026-10-25-batch-141-150.md) | 2026-10-25 |
 | [DiskMenu](compatibility/details.md#diskmenu) | 1.0 (1992) | DMC compiles `SAMPLE.SRC` into `SAMPLE.MNU` and DMENU starts, but its menu display is corrupted in the screen capture; usable selection was not confirmed. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [EDLIN](compatibility/details.md#edlin) | FreeDOS EDLIN 2.24 | Opened the two-line fixture, but ignored both keyboard and serial input at the `*` prompt; edit, save, close and reopen could not be verified. | [evidence](compatibility/2026-10-25-text-editors-workflow.md) | 2026-10-25 |
 | [Fast File Compare](compatibility/details.md#fast-file-compare) | version unverified (1988-03-09 archive) | Compared two differing FAT16 text files and identified file 2 as longer, then displayed differing byte positions; the serial display did not allow an exact audit of its reported difference count. | [evidence](compatibility/2026-10-25-batch-130-139.md) | 2026-10-25 |
 | [FINDSTR](compatibility/details.md#findstr-101) | 1.01 (1986-08-05) | Starts and displays its search-pattern prompt, but keyboard-entered query lines did not produce a search result. | [evidence](compatibility/2026-10-25-batch-120-129.md) | 2026-10-25 |
 | [FreeDOS VCHOICE](compatibility/details.md#freedos-vchoice) | FD14 BonusCD; version unverified | Help, arrow+Enter, digit jump, and Escape passed using a shared B800 text screen; the /T 8 /D 1 timeout returned 0 instead of the default choice. | [transcript](compatibility/2026-10-25-dosrun-vchoice-deltree.txt) | 2026-10-25 |
+| [MemMap](compatibility/details.md#memmap) | 2 (1989-05 archive) | Displays its memory-map heading/table but stops on unsupported `INTO` at 0000:0001 before listing memory blocks. | [evidence](compatibility/2026-10-25-batch-141-150.md) | 2026-10-25 |
 | [MENU](compatibility/details.md#menu) | 2.0 (archive `dosmenu.zip`) | The six-item menu renders legibly and the `F` exit choice returns to ManiOS; menu DOS-command execution was not verified. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [Microsoft Windows 1.01](compatibility/details.md#microsoft-windows-101) | 1.01, five 360 KB floppy images | Setup completes and writes `WIN.COM`/`WIN100.BIN`; startup prints `Incorrect DOS version` and faults; desktop unavailable. | [screenshot](compatibility/2026-10-23-retest-026-windows-start.png) | 2026-10-23 |
 | [PC-Outline](compatibility/details.md#pc-outline-334) | 3.34 (`pco334.zip`; README dated 1987) | Shareware screen, menu and filename dialog work; typed `test`, but Enter, keypad Enter and Ctrl+M did not submit it, so editing and save/reopen remain unverified. | [evidence](compatibility/2026-10-25-microemacs-pc-outline.md) | 2026-10-25 |
@@ -109,10 +112,11 @@ program works. The full test history is in
 | [PC-TYPE](compatibility/details.md#pc-type-v1-ds) | v1 DS evaluation (Jim Button) | Starts a new blank document, but attempted `hello` input renders incorrectly as `qq`; editing and save/reopen are unverified. This is a word processor, not a typing tutor. | [evidence](compatibility/2026-10-25-priority-apps.md) | 2026-10-25 |
 | [PC-Write](compatibility/details.md#pc-write) | 3.03 (1989; PC-SIG disk 78) | Opened INPUT.TXT and displayed its two lines in the editor; editing, save and reopen were not tested. | [screenshot](compatibility/2026-10-25-pc-write.png) | 2026-10-25 |
 | [Planetfall (Infocom Sampler demo)](compatibility/details.md#planetfall-infocom-sampler-demo) | official 1984 Infocom Sampler, `sampler1_R26.z3` (112,610 bytes) | The sampler starts and accepts `planet`, but the Planetfall sample text does not render past its first line under ZIP/JZIP; full-game testing was skipped for licensing. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
+| [SHOW](compatibility/details.md#show) | 3.14 (1989-07-25 archive) | No-argument invocation displays the documented command/help list. Requesting `SHOW PC` stops at unsupported `OUT` port 0070. | [evidence](compatibility/2026-10-25-batch-141-150.md) | 2026-10-25 |
 | [u16](compatibility/details.md#u16-12) | 1.2 (1989) | The documented -H help works; decompression of a .Z file was not verified. | [evidence](compatibility/2026-10-25-batch-111-119.md) | 2026-10-25 |
 | [uHex](compatibility/details.md#uhex-104) | 1.0.4 DOS | Help and the 34-byte read-only view work, with display defects; editing, save and reopen are unverified. | [screenshot](compatibility/2026-10-23-retest-026-uhex.png) | 2026-10-23 |
 
-## 🔴 Broken and unsupported (55)
+## 🔴 Broken and unsupported (61)
 
 | Application | Version / media | Status | Blocker | Evidence | Last tested |
 | --- | --- | --- | --- | --- | --- |
@@ -132,12 +136,14 @@ program works. The full test history is in
 | [CONVERT-IT](compatibility/details.md#convert-it) | version unverified (archive dated 1989) | 🔴 **Broken** | The documented conversion menu did not appear; the executable returned to the shell immediately. | [evidence](compatibility/2026-10-25-batch-120-129.md) | 2026-10-25 |
 | [COPYEM](compatibility/details.md#copyem) | 1.0 (1988-02-15 archive) | 🔴 **Unsupported** | The copy menu begins, but execution stops on unsupported VGA OUT port 03D4 at 10D4:058C before a copy can be verified. | [evidence](compatibility/2026-10-25-batch-130-139.md) | 2026-10-25 |
 | [Costa GUI](compatibility/details.md#costa-gui-180) | 1.8.0, `costa180.zip` | 🔴 **Unsupported** | After PIC support, `DESKTOP.EXE` reaches COSTALIB but stops with `Illegal function call` at `15CA:2E00`; no usable desktop. | [transcript](compatibility/2026-10-23-10232026-retest.txt) | 2026-10-23 |
+| [CPUID](compatibility/details.md#cpuid) | 5.93 (1991-07-02 archive) | 🔴 **Unsupported** | CPU identification stops on unsupported opcode `66` at 1000:0258. | [evidence](compatibility/2026-10-25-batch-141-150.md) | 2026-10-25 |
 | [CQvert](compatibility/details.md#cqvert) | 95.7.1 (1995-08-13 archive) | 🔴 **Unsupported** | The WWW-form conversion does not start: ManiOS reports unsupported VGA `OUT` port 03D4 at 115C:058D. | [evidence](compatibility/2026-10-25-batch-130-139.md) | 2026-10-25 |
 | [DATES](compatibility/details.md#dates-200208) | 2002.08, `DATE0208.ZIP` | 🔴 **Unsupported** | After PIC support, startup faults on opcode `FF` at `0A34:5CD8`; no date list or usage screen. | [transcript](compatibility/2026-10-23-10232026-retest.txt) | 2026-10-23 |
 | [DIARY](compatibility/details.md#diary) | `DIARY.COM`; version unverified (archive dated 1996-08-19) | 🔴 **Broken** | Launch created the requested FAT16 output file, but it remained zero bytes instead of appending the date/time and text. | [evidence](compatibility/2026-10-25-catalog-utility-tests.md) | 2026-10-25 |
 | [Directory Maven](compatibility/details.md#directory-maven-13) | 1.3 | 🔴 **Unsupported** | The scan path stops on `66h`; help stops at `IN AL,DX`. | [transcript](compatibility/2026-10-23-maven.txt) | 2026-10-23 |
 | [DOS Navigator](compatibility/details.md#dos-navigator) | 1.51 (RIT Labs freeware) | 🔴 **Broken** | Process remains active, but the display contains only the ManiOS banner and a blank screen; no usable file manager UI appeared. | [screenshot](compatibility/2026-10-25-dos-navigator.png) | 2026-10-25 |
 | [DOSCAT](compatibility/details.md#doscat) | 1988 manual; no executable included | 🔴 **Unsupported** | The archive is a text-only DOSCAT how-to, not a runnable utility; its documented `DIR B:` step fails because ManiOS shell has no `dir` command. | [evidence](compatibility/2026-10-25-catalog-utility-tests.md) | 2026-10-25 |
+| [DOSINFO](compatibility/details.md#dosinfo) | 1.3 (1996-02-19 archive) | 🔴 **Unsupported** | Starts its banner, then stops on unsupported VGA `OUT` port 03D4 at 11EC:0598. | [evidence](compatibility/2026-10-25-batch-141-150.md) | 2026-10-25 |
 | [DOSStart](compatibility/details.md#dosstart-19b) | 1.9b build 7.08.2002, `dosstart.zip` | 🔴 **Unsupported** | `DANSHELL.EXE` stops on `IN AL,21h` at `1FBB:6B78`; no launcher screen. | [transcript](compatibility/2026-10-23-compat4-extra.txt) | 2026-10-23 |
 | [Dr Mind Lite](compatibility/details.md#dr-mind-lite) | LITE variant, 2019, `drlite.zip` | 🔴 **Unsupported** | Stops on `OUT 0x3C8` (VGA DAC palette) at `1010:02CA`; no game board. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
 | [DRCS-VeCalc](compatibility/details.md#drcs-vecalc) | 1.11 (1989) | 🔴 **Broken** | The documented startup command returns immediately to the ManiOS shell; no calculator UI or first-run `VEC.DAT` appears. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
@@ -154,6 +160,7 @@ program works. The full test history is in
 | [Info-ZIP Zip](compatibility/details.md#info-zip-zip-232) | 2.32, 16-bit and 32-bit DOS builds, `zip232x.zip` | 🔴 **Unsupported** | 16-bit builds stop at `0000:0001` (`E5`/`EF`); the 32-bit build reports `no DPMI`; no archive is created. | [transcript](compatibility/2026-10-23-compat4-infozip.txt) | 2026-10-23 |
 | [KyCalc Scientific Vector Calculator](compatibility/details.md#kycalc-scientific-vector-calculator) | 2.07 (1987) | 🔴 **Unsupported** | Nonresident startup (`/n`) stops at unsupported x87 opcode `DB` before the calculator screen opens. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [Mahjong!](compatibility/details.md#mahjong) | 1996/1997 SoftSpot, `mahjong.zip` | 🔴 **Unsupported** | Stops on operand-size prefix `66h` at `101D:0990`; no screen. The package requires SVGA 1024x768 VESA graphics and a mouse. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
+| [MEM](compatibility/details.md#mem) | 3.0 (1988-04-04 archive) | 🔴 **Unsupported** | Stops on unsupported VGA `OUT` port 03D4 before its memory and drive report is complete. | [evidence](compatibility/2026-10-25-batch-141-150.md) | 2026-10-25 |
 | [MenuMate](compatibility/details.md#menumate) | 2.1 (1992–1994) | 🔴 **Unsupported** | The program reports that MS-DOS 5.0 or newer is required, then stops on unsupported VGA CRTC I/O port `03D4`; no menu opens. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [Microsoft BASIC](compatibility/details.md#microsoft-basic-528) | 5.28 (MSBASIC.COM, 1983-05-24) | 🔴 **Broken** | The tested COM binary returns to the ManiOS shell without a BASIC prompt or usable screen. | [evidence](compatibility/2026-10-25-basic-tests.md) | 2026-10-25 |
 | [Mine Mayhem](compatibility/details.md#mine-mayhem) | freeware by Jason Hood, `minemay.zip` | 🔴 **Unsupported** | Stops on operand-size prefix `66h` at `1426:2DC3`; no screen. The executable is a DJGPP/go32 build. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
@@ -165,12 +172,15 @@ program works. The full test history is in
 | [PC-File](compatibility/details.md#pc-file) | PC-File+ (PC-SIG disk 5; release unverified) | 🔴 **Unsupported** | The executable stops at unsupported opcode F0 (0000:0024) before a usable database screen opens. | [evidence](compatibility/2026-10-25-vintage-app-tests.md) | 2026-10-25 |
 | [PEDIT](compatibility/details.md#pedit-400) | 4.00 standard and Light | 🔴 **Unsupported** | Both variants stop on the operand-size prefix `66h`; no editable document. | [transcript](compatibility/2026-10-23-catalog.txt) | 2026-10-23 |
 | [ShuffleV](compatibility/details.md#shufflev) | 1.1 (2000), `shufflev.zip` | 🔴 **Unsupported** | Turbo Vision board renders, then stops on opcode `66h` at `1C36:07FD`; no move is possible. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
+| [SPACE](compatibility/details.md#space) | version unverified (1987-08-02 archive) | 🔴 **Unsupported** | Prints its banner, then stops on unsupported `AAM` at 1078:1D01 before reporting free space. | [evidence](compatibility/2026-10-25-batch-141-150.md) | 2026-10-25 |
 | [Spectra](compatibility/details.md#spectra-10) | 1.0, `spec10.zip` | 🔴 **Unsupported** | `HITECH.EXE` stops on `IN AL,21h` at `1345:2710`; no GUI. | [transcript](compatibility/2026-10-23-compat4-extra.txt) | 2026-10-23 |
+| [SYSID](compatibility/details.md#sysid) | 5.2 (1991-11-21 archive) | 🔴 **Unsupported** | The multi-screen system survey stops on unsupported VGA `OUT` port 03D4 at 1B33:058C. | [evidence](compatibility/2026-10-25-batch-141-150.md) | 2026-10-25 |
 | [TypeFast](compatibility/details.md#typefast) | typing drill, `typefast.zip` | 🔴 **Broken** | Starts and remains running, but the console stays blank; no prompts or game screen appear, so no task is completed. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
 | [VDE](compatibility/details.md#vde-197-and-165a) | 1.97 and 1.65a DOS releases | 🔴 **Unsupported** | Both versions stop at startup with `Insufficient memory!`; no document editing or FAT16 save/reopen was reached. | [evidence](compatibility/2026-10-25-priority-apps.md) | 2026-10-25 |
 | [Vern Buerg LIST](compatibility/details.md#vern-buerg-list-71a) | 7.1a (`LIST.COM`) | 🔴 **Unsupported** | Stops on unsupported 8086 instruction AAM at `1000:35F7` before the file viewer opens. | [evidence](compatibility/2026-10-25-priority-apps.md) | 2026-10-25 |
 | [VIEWSEEK](compatibility/details.md#viewseek-31-auxiliary) | 3.1, VIEW package (auxiliary) | 🔴 **Broken** | Search reports no match for text that is present, then exits with `run-time error R6001`. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
 | [Warcraft: Orcs & Humans](compatibility/details.md#warcraft-orcs--humans) | 1994 DOS CD; exact patch unverified | 🔴 **Unsupported** | Extracted `war.exe` needs a DOS/4GW protected-mode payload; the installer stops on `OUT 43h` (`E6`). | [transcript](compatibility/2026-10-22-warcraft.txt) | 2026-10-23 |
+| [WHATUHAV](compatibility/details.md#whatuhav) | 1985 (archive dated 1987-08-15) | 🔴 **Unsupported** | The executable stops on unsupported `INT3` at 1010:0045 before the hardware inventory appears. | [evidence](compatibility/2026-10-25-batch-141-150.md) | 2026-10-25 |
 
 ## ⚪ Untested (1)
 

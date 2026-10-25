@@ -2212,3 +2212,65 @@ Six user-listed COAST archives were tested. Full commands, archive hashes and li
 - **Tested:** dosrun C:/VTREEHP.COM C:.
 - **Observed:** Displayed the root and nested directories including PCW, DN, GALAXY, and NESTED.
 - **Status:** **Working**. Full archive hash and test record: [batch report](2026-10-25-batch-130-139.md#vtreehp).
+
+## DOS compatibility marathon: applications 141–150
+
+### CPUID
+
+- **Tested:** dosrun C:/CPUID.COM.
+- **Observed:** ManiOS reported unsupported opcode 66 before CPU identification completed.
+- **Status:** **Unsupported**. Full archive hash and test record: [batch report](2026-10-25-batch-141-150.md#cpuid-593).
+
+### DOSINFO
+
+- **Tested:** dosrun C:/DOSINFO.EXE.
+- **Observed:** Printed the DOSINFO 1.3 banner; the executor then rejected VGA OUT port 03D4 before the information display.
+- **Status:** **Unsupported**. Full archive hash and test record: [batch report](2026-10-25-batch-141-150.md#dosinfo-13).
+
+### MEM
+
+- **Tested:** dosrun C:/MEM.EXE.
+- **Observed:** Printed partial screen characters, then failed on VGA OUT port 03D4 at 11E2:05D7.
+- **Status:** **Unsupported**. Full archive hash and test record: [batch report](2026-10-25-batch-141-150.md#mem-30).
+
+### MemMap
+
+- **Tested:** dosrun C:/MEMMAP.EXE.
+- **Observed:** The Version 2 title and table headers appeared; the executor then stopped on unsupported INTO at 0000:0001.
+- **Status:** **Partial**. Full archive hash and test record: [batch report](2026-10-25-batch-141-150.md#memmap-2).
+
+### SHOW
+
+- **Tested:** dosrun C:/SHOW.EXE; dosrun C:/SHOW.EXE PC.
+- **Observed:** The no-argument help listed supported topics; the PC query failed at unsupported OUT port 0070 (`1010:31E6`).
+- **Status:** **Partial**. Full archive hash and test record: [batch report](2026-10-25-batch-141-150.md#show-314).
+
+### SPACE
+
+- **Tested:** dosrun C:/SPACE.EXE.
+- **Observed:** Displayed “Please Wait...” and the SASSCO utility banner, then failed on AAM.
+- **Status:** **Unsupported**. Full archive hash and test record: [batch report](2026-10-25-batch-141-150.md#space-3).
+
+### SYSID
+
+- **Tested:** dosrun C:/SYSID.EXE.
+- **Observed:** The first screen began (“Working...”), then the executor rejected VGA OUT port 03D4.
+- **Status:** **Unsupported**. Full archive hash and test record: [batch report](2026-10-25-batch-141-150.md#sysid-52).
+
+### STATUS
+
+- **Tested:** dosrun C:/STATUS21.COM; Esc.
+- **Observed:** Printed the documented switch map and reported one parallel port, one serial port, 2304K conventional memory total/1024K free, no extended or expanded memory, DOS 4.00, and BIOS version. Escape returned control.
+- **Status:** **Working**. Full archive hash and test record: [batch report](2026-10-25-batch-141-150.md#status-21).
+
+### WHATUHAV
+
+- **Tested:** dosrun C:/W.EXE.
+- **Observed:** ManiOS reported unsupported INT3 before displaying the inventory.
+- **Status:** **Unsupported**. Full archive hash and test record: [batch report](2026-10-25-batch-141-150.md#whathav).
+
+### DELETEM
+
+- **Tested:** dosrun C:/DELETEM.EXE DELETE.TMP; attempted drive selection and confirmation.
+- **Observed:** Displayed the delete attempt, but host-side FAT inspection still found DELETE.TMP. The deletion interaction did not complete.
+- **Status:** **Partial**. Full archive hash and test record: [batch report](2026-10-25-batch-141-150.md#deletem-10).

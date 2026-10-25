@@ -1548,6 +1548,116 @@
       "anchor": "vtreehp",
       "evidence": "2026-10-25-batch-130-139.md",
       "last_tested": "2026-10-25"
+    },
+    {
+      "id": "cpuid-593",
+      "name": "CPUID",
+      "version": "5.93 (1991-07-02 archive)",
+      "status": "Unsupported",
+      "kind": "system-information",
+      "summary": "CPU identification stops on unsupported opcode `66` at 1000:0258.",
+      "anchor": "cpuid",
+      "evidence": "2026-10-25-batch-141-150.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "dosinfo-13",
+      "name": "DOSINFO",
+      "version": "1.3 (1996-02-19 archive)",
+      "status": "Unsupported",
+      "kind": "system-information",
+      "summary": "Starts its banner, then stops on unsupported VGA `OUT` port 03D4 at 11EC:0598.",
+      "anchor": "dosinfo",
+      "evidence": "2026-10-25-batch-141-150.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "mem-30",
+      "name": "MEM",
+      "version": "3.0 (1988-04-04 archive)",
+      "status": "Unsupported",
+      "kind": "system-information",
+      "summary": "Stops on unsupported VGA `OUT` port 03D4 before its memory and drive report is complete.",
+      "anchor": "mem",
+      "evidence": "2026-10-25-batch-141-150.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "memmap-2",
+      "name": "MemMap",
+      "version": "2 (1989-05 archive)",
+      "status": "Partial",
+      "kind": "system-information",
+      "summary": "Displays its memory-map heading/table but stops on unsupported `INTO` at 0000:0001 before listing memory blocks.",
+      "anchor": "memmap",
+      "evidence": "2026-10-25-batch-141-150.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "show-314",
+      "name": "SHOW",
+      "version": "3.14 (1989-07-25 archive)",
+      "status": "Partial",
+      "kind": "system-information",
+      "summary": "No-argument invocation displays the documented command/help list. Requesting `SHOW PC` stops at unsupported `OUT` port 0070.",
+      "anchor": "show",
+      "evidence": "2026-10-25-batch-141-150.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "space-3",
+      "name": "SPACE",
+      "version": "version unverified (1987-08-02 archive)",
+      "status": "Unsupported",
+      "kind": "system-information",
+      "summary": "Prints its banner, then stops on unsupported `AAM` at 1078:1D01 before reporting free space.",
+      "anchor": "space",
+      "evidence": "2026-10-25-batch-141-150.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "sysid-52",
+      "name": "SYSID",
+      "version": "5.2 (1991-11-21 archive)",
+      "status": "Unsupported",
+      "kind": "system-information",
+      "summary": "The multi-screen system survey stops on unsupported VGA `OUT` port 03D4 at 1B33:058C.",
+      "anchor": "sysid",
+      "evidence": "2026-10-25-batch-141-150.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "status-21",
+      "name": "STATUS",
+      "version": "2.01 (1987-04-20)",
+      "status": "Working",
+      "kind": "system-information",
+      "summary": "Displays BIOS equipment-switch meanings and detected memory, DOS and device values.",
+      "anchor": "status",
+      "evidence": "2026-10-25-batch-141-150.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "whathav",
+      "name": "WHATUHAV",
+      "version": "1985 (archive dated 1987-08-15)",
+      "status": "Unsupported",
+      "kind": "system-information",
+      "summary": "The executable stops on unsupported `INT3` at 1010:0045 before the hardware inventory appears.",
+      "anchor": "whatuhav",
+      "evidence": "2026-10-25-batch-141-150.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "deletem-10",
+      "name": "DELETEM",
+      "version": "1.0 (1988-02-15 archive)",
+      "status": "Partial",
+      "kind": "file-utility",
+      "summary": "The program displayed its delete banner and “DELETING DELETE.TMP,” but the temporary file remained after the bounded keyboard-input attempt.",
+      "anchor": "deletem",
+      "evidence": "2026-10-25-batch-141-150.md",
+      "last_tested": "2026-10-25"
     }
   ],
   "status_colors": {
