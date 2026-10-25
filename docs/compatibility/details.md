@@ -1787,3 +1787,45 @@ workflows; EDLIN input and terminal hardware workflows remain unverified. The pe
 ### Microsoft BASIC 5.28
 
 **Broken.** The supplied `MSBASIC.COM` returns to the ManiOS shell without a BASIC prompt or usable screen. [Test record](2026-10-25-basic-tests.md); [screenshot](2026-10-25-ms-basic-return.png).
+
+
+## VDE 1.97 and 1.65a
+
+- **Build and environment:** ManiOS 0.26.1-10252026, QEMU i386/486, 64 MiB RAM, serial console, disposable FAT16 disk.
+- **Versions:** VDE 1.97 (`VDE.EXE`) and VDE 1.65a (`VDE.COM`), both downloaded from Internet Archive.
+- **Commands:** `dosrun C:/VDE.EXE` and `dosrun C:/VDE.COM`.
+- **Result:** both print `Insufficient memory!` and return to the shell. No editor session or file operation was reached.
+- **Evidence and hashes:** [acquisition and run record](2026-10-25-priority-apps.md).
+
+## Vern Buerg LIST 7.1a
+
+- **Build and environment:** ManiOS 0.26.1-10252026, QEMU i386/486, 64 MiB RAM, serial console, disposable FAT16 disk.
+- **Command:** `dosrun C:/LIST.COM C:/INPUT.TXT`.
+- **Result:** `dosrun` stops at unsupported instruction AAM at `1000:35F7`; the viewer does not open.
+- **Evidence and hash:** [acquisition and run record](2026-10-25-priority-apps.md).
+
+## MicroEMACS 3.9
+
+- **Acquisition:** the 1987 release notes identify `EMACSEXE.ARC` as the DOS executable package, with `MEIBM.EXE` for IBM PCs. The exact binary package was not obtained during this attempt.
+- **Result:** **Untested**; no later release was substituted.
+- **Evidence:** [source search record](2026-10-25-priority-apps.md).
+
+## PC-Outline 3.34
+
+- **Acquisition:** period references identify PC-SIG disk 480, but no disk image or executable was obtained during this attempt.
+- **Result:** **Untested**.
+- **Evidence:** [source search record](2026-10-25-priority-apps.md).
+
+## PC-TYPE v1 DS
+
+- **Identification:** Jim Button's PC-TYPE evaluation archive; documentation describes a word processor. It is not a typing tutor.
+- **Build and environment:** ManiOS 0.26.1-10252026, QEMU i386/486, 64 MiB RAM, serial console, disposable FAT16 disk.
+- **Command:** `dosrun C:/PCTYPE.EXE`.
+- **Result:** enters a blank new document. After Enter and attempted `hello`, the captured display contained `qq`; text editing and persistence were not verified.
+- **Evidence and hash:** [acquisition and run record](2026-10-25-priority-apps.md).
+
+## PC-DeskTeam
+
+- **Acquisition:** historical PC-SIG metadata identifies disk 405 and `DESKTEAM.COM`; period documentation describes an organizer. The checked 13th-edition CD did not contain disk 405, and no executable was obtained.
+- **Result:** **Untested**; the specific release is unknown.
+- **Evidence:** [source search record](2026-10-25-priority-apps.md).

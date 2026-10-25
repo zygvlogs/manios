@@ -767,6 +767,72 @@
       "anchor": "microsoft-basic-528",
       "evidence": "2026-10-25-basic-tests.md",
       "last_tested": "2026-10-25"
+    },
+    {
+      "id": "vde",
+      "name": "VDE",
+      "version": "1.97 and 1.65a DOS releases",
+      "status": "Unsupported",
+      "kind": "application",
+      "summary": "Both versions stop at startup with `Insufficient memory!`; no document editing or FAT16 save/reopen was reached.",
+      "anchor": "vde-197-and-165a",
+      "evidence": "2026-10-25-priority-apps.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "vern-buerg-list",
+      "name": "Vern Buerg LIST",
+      "version": "7.1a (`LIST.COM`)",
+      "status": "Unsupported",
+      "kind": "application",
+      "summary": "Stops on unsupported 8086 instruction AAM at `1000:35F7` before the file viewer opens.",
+      "anchor": "vern-buerg-list-71a",
+      "evidence": "2026-10-25-priority-apps.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "microemacs-39",
+      "name": "MicroEMACS",
+      "version": "3.9 (1987 DOS release)",
+      "status": "Untested",
+      "kind": "application",
+      "summary": "The exact DOS 3.9 executable package (`EMACSEXE.ARC`) was not found in available mirrors; no substitute version was tested.",
+      "anchor": "microemacs-39",
+      "evidence": "2026-10-25-priority-apps.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "pc-outline-334",
+      "name": "PC-Outline",
+      "version": "3.34 (PC-SIG disk 480)",
+      "status": "Untested",
+      "kind": "application",
+      "summary": "Historical catalogs identify the version and disk number, but the disk image or executable was not obtainable from the available archive mirrors.",
+      "anchor": "pc-outline-334",
+      "evidence": "2026-10-25-priority-apps.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "pc-type",
+      "name": "PC-TYPE",
+      "version": "v1 DS evaluation (Jim Button)",
+      "status": "Partial",
+      "kind": "application",
+      "summary": "Starts a new blank document, but attempted `hello` input renders incorrectly as `qq`; editing and save/reopen are unverified. This is a word processor, not a typing tutor.",
+      "anchor": "pc-type-v1-ds",
+      "evidence": "2026-10-25-priority-apps.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "pc-deskteam",
+      "name": "PC-DeskTeam",
+      "version": "PC-SIG disk 405 (DESKTEAM.COM; version unverified)",
+      "status": "Untested",
+      "kind": "application",
+      "summary": "PC-SIG and period catalogs confirm the package and its organizer features, but the disk image or executable was not obtainable from the available archive mirrors.",
+      "anchor": "pc-deskteam",
+      "evidence": "2026-10-25-priority-apps.md",
+      "last_tested": "2026-10-25"
     }
   ],
   "status_colors": {
