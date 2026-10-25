@@ -1933,3 +1933,32 @@ Twelve user-listed COAST archives were tested on fresh disposable FAT16 images. 
 ### MenuMate
 
 **Unsupported.** The program reports that MS-DOS 5.0 or newer is required, then stops on unsupported VGA CRTC I/O port `03D4`; no menu opens. [Full test record](2026-10-25-calculator-menu-tests.md).
+
+
+## Disk catalog and utility tests (2026-10-25)
+
+Six user-listed COAST archives were tested. Full commands, archive hashes and limitations are recorded in [the test report](2026-10-25-catalog-utility-tests.md).
+
+### CATDISK
+
+**Partial.** Scanned the virtual A: drive and wrote four import records to `CATDISK.CAT` plus `CATDISK.VOL`. The prompt accepts only A/B, so the mounted FAT16 C: volume was not scanned. [Full test report](2026-10-25-catalog-utility-tests.md).
+
+### DOSCAT
+
+**Unsupported.** The archive is a text-only DOSCAT how-to, not a runnable utility; its documented `DIR B:` step fails because ManiOS shell has no `dir` command. [Full test report](2026-10-25-catalog-utility-tests.md).
+
+### Directory Commander
+
+**Working.** Toggled the wide-format option and exited; `SETFILE.BAT` was written to FAT16 with the exact line `SET DIRCMD=/w`. [Full test report](2026-10-25-catalog-utility-tests.md).
+
+### DIARY
+
+**Broken.** Launch created the requested FAT16 output file, but it remained zero bytes instead of appending the date/time and text. [Full test report](2026-10-25-catalog-utility-tests.md).
+
+### ASC2EBC
+
+**Working.** Converted stdin text `ABC 123` to stdout bytes `C1 C2 C3 40 F1 F2 F3` (EBCDIC); checked the raw output stream. [Full test report](2026-10-25-catalog-utility-tests.md).
+
+### CYLON4
+
+**Working.** The EGA variant returns to the shell and changes the cursor from a flat underline to the documented animated wave. Other adapter variants were not tested. [Full test report](2026-10-25-catalog-utility-tests.md).

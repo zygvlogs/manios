@@ -1042,6 +1042,72 @@
       "anchor": "menumate",
       "evidence": "2026-10-25-calculator-menu-tests.md",
       "last_tested": "2026-10-25"
+    },
+    {
+      "id": "catdisk-30",
+      "name": "CATDISK",
+      "version": "1987-12-04; program reports version 3.0",
+      "status": "Partial",
+      "kind": "utility",
+      "summary": "Scanned the virtual A: drive and wrote four import records to `CATDISK.CAT` plus `CATDISK.VOL`. The prompt accepts only A/B, so the mounted FAT16 C: volume was not scanned.",
+      "anchor": "catdisk",
+      "evidence": "2026-10-25-catalog-utility-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "doscat-manual",
+      "name": "DOSCAT",
+      "version": "1988 manual; no executable included",
+      "status": "Unsupported",
+      "kind": "utility",
+      "summary": "The archive is a text-only DOSCAT how-to, not a runnable utility; its documented `DIR B:` step fails because ManiOS shell has no `dir` command.",
+      "anchor": "doscat",
+      "evidence": "2026-10-25-catalog-utility-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "directory-commander-110",
+      "name": "Directory Commander",
+      "version": "1.10 (1991)",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Toggled the wide-format option and exited; `SETFILE.BAT` was written to FAT16 with the exact line `SET DIRCMD=/w`.",
+      "anchor": "directory-commander",
+      "evidence": "2026-10-25-catalog-utility-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "diary-com",
+      "name": "DIARY",
+      "version": "`DIARY.COM`; version unverified (archive dated 1996-08-19)",
+      "status": "Broken",
+      "kind": "utility",
+      "summary": "Launch created the requested FAT16 output file, but it remained zero bytes instead of appending the date/time and text.",
+      "anchor": "diary",
+      "evidence": "2026-10-25-catalog-utility-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "asc2ebc",
+      "name": "ASC2EBC",
+      "version": "`ASC2EBC.COM`; article notes 1985; archive dated 1990-02-02",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Converted stdin text `ABC 123` to stdout bytes `C1 C2 C3 40 F1 F2 F3` (EBCDIC); checked the raw output stream.",
+      "anchor": "asc2ebc",
+      "evidence": "2026-10-25-catalog-utility-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "cylon4",
+      "name": "CYLON4",
+      "version": "Cursor variants documented 1986; archive updated 1988-10",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "The EGA variant returns to the shell and changes the cursor from a flat underline to the documented animated wave. Other adapter variants were not tested.",
+      "anchor": "cylon4",
+      "evidence": "2026-10-25-catalog-utility-tests.md",
+      "last_tested": "2026-10-25"
     }
   ],
   "status_colors": {

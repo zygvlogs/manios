@@ -2,7 +2,7 @@
 
 Last updated: **2026-10-25**. ManiOS version: **0.26.1-10252026**.
 
-**94 programs:** 🟢 **36 Working** · 🟡 **13 Partial** · 🔴 **44 Broken/unsupported** · ⚪ **1 Untested**
+**100 programs:** 🟢 **39 Working** · 🟡 **14 Partial** · 🔴 **46 Broken/unsupported** · ⚪ **1 Untested**
 
 This is task-specific coverage, not a compatibility percentage: a green
 entry means the listed task completed, not that every feature of the
@@ -18,16 +18,19 @@ program works. The full test history is in
 | 🔴 | Unsupported | A required CPU mode, subsystem or interface is missing. |
 | ⚪ | Untested | No current result. |
 
-## 🟢 Working (36)
+## 🟢 Working (39)
 
 | Application | Version / media | Verified task | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
 | [Adventure (350-point DECUS port)](compatibility/details.md#adventure-350-point-decus-port) | Kevin Black DOS build, `adv350kb.zip` | Starts, accepts a 20-character instructions answer, and completes look, inventory, movement and quit; the quit score is 32/350. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
+| [ASC2EBC](compatibility/details.md#asc2ebc) | `ASC2EBC.COM`; article notes 1985; archive dated 1990-02-02 | Converted stdin text `ABC 123` to stdout bytes `C1 C2 C3 40 F1 F2 F3` (EBCDIC); checked the raw output stream. | [evidence](compatibility/2026-10-25-catalog-utility-tests.md) | 2026-10-25 |
 | [ASCIFY](compatibility/details.md#ascify-13) | 1.3 (1987) | Encoded the binary fixture as an ASCIFY text file and decoded it to an exact 14-byte match. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
 | [B64](compatibility/details.md#b64) | 0.06R (rev A), FD14 BonusCD | Help, Base64 encoding of `ABCD` and decoding of `QUJDRA==` are byte-exact. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [BSUM](compatibility/details.md#bsum) | 1.1a, FD14 BonusCD | Text, empty-file and 20 KiB binary checksums match an independent oracle; usage and missing-file errors verified. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [CALCULAT](compatibility/details.md#calculat) | Source dated 25 February 1985; version unverified | Interactive expression `2+3` produces `5.000000`; an empty Return exits to ManiOS. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [COMPHEX](compatibility/details.md#comphex) | `COMPHEX.EXE`; package version unverified | Correctly reports zero mismatches for equal Intel HEX files and one mismatch at address `000D` for a one-byte difference. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
+| [CYLON4](compatibility/details.md#cylon4) | Cursor variants documented 1986; archive updated 1988-10 | The EGA variant returns to the shell and changes the cursor from a flat underline to the documented animated wave. Other adapter variants were not tested. | [evidence](compatibility/2026-10-25-catalog-utility-tests.md) | 2026-10-25 |
+| [Directory Commander](compatibility/details.md#directory-commander) | 1.10 (1991) | Toggled the wide-format option and exited; `SETFILE.BAT` was written to FAT16 with the exact line `SET DIRCMD=/w`. | [evidence](compatibility/2026-10-25-catalog-utility-tests.md) | 2026-10-25 |
 | [Directory Freedom](compatibility/details.md#directory-freedom-461b) | 4.61B, `df461b.zip` | On disposable FAT16 copies, F1 copied AR.COM to COPYTEST.COM byte-for-byte, F2 deleted AR.COM, and F4 renamed AR.COM to AR.BAK. The directory listing and function menu render; originals were unchanged. | [screenshot](compatibility/2026-10-23-int10-directory-freedom-copy.png) | 2026-10-23 |
 | [EDITV](compatibility/details.md#editv-41) | 4.1 US, `editv41u.zip` | Inserted `Z`, moved right, inserted then removed `Y` with Backspace, saved with F2, and reopened. The disposable FAT16 file independently contains `Zalpha one` followed by the original remaining lines. | [screenshot](compatibility/2026-10-23-int10-editv-multiedit.png) | 2026-10-23 |
 | [FDBanner](compatibility/details.md#fdbanner) | 1.1, FD14 BonusCD | Coloured banner rendered through BIOS text services; screenshot checked. | [screenshot](compatibility/2026-10-23-retest-026-fdbanner.png) | 2026-10-23 |
@@ -59,10 +62,11 @@ program works. The full test history is in
 | [VisiCalc](compatibility/details.md#visicalc) | `VC.COM`, 27,520 bytes; version unverified | Mode-2 worksheet renders; A1=10, B1=20 and C1=+A1+B1 (30) were saved as TEST.VC, the app exited cleanly, and a fresh launch reopened the sheet with the values and formula intact. | [transcript](compatibility/2026-10-24-visicalc-save-reopen-qemu.json) | 2026-10-24 |
 | [Zork I: The Great Underground Empire](compatibility/details.md#zork-i-the-great-underground-empire) | MIT historicalsource release, `zork1.z3` (86,838 bytes), ZIP 2.00 | ZIP 2.00 starts the story; room text, commands, inventory, score, save/restore and quit work. The status line still clips its right edge. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
 
-## 🟡 Partial (13)
+## 🟡 Partial (14)
 
 | Application | Version / media | Partial result | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
+| [CATDISK](compatibility/details.md#catdisk) | 1987-12-04; program reports version 3.0 | Scanned the virtual A: drive and wrote four import records to `CATDISK.CAT` plus `CATDISK.VOL`. The prompt accepts only A/B, so the mounted FAT16 C: volume was not scanned. | [evidence](compatibility/2026-10-25-catalog-utility-tests.md) | 2026-10-25 |
 | [Checks & Balances](compatibility/details.md#checks--balances) | 4.0g (1986), two 360 KB floppies | Configuration and the supplied DEMO work (`TRUE $2450.20`, `BANK $279.04`); ledger entry, save and reopen are unverified. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [COMHEX](compatibility/details.md#comhex) | `COMHEX.COM`; package version unverified | Prompts for a COM basename, but aborts with Pascal `I/O error 99` and leaves a zero-byte HEX file; conversion did not complete. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
 | [DiskMenu](compatibility/details.md#diskmenu) | 1.0 (1992) | DMC compiles `SAMPLE.SRC` into `SAMPLE.MNU` and DMENU starts, but its menu display is corrupted in the screen capture; usable selection was not confirmed. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
@@ -77,7 +81,7 @@ program works. The full test history is in
 | [Planetfall (Infocom Sampler demo)](compatibility/details.md#planetfall-infocom-sampler-demo) | official 1984 Infocom Sampler, `sampler1_R26.z3` (112,610 bytes) | The sampler starts and accepts `planet`, but the Planetfall sample text does not render past its first line under ZIP/JZIP; full-game testing was skipped for licensing. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
 | [uHex](compatibility/details.md#uhex-104) | 1.0.4 DOS | Help and the 34-byte read-only view work, with display defects; editing, save and reopen are unverified. | [screenshot](compatibility/2026-10-23-retest-026-uhex.png) | 2026-10-23 |
 
-## 🔴 Broken and unsupported (44)
+## 🔴 Broken and unsupported (46)
 
 | Application | Version / media | Status | Blocker | Evidence | Last tested |
 | --- | --- | --- | --- | --- | --- |
@@ -91,8 +95,10 @@ program works. The full test history is in
 | [Champ Galagon](compatibility/details.md#champ-galagon) | 1.0 (registered, 1997), `galagon.zip` | 🔴 **Unsupported** | Returns to the shell in under 0.6 s with no console output or title screen; no VGA/game frame is reached. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
 | [Costa GUI](compatibility/details.md#costa-gui-180) | 1.8.0, `costa180.zip` | 🔴 **Unsupported** | After PIC support, `DESKTOP.EXE` reaches COSTALIB but stops with `Illegal function call` at `15CA:2E00`; no usable desktop. | [transcript](compatibility/2026-10-23-10232026-retest.txt) | 2026-10-23 |
 | [DATES](compatibility/details.md#dates-200208) | 2002.08, `DATE0208.ZIP` | 🔴 **Unsupported** | After PIC support, startup faults on opcode `FF` at `0A34:5CD8`; no date list or usage screen. | [transcript](compatibility/2026-10-23-10232026-retest.txt) | 2026-10-23 |
+| [DIARY](compatibility/details.md#diary) | `DIARY.COM`; version unverified (archive dated 1996-08-19) | 🔴 **Broken** | Launch created the requested FAT16 output file, but it remained zero bytes instead of appending the date/time and text. | [evidence](compatibility/2026-10-25-catalog-utility-tests.md) | 2026-10-25 |
 | [Directory Maven](compatibility/details.md#directory-maven-13) | 1.3 | 🔴 **Unsupported** | The scan path stops on `66h`; help stops at `IN AL,DX`. | [transcript](compatibility/2026-10-23-maven.txt) | 2026-10-23 |
 | [DOS Navigator](compatibility/details.md#dos-navigator) | 1.51 (RIT Labs freeware) | 🔴 **Broken** | Process remains active, but the display contains only the ManiOS banner and a blank screen; no usable file manager UI appeared. | [screenshot](compatibility/2026-10-25-dos-navigator.png) | 2026-10-25 |
+| [DOSCAT](compatibility/details.md#doscat) | 1988 manual; no executable included | 🔴 **Unsupported** | The archive is a text-only DOSCAT how-to, not a runnable utility; its documented `DIR B:` step fails because ManiOS shell has no `dir` command. | [evidence](compatibility/2026-10-25-catalog-utility-tests.md) | 2026-10-25 |
 | [DOSStart](compatibility/details.md#dosstart-19b) | 1.9b build 7.08.2002, `dosstart.zip` | 🔴 **Unsupported** | `DANSHELL.EXE` stops on `IN AL,21h` at `1FBB:6B78`; no launcher screen. | [transcript](compatibility/2026-10-23-compat4-extra.txt) | 2026-10-23 |
 | [Dr Mind Lite](compatibility/details.md#dr-mind-lite) | LITE variant, 2019, `drlite.zip` | 🔴 **Unsupported** | Stops on `OUT 0x3C8` (VGA DAC palette) at `1010:02CA`; no game board. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
 | [DRCS-VeCalc](compatibility/details.md#drcs-vecalc) | 1.11 (1989) | 🔴 **Broken** | The documented startup command returns immediately to the ManiOS shell; no calculator UI or first-run `VEC.DAT` appears. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
