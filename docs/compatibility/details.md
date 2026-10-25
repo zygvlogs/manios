@@ -1962,3 +1962,120 @@ Six user-listed COAST archives were tested. Full commands, archive hashes and li
 ### CYLON4
 
 **Working.** The EGA variant returns to the shell and changes the cursor from a flat underline to the documented animated wave. Other adapter variants were not tested. [Full test report](2026-10-25-catalog-utility-tests.md).
+
+
+## DOS compatibility marathon: applications 101–119
+
+### LZWCOM / LZWUNC
+
+- **Tested:** dosrun C:/LZWCOM.EXE C:/IN.TXT C:/OUT.LZW; dosrun C:/LZWUNC.EXE C:/OUT.LZW C:/BACK.TXT.
+- **Observed:** Both executables returned to the shell; OUT.LZW was 62 bytes. BACK.TXT was 55 bytes and byte-for-byte identical to the fixture (SHA-256 dea4d9f824116035749129cdaeeb2bb1875911726894821f68972cde53fa3a8b).
+- **Status:** **Working**. Full archive hashes and environment: [2026-10-25-batch-101-110.md](2026-10-25-batch-101-110.md#lzwpc).
+
+### RLE16
+
+- **Tested:** dosrun C:/RLE16.EXE C:/IN.TXT; dosrun C:/UNRLE16.EXE C:/IN.R16.
+- **Observed:** The 63-byte IN.R16 was created. After uncompression, host extraction showed exactly the original 55 bytes (same SHA-256 as the fixture).
+- **Status:** **Working**. Full archive hashes and environment: [2026-10-25-batch-101-110.md](2026-10-25-batch-101-110.md#rle16-sc).
+
+### SQPC 1.31
+
+- **Tested:** dosrun C:/SQPC131.COM C:/IN.TXT; dosrun C:/UNSQPC13.COM C:/IN.TQT.
+- **Observed:** SQPC reported “squeezing, done”; UNSQPC reported “Expanding: IN.TXT”. Host extraction of IN.TXT matched the original 55-byte fixture byte-for-byte (SHA-256 dea4d9f824116035749129cdaeeb2bb1875911726894821f68972cde53fa3a8b).
+- **Status:** **Working**. Full archive hashes and environment: [2026-10-25-batch-101-110.md](2026-10-25-batch-101-110.md#sqpc131).
+
+### ADDCR
+
+- **Tested:** dosrun C:/ADDCR.EXE C:/IN.TXT.
+- **Observed:** ADDCR reported completion through 100%; host extraction contained alpha CRLF beta CRLF followed by 0xFF. The line conversion occurred, but output differs from the expected two-line fixture.
+- **Status:** **Partial**. Full archive hashes and environment: [2026-10-25-batch-101-110.md](2026-10-25-batch-101-110.md#addcr-10).
+
+### CASE 3.1
+
+- **Tested:** dosrun C:/CASE.COM /U C:/IN.TXT C:/OUT.TXT.
+- **Observed:** CASE reported version 3.1 and “Working... 5 words in 2 lines processed.” Host extraction of OUT.TXT was exactly `HELLO OLD WORLD\r\nSECOND LINE\r\n`.
+- **Status:** **Working**. Full archive hashes and environment: [2026-10-25-batch-101-110.md](2026-10-25-batch-101-110.md#case31).
+
+### CHANGE 1.7
+
+- **Tested:** dosrun C:/CHANGE.EXE C:/IN.TXT "old" "new".
+- **Observed:** ManiDOS reported “can’t run opcode DF (at 0000:0001)” before CHANGE displayed its own output. Host extraction confirmed IN.TXT was unchanged.
+- **Status:** **Unsupported**. Full archive hashes and environment: [2026-10-25-batch-101-110.md](2026-10-25-batch-101-110.md#change17).
+
+### DOSCVT 2.4
+
+- **Tested:** dosrun C:/DOSCVT.EXE -u C:/IN.TXT.
+- **Observed:** The command returned to ManiOS; the host-extracted file was exactly `alpha\nbeta\n` (11 bytes).
+- **Status:** **Working**. Full archive hashes and environment: [2026-10-25-batch-101-110.md](2026-10-25-batch-101-110.md#doscvt-24).
+
+### FINDLINE
+
+- **Tested:** dosrun C:/FINDLINE.EXE /L /N needle C:/IN.TXT.
+- **Observed:** Displayed “2: this has needle here” and “Found in at least one line.”
+- **Status:** **Working**. Full archive hashes and environment: [2026-10-25-batch-101-110.md](2026-10-25-batch-101-110.md#findline-100).
+
+### CUT Field Cut Utility
+
+- **Tested:** dosrun C:/CUT.EXE -f1,3 -d, -t"%s:%s" C:/IN.CSV.
+- **Observed:** The console output was exactly `one:three` and `four:six`.
+- **Status:** **Working**. Full archive hashes and environment: [2026-10-25-batch-101-110.md](2026-10-25-batch-101-110.md#cut-101).
+
+### CONCAT
+
+- **Tested:** dosrun C:/CONCAT10.COM IN.TXT OTHER.TXT.
+- **Observed:** Console output included `IN.TXTfirst` and `OTHER.TXTsecond`; the filename prefixes are extra output. Repeated with relative paths; same behavior.
+- **Status:** **Partial**. Full archive hashes and environment: [2026-10-25-batch-101-110.md](2026-10-25-batch-101-110.md#concat-10).
+
+### u16 1.2
+
+- **Tested:** dosrun C:/U16.EXE -H.
+- **Observed:** Displayed the version, syntax, 270–280 KB memory note and standard-output behavior. No valid .Z fixture was available, so actual decompression remains unverified.
+- **Status:** **Partial**. Full archive hashes and environment: [2026-10-25-batch-111-119.md](2026-10-25-batch-111-119.md#u16-v12).
+
+### 0DEL
+
+- **Tested:** dosrun C:/0DEL.EXE EMPTY.TXT.
+- **Observed:** Printed “EMPTY.TXT deleted” and “1 files were deleted”. `mdir` confirmed EMPTY.TXT absent and KEEP.TXT (6 bytes) still present.
+- **Status:** **Working**. Full archive hashes and environment: [2026-10-25-batch-111-119.md](2026-10-25-batch-111-119.md#0del-101).
+
+### BRIK 2.0
+
+- **Tested:** dosrun C:/BRIK.EXE -Gb C:/IN.TXT.
+- **Observed:** Printed a `CRC-32` header and `300446241b c:/in.txt`. Generation completed; independent numerical validation was not established.
+- **Status:** **Partial**. Full archive hashes and environment: [2026-10-25-batch-111-119.md](2026-10-25-batch-111-119.md#brik-20).
+
+### CHKSUM
+
+- **Tested:** dosrun C:/CHKSUM.EXE -v -c C:/CHKSUM.EXE.
+- **Observed:** Output was `56755e1f 11198 C:/CHKSUM.EXE`, matching the independent package README oracle.
+- **Status:** **Working**. Full archive hashes and environment: [2026-10-25-batch-111-119.md](2026-10-25-batch-111-119.md#chksum-2).
+
+### CHOP
+
+- **Tested:** dosrun C:/CHOP31.EXE C:/IN.TXT -P3 -X -Z.
+- **Observed:** ManiDOS reported unsupported `OUT` on port 03D4 at 15F1:05D7 before completion. Host-side image inspection found no split parts.
+- **Status:** **Unsupported**. Full archive hashes and environment: [2026-10-25-batch-111-119.md](2026-10-25-batch-111-119.md#chop-31).
+
+### EASTER
+
+- **Tested:** dosrun C:/EASTER.EXE 2001.
+- **Observed:** Printed “Easter is Sunday, April 15, 2001”.
+- **Status:** **Working**. Full archive hashes and environment: [2026-10-25-batch-111-119.md](2026-10-25-batch-111-119.md#easter-12).
+
+### EXPR
+
+- **Tested:** dosrun C:/EXPR.COM "2 + 3 * 4".
+- **Observed:** Printed `14`.
+- **Status:** **Working**. Full archive hashes and environment: [2026-10-25-batch-111-119.md](2026-10-25-batch-111-119.md#expr-vi2).
+
+### BOB
+
+- **Tested:** dosrun C:/BOB.COM.
+- **Observed:** Listed the FAT16 entries, but filenames had visible/trailing NUL padding, volume label was inferred from HELLO.COM, and timestamps were all 01/01/80. Listing is usable only with display defects.
+- **Status:** **Partial**. Full archive hashes and environment: [2026-10-25-batch-111-119.md](2026-10-25-batch-111-119.md#bob-110).
+
+### DIR4
+
+- **Tested:** dosrun C:/DIR4.COM; choose L (List a Disk Directory), A (Actual Disk Directory), then C:.
+- **Observed:** The screen displayed the FAT16 root entries including the test files and DIR4.DAT/DIR4.CFG. [Screenshot](2026-10-25-dir4-list.png).
+- **Status:** **Working**. Full archive hashes and environment: [2026-10-25-batch-111-119.md](2026-10-25-batch-111-119.md#dir4-405).
