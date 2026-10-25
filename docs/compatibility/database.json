@@ -745,6 +745,28 @@
       "anchor": "pc-talk",
       "evidence": "2026-10-25-pc-talk.png",
       "last_tested": "2026-10-25"
+    },
+    {
+      "id": "gw-basic-323",
+      "name": "GW-BASIC",
+      "version": "3.23 (1988; 8086, DOS)",
+      "status": "Untested",
+      "kind": "application",
+      "summary": "Promising candidate per user; no GW-BASIC binary or test media is present in the workspace, so compatibility is unverified.",
+      "anchor": "gw-basic-323",
+      "evidence": "2026-10-25-vintage-app-targets.md",
+      "last_tested": "Not tested"
+    },
+    {
+      "id": "microsoft-basic-528",
+      "name": "Microsoft BASIC",
+      "version": "5.28 (1980s; 8086, DOS)",
+      "status": "Untested",
+      "kind": "application",
+      "summary": "Promising candidate per user; no Microsoft BASIC binary or test media is present in the workspace, so compatibility is unverified.",
+      "anchor": "microsoft-basic-528",
+      "evidence": "2026-10-25-vintage-app-targets.md",
+      "last_tested": "Not tested"
     }
   ],
   "status_colors": {

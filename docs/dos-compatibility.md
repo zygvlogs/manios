@@ -2,7 +2,7 @@
 
 Last updated: **2026-10-25**. ManiOS version: **0.26.1-10252026**.
 
-**67 programs:** 🟢 **27 Working** · 🟡 **8 Partial** · 🔴 **32 Broken/unsupported** · ⚪ **0 Untested**
+**69 programs:** 🟢 **27 Working** · 🟡 **8 Partial** · 🔴 **32 Broken/unsupported** · ⚪ **2 Untested**
 
 This is task-specific coverage, not a compatibility percentage: a green
 entry means the listed task completed, not that every feature of the
@@ -100,9 +100,12 @@ program works. The full test history is in
 | [VIEWSEEK](compatibility/details.md#viewseek-31-auxiliary) | 3.1, VIEW package (auxiliary) | 🔴 **Broken** | Search reports no match for text that is present, then exits with `run-time error R6001`. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
 | [Warcraft: Orcs & Humans](compatibility/details.md#warcraft-orcs--humans) | 1994 DOS CD; exact patch unverified | 🔴 **Unsupported** | Extracted `war.exe` needs a DOS/4GW protected-mode payload; the installer stops on `OUT 43h` (`E6`). | [transcript](compatibility/2026-10-22-warcraft.txt) | 2026-10-23 |
 
-## ⚪ Untested (0)
+## ⚪ Untested (2)
 
-No entries are currently untested.
+| Application | Version / media | Evidence | Last tested |
+| --- | --- | --- | --- |
+| [GW-BASIC](compatibility/details.md#gw-basic-323) | 3.23 (1988; 8086, DOS) | [evidence](compatibility/2026-10-25-vintage-app-targets.md) | Not tested |
+| [Microsoft BASIC](compatibility/details.md#microsoft-basic-528) | 5.28 (1980s; 8086, DOS) | [evidence](compatibility/2026-10-25-vintage-app-targets.md) | Not tested |
 
 ## Scope and method
 

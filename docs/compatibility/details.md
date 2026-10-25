@@ -1779,3 +1779,11 @@ workflows; EDLIN input and terminal hardware workflows remain unverified. The pe
 ### PC-Talk
 
 **Partial.** Tested version/media: PC-Talk III (1983–1985). Displays the license/notice screen. A terminal session and modem or serial connection were not tested. [Screenshot](2026-10-25-pc-talk.png); [full test record](2026-10-25-vintage-app-tests.md).
+
+### GW-BASIC 3.23
+
+**Untested.** User-supplied target: 1988, 8086/DOS; described as “very promising.” No binary or test media was found in the workspace, so compatibility remains unverified. [Target record](2026-10-25-vintage-app-targets.md).
+
+### Microsoft BASIC 5.28
+
+**Untested.** User-supplied target: 1980s, 8086/DOS; described as “promising.” No binary or test media was found in the workspace, so compatibility remains unverified. [Target record](2026-10-25-vintage-app-targets.md).

@@ -14,3 +14,12 @@ binary or disk image, exact release, or ManiOS test result is recorded here.
 - Galaxy Lite — 1990s — text editor
 - DOS Navigator — 1990s — file manager
 - PC-Talk — 1980s — terminal program
+
+Additional targets supplied by the user on 2026-10-25:
+
+- GW-BASIC 3.23 — 1988; 8086; DOS; user assessment: “very promising”.
+- Microsoft BASIC 5.28 — 1980s; 8086; DOS; user assessment: “promising”.
+
+No matching DOS binary or test media was available in the workspace when these
+entries were added. They remain **Untested**; the assessments describe target
+priority and are not ManiOS compatibility results.
