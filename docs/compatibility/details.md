@@ -2142,3 +2142,73 @@ Six user-listed COAST archives were tested. Full commands, archive hashes and li
 - **Tested:** dosrun C:/RANDOM.EXE; Y; bonus max 25; 1 bonus; regular max 50; 5 regular; 2 lines.
 - **Observed:** Printed two lines: `20, 46, 19, 18, 10 bonus: 21` and `43, 12, 2, 11, 25 bonus: 10`; all values were within the entered limits. [Screenshot](2026-10-25-random1.png).
 - **Status:** **Working**. [Batch report](2026-10-25-batch-120-129.md#random1).
+
+
+## DOS compatibility marathon: applications 130–139
+
+### ANA
+
+- **Tested:** dosrun C:/ANA.EXE --help.
+- **Observed:** ManiOS stopped execution on unsupported opcode DB before the analyzer opened.
+- **Status:** **Unsupported**. Full archive hash and test record: [batch report](2026-10-25-batch-130-139.md#ana015).
+
+### CARVE
+
+- **Tested:** dosrun C:/CARVE.EXE /s IN.TXT 1024.
+- **Observed:** The executor stopped on unsupported AAM before creating any pieces; reconstruction was therefore not possible.
+- **Status:** **Unsupported**. Full archive hash and test record: [batch report](2026-10-25-batch-130-139.md#carve-20a).
+
+### Bob’s File Dump Program
+
+- **Tested:** dosrun C:/DUMP.EXE SMALL.TXT.
+- **Observed:** Host extraction contained the header and one row with bytes `41 42 43 44 0D 0A`, matching the input `ABCD
+`.
+- **Status:** **Working**. Full archive hash and test record: [batch report](2026-10-25-batch-130-139.md#bob-dump-10).
+
+### COMT
+
+- **Tested:** dosrun C:/COMT.COM -w HELLO.COM HELLO.ASC; then dosrun C:/COMT.COM -x HELLO.ASC HELLO.COM.
+- **Observed:** Created the documented HELLO.ASC wrapper. The decoded HELLO.COM was byte-for-byte identical to the source file.
+- **Status:** **Working**. Full archive hash and test record: [batch report](2026-10-25-batch-130-139.md#comt-010d).
+
+### CQvert
+
+- **Tested:** dosrun C:/CQVERT.EXE IN.TXT OUT.TXT.
+- **Observed:** The executor stopped on unsupported VGA OUT port 03D4 before creating output.
+- **Status:** **Unsupported**. Full archive hash and test record: [batch report](2026-10-25-batch-130-139.md#cqvert-9571).
+
+### Fast File Compare
+
+- **Tested:** dosrun C:/FILECOMP.COM A.TXT B.TXT.
+- **Observed:** It reported file 2 longer and emitted hexadecimal byte comparisons, but the output ended with an ambiguous `526 Differences` string, so exact count correctness remains unverified.
+- **Status:** **Partial**. Full archive hash and test record: [batch report](2026-10-25-batch-130-139.md#filecomp).
+
+### COPYEM
+
+- **Tested:** dosrun C:/COPYEM.EXE COPY.TXT COPY2.TXT.
+- **Observed:** Only the version banner appeared before ManiOS rejected VGA OUT port 03D4; COPY2.TXT was not created.
+- **Status:** **Unsupported**. Full archive hash and test record: [batch report](2026-10-25-batch-130-139.md#copyem-10).
+
+### ANYWHERE
+
+- **Tested:** dosrun C:/AW.EXE TARGET.TXT.
+- **Observed:** Output listed both `\TARGET.TXT` and `\NESTED\TARGET.TXT`; traversal also printed noisy “problem with looking for” lines for other paths.
+- **Status:** **Working**. Full archive hash and test record: [batch report](2026-10-25-batch-130-139.md#anywhere).
+
+### CHUNT
+
+- **Tested:** dosrun C:/CHUNT.EXE C: COMM.
+- **Observed:** Reported `commfile.txt` and `1 matching file found.`
+- **Status:** **Working**. Full archive hash and test record: [batch report](2026-10-25-batch-130-139.md#chunt-10).
+
+### UNUSUAL
+
+- **Tested:** dosrun C:/UNUSUAL.COM.
+- **Observed:** Completed traversal and printed “No unusual files here” for the clean tree.
+- **Status:** **Working**. Full archive hash and test record: [batch report](2026-10-25-batch-130-139.md#unusual).
+
+### VTREEHP
+
+- **Tested:** dosrun C:/VTREEHP.COM C:.
+- **Observed:** Displayed the root and nested directories including PCW, DN, GALAXY, and NESTED.
+- **Status:** **Working**. Full archive hash and test record: [batch report](2026-10-25-batch-130-139.md#vtreehp).

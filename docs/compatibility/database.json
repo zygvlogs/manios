@@ -1427,6 +1427,127 @@
       "anchor": "random",
       "evidence": "2026-10-25-batch-120-129.md",
       "last_tested": "2026-10-25"
+    },
+    {
+      "id": "ana015",
+      "name": "ANA",
+      "version": "0.15 (1990-07-24)",
+      "status": "Unsupported",
+      "kind": "file-utility",
+      "summary": "The analyzer does not start: `dosrun` reports unsupported opcode `DB` at 1667:00F1.",
+      "anchor": "ana",
+      "evidence": "2026-10-25-batch-130-139.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "carve-20a",
+      "name": "CARVE",
+      "version": "2.0a (1995-04-22)",
+      "status": "Unsupported",
+      "kind": "file-utility",
+      "summary": "The documented split task cannot run because the executor rejects opcode `AAM` at 1472:1FBE.",
+      "anchor": "carve",
+      "evidence": "2026-10-25-batch-130-139.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "bob-dump-10",
+      "name": "Bob’s File Dump Program",
+      "version": "version unverified (1995 archive)",
+      "status": "Working",
+      "kind": "file-utility",
+      "summary": "Created a readable hex dump of a six-byte FAT16 input; extracted output exactly represented `41 42 43 44 0D 0A`.",
+      "anchor": "bobs-file-dump-program",
+      "evidence": "2026-10-25-batch-130-139.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "comt-010d",
+      "name": "COMT",
+      "version": "0.10d (1992-08-04 archive)",
+      "status": "Working",
+      "kind": "file-conversion",
+      "summary": "Wrapped HELLO.COM as plain text and decoded it with the documented `-x` form; decoded COM bytes matched the original exactly.",
+      "anchor": "comt",
+      "evidence": "2026-10-25-batch-130-139.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "cqvert-9571",
+      "name": "CQvert",
+      "version": "95.7.1 (1995-08-13 archive)",
+      "status": "Unsupported",
+      "kind": "text-processing",
+      "summary": "The WWW-form conversion does not start: ManiOS reports unsupported VGA `OUT` port 03D4 at 115C:058D.",
+      "anchor": "cqvert",
+      "evidence": "2026-10-25-batch-130-139.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "filecomp",
+      "name": "Fast File Compare",
+      "version": "version unverified (1988-03-09 archive)",
+      "status": "Partial",
+      "kind": "file-comparison",
+      "summary": "Compared two differing FAT16 text files and identified file 2 as longer, then displayed differing byte positions; the serial display did not allow an exact audit of its reported difference count.",
+      "anchor": "fast-file-compare",
+      "evidence": "2026-10-25-batch-130-139.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "copyem-10",
+      "name": "COPYEM",
+      "version": "1.0 (1988-02-15 archive)",
+      "status": "Unsupported",
+      "kind": "file-utility",
+      "summary": "The copy menu begins, but execution stops on unsupported VGA OUT port 03D4 at 10D4:058C before a copy can be verified.",
+      "anchor": "copyem",
+      "evidence": "2026-10-25-batch-130-139.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "anywhere",
+      "name": "ANYWHERE",
+      "version": "1988-08 archive",
+      "status": "Working",
+      "kind": "file-search",
+      "summary": "Found TARGET.TXT at the FAT16 root and in the existing NESTED directory during name search.",
+      "anchor": "anywhere",
+      "evidence": "2026-10-25-batch-130-139.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "chunt-10",
+      "name": "CHUNT",
+      "version": "1.0 (1988-10-23 archive)",
+      "status": "Working",
+      "kind": "file-search",
+      "summary": "Found COMMFILE.TXT by partial filename match and reported one matching file.",
+      "anchor": "chunt",
+      "evidence": "2026-10-25-batch-130-139.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "unusual",
+      "name": "UNUSUAL",
+      "version": "1988 archive",
+      "status": "Working",
+      "kind": "file-utility",
+      "summary": "Recursively scanned the FAT16 tree and reported no unusual (hidden, system, or read-only) files in the clean test image.",
+      "anchor": "unusual",
+      "evidence": "2026-10-25-batch-130-139.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "vtreehp",
+      "name": "VTREEHP",
+      "version": "1988 archive",
+      "status": "Working",
+      "kind": "file-manager",
+      "summary": "Printed a visual tree of FAT16 directories, including nested ManiOS test folders.",
+      "anchor": "vtreehp",
+      "evidence": "2026-10-25-batch-130-139.md",
+      "last_tested": "2026-10-25"
     }
   ],
   "status_colors": {
