@@ -1317,6 +1317,116 @@
       "anchor": "dir4",
       "evidence": "2026-10-25-batch-111-119.md",
       "last_tested": "2026-10-25"
+    },
+    {
+      "id": "cleanse-11",
+      "name": "CLEANSE",
+      "version": "1.1 (1987–1988)",
+      "status": "Working",
+      "kind": "text-processing",
+      "summary": "Removed a suspicious control byte and converted LF lines to CRLF in the output file.",
+      "anchor": "cleanse",
+      "evidence": "2026-10-25-batch-120-129.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "chktxt-200",
+      "name": "CHKTXT",
+      "version": "2.00 (1992 archive)",
+      "status": "Working",
+      "kind": "text-processing",
+      "summary": "Removed a suspicious control byte, normalized line endings and appended the documented DOS EOF marker.",
+      "anchor": "chktxt",
+      "evidence": "2026-10-25-batch-120-129.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "getlines-10",
+      "name": "GETLINES",
+      "version": "1.0 (1994-05-21)",
+      "status": "Working",
+      "kind": "text-processing",
+      "summary": "Selected line 2 from a three-line file and displayed its line number and content.",
+      "anchor": "getlines",
+      "evidence": "2026-10-25-batch-120-129.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "wordcnt",
+      "name": "WORDCNT",
+      "version": "version unverified (1989 archive)",
+      "status": "Working",
+      "kind": "text-processing",
+      "summary": "Counted three words across two input lines.",
+      "anchor": "wordcnt",
+      "evidence": "2026-10-25-batch-120-129.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "compare-16",
+      "name": "@Compare",
+      "version": "1.6 (1994)",
+      "status": "Unsupported",
+      "kind": "text-processing",
+      "summary": "The comparison UI cannot start because the program writes to unsupported VGA CRTC port 03D4 at 1577:0598.",
+      "anchor": "compare-16",
+      "evidence": "2026-10-25-batch-120-129.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "findstr-101",
+      "name": "FINDSTR",
+      "version": "1.01 (1986-08-05)",
+      "status": "Partial",
+      "kind": "utility",
+      "summary": "Starts and displays its search-pattern prompt, but keyboard-entered query lines did not produce a search result.",
+      "anchor": "findstr-101",
+      "evidence": "2026-10-25-batch-120-129.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "convert-it",
+      "name": "CONVERT-IT",
+      "version": "version unverified (archive dated 1989)",
+      "status": "Broken",
+      "kind": "calculator",
+      "summary": "The documented conversion menu did not appear; the executable returned to the shell immediately.",
+      "anchor": "convert-it",
+      "evidence": "2026-10-25-batch-120-129.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "hrs411-411",
+      "name": "HRS411",
+      "version": "4.11",
+      "status": "Broken",
+      "kind": "calculator",
+      "summary": "The time-difference calculator returned immediately without displaying its documented input prompts.",
+      "anchor": "hrs411-411",
+      "evidence": "2026-10-25-batch-120-129.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "edice",
+      "name": "EDICE",
+      "version": "version unverified (1996 archive)",
+      "status": "Working",
+      "kind": "game",
+      "summary": "Opened the electronic dice screen and rendered a one-die roll; escape was sent to exit.",
+      "anchor": "edice",
+      "evidence": "2026-10-25-batch-120-129.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "random1",
+      "name": "RANDOM",
+      "version": "version 1 (1997 archive)",
+      "status": "Working",
+      "kind": "educational",
+      "summary": "Generated two lottery lines with five unique regular numbers in 1–50 and one bonus number in 1–25.",
+      "anchor": "random",
+      "evidence": "2026-10-25-batch-120-129.md",
+      "last_tested": "2026-10-25"
     }
   ],
   "status_colors": {

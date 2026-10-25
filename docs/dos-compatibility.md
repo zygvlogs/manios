@@ -2,7 +2,7 @@
 
 Last updated: **2026-10-25**. ManiOS version: **0.26.1-10252026**.
 
-**119 programs:** 🟢 **51 Working** · 🟡 **19 Partial** · 🔴 **48 Broken/unsupported** · ⚪ **1 Untested**
+**129 programs:** 🟢 **57 Working** · 🟡 **20 Partial** · 🔴 **51 Broken/unsupported** · ⚪ **1 Untested**
 
 This is task-specific coverage, not a compatibility percentage: a green
 entry means the listed task completed, not that every feature of the
@@ -18,7 +18,7 @@ program works. The full test history is in
 | 🔴 | Unsupported | A required CPU mode, subsystem or interface is missing. |
 | ⚪ | Untested | No current result. |
 
-## 🟢 Working (51)
+## 🟢 Working (57)
 
 | Application | Version / media | Verified task | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
@@ -31,6 +31,8 @@ program works. The full test history is in
 | [CALCULAT](compatibility/details.md#calculat) | Source dated 25 February 1985; version unverified | Interactive expression `2+3` produces `5.000000`; an empty Return exits to ManiOS. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [CASE](compatibility/details.md#case-31) | 3.1 (1994-09-25) | Converted an input file to uppercase and reported 5 words in 2 lines; output bytes matched the expected content. | [evidence](compatibility/2026-10-25-batch-101-110.md) | 2026-10-25 |
 | [CHKSUM](compatibility/details.md#chksum) | 2 (1989-03-13 archive; package version label unverified) | Matched the package’s documented checksum and byte count for CHKSUM.EXE (56755e1f, 11198 bytes). | [evidence](compatibility/2026-10-25-batch-111-119.md) | 2026-10-25 |
+| [CHKTXT](compatibility/details.md#chktxt) | 2.00 (1992 archive) | Removed a suspicious control byte, normalized line endings and appended the documented DOS EOF marker. | [evidence](compatibility/2026-10-25-batch-120-129.md) | 2026-10-25 |
+| [CLEANSE](compatibility/details.md#cleanse) | 1.1 (1987–1988) | Removed a suspicious control byte and converted LF lines to CRLF in the output file. | [evidence](compatibility/2026-10-25-batch-120-129.md) | 2026-10-25 |
 | [COMPHEX](compatibility/details.md#comphex) | `COMPHEX.EXE`; package version unverified | Correctly reports zero mismatches for equal Intel HEX files and one mismatch at address `000D` for a one-byte difference. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
 | [CUT](compatibility/details.md#cut-field-cut-utility) | DOS field-cut utility (1986 copyright; version unverified) | Extracted fields 1 and 3 from two CSV rows and formatted them as one:three and four:six. | [evidence](compatibility/2026-10-25-batch-101-110.md) | 2026-10-25 |
 | [CYLON4](compatibility/details.md#cylon4) | Cursor variants documented 1986; archive updated 1988-10 | The EGA variant returns to the shell and changes the cursor from a flat underline to the documented animated wave. Other adapter variants were not tested. | [evidence](compatibility/2026-10-25-catalog-utility-tests.md) | 2026-10-25 |
@@ -39,6 +41,7 @@ program works. The full test history is in
 | [Directory Freedom](compatibility/details.md#directory-freedom-461b) | 4.61B, `df461b.zip` | On disposable FAT16 copies, F1 copied AR.COM to COPYTEST.COM byte-for-byte, F2 deleted AR.COM, and F4 renamed AR.COM to AR.BAK. The directory listing and function menu render; originals were unchanged. | [screenshot](compatibility/2026-10-23-int10-directory-freedom-copy.png) | 2026-10-23 |
 | [DOSCVT](compatibility/details.md#doscvt-24) | 2.4 (1993-03-06 archive) | Converted CRLF text to LF in place; host extraction matched the expected 11-byte result. | [evidence](compatibility/2026-10-25-batch-101-110.md) | 2026-10-25 |
 | [EASTER](compatibility/details.md#easter) | 1.2 (1993-05-04) | Calculated Easter 2001 as Sunday, April 15, matching the published calendar date. | [evidence](compatibility/2026-10-25-batch-111-119.md) | 2026-10-25 |
+| [EDICE](compatibility/details.md#edice) | version unverified (1996 archive) | Opened the electronic dice screen and rendered a one-die roll; escape was sent to exit. | [evidence](compatibility/2026-10-25-batch-120-129.md) | 2026-10-25 |
 | [EDITV](compatibility/details.md#editv-41) | 4.1 US, `editv41u.zip` | Inserted `Z`, moved right, inserted then removed `Y` with Backspace, saved with F2, and reopened. The disposable FAT16 file independently contains `Zalpha one` followed by the original remaining lines. | [screenshot](compatibility/2026-10-23-int10-editv-multiedit.png) | 2026-10-23 |
 | [EXPR](compatibility/details.md#expr) | v2 (1994-09-18 archive) | Evaluated `2 + 3 * 4` as 14, respecting multiplication precedence. | [evidence](compatibility/2026-10-25-batch-111-119.md) | 2026-10-25 |
 | [FDBanner](compatibility/details.md#fdbanner) | 1.1, FD14 BonusCD | Coloured banner rendered through BIOS text services; screenshot checked. | [screenshot](compatibility/2026-10-23-retest-026-fdbanner.png) | 2026-10-23 |
@@ -51,6 +54,7 @@ program works. The full test history is in
 | [FreeDOS FIND](compatibility/details.md#freedos-find-01nov2003) | 01Nov2003, FreeDOS package (GPL-2) | With the test disk mounted as A: (FIND selects A: before opening relative paths), exact, case-insensitive and inverted searches return the expected lines; a missing file reports `No such file`. | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
 | [FreeDOS MORE](compatibility/details.md#freedos-more) | 4.3, FD14 BonusCD | Help, exact short-file text, redirected stdin and 24-line paging/quit verified. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [FreeDOS VCLS](compatibility/details.md#freedos-vcls) | FD14 BonusCD; version unverified | Reads the BIOS video geometry from the initialized BDA, clears the visible VGA text screen, and returns to the redrawn ManiOS prompt. | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
+| [GETLINES](compatibility/details.md#getlines) | 1.0 (1994-05-21) | Selected line 2 from a three-line file and displayed its line number and content. | [evidence](compatibility/2026-10-25-batch-120-129.md) | 2026-10-25 |
 | [HEX and DEC](compatibility/details.md#hex-and-dec) | `HEX.EXE` / `DEC.EXE`; version unverified | Decimal values `27 78 255` convert to `1B 4E FF`, and decoding them returns `27 78 255`. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [HEXBIN](compatibility/details.md#hexbin) | `HEXBIN.EXE`; package version unverified | Converts binary data to checksummed Intel HEX and back; the 14-byte FAT16 fixture round-trips byte-exactly. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
 | [Info-ZIP UnZip](compatibility/details.md#info-zip-unzip-600) | 6.00 (20 Apr 2009), DOS 16-bit large, `unz600x3.exe` | Lists and CRC-tests `KNOWN.ZIP`; extracts all four members including `SUB/THREE.TXT` with exact hashes; `-p` and `FUNZIP` print the correct text. | [transcript](compatibility/2026-10-23-compat4-infozip.txt) | 2026-10-23 |
@@ -60,6 +64,7 @@ program works. The full test history is in
 | [MicroEMACS](compatibility/details.md#microemacs-39) | 3.9 (1987 DOS release) | Typed and edited `hellomanios!`, saved, exited and reopened it; FAT16 contents matched exactly (`hellomanios!` + CRLF). | [evidence](compatibility/2026-10-25-microemacs-pc-outline.md) | 2026-10-25 |
 | [MIME64](compatibility/details.md#mime64-revision-d) | Revision D (`mime64.exe`) | Decoded a MIME Base64 attachment byte-exactly and decoded the package sample into a ZIP that passes CRC testing. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
 | [QEdit](compatibility/details.md#qedit) | Advanced 2.15 (1991 shareware) | Inserted `EDITED ` at the start of INPUT.TXT, saved with Ctrl+K S, exited with Alt+X, reopened it, and verified the exact 32 bytes on FAT16. | [evidence](compatibility/2026-10-25-text-editors-workflow.md) | 2026-10-25 |
+| [RANDOM](compatibility/details.md#random) | version 1 (1997 archive) | Generated two lottery lines with five unique regular numbers in 1–50 and one bonus number in 1–25. | [evidence](compatibility/2026-10-25-batch-120-129.md) | 2026-10-25 |
 | [RLE16](compatibility/details.md#rle16) | 16-bit-header release (1991) | Compressed and restored a mixed text/binary fixture; the output file matched all 55 input bytes. | [evidence](compatibility/2026-10-25-batch-101-110.md) | 2026-10-25 |
 | [SAL compiler SC](compatibility/details.md#semware-tse-250e) | 2.50e, bundled with TSE | Compiles a minimal macro to an 87-byte MAC with the expected signature and message. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [Search](compatibility/details.md#search-10a) | 1.0a, FD14 BonusCD | Finds both root and nested matches once; totals and the missing-file result are correct. | [transcript](compatibility/2026-10-23-search-utf8-basic.txt) | 2026-10-23 |
@@ -72,9 +77,10 @@ program works. The full test history is in
 | [utf8tocp](compatibility/details.md#utf8tocp-20240918) | 20240918, FD14 BonusCD | Exact UTF-8 ↔ CP437 and UTF-8 ↔ CP775 conversions, including Lithuanian letters and CRLF. | [transcript](compatibility/2026-10-23-search-utf8-basic.txt) | 2026-10-23 |
 | [VIEW](compatibility/details.md#view-172) | 17.2, `view.zip` | Original VIEW.DOC verified from start to EOF and back with PgDn/PgUp, Home/End, repeated F2 search and clean Esc. Console redraw corruption fixed. Historical 18% stall remains unreproduced; printing and other formats untested. | [screenshot](compatibility/2026-10-24-view-pgdn-3.png) | 2026-10-24 |
 | [VisiCalc](compatibility/details.md#visicalc) | `VC.COM`, 27,520 bytes; version unverified | Mode-2 worksheet renders; A1=10, B1=20 and C1=+A1+B1 (30) were saved as TEST.VC, the app exited cleanly, and a fresh launch reopened the sheet with the values and formula intact. | [transcript](compatibility/2026-10-24-visicalc-save-reopen-qemu.json) | 2026-10-24 |
+| [WORDCNT](compatibility/details.md#wordcnt) | version unverified (1989 archive) | Counted three words across two input lines. | [evidence](compatibility/2026-10-25-batch-120-129.md) | 2026-10-25 |
 | [Zork I: The Great Underground Empire](compatibility/details.md#zork-i-the-great-underground-empire) | MIT historicalsource release, `zork1.z3` (86,838 bytes), ZIP 2.00 | ZIP 2.00 starts the story; room text, commands, inventory, score, save/restore and quit work. The status line still clips its right edge. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
 
-## 🟡 Partial (19)
+## 🟡 Partial (20)
 
 | Application | Version / media | Partial result | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
@@ -87,6 +93,7 @@ program works. The full test history is in
 | [CONCAT](compatibility/details.md#concat) | 1.0 (1989-05-01) | Read both input files but prefixed each file’s contents with its filename, unlike the documented raw concatenation. | [evidence](compatibility/2026-10-25-batch-101-110.md) | 2026-10-25 |
 | [DiskMenu](compatibility/details.md#diskmenu) | 1.0 (1992) | DMC compiles `SAMPLE.SRC` into `SAMPLE.MNU` and DMENU starts, but its menu display is corrupted in the screen capture; usable selection was not confirmed. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [EDLIN](compatibility/details.md#edlin) | FreeDOS EDLIN 2.24 | Opened the two-line fixture, but ignored both keyboard and serial input at the `*` prompt; edit, save, close and reopen could not be verified. | [evidence](compatibility/2026-10-25-text-editors-workflow.md) | 2026-10-25 |
+| [FINDSTR](compatibility/details.md#findstr-101) | 1.01 (1986-08-05) | Starts and displays its search-pattern prompt, but keyboard-entered query lines did not produce a search result. | [evidence](compatibility/2026-10-25-batch-120-129.md) | 2026-10-25 |
 | [FreeDOS VCHOICE](compatibility/details.md#freedos-vchoice) | FD14 BonusCD; version unverified | Help, arrow+Enter, digit jump, and Escape passed using a shared B800 text screen; the /T 8 /D 1 timeout returned 0 instead of the default choice. | [transcript](compatibility/2026-10-25-dosrun-vchoice-deltree.txt) | 2026-10-25 |
 | [MENU](compatibility/details.md#menu) | 2.0 (archive `dosmenu.zip`) | The six-item menu renders legibly and the `F` exit choice returns to ManiOS; menu DOS-command execution was not verified. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [Microsoft Windows 1.01](compatibility/details.md#microsoft-windows-101) | 1.01, five 360 KB floppy images | Setup completes and writes `WIN.COM`/`WIN100.BIN`; startup prints `Incorrect DOS version` and faults; desktop unavailable. | [screenshot](compatibility/2026-10-23-retest-026-windows-start.png) | 2026-10-23 |
@@ -98,10 +105,11 @@ program works. The full test history is in
 | [u16](compatibility/details.md#u16-12) | 1.2 (1989) | The documented -H help works; decompression of a .Z file was not verified. | [evidence](compatibility/2026-10-25-batch-111-119.md) | 2026-10-25 |
 | [uHex](compatibility/details.md#uhex-104) | 1.0.4 DOS | Help and the 34-byte read-only view work, with display defects; editing, save and reopen are unverified. | [screenshot](compatibility/2026-10-23-retest-026-uhex.png) | 2026-10-23 |
 
-## 🔴 Broken and unsupported (48)
+## 🔴 Broken and unsupported (51)
 
 | Application | Version / media | Status | Blocker | Evidence | Last tested |
 | --- | --- | --- | --- | --- | --- |
+| [@Compare](compatibility/details.md#compare-16) | 1.6 (1994) | 🔴 **Unsupported** | The comparison UI cannot start because the program writes to unsupported VGA CRTC port 03D4 at 1577:0598. | [evidence](compatibility/2026-10-25-batch-120-129.md) | 2026-10-25 |
 | [Ability Plus 3.0](compatibility/details.md#ability-plus-30) | 3.0, `AB3.ZIP` | 🔴 **Unsupported** | Main program stops on x87 `FNINIT`; the installer needs a 32-bit operand. | [transcript](compatibility/2026-10-23-visicalc-ability.txt) | 2026-10-23 |
 | [As-Easy-As](compatibility/details.md#as-easy-as-57) | 5.7, DOS files from archive.org item | 🔴 **Unsupported** | FPU probe writes `OUT 0F0h`, then runs `FNINIT`/`FSTSW`; no worksheet. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
 | [AUMenu](compatibility/details.md#aumenu-143a) | 1.4.3a archive; reports 1.4.3b Unix edition | 🔴 **Broken** | The linked ZIP is the Unix edition: a $79 registration splash appears instead of the DOS menu. | [screenshot](compatibility/2026-10-23-dosprograms-aumenu.png) | 2026-10-23 |
@@ -112,6 +120,7 @@ program works. The full test history is in
 | [Champ Galagon](compatibility/details.md#champ-galagon) | 1.0 (registered, 1997), `galagon.zip` | 🔴 **Unsupported** | Returns to the shell in under 0.6 s with no console output or title screen; no VGA/game frame is reached. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
 | [CHANGE](compatibility/details.md#change-17) | 1.7, OzWoz Release 4 (1992) | 🔴 **Unsupported** | The EXE fails at startup with unsupported opcode DF at 0000:0001; the test file remains unchanged. | [evidence](compatibility/2026-10-25-batch-101-110.md) | 2026-10-25 |
 | [CHOP](compatibility/details.md#chop) | 3.1 (1986/1987) | 🔴 **Unsupported** | The file-split operation stops at unsupported VGA output: OUT port 03D4 at 15F1:05D7; no parts are created. | [evidence](compatibility/2026-10-25-batch-111-119.md) | 2026-10-25 |
+| [CONVERT-IT](compatibility/details.md#convert-it) | version unverified (archive dated 1989) | 🔴 **Broken** | The documented conversion menu did not appear; the executable returned to the shell immediately. | [evidence](compatibility/2026-10-25-batch-120-129.md) | 2026-10-25 |
 | [Costa GUI](compatibility/details.md#costa-gui-180) | 1.8.0, `costa180.zip` | 🔴 **Unsupported** | After PIC support, `DESKTOP.EXE` reaches COSTALIB but stops with `Illegal function call` at `15CA:2E00`; no usable desktop. | [transcript](compatibility/2026-10-23-10232026-retest.txt) | 2026-10-23 |
 | [DATES](compatibility/details.md#dates-200208) | 2002.08, `DATE0208.ZIP` | 🔴 **Unsupported** | After PIC support, startup faults on opcode `FF` at `0A34:5CD8`; no date list or usage screen. | [transcript](compatibility/2026-10-23-10232026-retest.txt) | 2026-10-23 |
 | [DIARY](compatibility/details.md#diary) | `DIARY.COM`; version unverified (archive dated 1996-08-19) | 🔴 **Broken** | Launch created the requested FAT16 output file, but it remained zero bytes instead of appending the date/time and text. | [evidence](compatibility/2026-10-25-catalog-utility-tests.md) | 2026-10-25 |
@@ -130,6 +139,7 @@ program works. The full test history is in
 | [Galaxy Lite](compatibility/details.md#galaxy-lite) | 1.5 (PC-SIG disk 2318) | 🔴 **Unsupported** | Stops at unsupported opcode INTO (0000:0001) before opening the editor. | [evidence](compatibility/2026-10-25-vintage-app-tests.md) | 2026-10-25 |
 | [GW-BASIC](compatibility/details.md#gw-basic-323) | 3.23 (1988; GWBASIC.EXE) | 🔴 **Unsupported** | Shows the `Ok` prompt, then stops on opcode EC / unsupported IN port 0201 when keyboard input begins; no statement is accepted. | [evidence](compatibility/2026-10-25-basic-tests.md) | 2026-10-25 |
 | [Hanoi](compatibility/details.md#hanoi) | 1.3 (2000), `hanoi.zip` | 🔴 **Unsupported** | LZEXE startup unpacks, then stops on `IN` port `0006h` at `115B:0603`; no board. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |
+| [HRS411](compatibility/details.md#hrs411-411) | 4.11 | 🔴 **Broken** | The time-difference calculator returned immediately without displaying its documented input prompts. | [evidence](compatibility/2026-10-25-batch-120-129.md) | 2026-10-25 |
 | [Info-ZIP Zip](compatibility/details.md#info-zip-zip-232) | 2.32, 16-bit and 32-bit DOS builds, `zip232x.zip` | 🔴 **Unsupported** | 16-bit builds stop at `0000:0001` (`E5`/`EF`); the 32-bit build reports `no DPMI`; no archive is created. | [transcript](compatibility/2026-10-23-compat4-infozip.txt) | 2026-10-23 |
 | [KyCalc Scientific Vector Calculator](compatibility/details.md#kycalc-scientific-vector-calculator) | 2.07 (1987) | 🔴 **Unsupported** | Nonresident startup (`/n`) stops at unsupported x87 opcode `DB` before the calculator screen opens. | [evidence](compatibility/2026-10-25-calculator-menu-tests.md) | 2026-10-25 |
 | [Mahjong!](compatibility/details.md#mahjong) | 1996/1997 SoftSpot, `mahjong.zip` | 🔴 **Unsupported** | Stops on operand-size prefix `66h` at `101D:0990`; no screen. The package requires SVGA 1024x768 VESA graphics and a mouse. | [transcript](compatibility/2026-10-23-compat4-games.txt) | 2026-10-23 |

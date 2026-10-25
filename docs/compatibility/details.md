@@ -2079,3 +2079,66 @@ Six user-listed COAST archives were tested. Full commands, archive hashes and li
 - **Tested:** dosrun C:/DIR4.COM; choose L (List a Disk Directory), A (Actual Disk Directory), then C:.
 - **Observed:** The screen displayed the FAT16 root entries including the test files and DIR4.DAT/DIR4.CFG. [Screenshot](2026-10-25-dir4-list.png).
 - **Status:** **Working**. Full archive hashes and environment: [2026-10-25-batch-111-119.md](2026-10-25-batch-111-119.md#dir4-405).
+
+
+## DOS compatibility marathon: applications 120–129
+
+### CLEANSE
+
+- **Tested:** dosrun C:/CLEANSE.COM IN.TXT OUT.TXT.
+- **Observed:** Reported “File cleansing complete.” Host extraction contained `alpha  CRLF beta line CRLF`; the 0x01 control byte was removed.
+- **Status:** **Working**. [Batch report](2026-10-25-batch-120-129.md#cleanse-11).
+
+### CHKTXT
+
+- **Tested:** dosrun C:/CHKTXT.EXE -f C:/IN.TXT.
+- **Observed:** Reported the fixed file usable. Host extraction was `alpha CRLF betaaline CRLF end CRLF 0x1A`; the 0x01 byte was removed and an EOF marker appended.
+- **Status:** **Working**. [Batch report](2026-10-25-batch-120-129.md#chktxt-200).
+
+### GETLINES
+
+- **Tested:** dosrun C:/GETLINES.EXE C:/IN.TXT -l2 -c1 -n.
+- **Observed:** Output was `2      beta needle`.
+- **Status:** **Working**. [Batch report](2026-10-25-batch-120-129.md#getlines-10).
+
+### WORDCNT
+
+- **Tested:** dosrun C:/WORDCNT.COM C:/IN.TXT.
+- **Observed:** Output: `3 words on 2 lines found in file C:/IN.TXT`.
+- **Status:** **Working**. [Batch report](2026-10-25-batch-120-129.md#wordcnt).
+
+### @Compare 1.6
+
+- **Tested:** dosrun C:/@COMPARE.EXE /M A.TXT B.TXT.
+- **Observed:** ManiDOS reported `can’t run opcode EE (at 1577:0598)` and unsupported OUT port 03D4 before the comparison screen.
+- **Status:** **Unsupported**. [Batch report](2026-10-25-batch-120-129.md#compare-16).
+
+### FINDSTR 1.01
+
+- **Tested:** dosrun C:/FINDSTR.COM IN.TXT; entered `needle`, then a blank line.
+- **Observed:** Displayed version 1.01 and “Enter search patterns, 1 per line / NULL line terminates”; the query did not appear in output and no match result was produced. See prompt screenshot.
+- **Status:** **Partial**. [Batch report](2026-10-25-batch-120-129.md#findstr-101).
+
+### CONVERT-IT
+
+- **Tested:** dosrun C:/CONVERTS.EXE.
+- **Observed:** Bounded launch returned to the ManiOS shell without the menu, conversion prompt or result.
+- **Status:** **Broken**. [Batch report](2026-10-25-batch-120-129.md#convert-it).
+
+### HRS411 4.11
+
+- **Tested:** dosrun C:/HRS411.EXE.
+- **Observed:** Bounded launch returned to the ManiOS shell with no elapsed-time prompt or calculation.
+- **Status:** **Broken**. [Batch report](2026-10-25-batch-120-129.md#hrs411-411).
+
+### EDICE
+
+- **Tested:** dosrun C:/EDICE.EXE; selected 1 die, pressed a roll key, then Esc.
+- **Observed:** Startup screen prompted for 1 or 2 dice. After selecting one and pressing a key, the guest displayed a die face. [Screenshots](2026-10-25-edice-start.png) and (2026-10-25-edice-roll.png).
+- **Status:** **Working**. [Batch report](2026-10-25-batch-120-129.md#edice).
+
+### RANDOM
+
+- **Tested:** dosrun C:/RANDOM.EXE; Y; bonus max 25; 1 bonus; regular max 50; 5 regular; 2 lines.
+- **Observed:** Printed two lines: `20, 46, 19, 18, 10 bonus: 21` and `43, 12, 2, 11, 25 bonus: 10`; all values were within the entered limits. [Screenshot](2026-10-25-random1.png).
+- **Status:** **Working**. [Batch report](2026-10-25-batch-120-129.md#random1).
