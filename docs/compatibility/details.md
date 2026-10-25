@@ -1782,8 +1782,8 @@ workflows; EDLIN input and terminal hardware workflows remain unverified. The pe
 
 ### GW-BASIC 3.23
 
-**Untested.** User-supplied target: 1988, 8086/DOS; described as “very promising.” No binary or test media was found in the workspace, so compatibility remains unverified. [Target record](2026-10-25-vintage-app-targets.md).
+**Unsupported.** The supplied `GWBASIC.EXE` displays its `Ok` prompt, then stops with `IN AL,DX` (`EC`) at 12DD:6509 and unsupported I/O port 0201 on the first keyboard input. No BASIC statement was accepted. [Test record](2026-10-25-basic-tests.md); [startup screenshot](2026-10-25-gw-basic-start.png).
 
 ### Microsoft BASIC 5.28
 
-**Untested.** User-supplied target: 1980s, 8086/DOS; described as “promising.” No binary or test media was found in the workspace, so compatibility remains unverified. [Target record](2026-10-25-vintage-app-targets.md).
+**Broken.** The supplied `MSBASIC.COM` returns to the ManiOS shell without a BASIC prompt or usable screen. [Test record](2026-10-25-basic-tests.md); [screenshot](2026-10-25-ms-basic-return.png).

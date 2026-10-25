@@ -749,24 +749,24 @@
     {
       "id": "gw-basic-323",
       "name": "GW-BASIC",
-      "version": "3.23 (1988; 8086, DOS)",
-      "status": "Untested",
+      "version": "3.23 (1988; GWBASIC.EXE)",
+      "status": "Unsupported",
       "kind": "application",
-      "summary": "Promising candidate per user; no GW-BASIC binary or test media is present in the workspace, so compatibility is unverified.",
+      "summary": "Shows the `Ok` prompt, then stops on opcode EC / unsupported IN port 0201 when keyboard input begins; no statement is accepted.",
       "anchor": "gw-basic-323",
-      "evidence": "2026-10-25-vintage-app-targets.md",
-      "last_tested": "Not tested"
+      "evidence": "2026-10-25-basic-tests.md",
+      "last_tested": "2026-10-25"
     },
     {
       "id": "microsoft-basic-528",
       "name": "Microsoft BASIC",
-      "version": "5.28 (1980s; 8086, DOS)",
-      "status": "Untested",
+      "version": "5.28 (MSBASIC.COM, 1983-05-24)",
+      "status": "Broken",
       "kind": "application",
-      "summary": "Promising candidate per user; no Microsoft BASIC binary or test media is present in the workspace, so compatibility is unverified.",
+      "summary": "The tested COM binary returns to the ManiOS shell without a BASIC prompt or usable screen.",
       "anchor": "microsoft-basic-528",
-      "evidence": "2026-10-25-vintage-app-targets.md",
-      "last_tested": "Not tested"
+      "evidence": "2026-10-25-basic-tests.md",
+      "last_tested": "2026-10-25"
     }
   ],
   "status_colors": {
