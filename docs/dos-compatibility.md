@@ -2,7 +2,7 @@
 
 Last updated: **2026-10-25**. ManiOS version: **0.26.1-10252026**.
 
-**75 programs:** 🟢 **28 Working** · 🟡 **10 Partial** · 🔴 **36 Broken/unsupported** · ⚪ **1 Untested**
+**82 programs:** 🟢 **34 Working** · 🟡 **11 Partial** · 🔴 **36 Broken/unsupported** · ⚪ **1 Untested**
 
 This is task-specific coverage, not a compatibility percentage: a green
 entry means the listed task completed, not that every feature of the
@@ -18,26 +18,32 @@ program works. The full test history is in
 | 🔴 | Unsupported | A required CPU mode, subsystem or interface is missing. |
 | ⚪ | Untested | No current result. |
 
-## 🟢 Working (28)
+## 🟢 Working (34)
 
 | Application | Version / media | Verified task | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
 | [Adventure (350-point DECUS port)](compatibility/details.md#adventure-350-point-decus-port) | Kevin Black DOS build, `adv350kb.zip` | Starts, accepts a 20-character instructions answer, and completes look, inventory, movement and quit; the quit score is 32/350. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
+| [ASCIFY](compatibility/details.md#ascify-13) | 1.3 (1987) | Encoded the binary fixture as an ASCIFY text file and decoded it to an exact 14-byte match. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
 | [B64](compatibility/details.md#b64) | 0.06R (rev A), FD14 BonusCD | Help, Base64 encoding of `ABCD` and decoding of `QUJDRA==` are byte-exact. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [BSUM](compatibility/details.md#bsum) | 1.1a, FD14 BonusCD | Text, empty-file and 20 KiB binary checksums match an independent oracle; usage and missing-file errors verified. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
+| [COMPHEX](compatibility/details.md#comphex) | `COMPHEX.EXE`; package version unverified | Correctly reports zero mismatches for equal Intel HEX files and one mismatch at address `000D` for a one-byte difference. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
 | [Directory Freedom](compatibility/details.md#directory-freedom-461b) | 4.61B, `df461b.zip` | On disposable FAT16 copies, F1 copied AR.COM to COPYTEST.COM byte-for-byte, F2 deleted AR.COM, and F4 renamed AR.COM to AR.BAK. The directory listing and function menu render; originals were unchanged. | [screenshot](compatibility/2026-10-23-int10-directory-freedom-copy.png) | 2026-10-23 |
 | [EDITV](compatibility/details.md#editv-41) | 4.1 US, `editv41u.zip` | Inserted `Z`, moved right, inserted then removed `Y` with Backspace, saved with F2, and reopened. The disposable FAT16 file independently contains `Zalpha one` followed by the original remaining lines. | [screenshot](compatibility/2026-10-23-int10-editv-multiedit.png) | 2026-10-23 |
 | [FDBanner](compatibility/details.md#fdbanner) | 1.1, FD14 BonusCD | Coloured banner rendered through BIOS text services; screenshot checked. | [screenshot](compatibility/2026-10-23-retest-026-fdbanner.png) | 2026-10-23 |
 | [Figlet](compatibility/details.md#figlet-22) | 2.2 DOS port, `figdos22.zip` | Correct `ManiOS` standard-font banner; `-I 1` prints `20200`. | [screenshot](compatibility/2026-10-23-dosprograms-figlet.png) | 2026-10-23 |
+| [FORMAT83](compatibility/details.md#format83) | `FORMAT83.COM`; package version unverified | Writes the fixture as valid Intel HEX records to standard output; data-record and EOF checksums validate. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
 | [FreeDOS ATTRIB](compatibility/details.md#freedos-attrib) | FD14 BonusCD; version unverified | Lists FAT attributes and persists `+R`/`-R`; a fresh DOS execution reads the changed state and `mattrib` independently confirms it on disk. | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
 | [FreeDOS DELTREE](compatibility/details.md#freedos-deltree) | BonusCD build v1.02g | Six guest cases passed on disposable FAT16 images: confirmed nested deletion, cancellation, /Y root-safety confirmation, root guard, and missing-target handling. The unrelated KEEP.TXT and OTHER survived. | [transcript](compatibility/2026-10-25-dosrun-vchoice-deltree.txt) | 2026-10-25 |
 | [FreeDOS FC](compatibility/details.md#freedos-fc) | FD14 BonusCD; version unverified | Equal/different text and `/B` binary comparisons produce the correct results. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [FreeDOS FIND](compatibility/details.md#freedos-find-01nov2003) | 01Nov2003, FreeDOS package (GPL-2) | With the test disk mounted as A: (FIND selects A: before opening relative paths), exact, case-insensitive and inverted searches return the expected lines; a missing file reports `No such file`. | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
 | [FreeDOS MORE](compatibility/details.md#freedos-more) | 4.3, FD14 BonusCD | Help, exact short-file text, redirected stdin and 24-line paging/quit verified. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [FreeDOS VCLS](compatibility/details.md#freedos-vcls) | FD14 BonusCD; version unverified | Reads the BIOS video geometry from the initialized BDA, clears the visible VGA text screen, and returns to the redrawn ManiOS prompt. | [transcript](compatibility/2026-10-24-wave2-fixup.txt) | 2026-10-24 |
+| [HEXBIN](compatibility/details.md#hexbin) | `HEXBIN.EXE`; package version unverified | Converts binary data to checksummed Intel HEX and back; the 14-byte FAT16 fixture round-trips byte-exactly. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
 | [Info-ZIP UnZip](compatibility/details.md#info-zip-unzip-600) | 6.00 (20 Apr 2009), DOS 16-bit large, `unz600x3.exe` | Lists and CRC-tests `KNOWN.ZIP`; extracts all four members including `SUB/THREE.TXT` with exact hashes; `-p` and `FUNZIP` print the correct text. | [transcript](compatibility/2026-10-23-compat4-infozip.txt) | 2026-10-23 |
 | [Life2](compatibility/details.md#life2) | text-mode Conway Life, `life2.zip` | Native timer IRQ0 delivery now executes the installed SOUND handler. Blinker horizontal/vertical/horizontal evolution and Q/Esc exit verified on a disposable FAT16 image. Working for pattern creation, RUN, verified blinker evolution and Q/Esc exit. One earlier marking run reported a BASIC runtime error; its cause remains unresolved. Other patterns/features remain untested. | [evidence](compatibility/2026-10-24-pit-irq0.md) | 2026-10-24 |
+| [MAKEUUE](compatibility/details.md#makeuue-11) | 1.1 (`MAKEUUE.EXE`) | Generated a self-decoding BAT with a UU payload that independently decodes to the exact 14-byte input; running the BAT with DEBUG was not tested. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
 | [MicroEMACS](compatibility/details.md#microemacs-39) | 3.9 (1987 DOS release) | Typed and edited `hellomanios!`, saved, exited and reopened it; FAT16 contents matched exactly (`hellomanios!` + CRLF). | [evidence](compatibility/2026-10-25-microemacs-pc-outline.md) | 2026-10-25 |
+| [MIME64](compatibility/details.md#mime64-revision-d) | Revision D (`mime64.exe`) | Decoded a MIME Base64 attachment byte-exactly and decoded the package sample into a ZIP that passes CRC testing. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
 | [QEdit](compatibility/details.md#qedit) | Advanced 2.15 (1991 shareware) | Inserted `EDITED ` at the start of INPUT.TXT, saved with Ctrl+K S, exited with Alt+X, reopened it, and verified the exact 32 bytes on FAT16. | [evidence](compatibility/2026-10-25-text-editors-workflow.md) | 2026-10-25 |
 | [SAL compiler SC](compatibility/details.md#semware-tse-250e) | 2.50e, bundled with TSE | Compiles a minimal macro to an 87-byte MAC with the expected signature and message. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
 | [Search](compatibility/details.md#search-10a) | 1.0a, FD14 BonusCD | Finds both root and nested matches once; totals and the missing-file result are correct. | [transcript](compatibility/2026-10-23-search-utf8-basic.txt) | 2026-10-23 |
@@ -51,11 +57,12 @@ program works. The full test history is in
 | [VisiCalc](compatibility/details.md#visicalc) | `VC.COM`, 27,520 bytes; version unverified | Mode-2 worksheet renders; A1=10, B1=20 and C1=+A1+B1 (30) were saved as TEST.VC, the app exited cleanly, and a fresh launch reopened the sheet with the values and formula intact. | [transcript](compatibility/2026-10-24-visicalc-save-reopen-qemu.json) | 2026-10-24 |
 | [Zork I: The Great Underground Empire](compatibility/details.md#zork-i-the-great-underground-empire) | MIT historicalsource release, `zork1.z3` (86,838 bytes), ZIP 2.00 | ZIP 2.00 starts the story; room text, commands, inventory, score, save/restore and quit work. The status line still clips its right edge. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
 
-## 🟡 Partial (10)
+## 🟡 Partial (11)
 
 | Application | Version / media | Partial result | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
 | [Checks & Balances](compatibility/details.md#checks--balances) | 4.0g (1986), two 360 KB floppies | Configuration and the supplied DEMO work (`TRUE $2450.20`, `BANK $279.04`); ledger entry, save and reopen are unverified. | [transcript](compatibility/2026-10-23-retest-026.txt) | 2026-10-23 |
+| [COMHEX](compatibility/details.md#comhex) | `COMHEX.COM`; package version unverified | Prompts for a COM basename, but aborts with Pascal `I/O error 99` and leaves a zero-byte HEX file; conversion did not complete. | [evidence](compatibility/2026-10-25-decode-utilities.md) | 2026-10-25 |
 | [EDLIN](compatibility/details.md#edlin) | FreeDOS EDLIN 2.24 | Opened the two-line fixture, but ignored both keyboard and serial input at the `*` prompt; edit, save, close and reopen could not be verified. | [evidence](compatibility/2026-10-25-text-editors-workflow.md) | 2026-10-25 |
 | [FreeDOS VCHOICE](compatibility/details.md#freedos-vchoice) | FD14 BonusCD; version unverified | Help, arrow+Enter, digit jump, and Escape passed using a shared B800 text screen; the /T 8 /D 1 timeout returned 0 instead of the default choice. | [transcript](compatibility/2026-10-25-dosrun-vchoice-deltree.txt) | 2026-10-25 |
 | [Microsoft Windows 1.01](compatibility/details.md#microsoft-windows-101) | 1.01, five 360 KB floppy images | Setup completes and writes `WIN.COM`/`WIN100.BIN`; startup prints `Incorrect DOS version` and faults; desktop unavailable. | [screenshot](compatibility/2026-10-23-retest-026-windows-start.png) | 2026-10-23 |

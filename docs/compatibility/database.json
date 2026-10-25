@@ -833,6 +833,83 @@
       "anchor": "pc-deskteam",
       "evidence": "2026-10-25-microemacs-pc-outline.md",
       "last_tested": "2026-10-25"
+    },
+    {
+      "id": "comhex",
+      "name": "COMHEX",
+      "version": "`COMHEX.COM`; package version unverified",
+      "status": "Partial",
+      "kind": "utility",
+      "summary": "Prompts for a COM basename, but aborts with Pascal `I/O error 99` and leaves a zero-byte HEX file; conversion did not complete.",
+      "anchor": "comhex",
+      "evidence": "2026-10-25-decode-utilities.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "comphex",
+      "name": "COMPHEX",
+      "version": "`COMPHEX.EXE`; package version unverified",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Correctly reports zero mismatches for equal Intel HEX files and one mismatch at address `000D` for a one-byte difference.",
+      "anchor": "comphex",
+      "evidence": "2026-10-25-decode-utilities.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "hexbin",
+      "name": "HEXBIN",
+      "version": "`HEXBIN.EXE`; package version unverified",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Converts binary data to checksummed Intel HEX and back; the 14-byte FAT16 fixture round-trips byte-exactly.",
+      "anchor": "hexbin",
+      "evidence": "2026-10-25-decode-utilities.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "ascify13",
+      "name": "ASCIFY",
+      "version": "1.3 (1987)",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Encoded the binary fixture as an ASCIFY text file and decoded it to an exact 14-byte match.",
+      "anchor": "ascify-13",
+      "evidence": "2026-10-25-decode-utilities.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "format83",
+      "name": "FORMAT83",
+      "version": "`FORMAT83.COM`; package version unverified",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Writes the fixture as valid Intel HEX records to standard output; data-record and EOF checksums validate.",
+      "anchor": "format83",
+      "evidence": "2026-10-25-decode-utilities.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "makeuu11",
+      "name": "MAKEUUE",
+      "version": "1.1 (`MAKEUUE.EXE`)",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Generated a self-decoding BAT with a UU payload that independently decodes to the exact 14-byte input; running the BAT with DEBUG was not tested.",
+      "anchor": "makeuue-11",
+      "evidence": "2026-10-25-decode-utilities.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "mime64d",
+      "name": "MIME64",
+      "version": "Revision D (`mime64.exe`)",
+      "status": "Working",
+      "kind": "utility",
+      "summary": "Decoded a MIME Base64 attachment byte-exactly and decoded the package sample into a ZIP that passes CRC testing.",
+      "anchor": "mime64-revision-d",
+      "evidence": "2026-10-25-decode-utilities.md",
+      "last_tested": "2026-10-25"
     }
   ],
   "status_colors": {

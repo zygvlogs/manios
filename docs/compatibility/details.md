@@ -5,7 +5,7 @@ The red/yellow/green overview is in
 [dos-compatibility.md](../dos-compatibility.md); the machine-readable index is
 [database.json](database.json).
 
-Last updated: **2026-10-23**. ManiOS version: **0.26.0**.
+Last updated: **2026-10-25**. ManiOS version: **0.26.1-10252026**.
 
 The sections below record tests of real DOS applications through `dosrun`.
 Results apply only to the identified program version, ManiOS revision and test
@@ -1831,3 +1831,52 @@ workflows; EDLIN input and terminal hardware workflows remain unverified. The pe
 
 - **Result:** **Untested** as requested because the required library component is unavailable. No launch or feature test was attempted.
 - **Evidence:** [test scope note](2026-10-25-microemacs-pc-outline.md); [catalog/source notes](2026-10-25-priority-apps.md).
+
+## COMHEX
+
+- **Acquisition:** user-listed `comhex.zip` from the [COAST DOS decode archive](https://ftp.zx.net.nz/pub/archive/ftp.icm.edu.pl/pub/coast/msdos/decode/); SHA-256 `343311b6e0ce7bfc835a3aa6669d2ff57867cbde6aaee232c28f83717b22af77`.
+- **Environment and command:** ManiOS 0.26.1-10252026, QEMU i386/486, 64 MiB RAM, disposable FAT16 disk; `dosrun C:/COMHEX.COM`, then entered `TEST` (also tried `C:/TEST`) at the program prompt.
+- **Result:** the prompt accepts input, then the Pascal program aborts with `I/O error 99` at `PC=2FB7`. `TEST.HEX` is left at zero bytes. COM-to-HEX conversion did not complete; status is Partial.
+- **Evidence:** [archive hashes and test details](2026-10-25-decode-utilities.md).
+
+## COMPHEX
+
+- **Acquisition:** user-listed `comphex.zip`; SHA-256 `dabb361fc3cb4acc1f2b06594d6b242251f1f7b11e9e43ae12b6c92b7b9af100`.
+- **Commands:** `dosrun C:/COMPHEX.EXE C:/A.HEX C:/SAME.HEX` and `dosrun C:/COMPHEX.EXE C:/A.HEX C:/B.HEX`.
+- **Result:** the equal pair reports byte count `000E`, mismatch count `0000`; the pair differing only at the final byte reports address `000D`, `0A` versus `21`, and mismatch count `0001`.
+- **Evidence:** [archive hashes and test details](2026-10-25-decode-utilities.md).
+
+## HEXBIN
+
+- **Acquisition:** user-listed `hexbin.zip`; SHA-256 `27754202e267a1db8d4e2bda67a7eec5567c6380041c925c99db7330057bb7a7`.
+- **Commands:** `dosrun C:/HEXBIN.EXE C:/TEST.BIN C:/OUT.HEX`, then `dosrun C:/HEXBIN.EXE C:/OUT.HEX C:/ROUND.BIN`.
+- **Result:** binary-to-HEX output contains the 14-byte data record `:0E0000000001027F80FEFF4D616E694F530AC2` and valid EOF record. The decoded FAT16 file is byte-exact with the fixture.
+- **Evidence:** [archive hashes and test details](2026-10-25-decode-utilities.md).
+
+## ASCIFY 1.3
+
+- **Acquisition:** user-listed `ascify13.zip`; SHA-256 `251d45708f57b7b4feb6ca332ed10bda4f251d42a34e40295bae699f620f9164`.
+- **Commands:** `dosrun C:/ASCIFY.COM TEST.BIN TEST.ASC`; deleted the original fixture from the disposable FAT16 image, then ran `dosrun C:/ASCIFY.COM TEST.ASC`.
+- **Result:** generated a 52-byte ASCIFY file and decoded it back to a 14-byte file matching the source byte-for-byte.
+- **Evidence:** [archive hashes and test details](2026-10-25-decode-utilities.md).
+
+## FORMAT83
+
+- **Acquisition:** user-listed `format83.zip`; SHA-256 `abc93f762adabd0b0f62829f53e81b2c0cd887faccba73eba17516aa9da1b8df`.
+- **Command:** `dosrun C:/FORMAT83.COM C:/TEST.BIN`.
+- **Result:** stdout contains a valid 14-byte Intel HEX record and EOF record. Both checksums sum to zero modulo 256. Output is intentionally standard output; a disk redirection attempt was unavailable on the tested mounted path.
+- **Evidence:** [captured output and archive hashes](2026-10-25-decode-utilities.md).
+
+## MAKEUUE 1.1
+
+- **Acquisition:** user-listed `makeuu11.zip`; SHA-256 `dac3b9a12316ed6d2921ff589b2cffdec36aa9fdad2ce3babbbecba5c226dc32`.
+- **Command:** `dosrun C:/MAKEUUE.EXE TEST.BIN TESTUU.BAT`.
+- **Result:** generated a 439-byte self-decoding batch file. An independent decoder for the format's documented character mapping reconstructed the exact 14-byte fixture (with one zero pad byte). The generated batch's DEBUG-based reconstruction commands were not run because DEBUG was not available in the tested ManiOS environment.
+- **Evidence:** [archive hashes and test details](2026-10-25-decode-utilities.md).
+
+## MIME64 Revision D
+
+- **Acquisition:** user-listed `mime64d.zip`; SHA-256 `75c6919f12bd20fe8121acf9e1807a548627efa4a9a5bf56a9247dc5b41d7d14`.
+- **Commands:** `dosrun C:/MIME64.EXE C:/INPUT.TXT` and `dosrun C:/MIME64.EXE C:/MIME.64 C:/MIME.ZIP`.
+- **Result:** the MIME/Base64 attachment decoded to the named `TEST.BIN` and matched the 14-byte fixture exactly. The package's own sample decoded to `MIME.ZIP`; `unzip -t` verified its `mime.txt` member without CRC errors.
+- **Evidence:** [archive hashes and test details](2026-10-25-decode-utilities.md).
