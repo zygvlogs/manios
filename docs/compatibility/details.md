@@ -1812,9 +1812,11 @@ workflows; EDLIN input and terminal hardware workflows remain unverified. The pe
 
 ## PC-Outline 3.34
 
-- **Acquisition:** period references identify PC-SIG disk 480, but no disk image or executable was obtained during this attempt.
-- **Result:** **Untested**.
-- **Evidence:** [source search record](2026-10-25-priority-apps.md).
+- **Acquisition:** user-supplied `pco334.zip`; `README.1` identifies PC-Outline 3.34. The archive contains `PCO.EXE` (73,315 bytes), documentation and sample outlines.
+- **Build and environment:** ManiOS 0.26.1-10252026, QEMU i386/486, 64 MiB RAM, serial console, disposable FAT16 disk.
+- **Command and input:** `dosrun C:/PCO.EXE`; dismissed the shareware screen, chose “Open a new outline”, and typed `TEST` into the new-outline filename dialog.
+- **Result:** the splash, opening menu and filename dialog render, and ordinary filename characters are accepted. Return did not submit the dialog; the program remained there. Return, keypad Enter and Ctrl+M were tried. The editor, content editing, save, clean close and reopen were not reached. No compatibility claim is made for those operations.
+- **Evidence:** [filename dialog after Return](2026-10-25-pc-outline-filename-prompt.png); [archive and test record](2026-10-25-priority-apps.md).
 
 ## PC-TYPE v1 DS
 

@@ -804,12 +804,12 @@
     {
       "id": "pc-outline-334",
       "name": "PC-Outline",
-      "version": "3.34 (PC-SIG disk 480)",
-      "status": "Untested",
+      "version": "3.34 (`pco334.zip`; README dated 1987)",
+      "status": "Partial",
       "kind": "application",
-      "summary": "Historical catalogs identify the version and disk number, but the disk image or executable was not obtainable from the available archive mirrors.",
+      "summary": "Launches the shareware screen and opening menu and accepts a filename in the new-outline dialog, but Return is ignored; the editor, save and reopen were not reached.",
       "anchor": "pc-outline-334",
-      "evidence": "2026-10-25-priority-apps.md",
+      "evidence": "2026-10-25-pc-outline-filename-prompt.png",
       "last_tested": "2026-10-25"
     },
     {

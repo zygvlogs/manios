@@ -2,7 +2,7 @@
 
 Last updated: **2026-10-25**. ManiOS version: **0.26.1-10252026**.
 
-**75 programs:** 🟢 **27 Working** · 🟡 **9 Partial** · 🔴 **36 Broken/unsupported** · ⚪ **3 Untested**
+**75 programs:** 🟢 **27 Working** · 🟡 **10 Partial** · 🔴 **36 Broken/unsupported** · ⚪ **2 Untested**
 
 This is task-specific coverage, not a compatibility percentage: a green
 entry means the listed task completed, not that every feature of the
@@ -50,7 +50,7 @@ program works. The full test history is in
 | [VisiCalc](compatibility/details.md#visicalc) | `VC.COM`, 27,520 bytes; version unverified | Mode-2 worksheet renders; A1=10, B1=20 and C1=+A1+B1 (30) were saved as TEST.VC, the app exited cleanly, and a fresh launch reopened the sheet with the values and formula intact. | [transcript](compatibility/2026-10-24-visicalc-save-reopen-qemu.json) | 2026-10-24 |
 | [Zork I: The Great Underground Empire](compatibility/details.md#zork-i-the-great-underground-empire) | MIT historicalsource release, `zork1.z3` (86,838 bytes), ZIP 2.00 | ZIP 2.00 starts the story; room text, commands, inventory, score, save/restore and quit work. The status line still clips its right edge. | [transcript](compatibility/2026-10-23-text-adventures.json) | 2026-10-23 |
 
-## 🟡 Partial (9)
+## 🟡 Partial (10)
 
 | Application | Version / media | Partial result | Evidence | Last tested |
 | --- | --- | --- | --- | --- |
@@ -58,6 +58,7 @@ program works. The full test history is in
 | [EDLIN](compatibility/details.md#edlin) | FreeDOS EDLIN 2.24 | Opened the two-line fixture, but ignored both keyboard and serial input at the `*` prompt; edit, save, close and reopen could not be verified. | [evidence](compatibility/2026-10-25-text-editors-workflow.md) | 2026-10-25 |
 | [FreeDOS VCHOICE](compatibility/details.md#freedos-vchoice) | FD14 BonusCD; version unverified | Help, arrow+Enter, digit jump, and Escape passed using a shared B800 text screen; the /T 8 /D 1 timeout returned 0 instead of the default choice. | [transcript](compatibility/2026-10-25-dosrun-vchoice-deltree.txt) | 2026-10-25 |
 | [Microsoft Windows 1.01](compatibility/details.md#microsoft-windows-101) | 1.01, five 360 KB floppy images | Setup completes and writes `WIN.COM`/`WIN100.BIN`; startup prints `Incorrect DOS version` and faults; desktop unavailable. | [screenshot](compatibility/2026-10-23-retest-026-windows-start.png) | 2026-10-23 |
+| [PC-Outline](compatibility/details.md#pc-outline-334) | 3.34 (`pco334.zip`; README dated 1987) | Launches the shareware screen and opening menu and accepts a filename in the new-outline dialog, but Return is ignored; the editor, save and reopen were not reached. | [screenshot](compatibility/2026-10-25-pc-outline-filename-prompt.png) | 2026-10-25 |
 | [PC-Talk](compatibility/details.md#pc-talk) | PC-Talk III (1983–1985) | Displays the license/notice screen. A terminal session and modem or serial connection were not tested. | [screenshot](compatibility/2026-10-25-pc-talk.png) | 2026-10-25 |
 | [PC-TYPE](compatibility/details.md#pc-type-v1-ds) | v1 DS evaluation (Jim Button) | Starts a new blank document, but attempted `hello` input renders incorrectly as `qq`; editing and save/reopen are unverified. This is a word processor, not a typing tutor. | [evidence](compatibility/2026-10-25-priority-apps.md) | 2026-10-25 |
 | [PC-Write](compatibility/details.md#pc-write) | 3.03 (1989; PC-SIG disk 78) | Opened INPUT.TXT and displayed its two lines in the editor; editing, save and reopen were not tested. | [screenshot](compatibility/2026-10-25-pc-write.png) | 2026-10-25 |
@@ -105,13 +106,12 @@ program works. The full test history is in
 | [VIEWSEEK](compatibility/details.md#viewseek-31-auxiliary) | 3.1, VIEW package (auxiliary) | 🔴 **Broken** | Search reports no match for text that is present, then exits with `run-time error R6001`. | [transcript](compatibility/2026-10-23-dosprograms-apps.txt) | 2026-10-23 |
 | [Warcraft: Orcs & Humans](compatibility/details.md#warcraft-orcs--humans) | 1994 DOS CD; exact patch unverified | 🔴 **Unsupported** | Extracted `war.exe` needs a DOS/4GW protected-mode payload; the installer stops on `OUT 43h` (`E6`). | [transcript](compatibility/2026-10-22-warcraft.txt) | 2026-10-23 |
 
-## ⚪ Untested (3)
+## ⚪ Untested (2)
 
 | Application | Version / media | Evidence | Last tested |
 | --- | --- | --- | --- |
 | [MicroEMACS](compatibility/details.md#microemacs-39) | 3.9 (1987 DOS release) | [evidence](compatibility/2026-10-25-priority-apps.md) | 2026-10-25 |
 | [PC-DeskTeam](compatibility/details.md#pc-deskteam) | PC-SIG disk 405 (DESKTEAM.COM; version unverified) | [evidence](compatibility/2026-10-25-priority-apps.md) | 2026-10-25 |
-| [PC-Outline](compatibility/details.md#pc-outline-334) | 3.34 (PC-SIG disk 480) | [evidence](compatibility/2026-10-25-priority-apps.md) | 2026-10-25 |
 
 ## Scope and method
 
