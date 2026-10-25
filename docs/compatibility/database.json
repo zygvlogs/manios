@@ -1436,7 +1436,7 @@
       "kind": "file-utility",
       "summary": "The analyzer does not start: `dosrun` reports unsupported opcode `DB` at 1667:00F1.",
       "anchor": "ana",
-      "evidence": "2026-10-25-batch-130-139.md",
+      "evidence": "2026-10-25-batch-130-140.md",
       "last_tested": "2026-10-25"
     },
     {
@@ -1447,7 +1447,7 @@
       "kind": "file-utility",
       "summary": "The documented split task cannot run because the executor rejects opcode `AAM` at 1472:1FBE.",
       "anchor": "carve",
-      "evidence": "2026-10-25-batch-130-139.md",
+      "evidence": "2026-10-25-batch-130-140.md",
       "last_tested": "2026-10-25"
     },
     {
@@ -1458,7 +1458,7 @@
       "kind": "file-utility",
       "summary": "Created a readable hex dump of a six-byte FAT16 input; extracted output exactly represented `41 42 43 44 0D 0A`.",
       "anchor": "bobs-file-dump-program",
-      "evidence": "2026-10-25-batch-130-139.md",
+      "evidence": "2026-10-25-batch-130-140.md",
       "last_tested": "2026-10-25"
     },
     {
@@ -1469,7 +1469,7 @@
       "kind": "file-conversion",
       "summary": "Wrapped HELLO.COM as plain text and decoded it with the documented `-x` form; decoded COM bytes matched the original exactly.",
       "anchor": "comt",
-      "evidence": "2026-10-25-batch-130-139.md",
+      "evidence": "2026-10-25-batch-130-140.md",
       "last_tested": "2026-10-25"
     },
     {
@@ -1480,7 +1480,7 @@
       "kind": "text-processing",
       "summary": "The WWW-form conversion does not start: ManiOS reports unsupported VGA `OUT` port 03D4 at 115C:058D.",
       "anchor": "cqvert",
-      "evidence": "2026-10-25-batch-130-139.md",
+      "evidence": "2026-10-25-batch-130-140.md",
       "last_tested": "2026-10-25"
     },
     {
@@ -1491,7 +1491,7 @@
       "kind": "file-comparison",
       "summary": "Compared two differing FAT16 text files and identified file 2 as longer, then displayed differing byte positions; the serial display did not allow an exact audit of its reported difference count.",
       "anchor": "fast-file-compare",
-      "evidence": "2026-10-25-batch-130-139.md",
+      "evidence": "2026-10-25-batch-130-140.md",
       "last_tested": "2026-10-25"
     },
     {
@@ -1502,7 +1502,7 @@
       "kind": "file-utility",
       "summary": "The copy menu begins, but execution stops on unsupported VGA OUT port 03D4 at 10D4:058C before a copy can be verified.",
       "anchor": "copyem",
-      "evidence": "2026-10-25-batch-130-139.md",
+      "evidence": "2026-10-25-batch-130-140.md",
       "last_tested": "2026-10-25"
     },
     {
@@ -1513,7 +1513,7 @@
       "kind": "file-search",
       "summary": "Found TARGET.TXT at the FAT16 root and in the existing NESTED directory during name search.",
       "anchor": "anywhere",
-      "evidence": "2026-10-25-batch-130-139.md",
+      "evidence": "2026-10-25-batch-130-140.md",
       "last_tested": "2026-10-25"
     },
     {
@@ -1524,7 +1524,7 @@
       "kind": "file-search",
       "summary": "Found COMMFILE.TXT by partial filename match and reported one matching file.",
       "anchor": "chunt",
-      "evidence": "2026-10-25-batch-130-139.md",
+      "evidence": "2026-10-25-batch-130-140.md",
       "last_tested": "2026-10-25"
     },
     {
@@ -1535,7 +1535,7 @@
       "kind": "file-utility",
       "summary": "Recursively scanned the FAT16 tree and reported no unusual (hidden, system, or read-only) files in the clean test image.",
       "anchor": "unusual",
-      "evidence": "2026-10-25-batch-130-139.md",
+      "evidence": "2026-10-25-batch-130-140.md",
       "last_tested": "2026-10-25"
     },
     {
@@ -1546,7 +1546,7 @@
       "kind": "file-manager",
       "summary": "Printed a visual tree of FAT16 directories, including nested ManiOS test folders.",
       "anchor": "vtreehp",
-      "evidence": "2026-10-25-batch-130-139.md",
+      "evidence": "2026-10-25-batch-130-140.md",
       "last_tested": "2026-10-25"
     },
     {
