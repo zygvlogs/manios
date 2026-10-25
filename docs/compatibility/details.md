@@ -1729,3 +1729,52 @@ The 2026-10-25 DELTREE and VCHOICE results, including the VCHOICE timeout
 limitation, are in the [DOS-runner verification record](2026-10-25-dosrun-vchoice-deltree.txt).
 Earlier corrected reruns and remaining limitations are in the
 [fix-up transcript](2026-10-24-wave2-fixup.txt).
+
+## Compatibility targets added 2026-10-25
+
+These ten targets were added from the user-supplied list. The tests below used
+archived evaluation versions that were available in the workspace. They are
+bounded application checks. QEdit and TED completed save/reopen verification;
+EDLIN input and terminal hardware workflows remain unverified. The per-program test record is
+[here](2026-10-25-vintage-app-tests.md); the original target list is
+[here](2026-10-25-vintage-app-targets.md).
+
+### PC-Write
+
+**Partial.** Tested version/media: 3.03 (1989; PC-SIG disk 78). Opened INPUT.TXT and displayed its two lines in the editor; editing, save and reopen were not tested. [Screenshot](2026-10-25-pc-write.png); [full test record](2026-10-25-vintage-app-tests.md).
+
+### PC-Calc
+
+**Unsupported.** Tested version/media: PC-Calc+ 2.0 (PC-SIG disk 199). The worksheet executable stops at unsupported opcode DB (2E03:00CF) before a usable spreadsheet opens. [Full test record](2026-10-25-vintage-app-tests.md).
+
+### PC-File
+
+**Unsupported.** Tested version/media: PC-File+ (PC-SIG disk 5; release unverified). The executable stops at unsupported opcode F0 (0000:0024) before a usable database screen opens. [Full test record](2026-10-25-vintage-app-tests.md).
+
+### QEdit
+
+**Working.** QEdit Advanced 2.15 completed the insert, save, exit, reopen and byte-exact FAT16 verification workflow. [Detailed results and hashes](2026-10-25-text-editors-workflow.md); [reopened-file screenshot](2026-10-25-qedit-reopened.png).
+
+### TED
+
+**Working.** TED 3.0 completed the insert, save, exit, reopen and byte-exact FAT16 verification workflow. [Detailed results and hashes](2026-10-25-text-editors-workflow.md); [reopened-file screenshot](2026-10-25-ted-reopened.png).
+
+### Turbo Pascal 3.0
+
+**Untested.** Tested version/media: 3.0 (1985). Not run: the original Turbo Pascal 3.0 media was not available in the workspace. [Target list](2026-10-25-vintage-app-targets.md).
+
+### EDLIN
+
+**Partial.** FreeDOS EDLIN 2.24 read the fixture but accepted neither keyboard nor serial line input at its `*` prompt, so editing, saving and reopening remain unverified. [Detailed results and attempts](2026-10-25-text-editors-workflow.md); [initial-read screenshot](2026-10-25-edlin.png).
+
+### Galaxy Lite
+
+**Unsupported.** Tested version/media: 1.5 (PC-SIG disk 2318). Stops at unsupported opcode INTO (0000:0001) before opening the editor. [Full test record](2026-10-25-vintage-app-tests.md).
+
+### DOS Navigator
+
+**Broken.** Tested version/media: 1.51 (RIT Labs freeware). Process remains active, but the display contains only the ManiOS banner and a blank screen; no usable file manager UI appeared. [Screenshot](2026-10-25-dos-navigator.png); [full test record](2026-10-25-vintage-app-tests.md).
+
+### PC-Talk
+
+**Partial.** Tested version/media: PC-Talk III (1983–1985). Displays the license/notice screen. A terminal session and modem or serial connection were not tested. [Screenshot](2026-10-25-pc-talk.png); [full test record](2026-10-25-vintage-app-tests.md).

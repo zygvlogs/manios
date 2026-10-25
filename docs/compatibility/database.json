@@ -5,7 +5,7 @@
     "version": "0.26.1-10252026",
     "commit": "release tag v0.26.1-10252026",
     "kernel_sha256": "cc0a429f6278b2d399e81bbefd45d1185165940e07708d5789e10bafee7275c3",
-    "environment": "QEMU i386, CPU 486, 64 MiB RAM, serial console; disposable FAT16 images and 6-12 s observations unless a longer setup run is recorded"
+    "environment": "QEMU i386, CPU 486, 64 MiB RAM, serial console; fresh disposable FAT16 disk per program; applications launched inside ManiOS via dosrun"
   },
   "details": "details.md",
   "apps": [
@@ -635,6 +635,116 @@
       "anchor": "freedos-vcls",
       "evidence": "2026-10-24-wave2-fixup.txt",
       "last_tested": "2026-10-24"
+    },
+    {
+      "id": "pc-write",
+      "name": "PC-Write",
+      "version": "3.03 (1989; PC-SIG disk 78)",
+      "status": "Partial",
+      "kind": "application",
+      "summary": "Opened INPUT.TXT and displayed its two lines in the editor; editing, save and reopen were not tested.",
+      "anchor": "pc-write",
+      "evidence": "2026-10-25-pc-write.png",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "pc-calc",
+      "name": "PC-Calc",
+      "version": "PC-Calc+ 2.0 (PC-SIG disk 199)",
+      "status": "Unsupported",
+      "kind": "application",
+      "summary": "The worksheet executable stops at unsupported opcode DB (2E03:00CF) before a usable spreadsheet opens.",
+      "anchor": "pc-calc",
+      "evidence": "2026-10-25-vintage-app-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "pc-file",
+      "name": "PC-File",
+      "version": "PC-File+ (PC-SIG disk 5; release unverified)",
+      "status": "Unsupported",
+      "kind": "application",
+      "summary": "The executable stops at unsupported opcode F0 (0000:0024) before a usable database screen opens.",
+      "anchor": "pc-file",
+      "evidence": "2026-10-25-vintage-app-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "qedit",
+      "name": "QEdit",
+      "version": "Advanced 2.15 (1991 shareware)",
+      "status": "Working",
+      "kind": "application",
+      "summary": "Inserted `EDITED ` at the start of INPUT.TXT, saved with Ctrl+K S, exited with Alt+X, reopened it, and verified the exact 32 bytes on FAT16.",
+      "anchor": "qedit",
+      "evidence": "2026-10-25-text-editors-workflow.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "ted",
+      "name": "TED",
+      "version": "3.0 (1991)",
+      "status": "Working",
+      "kind": "application",
+      "summary": "Inserted `EDITED ` at the start of INPUT.TXT, saved with F7, exited, reopened it, and verified the exact 32 bytes on FAT16.",
+      "anchor": "ted",
+      "evidence": "2026-10-25-text-editors-workflow.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "turbo-pascal-30",
+      "name": "Turbo Pascal 3.0",
+      "version": "3.0 (1985)",
+      "status": "Untested",
+      "kind": "application",
+      "summary": "Not run: the original Turbo Pascal 3.0 media was not available in the workspace.",
+      "anchor": "turbo-pascal-30",
+      "evidence": "2026-10-25-vintage-app-targets.md",
+      "last_tested": "Not tested"
+    },
+    {
+      "id": "edlin",
+      "name": "EDLIN",
+      "version": "FreeDOS EDLIN 2.24",
+      "status": "Partial",
+      "kind": "application",
+      "summary": "Opened the two-line fixture, but ignored both keyboard and serial input at the `*` prompt; edit, save, close and reopen could not be verified.",
+      "anchor": "edlin",
+      "evidence": "2026-10-25-text-editors-workflow.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "galaxy-lite",
+      "name": "Galaxy Lite",
+      "version": "1.5 (PC-SIG disk 2318)",
+      "status": "Unsupported",
+      "kind": "application",
+      "summary": "Stops at unsupported opcode INTO (0000:0001) before opening the editor.",
+      "anchor": "galaxy-lite",
+      "evidence": "2026-10-25-vintage-app-tests.md",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "dos-navigator",
+      "name": "DOS Navigator",
+      "version": "1.51 (RIT Labs freeware)",
+      "status": "Broken",
+      "kind": "application",
+      "summary": "Process remains active, but the display contains only the ManiOS banner and a blank screen; no usable file manager UI appeared.",
+      "anchor": "dos-navigator",
+      "evidence": "2026-10-25-dos-navigator.png",
+      "last_tested": "2026-10-25"
+    },
+    {
+      "id": "pc-talk",
+      "name": "PC-Talk",
+      "version": "PC-Talk III (1983–1985)",
+      "status": "Partial",
+      "kind": "application",
+      "summary": "Displays the license/notice screen. A terminal session and modem or serial connection were not tested.",
+      "anchor": "pc-talk",
+      "evidence": "2026-10-25-pc-talk.png",
+      "last_tested": "2026-10-25"
     }
   ],
   "status_colors": {
