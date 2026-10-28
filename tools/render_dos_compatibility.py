@@ -139,6 +139,8 @@ def render(data):
     details = data["details"]
     counts = Counter(app["status"] for app in apps)
     red = counts["Broken"] + counts["Unsupported"]
+    working_partial = counts["Working"] + counts["Partial"]
+    tested_pct = 100.0 * working_partial / len(apps)
 
     lines = [
         "# DOS software compatibility",
@@ -155,9 +157,12 @@ def render(data):
             COLORS["Untested"], counts["Untested"],
         ),
         "",
-        "This is task-specific coverage, not a compatibility percentage: a green",
-        "entry means the listed task completed, not that every feature of the",
-        "program works. The full test history is in",
+        "**Working + Partial: %d / %d programs (%.1f%%).**"
+        % (working_partial, len(apps), tested_pct),
+        "",
+        "This percentage describes catalog entries whose tested task works at",
+        "least partially; it does not claim that every feature of those programs",
+        "works. The full test history is in",
         "[%s](compatibility/%s); the machine-readable index is"
         % (details, details),
         "[database.json](compatibility/database.json).",

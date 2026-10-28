@@ -84,7 +84,7 @@ Each application was staged on a fresh disposable FAT16 image and launched with 
 - **Archive:** 21129 bytes; SHA-256 `5f1a25d84e2c13e311406f6303fca10e94c59506d3471cba87368e2abb5c070e`.
 - **Command:** `dosrun C:/EXEMENU.EXE C:/`
 
-- **Result:** stopped at unsupported instruction `INTO` (`0000:0001`); no menu opened.
+- **Result:** the initial run stopped at INTO (`0000:0001`). Follow-up passed INTO but stopped at unsupported LOCK prefix `F0` (`0000:0024`); no usable menu opened. [Retest](2026-10-25-into-retests.md#exemenu-22).
 
 ### `menumt21.zip`
 

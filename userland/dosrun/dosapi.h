@@ -33,6 +33,7 @@ void dos_set_tail(struct dos_state *d, const char *tail);
 
 /* Builds the PSP at the segment dos_set_program() was given. */
 void dos_build_psp(struct dos_state *d);
+int dos_set_executable(struct dos_state *d, const char *host_path);
 void dos_set_env(const char *name, const char *value);
 
 /* The --env extras' limits: 16 variables, names and values sized for the

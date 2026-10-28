@@ -68,8 +68,8 @@ static int parity(uint8_t v)
 
 void cpu_set_flags(struct cpu *c, uint32_t value, int bits)
 {
-	uint32_t mask = bits == 8 ? 0xFF : 0xFFFF;
-	uint32_t sign = bits == 8 ? 0x80 : 0x8000;
+	uint32_t mask = bits == 8 ? 0xFF : bits == 16 ? 0xFFFF : UINT32_MAX;
+	uint32_t sign = bits == 8 ? 0x80 : bits == 16 ? 0x8000 : 0x80000000u;
 	value &= mask;
 	c->flags &= ~(uint16_t)(FLAG_SF | FLAG_ZF | FLAG_PF);
 	if (value == 0) {
@@ -212,6 +212,18 @@ static void put8_rm(struct cpu *c, const struct operand *op, uint8_t v)
 	}
 }
 
+/* Register bit indexes address signed memory bit strings. */
+static int bit_address(struct operand *rm, int32_t index, int bits)
+{
+	if (rm->is_reg) return 1;
+	int32_t words = index / bits;
+	if (index < 0 && index % bits) words--;
+	int32_t off = (int32_t)rm->off + words * (bits / 8);
+	if (off < 0 || off > 0x10000 - bits / 8) return 0;
+	rm->off = (uint16_t)off;
+	return 1;
+}
+
 /* --- ALU --- */
 
 enum { ADD, OR, ADC, SBB, AND, SUB, XOR, CMP };
@@ -254,52 +266,63 @@ static uint8_t alu8(struct cpu *c, int op, uint8_t a, uint8_t b)
 
 /* --- shifts and rotates --- */
 
-static uint16_t shift16(struct cpu *c, int op, uint16_t v, int count)
+/* The 386 masks counts before execution, including byte/word operands.
+ * Iterate at most 31 times to avoid C shifts by the operand width. */
+static uint32_t shift(struct cpu *c, int op, uint32_t v, unsigned count, int bits)
 {
-	if (count == 0) {
-		return v;
-	}
-	uint16_t r = v;
-	for (int i = 0; i < count; i++) {
+	uint32_t mask = bits == 32 ? UINT32_MAX : (1u << bits) - 1;
+	uint32_t sign = 1u << (bits - 1), r = v & mask;
+	count &= 31;
+	unsigned steps = count;
+	if ((op == 2 || op == 3) && bits < 32) steps %= bits + 1;
+	if (!steps) return r;
+	for (unsigned i = 0; i < steps; i++) {
+		unsigned cf = (c->flags & FLAG_CF) != 0;
 		switch (op) {
-		case 0: set_cf(c, r & 0x8000); r = (uint16_t)((r << 1) | (r >> 15)); break;                 /* ROL */
-		case 1: set_cf(c, r & 1); r = (uint16_t)((r >> 1) | (r << 15)); break; /* ROR */
-		case 2: { int cf = (c->flags & FLAG_CF) != 0; set_cf(c, r & 0x8000); r = (uint16_t)((r << 1) | cf); break; } /* RCL */
-		case 3: { int cf = (c->flags & FLAG_CF) != 0; set_cf(c, r & 1); r = (uint16_t)((r >> 1) | (cf << 15)); break; } /* RCR */
-		case 4: set_cf(c, r & 0x8000); r <<= 1; break;                 /* SHL/SAL */
-		case 5: set_cf(c, r & 1); r >>= 1; break;                      /* SHR */
-		case 7: set_cf(c, r & 1); r = (uint16_t)((int16_t)r >> 1); break; /* SAR */
+		case 0: set_cf(c, r & sign); r = ((r << 1) | (r >> (bits - 1))) & mask; break;
+		case 1: set_cf(c, r & 1); r = (r >> 1) | ((r & 1) ? sign : 0); break;
+		case 2: set_cf(c, r & sign); r = ((r << 1) | cf) & mask; break;
+		case 3: set_cf(c, r & 1); r = (r >> 1) | (cf ? sign : 0); break;
+		case 4: set_cf(c, r & sign); r = (r << 1) & mask; break;
+		case 5: set_cf(c, r & 1); r >>= 1; break;
+		case 7: set_cf(c, r & 1); r = (r >> 1) | (r & sign); break;
 		}
 	}
-	if (op != 0 && op != 1 && op != 2 && op != 3) {
-		cpu_set_flags(c, r, 16);
-		set_of(c, ((r ^ v) & 0x8000) != 0 && count == 1);
+	if (op >= 4) cpu_set_flags(c, r, bits);
+	/* OF is defined only for a one-bit count; preserve it otherwise. */
+	if (count == 1) {
+		if (op == 0 || op == 2 || op == 4)
+			set_of(c, !!(r & sign) ^ !!(c->flags & FLAG_CF));
+		else if (op == 1 || op == 3)
+			set_of(c, !!(r & sign) ^ !!(r & (sign >> 1)));
+		else set_of(c, op == 5 && (v & sign));
 	}
 	return r;
 }
 
-static uint8_t shift8(struct cpu *c, int op, uint8_t v, int count)
+/* SHLD/SHRD consume source bits without modifying the source register.
+ * Word counts above 16 are undefined by x86; use deterministic zero fill. */
+static uint32_t double_shift(struct cpu *c, uint32_t value, uint32_t source,
+                             unsigned count, int bits, int right)
 {
-	if (count == 0) {
-		return v;
-	}
-	uint8_t r = v;
-	for (int i = 0; i < count; i++) {
-		switch (op) {
-		case 0: set_cf(c, r & 0x80); r = (uint8_t)((r << 1) | (r >> 7)); break;
-		case 1: set_cf(c, r & 1); r = (uint8_t)((r >> 1) | (r << 7)); break;
-		case 2: { int cf = (c->flags & FLAG_CF) != 0; set_cf(c, r & 0x80); r = (uint8_t)((r << 1) | cf); break; }
-		case 3: { int cf = (c->flags & FLAG_CF) != 0; set_cf(c, r & 1); r = (uint8_t)((r >> 1) | (cf << 7)); break; }
-		case 4: set_cf(c, r & 0x80); r <<= 1; break;
-		case 5: set_cf(c, r & 1); r >>= 1; break;
-		case 7: set_cf(c, r & 1); r = (uint8_t)((int8_t)r >> 1); break;
+	count &= 31;
+	if (!count) return value;
+	uint32_t mask = bits == 32 ? UINT32_MAX : 0xFFFF;
+	uint32_t sign = 1u << (bits - 1), original = value;
+	for (unsigned i = 0; i < count; i++) {
+		if (right) {
+			set_cf(c, value & 1);
+			value = (value >> 1) | ((source & 1) ? sign : 0);
+			source >>= 1;
+		} else {
+			set_cf(c, value & sign);
+			value = ((value << 1) | !!(source & sign)) & mask;
+			source = (source << 1) & mask;
 		}
 	}
-	if (op != 0 && op != 1 && op != 2 && op != 3) {
-		cpu_set_flags(c, r, 8);
-		set_of(c, ((r ^ v) & 0x80) != 0 && count == 1);
-	}
-	return r;
+	cpu_set_flags(c, value, bits);
+	if (count == 1) set_of(c, (original ^ value) & sign);
+	return value;
 }
 
 /* --- interrupts --- */
@@ -442,20 +465,16 @@ static enum cpu_stop op_0f(struct cpu *c, int override)
 	case 0x02: case 0x03: { /* LAR, LSL: also protected mode */
 		return CPU_FAULT;
 	}
-	case 0x06: c->flags &= ~FLAG_CF; return CPU_OK; /* CLTS: no-op */
+	case 0x06: return CPU_FAULT; /* CLTS requires CR0.TS state. */
 	case 0x08: case 0x09: /* INVD, WBINVD: no cache to flush */
 		return CPU_OK;
 	case 0x0B: return CPU_FAULT; /* UD2 */
 	case 0x20: case 0x21: case 0x22: case 0x23: /* MOV to/from CR/DR */
 		return CPU_FAULT;
-	case 0x30: case 0x31: /* WRMSR, RDTSC */
-		if (op == 0x31) { /* RDTSC: a monotonic count of instructions */
-			uint64_t t = c->insns;
-			c->r[AX] = (uint16_t)t;
-			c->r[DX] = (uint16_t)(t >> 16);
-			c->r[CX] = (uint16_t)(t >> 32);
-			c->r[BX] = (uint16_t)(t >> 48);
-		}
+	case 0x30: return CPU_FAULT; /* WRMSR: no modeled MSR bank. */
+	case 0x31: /* RDTSC: synthetic instruction counter in EDX:EAX. */
+		cpu_put_reg32(c, AX, c->insns);
+		cpu_put_reg32(c, DX, 0);
 		return CPU_OK;
 	case 0x40: case 0x41: case 0x42: case 0x43: /* CMOVcc */
 	case 0x44: case 0x45: case 0x46: case 0x47:
@@ -495,123 +514,38 @@ static enum cpu_stop op_0f(struct cpu *c, int override)
 		put8_rm(c, &rm, cond(c, op & 0x0F) ? 1 : 0);
 		return CPU_OK;
 	}
-	case 0xA0: push16(c, c->sreg[2]); return CPU_OK; /* PUSH FS */
-	case 0xA1: c->sreg[2] = pop16(c); return CPU_OK;  /* POP FS */
-	case 0xA2: { /* CPUID: report a plain 486, which is what this
-	             * interpreter is close to. A program that checks for a
-	             * feature it needs gets an honest answer. */
-		switch (c->r[AX]) {
-		case 0x0000: /* the highest leaf, and the vendor string. The
-		             * registers are 16 bits, so each holds half of its
-		             * 32-bit part: "GenuineIntel" comes back in the
-		             * halves a program reassembles. */
-			c->r[AX] = 0x0001;
-			c->r[BX] = 0x6547; /* "Ge" */
-			c->r[DX] = 0x6E75; /* "nu" */
-			c->r[CX] = 0x6E69; /* "in" */
-			break;
-		case 0x0001: { /* the version and features */
-			c->r[AX] = 0x00000400; /* family 4, model 0, stepping 0 */
-			c->r[BX] = 0x00000000;
-			c->r[CX] = 0x00000000;
-			c->r[DX] = 0x00000010; /* the FPU, nothing else */
-			break;
-		}
-		default:
-			c->r[AX] = c->r[BX] = c->r[CX] = c->r[DX] = 0;
-			break;
-		}
+	case 0xA0: case 0xA1: return CPU_FAULT; /* FS is not modeled. */
+	case 0xA2: { /* CPUID always reads/writes full 32-bit registers. */
+		uint32_t leaf = cpu_reg32(c, AX);
+		cpu_put_reg32(c, AX, leaf == 0 ? 1 : leaf == 1 ? 0x400 : 0);
+		cpu_put_reg32(c, BX, leaf == 0 ? 0x756E6547 : 0);
+		cpu_put_reg32(c, DX, leaf == 0 ? 0x49656E69 : 0);
+		cpu_put_reg32(c, CX, leaf == 0 ? 0x6C65746E : 0);
+		/* No x87, TSC or protected-mode features are advertised. */
 		return CPU_OK;
 	}
-	case 0xA3: { /* BT rm16, reg */
+	case 0xA3: case 0xAB: case 0xB3: case 0xBB: case 0xBA: {
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override >= 0) {
-			rm.seg = override;
-		}
-		uint16_t v = get16(c, &rm);
-		int bit = c->r[reg] & 15;
-		set_cf(c, (v >> bit) & 1);
+		if (override >= 0) rm.seg = override;
+		if (op == 0xBA && reg < 4) return CPU_FAULT;
+		int32_t index = op == 0xBA ? rd8(c, c->sreg[1], c->ip++) & 15 : (int16_t)c->r[reg];
+		if (!bit_address(&rm, index, 16)) return CPU_FAULT;
+		uint16_t v = get16(c, &rm), bit = 1u << (index & 15);
+		int operation = op == 0xBA ? reg - 4 : (op >> 3) & 3;
+		set_cf(c, v & bit);
+		if (operation) put16(c, &rm, operation == 1 ? v | bit : operation == 2 ? v & ~bit : v ^ bit);
 		return CPU_OK;
 	}
-	case 0xA4: { /* SHLD rm16, reg, imm8 */
+	case 0xA4: case 0xA5: case 0xAC: case 0xAD: {
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override >= 0) {
-			rm.seg = override;
-		}
-		uint8_t n = rd8(c, c->sreg[1], c->ip++) & 31;
-		uint16_t v = get16(c, &rm);
-		if (n) {
-			uint32_t r = ((uint32_t)v << n) | ((uint32_t)c->r[reg] >> (16 - n));
-			set_cf(c, (v >> (16 - n)) & 1);
-			cpu_set_flags(c, (uint16_t)r, 16);
-			put16(c, &rm, (uint16_t)r);
-		}
+		if (override >= 0) rm.seg = override;
+		unsigned count = op & 1 ? c->r[CX] : rd8(c, c->sreg[1], c->ip++);
+		put16(c, &rm, double_shift(c, get16(c, &rm), c->r[reg], count, 16, !!(op & 8)));
 		return CPU_OK;
 	}
-	case 0xA5: { /* SHLD rm16, reg, CL */
-		int reg;
-		struct operand rm = decode_rm(c, &reg);
-		if (override >= 0) {
-			rm.seg = override;
-		}
-		uint8_t n = c->r[CX] & 31;
-		uint16_t v = get16(c, &rm);
-		if (n) {
-			uint32_t r = ((uint32_t)v << n) | ((uint32_t)c->r[reg] >> (16 - n));
-			set_cf(c, (v >> (16 - n)) & 1);
-			cpu_set_flags(c, (uint16_t)r, 16);
-			put16(c, &rm, (uint16_t)r);
-		}
-		return CPU_OK;
-	}
-	case 0xA8: push16(c, c->sreg[2]); return CPU_OK; /* PUSH GS */
-	case 0xA9: c->sreg[2] = pop16(c); return CPU_OK;  /* POP GS */
-	case 0xAB: { /* BTS rm16, reg */
-		int reg;
-		struct operand rm = decode_rm(c, &reg);
-		if (override >= 0) {
-			rm.seg = override;
-		}
-		uint16_t v = get16(c, &rm);
-		int bit = c->r[reg] & 15;
-		set_cf(c, (v >> bit) & 1);
-		put16(c, &rm, (uint16_t)(v | (1u << bit)));
-		return CPU_OK;
-	}
-	case 0xAC: { /* SHRD rm16, reg, imm8 */
-		int reg;
-		struct operand rm = decode_rm(c, &reg);
-		if (override >= 0) {
-			rm.seg = override;
-		}
-		uint8_t n = rd8(c, c->sreg[1], c->ip++) & 31;
-		uint16_t v = get16(c, &rm);
-		if (n) {
-			uint32_t r = ((uint32_t)v >> n) | ((uint32_t)c->r[reg] << (16 - n));
-			set_cf(c, (v >> (n - 1)) & 1);
-			cpu_set_flags(c, (uint16_t)r, 16);
-			put16(c, &rm, (uint16_t)r);
-		}
-		return CPU_OK;
-	}
-	case 0xAD: { /* SHRD rm16, reg, CL */
-		int reg;
-		struct operand rm = decode_rm(c, &reg);
-		if (override >= 0) {
-			rm.seg = override;
-		}
-		uint8_t n = c->r[CX] & 31;
-		uint16_t v = get16(c, &rm);
-		if (n) {
-			uint32_t r = ((uint32_t)v >> n) | ((uint32_t)c->r[reg] << (16 - n));
-			set_cf(c, (v >> (n - 1)) & 1);
-			cpu_set_flags(c, (uint16_t)r, 16);
-			put16(c, &rm, (uint16_t)r);
-		}
-		return CPU_OK;
-	}
+	case 0xA8: case 0xA9: return CPU_FAULT; /* GS is not modeled. */
 	case 0xAF: { /* IMUL reg16, rm16 */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
@@ -624,20 +558,20 @@ static enum cpu_stop op_0f(struct cpu *c, int override)
 		set_of(c, r != (int16_t)r);
 		return CPU_OK;
 	}
-	case 0xB0: case 0xB1: { /* CMPXCHG rm8, reg */
+	case 0xB0: case 0xB1: { /* CMPXCHG rm8/rm16, reg */
 		int reg;
 		struct operand rm = decode_rm(c, &reg);
-		if (override >= 0) {
-			rm.seg = override;
-		}
-		uint8_t v = get8_rm(c, &rm);
-		uint8_t a = get8(c, 0);
-		if (a == v) {
-			c->flags |= FLAG_ZF;
-			put8_rm(c, &rm, get8(c, reg));
+		if (override >= 0) rm.seg = override;
+		if (op == 0xB1) {
+			uint16_t v = get16(c, &rm), a = c->r[AX];
+			alu16(c, CMP, a, v);
+			if (a == v) put16(c, &rm, c->r[reg]);
+			else c->r[AX] = v;
 		} else {
-			c->flags &= ~FLAG_ZF;
-			put8(c, 0, v);
+			uint8_t v = get8_rm(c, &rm), a = get8(c, 0);
+			alu8(c, CMP, a, v);
+			if (a == v) put8_rm(c, &rm, get8(c, reg));
+			else put8(c, 0, v);
 		}
 		return CPU_OK;
 	}
@@ -648,37 +582,6 @@ static enum cpu_stop op_0f(struct cpu *c, int override)
 			rm.seg = override;
 		}
 		c->r[reg] = op == 0xB7 ? get16(c, &rm) : get8_rm(c, &rm);
-		return CPU_OK;
-	}
-	case 0xBA: { /* the group 8: BT/BTS/BTR/BTC rm16, imm8 */
-		int reg;
-		struct operand rm = decode_rm(c, &reg);
-		if (override >= 0) {
-			rm.seg = override;
-		}
-		uint8_t imm = rd8(c, c->sreg[1], c->ip++);
-		uint16_t v = get16(c, &rm);
-		int bit = imm & 15;
-		set_cf(c, (v >> bit) & 1);
-		if (reg == 5) {
-			put16(c, &rm, (uint16_t)(v | (1u << bit)));      /* BTS */
-		} else if (reg == 6) {
-			put16(c, &rm, (uint16_t)(v & ~(1u << bit)));     /* BTR */
-		} else if (reg == 7) {
-			put16(c, &rm, (uint16_t)(v ^ (1u << bit)));      /* BTC */
-		}
-		return CPU_OK;
-	}
-	case 0xBB: { /* BTC rm16, reg */
-		int reg;
-		struct operand rm = decode_rm(c, &reg);
-		if (override >= 0) {
-			rm.seg = override;
-		}
-		uint16_t v = get16(c, &rm);
-		int bit = c->r[reg] & 15;
-		set_cf(c, (v >> bit) & 1);
-		put16(c, &rm, (uint16_t)(v ^ (1u << bit)));
 		return CPU_OK;
 	}
 	case 0xBC: case 0xBD: { /* BSF/BSR reg16, rm16 */
@@ -746,6 +649,283 @@ static enum cpu_stop op_0f(struct cpu *c, int override)
 	}
 }
 
+/* 386 operand-size subset in real mode. Address and stack sizes remain 16.
+ * Decode and validate the complete form before changing architectural state.
+ * Unsupported control transfers, strings, x87 and system forms fault. */
+static uint32_t read32(struct cpu *c, uint16_t seg, uint16_t off)
+{
+	return (uint32_t)mem_r16(c, lin(seg, off)) |
+	       ((uint32_t)mem_r16(c, lin(seg, off) + 2) << 16);
+}
+
+static void write32(struct cpu *c, uint16_t seg, uint16_t off, uint32_t v)
+{
+	mem_w16(c, lin(seg, off), (uint16_t)v);
+	mem_w16(c, lin(seg, off) + 2, (uint16_t)(v >> 16));
+}
+
+static uint32_t get32(struct cpu *c, const struct operand *o)
+{
+	return o->is_reg ? cpu_reg32(c, o->reg) : read32(c, o->seg, o->off);
+}
+
+static void put32(struct cpu *c, const struct operand *o, uint32_t v)
+{
+	if (o->is_reg) cpu_put_reg32(c, o->reg, v);
+	else write32(c, o->seg, o->off, v);
+}
+
+static uint32_t alu32(struct cpu *c, int op, uint32_t a, uint32_t b)
+{
+	uint32_t r;
+	uint64_t wide;
+	unsigned carry = (c->flags & FLAG_CF) != 0;
+	if (op == ADD || op == ADC) {
+		wide = (uint64_t)a + b + (op == ADC ? carry : 0);
+		r = (uint32_t)wide;
+		set_cf(c, wide > UINT32_MAX);
+		set_of(c, (~(a ^ b) & (a ^ r) & 0x80000000u) != 0);
+		set_af(c, ((a ^ b ^ r) & 0x10) != 0);
+	} else if (op == SUB || op == SBB || op == CMP) {
+		wide = (uint64_t)b + (op == SBB ? carry : 0);
+		r = a - (uint32_t)wide;
+		set_cf(c, (uint64_t)a < wide);
+		set_of(c, ((a ^ b) & (a ^ r) & 0x80000000u) != 0);
+		set_af(c, ((a ^ b ^ r) & 0x10) != 0);
+	} else {
+		r = op == AND ? a & b : op == OR ? a | b : a ^ b;
+		set_cf(c, 0); set_of(c, 0); set_af(c, 0); /* AF undefined; deterministic. */
+	}
+	cpu_set_flags(c, r, 32);
+	return r;
+}
+
+/* Address size controls CX/SI/DI; 66h changes only the element to a
+ * dword. Completed REP iterations remain committed if a later access faults. */
+static enum cpu_stop string32(struct cpu *c, uint8_t op, uint8_t rep, int override)
+{
+	if (rep && !c->r[CX]) return CPU_OK;
+	int delta = c->flags & FLAG_DF ? -4 : 4;
+	do {
+		if ((op == 0xA5 || op == 0xAD) && c->r[SI] > 0xFFFC) return CPU_FAULT;
+		if ((op == 0xA5 || op == 0xAB) && c->r[DI] > 0xFFFC) return CPU_FAULT;
+		uint32_t value = op == 0xAB ? cpu_reg32(c, AX) :
+			read32(c, override >= 0 ? override : c->sreg[3], c->r[SI]);
+		if (op == 0xAD) cpu_put_reg32(c, AX, value);
+		else write32(c, c->sreg[0], c->r[DI], value);
+		if (op != 0xAB) c->r[SI] = (uint16_t)(c->r[SI] + delta);
+		if (op != 0xAD) c->r[DI] = (uint16_t)(c->r[DI] + delta);
+		if (rep) c->r[CX]--;
+	} while (rep && c->r[CX]);
+	return CPU_OK;
+}
+
+static enum cpu_stop divide_error(struct cpu *c, uint16_t start)
+{
+	c->ip = start; /* 386 divide error is a fault, saved IP names the instruction. */
+	c->int_no = 0;
+	uint16_t cs, ip;
+	cpu_enter_interrupt(c, 0, &cs, &ip);
+	c->sreg[1] = cs; c->ip = ip;
+	return CPU_INT;
+}
+
+/* Divide a 64-bit magnitude by a dword without a freestanding libgcc
+ * division dependency. The quotient must fit in 32 bits before starting. */
+static enum cpu_stop divide32(struct cpu *c, uint32_t divisor, int is_signed, uint16_t start)
+{
+	uint64_t dividend = ((uint64_t)cpu_reg32(c, DX) << 32) | cpu_reg32(c, AX);
+	int negative = is_signed && (dividend >> 63);
+	int neg_divisor = is_signed && (divisor & 0x80000000u);
+	if (negative) dividend = ~dividend + 1;
+	if (neg_divisor) divisor = 0u - divisor;
+	uint64_t remainder = dividend >> 32;
+	uint32_t quotient = 0, low = (uint32_t)dividend;
+	if (!divisor || remainder >= divisor) return divide_error(c, start);
+	for (int i = 31; i >= 0; i--) {
+		remainder = (remainder << 1) | ((low >> i) & 1);
+		if (remainder >= divisor) { remainder -= divisor; quotient |= 1u << i; }
+	}
+	int neg_quotient = negative != neg_divisor;
+	if (is_signed && quotient > (neg_quotient ? 0x80000000u : 0x7FFFFFFFu))
+		return divide_error(c, start);
+	cpu_put_reg32(c, AX, neg_quotient ? 0u - quotient : quotient);
+	cpu_put_reg32(c, DX, negative ? 0u - (uint32_t)remainder : (uint32_t)remainder);
+	return CPU_OK;
+}
+
+static enum cpu_stop op32(struct cpu *c, uint8_t op, int override, uint16_t start)
+{
+	int reg = 0, immediate = 0, modrm = 0, ext = -1;
+	struct operand rm = {0};
+	uint32_t a, b, value;
+	int alu = op < 0x40 && ((op & 7) == 1 || (op & 7) == 3 || (op & 7) == 5);
+	if (alu) {
+		modrm = (op & 7) != 5;
+		immediate = modrm ? 0 : 4;
+	} else if (op >= 0xB8 && op <= 0xBF) immediate = 4;
+	else if (op >= 0x40 && op <= 0x5F) { /* INC/DEC/PUSH/POP register */ }
+	else if (op >= 0x90 && op <= 0x99) { /* XCHG, CWDE, CDQ */ }
+	else switch (op) {
+	case 0x9C: case 0x9D: break; /* PUSHFD / POPFD */
+	case 0x68: immediate = 4; break;
+	case 0x69: modrm = 1; immediate = 4; break;
+	case 0x6B: modrm = 1; immediate = 1; break;
+	case 0x6A: immediate = 1; break;
+	case 0x81: modrm = 1; immediate = 4; break;
+	case 0x83: modrm = 1; immediate = 1; break;
+	case 0x85: case 0x87: case 0x89: case 0x8B: case 0x8D:
+	case 0x8F: case 0xF7: case 0xFF: modrm = 1; break;
+	case 0xA1: case 0xA3: immediate = 2; break; /* moffs stays 16-bit */
+	case 0xA9: immediate = 4; break;
+	case 0xC7: modrm = 1; immediate = 4; break;
+	case 0xC1: modrm = 1; immediate = 1; break;
+	case 0xD1: case 0xD3: modrm = 1; break;
+	case 0x0F:
+		ext = rd8(c, c->sreg[1], c->ip++);
+		if (ext == 0xB6 || ext == 0xB7 || ext == 0xBE || ext == 0xBF || ext == 0xAF) modrm = 1;
+		else if (ext == 0xA3 || ext == 0xAB || ext == 0xB3 || ext == 0xBB || ext == 0xBA) { modrm = 1; immediate = ext == 0xBA; }
+		else if (ext == 0xA4 || ext == 0xA5 || ext == 0xAC || ext == 0xAD) { modrm = 1; immediate = (ext & 1) ? 0 : 1; }
+		else if (ext != 0xA2 && (ext < 0xC8 || ext > 0xCF)) return CPU_FAULT;
+		break;
+	default: return CPU_FAULT;
+	}
+	if (modrm) {
+		rm = decode_rm(c, &reg);
+		if (override >= 0) rm.seg = (uint16_t)override;
+		if ((op == 0xC1 || op == 0xD1 || op == 0xD3) && reg == 6) return CPU_FAULT;
+		if (op == 0xC7 && reg != 0) return CPU_FAULT;
+		if (op == 0x8F && reg != 0) return CPU_FAULT;
+		if (op == 0x8D && rm.is_reg) return CPU_FAULT;
+		if (op == 0xFF && reg != 0 && reg != 1 && reg != 6) return CPU_FAULT;
+		if (ext == 0xBA && reg < 4) return CPU_FAULT;
+		if (ext == 0xA3 || ext == 0xAB || ext == 0xB3 || ext == 0xBB)
+			if (!bit_address(&rm, (int32_t)cpu_reg32(c, reg), 32)) return CPU_FAULT;
+		if (op == 0xF7) {
+			if (reg == 0) immediate = 4;
+			else if (reg == 1) return CPU_FAULT;
+		}
+		/* Real-mode segment limits: no dword may straddle offset FFFF.
+		 * LEA does not access memory; extensions read a byte or word. */
+		unsigned width = ext == 0xB6 || ext == 0xBE ? 1 : ext == 0xB7 || ext == 0xBF ? 2 : 4;
+		if (!rm.is_reg && op != 0x8D && (unsigned)rm.off + width > 0x10000u) return CPU_FAULT;
+	}
+	if ((unsigned)(uint16_t)(c->ip - start) + immediate > 15) return CPU_FAULT;
+	/* A 16-bit stack address uses SP, even for PUSH/POP of a dword. */
+	int pushing = (op >= 0x50 && op <= 0x57) || op == 0x9C || op == 0x68 || op == 0x6A || (op == 0xFF && reg == 6);
+	int popping = (op >= 0x58 && op <= 0x5F) || op == 0x8F || op == 0x9D;
+	if (pushing && (uint16_t)(c->r[SP] - 4) > 0xFFFC) return CPU_FAULT;
+	if (popping && c->r[SP] > 0xFFFC) return CPU_FAULT;
+	b = 0;
+	if (immediate == 4) b = (uint32_t)rd16(c, c->sreg[1], c->ip) |
+		((uint32_t)rd16(c, c->sreg[1], (uint16_t)(c->ip + 2)) << 16);
+	else if (immediate == 2) b = rd16(c, c->sreg[1], c->ip);
+	else if (immediate == 1) b = (uint32_t)(int32_t)(int8_t)rd8(c, c->sreg[1], c->ip);
+	if ((op == 0xA1 || op == 0xA3) && b > 0xFFFC) return CPU_FAULT;
+	c->ip += immediate;
+	if (op == 0x69 || op == 0x6B || ext == 0xAF) {
+		int64_t product = (int64_t)(int32_t)get32(c, &rm) *
+		                  (int32_t)(ext == 0xAF ? cpu_reg32(c, reg) : b);
+		value = (uint32_t)product;
+		cpu_put_reg32(c, reg, value);
+		set_cf(c, product != (int32_t)value); set_of(c, product != (int32_t)value);
+		return CPU_OK;
+	}
+	if (alu) {
+		int operation = (op >> 3) & 7;
+		int direction = (op & 7) == 3;
+		a = modrm ? (direction ? cpu_reg32(c, reg) : get32(c, &rm)) : cpu_reg32(c, AX);
+		if (modrm) b = direction ? get32(c, &rm) : cpu_reg32(c, reg);
+		value = alu32(c, operation, a, b);
+		if (operation != CMP) {
+			if (!modrm || direction) cpu_put_reg32(c, modrm ? reg : AX, value);
+			else put32(c, &rm, value);
+		}
+	} else if (op >= 0xB8 && op <= 0xBF) cpu_put_reg32(c, op & 7, b);
+	else if (op >= 0x40 && op <= 0x4F) {
+		unsigned cf = c->flags & FLAG_CF;
+		value = alu32(c, op < 0x48 ? ADD : SUB, cpu_reg32(c, op & 7), 1);
+		cpu_put_reg32(c, op & 7, value);
+		set_cf(c, cf);
+	} else if (pushing) {
+		value = op == 0x9C ? ((c->flags & 0x7FD7u) | 2u | ((uint32_t)(c->flags_hi & 0x24) << 16)) :
+		        op == 0x68 || op == 0x6A ? b : op == 0xFF ? get32(c, &rm) : cpu_reg32(c, op & 7);
+		c->r[SP] -= 4;
+		write32(c, c->sreg[2], c->r[SP], value);
+	} else if (popping) {
+		value = read32(c, c->sreg[2], c->r[SP]);
+		c->r[SP] += 4;
+		if (op == 0x9D) {
+			c->flags = (value & 0x7FD7u) | 2;
+			c->flags_hi = (value >> 16) & 0x24;
+		} else if (op == 0x8F) put32(c, &rm, value);
+		else cpu_put_reg32(c, op & 7, value);
+	} else if (op >= 0x90 && op <= 0x97) {
+		value = cpu_reg32(c, AX); a = cpu_reg32(c, op & 7);
+		cpu_put_reg32(c, AX, a); cpu_put_reg32(c, op & 7, value);
+	} else switch (op) {
+	case 0x98: cpu_put_reg32(c, AX, (uint32_t)(int32_t)(int16_t)c->r[AX]); break;
+	case 0x99: cpu_put_reg32(c, DX, c->r_hi[AX] & 0x8000 ? UINT32_MAX : 0); break;
+	case 0x81: case 0x83:
+		value = alu32(c, reg, get32(c, &rm), b);
+		if (reg != CMP) put32(c, &rm, value);
+		break;
+	case 0x85: alu32(c, AND, get32(c, &rm), cpu_reg32(c, reg)); break;
+	case 0x87:
+		a = get32(c, &rm); b = cpu_reg32(c, reg);
+		put32(c, &rm, b); cpu_put_reg32(c, reg, a); break;
+	case 0x89: put32(c, &rm, cpu_reg32(c, reg)); break;
+	case 0x8B: cpu_put_reg32(c, reg, get32(c, &rm)); break;
+	case 0x8D: cpu_put_reg32(c, reg, rm.off); break;
+	case 0xA1: cpu_put_reg32(c, AX, read32(c, override >= 0 ? override : c->sreg[3], (uint16_t)b)); break;
+	case 0xA3: write32(c, override >= 0 ? override : c->sreg[3], (uint16_t)b, cpu_reg32(c, AX)); break;
+	case 0xA9: alu32(c, AND, cpu_reg32(c, AX), b); break;
+	case 0xC7: put32(c, &rm, b); break;
+	case 0xC1: case 0xD1: case 0xD3:
+		put32(c, &rm, shift(c, reg, get32(c, &rm), op == 0xD1 ? 1 : op == 0xD3 ? c->r[CX] : b, 32));
+		break;
+	case 0xF7:
+		a = get32(c, &rm);
+		if (reg == 0) alu32(c, AND, a, b);
+		else if (reg == 2 || reg == 3) put32(c, &rm, reg == 2 ? ~a : alu32(c, SUB, 0, a));
+		else if (reg >= 6) return divide32(c, a, reg == 7, start);
+		else {
+			uint64_t product = reg == 4 ? (uint64_t)cpu_reg32(c, AX) * a :
+			                  (uint64_t)((int64_t)(int32_t)cpu_reg32(c, AX) * (int32_t)a);
+			cpu_put_reg32(c, AX, (uint32_t)product); cpu_put_reg32(c, DX, (uint32_t)(product >> 32));
+			int overflow = reg == 4 ? (product >> 32) != 0 : (int64_t)product != (int32_t)product;
+			set_cf(c, overflow); set_of(c, overflow);
+		}
+		break;
+	case 0xFF: {
+		unsigned cf = c->flags & FLAG_CF;
+		put32(c, &rm, alu32(c, reg == 0 ? ADD : SUB, get32(c, &rm), 1));
+		set_cf(c, cf); break;
+	}
+	case 0x0F:
+		if (ext == 0xA2) { c->ip--; return op_0f(c, override); }
+		if (ext == 0xA3 || ext == 0xAB || ext == 0xB3 || ext == 0xBB || ext == 0xBA) {
+			unsigned bit = 1u << ((ext == 0xBA ? b : cpu_reg32(c, reg)) & 31);
+			int operation = ext == 0xBA ? reg - 4 : (ext >> 3) & 3;
+			a = get32(c, &rm); set_cf(c, a & bit);
+			if (operation) put32(c, &rm, operation == 1 ? a | bit : operation == 2 ? a & ~bit : a ^ bit);
+		} else if (ext == 0xA4 || ext == 0xA5 || ext == 0xAC || ext == 0xAD) {
+			put32(c, &rm, double_shift(c, get32(c, &rm), cpu_reg32(c, reg), ext & 1 ? c->r[CX] : b, 32, !!(ext & 8)));
+		} else if (ext >= 0xC8) {
+			a = cpu_reg32(c, ext & 7);
+			cpu_put_reg32(c, ext & 7, (a >> 24) | ((a >> 8) & 0xFF00) | ((a << 8) & 0xFF0000) | (a << 24));
+		} else {
+			if (ext == 0xB6) value = get8_rm(c, &rm);
+			else if (ext == 0xB7) value = get16(c, &rm);
+			else if (ext == 0xBE) value = (uint32_t)(int32_t)(int8_t)get8_rm(c, &rm);
+			else value = (uint32_t)(int32_t)(int16_t)get16(c, &rm);
+			cpu_put_reg32(c, reg, value);
+		}
+		break;
+	}
+	return CPU_OK;
+}
+
 const char *cpu_fault_name(uint8_t opcode)
 {
 	static char buf[32];
@@ -760,6 +940,7 @@ const char *cpu_fault_name(uint8_t opcode)
 	case 0xD4: return "AAM";
 	case 0xD5: return "AAD";
 	case 0xD7: return "XLAT";
+	case 0x66: return "unsupported operand-size override (66)";
 	case 0x62: return "BOUND";
 	case 0x63: return "ARPL";
 	case 0x9B: return "FWAIT";
@@ -795,14 +976,19 @@ enum cpu_stop cpu_step(struct cpu *c)
 			return CPU_INT;
 		}
 	}
-
 	/* Segment and repeat prefixes may occur in either order. */
-	int override = -1;
+	int override = -1, operand32 = 0;
+	uint16_t instruction_ip = c->ip;
 	uint8_t op, rep = 0;
 	int prefixes = 0;
 	for (;;) {
 		op = rd8(c, c->sreg[1], c->ip++);
-		if (++prefixes > 15) return CPU_FAULT;
+		if (++prefixes > 15) {
+			c->fault_opcode = operand32 ? 0x66 : op;
+			c->ip = instruction_ip;
+			return CPU_FAULT;
+		}
+		if (op == 0x66) { operand32 = 1; continue; }
 		if (op == 0x26) { override = c->sreg[0]; continue; }
 		if (op == 0x2E) { override = c->sreg[1]; continue; }
 		if (op == 0x36) { override = c->sreg[2]; continue; }
@@ -812,6 +998,13 @@ enum cpu_stop cpu_step(struct cpu *c)
 	}
 	c->insns++;
 	c->fault_opcode = op;
+	if (operand32) {
+		enum cpu_stop result = (op == 0xA5 || op == 0xAB || op == 0xAD) ?
+			string32(c, op, rep, override) :
+			rep ? CPU_FAULT : op32(c, op, override, instruction_ip);
+		if (result == CPU_FAULT) { c->fault_opcode = 0x66; c->ip = instruction_ip; }
+		return result;
+	}
 	if ((op >= 0xA4 && op <= 0xA7) || (op >= 0xAA && op <= 0xAF)) {
 		do_string(c, op, rep, override >= 0 ? override : c->sreg[3]);
 		return CPU_OK;
@@ -1095,8 +1288,8 @@ enum cpu_stop cpu_step(struct cpu *c)
 	}
 	case 0x98: c->r[AX] = (uint16_t)(int16_t)(int8_t)c->r[AX]; return CPU_OK; /* CBW */
 	case 0x99: c->r[DX] = (c->r[AX] & 0x8000) ? 0xFFFF : 0; return CPU_OK;    /* CWD */
-	case 0x9C: push16(c, c->flags); return CPU_OK;  /* PUSHF */
-	case 0x9D: c->flags = pop16(c); return CPU_OK;  /* POPF */
+	case 0x9C: push16(c, (c->flags & 0x7FD7) | 2); return CPU_OK;  /* PUSHF */
+	case 0x9D: c->flags = (pop16(c) & 0x7FD7) | 2; return CPU_OK;  /* POPF */
 	case 0x9E: c->flags = (uint16_t)((c->flags & ~0x00D5) | ((c->r[AX] >> 8) & 0xD5) | 0x02); return CPU_OK; /* SAHF */
 	case 0x9F: c->r[AX] = (uint16_t)((c->r[AX] & 0x00FF) | (((c->flags & 0xD5) | 0x02) << 8)); return CPU_OK; /* LAHF */
 	case 0x27: { /* DAA: packed-decimal adjustment after addition. */
@@ -1204,6 +1397,33 @@ enum cpu_stop cpu_step(struct cpu *c)
 		return CPU_OK;
 	}
 	case 0xCB: c->ip = pop16(c); c->sreg[1] = pop16(c); return CPU_OK; /* RETF */
+	case 0xD4: { /* AAM imm8: unpack AL into quotient (AH) and remainder (AL). */
+		uint8_t base = rd8(c, c->sreg[1], c->ip++);
+		if (base == 0) {
+			/* A zero base raises the 8086 divide-error interrupt.  The
+			 * return address is after the two-byte AAM instruction. */
+			c->int_no = 0;
+			uint16_t cs, ip;
+			cpu_enter_interrupt(c, c->int_no, &cs, &ip);
+			c->sreg[1] = cs;
+			c->ip = ip;
+			return CPU_INT;
+		}
+		uint8_t al = get8(c, 0);
+		put8(c, 4, (uint8_t)(al / base));
+		put8(c, 0, (uint8_t)(al % base));
+		cpu_set_flags(c, get8(c, 0), 8);
+		return CPU_OK;
+	}
+	case 0xCE: { /* INTO: interrupt 4 only when the overflow flag is set. */
+		if (!(c->flags & FLAG_OF)) return CPU_OK;
+		c->int_no = 4;
+		uint16_t cs, ip;
+		cpu_enter_interrupt(c, c->int_no, &cs, &ip);
+		c->sreg[1] = cs;
+		c->ip = ip;
+		return CPU_INT;
+	}
 	case 0xCD: { /* INT imm8: push the frame and vector, as the CPU does */
 		c->int_no = rd8(c, c->sreg[1], c->ip++);
 		uint16_t cs, ip;
@@ -1234,12 +1454,13 @@ enum cpu_stop cpu_step(struct cpu *c)
 		if (override >= 0) {
 			rm.seg = override;
 		}
+		if (reg == 6) { c->ip = instruction_ip; return CPU_FAULT; }
 		int count = (op == 0xD0 || op == 0xD1) ? 1
 		          : (op == 0xD2 || op == 0xD3) ? c->r[CX] : rd8(c, c->sreg[1], c->ip++);
 		if (op == 0xC1 || op == 0xD1 || op == 0xD3) {
-			put16(c, &rm, shift16(c, reg, get16(c, &rm), count & 31));
+			put16(c, &rm, shift(c, reg, get16(c, &rm), count, 16));
 		} else {
-			put8_rm(c, &rm, shift8(c, reg, get8_rm(c, &rm), count & 31));
+			put8_rm(c, &rm, shift(c, reg, get8_rm(c, &rm), count, 8));
 		}
 		return CPU_OK;
 	}
@@ -1368,22 +1589,22 @@ enum cpu_stop cpu_step(struct cpu *c)
 			if (w) {
 				uint16_t d = get16(c, &rm);
 				if (d == 0) {
-					return CPU_FAULT; /* divide by zero: the caller raises INT 0 */
+					return divide_error(c, instruction_ip); /* divide by zero: the caller raises INT 0 */
 				}
 				uint32_t n = ((uint32_t)c->r[DX] << 16) | c->r[AX];
 				if (n / d > 0xFFFF) {
-					return CPU_FAULT;
+					return divide_error(c, instruction_ip);
 				}
 				c->r[AX] = (uint16_t)(n / d);
 				c->r[DX] = (uint16_t)(n % d);
 			} else {
 				uint8_t d = get8_rm(c, &rm);
 				if (d == 0) {
-					return CPU_FAULT;
+					return divide_error(c, instruction_ip);
 				}
 				uint16_t n = c->r[AX];
 				if (n / d > 0xFF) {
-					return CPU_FAULT;
+					return divide_error(c, instruction_ip);
 				}
 				put8(c, 0, (uint8_t)(n / d));
 				put8(c, 4, (uint8_t)(n % d));
@@ -1392,24 +1613,25 @@ enum cpu_stop cpu_step(struct cpu *c)
 			if (w) {
 				int16_t d = (int16_t)get16(c, &rm);
 				if (d == 0) {
-					return CPU_FAULT;
+					return divide_error(c, instruction_ip);
 				}
 				int32_t n = (int32_t)(((uint32_t)c->r[DX] << 16) | c->r[AX]);
+				if (n == INT32_MIN && d == -1) return divide_error(c, instruction_ip);
 				int32_t q = n / d;
 				if (q > 32767 || q < -32768) {
-					return CPU_FAULT;
+					return divide_error(c, instruction_ip);
 				}
 				c->r[AX] = (uint16_t)q;
 				c->r[DX] = (uint16_t)(n % d);
 			} else {
 				int8_t d = (int8_t)get8_rm(c, &rm);
 				if (d == 0) {
-					return CPU_FAULT;
+					return divide_error(c, instruction_ip);
 				}
 				int16_t n = (int16_t)c->r[AX];
 				int16_t q = n / d;
 				if (q > 127 || q < -128) {
-					return CPU_FAULT;
+					return divide_error(c, instruction_ip);
 				}
 				put8(c, 0, (uint8_t)q);
 				put8(c, 4, (uint8_t)(n % d));

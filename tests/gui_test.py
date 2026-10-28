@@ -547,9 +547,22 @@ class Paint:
     def page_at(self, dx, dy):
         return self.at(self.page, dx, dy)
 
+    def initial_frame(self):
+        # win_flush is streamed through wsys writes and the compositor may
+        # present part of the image between writes. A white pixel near the
+        # top of the page does not prove the palette or brush label arrived.
+        def ready(s):
+            px, py = self.at(self.palette)
+            brush = read_text(s, *self.at(self.brush, (self.brush[2] - 7 * CELL_W) // 2), 7, TEXT)
+            return (s.pixel(*self.page_at(20, 20)) == WHITE
+                    and s.pixel(*self.swatch(0)) == BLACK
+                    and s.pixel(*self.swatch(4)) == (0xCC, 0x22, 0x22)
+                    and s.pixel(px, py + 10) == FOCUS and brush == "Brush 4")
+        return self.g.d.wait(ready, "the white page and complete palette and brush label")
+
     def run(self):
         g = self.g
-        s = g.d.wait(lambda s: s.pixel(*self.page_at(20, 20)) == WHITE, "a white page")
+        s = self.initial_frame()
         check(s.pixel(*self.swatch(0)) == BLACK and s.pixel(*self.swatch(4)) == (0xCC, 0x22, 0x22),
               "the palette's swatches")
         px, py = self.at(self.palette)

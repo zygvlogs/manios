@@ -217,6 +217,7 @@ int load_program_at(struct cpu *c, const char *path, uint16_t psp, uint16_t para
 	c->r[SP] = start_sp;
 	c->sreg[3] = psp;
 	c->sreg[0] = psp;
+	memset(c->r_hi, 0, sizeof(c->r_hi));
 	c->r[AX] = 0;
 	c->r[BX] = 0;
 	c->r[CX] = 0;
@@ -224,6 +225,7 @@ int load_program_at(struct cpu *c, const char *path, uint16_t psp, uint16_t para
 	c->r[SI] = 0;
 	c->r[DI] = 0;
 	c->r[BP] = 0;
+	c->flags_hi = 0;
 	c->flags = 0x0202; /* IF set, bit 1 set */
 	return 0;
 }
@@ -232,6 +234,15 @@ int load_program(struct cpu *c, const char *path, const char *tail,
                  char *err, unsigned long errlen)
 {
 	(void)tail;
-	return load_program_at(c, path, PSP_SEG, 0xA000 - PSP_SEG,
-	                       NULL, NULL, err, errlen) ? -1 : 0;
+	const uint16_t available = 0xA000 - PSP_SEG;
+	uint16_t minimum, maximum;
+	if (load_program_at(NULL, path, PSP_SEG, available,
+	                    &minimum, &maximum, err, errlen)) return -1;
+	uint16_t allocated = maximum < available ? maximum : available;
+	if (load_program_at(c, path, PSP_SEG, allocated,
+	                    NULL, NULL, err, errlen)) return -1;
+	/* Pass the actual initial allocation to PSP/MCB construction. A
+	 * bounded MZ must leave the remaining arena available to EXEC. */
+	wr16(c, PSP_SEG, 2, PSP_SEG + allocated);
+	return 0;
 }

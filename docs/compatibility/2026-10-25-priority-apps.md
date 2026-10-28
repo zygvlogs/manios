@@ -7,7 +7,7 @@ disposable FAT16 hard disk. Programs were launched inside ManiOS with `dosrun`.
 | --- | --- | --- |
 | VDE 1.97 | High | Downloaded [`VDE197.ZIP`](https://archive.org/download/vde-197/VDE197.ZIP), SHA-256 `e5f7d6f2ab03e71fbeeb3b726310aede17e1b1557a88873b60018027726e2f4e`. `dosrun C:/VDE.EXE` prints `Insufficient memory!` and returns to the shell. |
 | VDE 1.65a | High | Downloaded [`VDE165A.ZIP`](https://archive.org/download/VDE165A_ZIP/VDE165A.ZIP), SHA-256 `d596c576b1ea44e89bdf5279c8c9adb7a599868453563e541d6071830faafc59`. `dosrun C:/VDE.COM` prints `Insufficient memory!` and returns to the shell. |
-| Vern Buerg LIST 7.1a | High | Downloaded [`LIST.COM`](https://raw.githubusercontent.com/sebras/buerg/master/list/7.1a/LIST.COM), SHA-256 `aa954f7c51386ed66b88f6beb2a135330a68a0a5b2e104ea489e48288474e60b`. `dosrun C:/LIST.COM C:/INPUT.TXT` stops with `can't run AAM (at 1000:35F7)`. |
+| Vern Buerg LIST 7.1a | High | Downloaded [`LIST.COM`](https://raw.githubusercontent.com/sebras/buerg/master/list/7.1a/LIST.COM), SHA-256 `aa954f7c51386ed66b88f6beb2a135330a68a0a5b2e104ea489e48288474e60b`. Follow-up on fresh FAT16: opened `LISTTEST.TXT`, displayed the known marker and second line, then F10 returned to the shell. [AAM retest](2026-10-25-aam-fix-retests.md#vern-buerg-list). |
 | PC-TYPE v1 DS | Medium | Downloaded [`PC-Type.zip`](https://archive.org/download/PC-Type_zip/PC-Type.zip), SHA-256 `2c3f7b837a3b100138cad08504f858ad5f66f58cd0da2379ff90c70e14e0658e`. `dosrun C:/PCTYPE.EXE` enters a blank new document. After Enter and attempted `hello`, screen output showed `qq`; no valid saved file or reopen check was confirmed. Archive documentation identifies PC-TYPE as a word processor evaluation release, not a typing tutor. |
 | MicroEMACS 3.9 | High | Follow-up acquired the exact 1987 DOS executable archive and completed text entry, edit, save, close, reopen and byte-exact FAT16 checks. [Follow-up test record](2026-10-25-microemacs-pc-outline.md). |
 | PC-Outline 3.34 | Medium | User-supplied `pco334.zip` (SHA-256 `64f8d50eac6932e75d6a00a374e7c37da313dd6fcba26bc2bb85fb471306d252`); `README.1` identifies version 3.34. Follow-up confirmed the shareware screen, opening menu and filename entry, but Return, keypad Enter and Ctrl+M did not submit `test`; editing and save/reopen remain unreached. [Screenshot](2026-10-25-pc-outline-filename-prompt.png); [follow-up record](2026-10-25-microemacs-pc-outline.md).
@@ -24,6 +24,7 @@ disposable FAT16 hard disk. Programs were launched inside ManiOS with `dosrun`.
 - PC-TYPE archive: [Internet Archive item](https://archive.org/details/PC-Type_zip).
 
 No keyboard editing, save, close, reopen or on-disk byte comparison was claimed for
-VDE or LIST because their launch failures prevented reaching an editor/viewer. The
+VDE because its launch failure prevented reaching an editor. LIST viewer launch and
+exit are recorded in the AAM follow-up above. The
 three unavailable packages remain explicitly untested; archive-search failure is
 not a ManiOS compatibility result.

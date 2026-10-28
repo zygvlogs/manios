@@ -1,8 +1,9 @@
-/* dosrun: an 8086 real-mode CPU interpreter, enough to run DOS
+/* dosrun: a real-mode CPU interpreter with an 8086 core and a 386 operand subset.
+ * Enough to run DOS
  * programs. ManiOS's own, written for ManiOS from nothing; no MS-DOS
  * or other DOS code. docs/dosrun.md describes it.
  *
- * The CPU is a struct: eight 16-bit general registers, four segment
+ * The CPU is a struct: eight general registers (low/high 16-bit halves), four segment
  * registers, the flags, and a 1 MiB memory. Instructions are decoded
  * and executed one at a time (cpu_step). Anything the interpreter
  * can't do -- an interrupt, a port access, a halt -- is handed to the
@@ -47,9 +48,11 @@ enum cpu_stop {
 
 struct cpu {
 	uint16_t r[8];
+	uint16_t r_hi[8]; /* Upper halves of EAX..EDI; 8/16-bit writes preserve these. */
 	uint16_t sreg[4]; /* ES, CS, SS, DS */
 	uint16_t ip;
 	uint16_t flags;
+	uint16_t flags_hi; /* Real-mode AC/ID (bits 18/21); no VM/protected mode. */
 
 	uint8_t *mem; /* MEM_SIZE bytes */
 
@@ -75,6 +78,16 @@ struct cpu {
 
 void cpu_init(struct cpu *c);
 void cpu_free(struct cpu *c);
+
+static inline uint32_t cpu_reg32(const struct cpu *c, int reg)
+{
+	return c->r[reg] | ((uint32_t)c->r_hi[reg] << 16);
+}
+static inline void cpu_put_reg32(struct cpu *c, int reg, uint32_t value)
+{
+	c->r[reg] = (uint16_t)value;
+	c->r_hi[reg] = (uint16_t)(value >> 16);
+}
 
 /* Runs one instruction. */
 enum cpu_stop cpu_step(struct cpu *c);
@@ -124,7 +137,7 @@ static inline uint16_t pop16(struct cpu *c)
 }
 
 /* Sets the flags a result of `value` implies (SF, ZF, PF); CF and OF
- * are the caller's. `bits` is 8 or 16. */
+ * are the caller's. `bits` is 8, 16 or 32. */
 void cpu_set_flags(struct cpu *c, uint32_t value, int bits);
 
 /* Raises a software interrupt, as the INT instruction does: pushes the

@@ -162,6 +162,29 @@ int dos_path(char *path, size_t n)
 	return 0;
 }
 
+int dos_guest_path(const char *host, char *out, size_t n)
+{
+	int best = -1;
+	size_t prefix = 0;
+	for (int i = 0; i < 26; i++) {
+		if (!mounts[i].present) continue;
+		size_t len = strlen(mounts[i].root);
+		while (len > 1 && mounts[i].root[len - 1] == '/') len--;
+		if (strncmp(host, mounts[i].root, len) ||
+		    ((len != 1 || mounts[i].root[0] != '/') && host[len] && host[len] != '/')) continue;
+		if (len > prefix) { best = i; prefix = len; }
+	}
+	if (best < 0) return -1;
+	const char *relative = host + prefix;
+	while (*relative == '/') relative++;
+	if (strlen(relative) + 4 > n) return -1;
+	out[0] = 'A' + best; out[1] = ':'; out[2] = '\\';
+	size_t i;
+	for (i = 0; relative[i]; i++) out[3 + i] = relative[i] == '/' ? '\\' : relative[i];
+	out[3 + i] = 0;
+	return 0;
+}
+
 int dos_chdir(const char *path)
 {
 	int drive = current;

@@ -12,6 +12,8 @@
 /* Maps the DOS path in `path` (in place) to a ManiOS path. Returns 0,
  * or -1 if the drive isn't mounted or the path is too long for `n`. */
 int dos_path(char *path, size_t n);
+/* Reverse a mapped host path using the longest mounted directory prefix. */
+int dos_guest_path(const char *host, char *out, size_t n);
 
 /* Sets where a drive letter points (from the command line, or a
  * default). `letter` is 'C', 'D', ...; `dir` is a ManiOS path. */

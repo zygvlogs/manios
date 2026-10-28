@@ -92,8 +92,8 @@ extern int poll(struct zkt_pollfd *, int, int);
 #define PSP_FCB2    0x6C /* the second FCB */
 #define PSP_DTA     0x80 /* the default disk transfer area */
 
-/* The open files, one per DOS handle. Handles 0-4 are the standard
- * ones; a program's own files start at 5. */
+/* The open files, one per DOS handle. Handles 0-4 initially refer to
+ * the console; any closed slot can subsequently hold an opened file. */
 #define HANDLES 20
 
 /* Extended memory (XMS) and expanded memory (EMS): the pools a DOS
@@ -117,6 +117,7 @@ struct dos_parent {
 	uint16_t psp, prog, dta_seg, dta;
 	int handles[HANDLES], fcb[16];
 	uint8_t private_handles[HANDLES];
+	uint8_t handle_drive[HANDLES];
 	struct dos_find find[8];
 };
 
@@ -147,6 +148,7 @@ struct dos_state {
 	uint16_t dta, dta_seg; /* disk transfer area, independent of later DS */
 	struct dos_find find[8];
 	uint8_t exit_code;
+	char executable[256]; /* DOS pathname in the environment trailer. */
 	int con_in;        /* the console, for a program's reads */
 	int con_out;
 	int keyboard_fd;
@@ -181,6 +183,7 @@ struct dos_state {
 	 * program's own files start at 5. */
 	int handle_fd[HANDLES];
 	uint8_t private_handles[HANDLES];
+	uint8_t handle_drive[HANDLES];
 
 	/* Extended memory (XMS): a pool outside the 1 MiB the program can
 	 * address, which it copies to and from through a move call. */
@@ -506,10 +509,27 @@ struct dos_state *dos_new(struct cpu *c)
 	/* BIOS ROM stubs are ordinary guest code, so saved/chained vectors work.
 	 * The private F1 trap advances the BDA once; INT 1Ch is caller-hookable. */
 	static const uint8_t timer_rom[] = {0xCD,0xF1,0xCD,0x1C,0x50,0xB0,0x20,0xE6,0x20,0x58,0xCF};
+	/* DOS's INT 21h vector must also work when a guest chains to it with
+	 * a far call. INT F2 is the private host-service trap; IRET returns to
+	 * the caller's original interrupt frame (or far-call frame). */
+	static const uint8_t dos21_rom[] = {0xCD,0xF2,0xCF};
+	/* BIOS services are callable both with INT and through Pascal's
+	 * far-call-to-IVT convention. These guest stubs keep IRET semantics
+	 * for that convention while INT F3 bridges to the BIOS implementation. */
+	static const uint8_t bios_vectors[] = {0x10,0x11,0x12,0x14,0x15,0x16,0x17,0x1A,0x29};
+	static const uint8_t bios_stub[] = {0xCD,0xF3,0xCF};
+	for (unsigned i = 0; i < sizeof(bios_vectors); i++) {
+		uint16_t off = (uint16_t)(0x140 + i * 3);
+		memcpy(c->mem + 0xF0000 + off, bios_stub, sizeof(bios_stub));
+		wr16(c, 0, bios_vectors[i] * 4, off);
+		wr16(c, 0, bios_vectors[i] * 4 + 2, 0xF000);
+	}
 	memcpy(c->mem + 0xF0100, timer_rom, sizeof(timer_rom));
+	memcpy(c->mem + 0xF0130, dos21_rom, sizeof(dos21_rom));
 	mem_w8(c, 0xF0120, 0xCF);
 	wr16(c,0,8*4,0x100); wr16(c,0,8*4+2,0xF000);
 	wr16(c,0,0x1C*4,0x120); wr16(c,0,0x1C*4+2,0xF000);
+	wr16(c,0,0x21*4,0x130); wr16(c,0,0x21*4+2,0xF000);
 	c->irq_ack = dos_irq_ack;
 	/* PC BIOS normally leaves IRQ0 (timer) and IRQ1 (keyboard) unmasked. */
 	d->pic1_mask = 0xFC;
@@ -521,6 +541,8 @@ struct dos_state *dos_new(struct cpu *c)
 	d->pending_key2 = -1;
 	d->pending_bios_key = -1;
 	d->pending_dos_scan = -1;
+	/* Conventional RAM ends where VGA memory begins (A0000h). */
+	wr16(c, 0x40, 0x13, 640);
 	wr16(c, 0x40, 0x1A, 0x1E);
 	wr16(c, 0x40, 0x1C, 0x1E);
 	for (int i = 0; i < 16; i++) d->fcb_fd[i] = -1;
@@ -555,6 +577,7 @@ struct dos_state *dos_new(struct cpu *c)
 	d->dta = PSP_DTA;
 	for (int i = 0; i < HANDLES; i++) {
 		d->handle_fd[i] = -1;
+		d->handle_drive[i] = (uint8_t)dos_get_drive();
 	}
 	d->handle_fd[0] = 0; /* stdin */
 	d->handle_fd[1] = 1; /* stdout */
@@ -689,11 +712,22 @@ void dos_set_env(const char *name, const char *value)
 	env_extra_count++;
 }
 
+int dos_set_executable(struct dos_state *d, const char *host_path)
+{
+	return dos_guest_path(host_path, d->executable, sizeof(d->executable));
+}
+
 void dos_build_psp(struct dos_state *d)
 {
-	build_psp(d);
 	struct cpu *c = d->cpu;
 	uint16_t psp = d->psp_seg;
+	uint16_t end = rd16(c, psp, PSP_MEMSIZE);
+	/* load_program records the bounded MZ allocation here. Callers
+	 * that construct a synthetic program without the loader retain
+	 * the traditional full-arena default. */
+	if (end < psp + 0x10u || end > 0xA000) end = 0xA000;
+	build_psp(d);
+	wr16(c, psp, PSP_MEMSIZE, end);
 	/* A real, terminated environment below the process allocation. The
 	 * word after the double NUL counts executable-name strings. The
 	 * block must stay under the gap to the program's segment (0x100),
@@ -715,13 +749,19 @@ void dos_build_psp(struct dos_state *d)
 	}
 	wr8(c, env, off++, 0);
 	wr16(c, env, off, 1);
-	const char program[] = "C:\\DOSRUN.EXE";
-	for (unsigned i = 0; i < sizeof(program); i++) wr8(c, env, off + 2 + i, program[i]);
+	const char *program = d->executable[0] ? d->executable : "C:\\DOSRUN.EXE";
+	for (unsigned i = 0; i <= strlen(program); i++) wr8(c, env, off + 2 + i, program[i]);
 	wr16(c, psp, PSP_ENVIRON, env);
-	/* Initially the process owns all remaining conventional memory. */
-	wr8(c, psp - 1, 0, 'Z');
+	/* The initial process and the free remainder form one valid MCB
+	 * chain, just like allocations made through DOS AH=48h. */
+	wr8(c, psp - 1, 0, end < 0xA000 ? 'M' : 'Z');
 	wr16(c, psp - 1, 1, psp);
-	wr16(c, psp - 1, 3, 0xA000 - psp);
+	wr16(c, psp - 1, 3, end - psp);
+	if (end < 0xA000) {
+		wr8(c, end, 0, 'Z');
+		wr16(c, end, 1, 0);
+		wr16(c, end, 3, 0xA000 - end - 1);
+	}
 	/* INT 21h/AH=52h returns ES:BX into this DOS list-of-lists area;
 	 * the first MCB segment is stored two bytes before the returned pointer. */
 	wr16(c, 0x0E00, 0, d->arena_seg);
@@ -1238,6 +1278,7 @@ static enum cpu_stop dos_exec(struct dos_state *d, struct cpu *c)
 	parent->dta_seg = d->dta_seg; parent->dta = d->dta;
 	memcpy(parent->handles, d->handle_fd, sizeof(parent->handles));
 	memcpy(parent->private_handles, d->private_handles, sizeof(d->private_handles));
+	memcpy(parent->handle_drive, d->handle_drive, sizeof(d->handle_drive));
 	memcpy(parent->fcb, d->fcb_fd, sizeof(parent->fcb));
 	memcpy(parent->find, d->find, sizeof(parent->find));
 	memcpy(d->handle_fd, inherited, sizeof(inherited));
@@ -1287,8 +1328,10 @@ static enum cpu_stop exec_return(struct dos_state *d, struct cpu *c)
 	d->psp_seg = p->psp; d->prog_seg = p->prog;
 	d->dta_seg = p->dta_seg; d->dta = p->dta;
 	memcpy(c->r, p->cpu.r, sizeof(c->r));
+	memcpy(c->r_hi, p->cpu.r_hi, sizeof(c->r_hi));
 	memcpy(c->sreg, p->cpu.sreg, sizeof(c->sreg));
 	c->ip = p->cpu.ip; c->flags = p->cpu.flags;
+	c->flags_hi = p->cpu.flags_hi;
 	c->exit_code = 0;
 	d->parent = p->next;
 	free(p);
@@ -1565,8 +1608,12 @@ static enum cpu_stop dos21(struct dos_state *d, struct cpu *c)
 	}
 
 	case 0x2C: { /* the time: CH=hour, CL=minute, DH=second, DL=centisecond */
-		c->r[CX] = (uint16_t)((12 << 8) | 0);
-		c->r[DX] = (uint16_t)((0 << 8) | 0);
+		/* Share the BIOS clock, so IRQ0 chaining/midnight have the same
+		 * meaning for DOS polling as for INT 1Ah. No fabricated wall date. */
+		uint32_t ticks = mem_r16(c, 0x46C) | ((uint32_t)mem_r16(c, 0x46E) << 16);
+		uint32_t centis = (uint32_t)(((uint64_t)ticks * 6553600u / 1193182u) % 8640000u);
+		c->r[CX] = (uint16_t)(((centis / 360000u) << 8) | ((centis / 6000u) % 60));
+		c->r[DX] = (uint16_t)((((centis / 100u) % 60) << 8) | (centis % 100));
 		return CPU_OK;
 	}
 
@@ -1633,28 +1680,38 @@ static enum cpu_stop dos21(struct dos_state *d, struct cpu *c)
 	case 0x5B:
 		return dos_file(d, c, ah);
 
-	case 0x44: /* IOCTL: a device, or a file handle */
-		if (bx == 0) {
-			c->r[DX] = (uint16_t)((c->r[DX] & 0xFF00) | 0x80); /* a device */
-			c->r[AX] = (uint16_t)((c->r[AX] & 0xFF00) | 0x01);
-		} else {
-			c->r[DX] = (uint16_t)(c->r[DX] & 0xFF00);
+	case 0x44: { /* IOCTL get device information (4400h). */
+		if ((c->r[AX] & 255) != 0) {
+			c->r[AX] = 1; set_cf(c, 1); return CPU_OK;
 		}
+		if (bx >= HANDLES || d->handle_fd[bx] < 0) {
+			c->r[AX] = 6; set_cf(c, 1); return CPU_OK;
+		}
+		/* Classify the actual descriptor: stdin can be a file, and a
+		 * duplicate console descriptor can have any DOS handle number.
+		 * CON supports both input and output. Other IOCTL functions
+		 * remain unsupported rather than silently claiming success. */
+		/* CON: character-driver attribute, not at EOF, device,
+		 * INT29 recipient, console input and console output. */
+		c->r[DX] = isatty(d->handle_fd[bx]) ? 0x80D3 : d->handle_drive[bx];
+		set_cf(c, 0);
 		return CPU_OK;
+	}
 
 	case 0x45: case 0x46: { /* duplicate / force duplicate file handle */
 		if (bx >= HANDLES || d->handle_fd[bx] < 0) {
 			c->r[AX] = 6; set_cf(c, 1); return CPU_OK;
 		}
-		int target = ah == 0x46 ? c->r[CX] : 5;
+		int target = ah == 0x46 ? c->r[CX] : 0;
 		if (ah == 0x45) while (target < HANDLES && d->handle_fd[target] >= 0) target++;
-		if (target >= HANDLES) { c->r[AX] = 4; set_cf(c, 1); return CPU_OK; }
+		if (target >= HANDLES) { c->r[AX] = ah == 0x46 ? 6 : 4; set_cf(c, 1); return CPU_OK; }
 		if (target != bx) {
 			int fd = dup(d->handle_fd[bx]);
 			if (fd < 0) { c->r[AX] = 4; set_cf(c, 1); return CPU_OK; }
 			if (d->handle_fd[target] > 2) close(d->handle_fd[target]);
 			d->handle_fd[target] = fd;
 			d->private_handles[target] = d->private_handles[bx];
+			d->handle_drive[target] = d->handle_drive[bx];
 		}
 		c->r[AX] = target; set_cf(c, 0); return CPU_OK;
 	}
@@ -1708,12 +1765,15 @@ static enum cpu_stop dos21(struct dos_state *d, struct cpu *c)
 
 /* --- the file services --- */
 
-static int handle_alloc(struct dos_state *d, int fd)
+static int handle_alloc(struct dos_state *d, int fd, uint16_t seg, uint16_t off)
 {
-	for (int i = 5; i < HANDLES; i++) {
+	for (int i = 0; i < HANDLES; i++) {
 		if (d->handle_fd[i] < 0) {
 			d->handle_fd[i] = fd;
 			d->private_handles[i] = 0;
+			unsigned ch = rd8(d->cpu, seg, off);
+			d->handle_drive[i] = isalpha(ch) && rd8(d->cpu, seg, (uint16_t)(off + 1)) == ':'
+			    ? (uint8_t)(toupper(ch) - 'A') : (uint8_t)dos_get_drive();
 			return i;
 		}
 	}
@@ -1839,7 +1899,7 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 		if (fd < 0) {
 			break;
 		}
-		int h = handle_alloc(d, fd);
+		int h = handle_alloc(d, fd, ds, dx);
 		if (h < 0) {
 			close(fd);
 			break;
@@ -1859,7 +1919,7 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 		if (fd < 0) {
 			break;
 		}
-		int h = handle_alloc(d, fd);
+		int h = handle_alloc(d, fd, ds, dx);
 		if (h < 0) {
 			close(fd);
 			break;
@@ -1869,12 +1929,17 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 		set_cf(c, 0);
 		return CPU_OK;
 	}
-	case 0x3E: { /* close */
-		
-		if (bx < HANDLES && d->handle_fd[bx] >= 0 && bx > 4) {
-			close(d->handle_fd[bx]);
-			d->handle_fd[bx] = -1;
+	case 0x3E: { /* close, including redirected standard handles */
+		if (bx >= HANDLES || d->handle_fd[bx] < 0) {
+			c->r[AX] = 6; set_cf(c, 1); return CPU_OK;
 		}
+		/* The initial console fds belong to the runner; DOS owns only
+		 * its handle entry. Opened/duplicated files have separate fds. */
+		if (d->handle_fd[bx] > 2 && close(d->handle_fd[bx]) < 0) {
+			c->r[AX] = 6; set_cf(c, 1); return CPU_OK;
+		}
+		d->handle_fd[bx] = -1;
+		d->private_handles[bx] = 0;
 		set_cf(c, 0);
 		return CPU_OK;
 	}
@@ -1987,7 +2052,7 @@ enum cpu_stop dos_file(struct dos_state *d, struct cpu *c, uint8_t ah)
 			c->r[AX] = errno == EEXIST ? 80 : errno == ENOENT || errno == ENOTDIR ? 3 : 5;
 			set_cf(c, 1); return CPU_OK;
 		}
-		int h = handle_alloc(d, fd);
+		int h = handle_alloc(d, fd, ds, dx);
 		if (h < 0) { close(fd); unlink(path); c->r[AX] = 4; set_cf(c, 1); return CPU_OK; }
 		c->r[AX] = (uint16_t)h;
 		set_cf(c, 0);
@@ -2721,6 +2786,23 @@ static enum cpu_stop bios1a(struct dos_state *d, struct cpu *c)
 	}
 }
 
+/* Return the BIOS vector represented by a live INT F3 ROM-stub frame.
+ * INT F3 is private to these exact guest stubs; ordinary guest use is
+ * rejected so the internal bridge cannot become another public API. */
+static int bios_stub_target(struct cpu *c)
+{
+	static const uint8_t vectors[] = {0x10,0x11,0x12,0x14,0x15,0x16,0x17,0x1A,0x29};
+	if (rd16(c,c->sreg[2],c->r[SP]+2) != 0xF000) return -1;
+	uint16_t ret = rd16(c,c->sreg[2],c->r[SP]);
+	for (unsigned i = 0; i < sizeof(vectors); i++)
+		if (ret == 0x142 + i * 3 &&
+		    rd8(c,0xF000,(uint16_t)(ret-2)) == 0xCD &&
+		    rd8(c,0xF000,(uint16_t)(ret-1)) == 0xF3 &&
+		    rd8(c,0xF000,ret) == 0xCF)
+			return vectors[i];
+	return -1;
+}
+
 static enum cpu_stop dispatch_int(struct dos_state *d, struct cpu *c, uint8_t vector)
 {
 	switch (vector) {
@@ -2732,11 +2814,26 @@ static enum cpu_stop dispatch_int(struct dos_state *d, struct cpu *c, uint8_t ve
 		mem_w16(c,0x46C,(uint16_t)ticks); mem_w16(c,0x46E,(uint16_t)(ticks>>16));
 		return CPU_OK;
 	}
+	case 0xF2: /* Internal INT 21h ROM-stub trap; reject direct guest use. */
+		if (rd16(c,c->sreg[2],c->r[SP]) != 0x132 ||
+		    rd16(c,c->sreg[2],c->r[SP] + 2) != 0xF000)
+			return CPU_IRET;
+		return dos21(d, c);
+	case 0xF3: { /* Internal BIOS ROM-stub trap for far-call IVT dispatch. */
+		int target = bios_stub_target(c);
+		if (target == 0x16 &&
+		    ((c->r[AX] >> 8) == 0 || (c->r[AX] >> 8) == 0x10))
+			dos_video_present(d);
+		return target < 0 ? CPU_IRET : dispatch_int(d, c, (uint8_t)target);
+	}
 	case 0x20: /* terminate */
 		c->exit_code = 0;
 		return CPU_EXIT;
 	case 0x21:
 		return dos21(d, c);
+	case 0x29: /* DOS fast console output: AL, all registers preserved. */
+		con_putc(d, (uint8_t)c->r[AX]);
+		return CPU_OK;
 	case 0x10:
 		return bios10(d, c);
 	case 0x16:
@@ -2747,7 +2844,17 @@ static enum cpu_stop dispatch_int(struct dos_state *d, struct cpu *c, uint8_t ve
 		return int2f_xms(d, c);
 	case 0x67:
 		return int67(d, c);
-	case 0x11: case 0x12: case 0x14: case 0x15: case 0x17:
+	case 0x12: /* The BIOS memory-size word, in contiguous KiB. */
+		c->r[AX] = mem_r16(c, 0x413);
+		return CPU_OK;
+	case 0x15:
+		/* No AT system services or linear extended-memory map is
+		 * implemented. XMS/EMS pools are accessed through their APIs;
+		 * they must not be advertised as directly addressable RAM. */
+		c->r[AX] = (uint16_t)((c->r[AX] & 255) | 0x8600);
+		set_cf(c, 1);
+		return CPU_OK;
+	case 0x11: case 0x14: case 0x17:
 		/* The equipment, memory size, serial, cassette and printer
 		 * services: a program that probes them gets a plain answer. */
 		c->r[AX] = (uint16_t)(c->r[AX] & 0xFF00);
@@ -2763,7 +2870,11 @@ enum cpu_stop dos_int(struct dos_state *d, struct cpu *c, uint8_t vector)
 	/* A nonzero IVT entry was resolved by cpu_enter_interrupt. Execute
 	 * guest hooks (including BIOS ROM stubs), rather than discarding them. */
 	uint16_t target_off = rd16(c,0,vector*4), target_seg = rd16(c,0,vector*4+2);
-	if ((target_seg || target_off) && c->sreg[1] == target_seg && c->ip == target_off) return CPU_GUEST;
+	if ((target_seg || target_off) && c->sreg[1] == target_seg && c->ip == target_off) {
+		if (vector == 0x16 && ((c->r[AX] >> 8) == 0 || (c->r[AX] >> 8) == 0x10))
+			dos_video_present(d);
+		return CPU_GUEST;
+	}
 	if (vector == 0x16 && ((c->r[AX] >> 8) == 0 || (c->r[AX] >> 8) == 0x10)) dos_video_present(d);
 	enum cpu_stop stop = dispatch_int(d, c, vector);
 	if (stop == CPU_EXIT && d->parent) stop = exec_return(d, c);
@@ -2779,6 +2890,17 @@ enum cpu_stop dos_int(struct dos_state *d, struct cpu *c, uint8_t vector)
 		uint16_t saved = rd16(c, c->sreg[2], off);
 		wr16(c, c->sreg[2], off,
 		     (uint16_t)((saved & ~status) | (c->flags & status)));
+		/* The INT 21h ROM stub returns with IRET to the guest's original
+		 * interrupt/far-call frame. Propagate DOS status flags there too. */
+		if ((vector == 0xF2 &&
+		    rd16(c,c->sreg[2],c->r[SP]) == 0x132 &&
+		    rd16(c,c->sreg[2],c->r[SP] + 2) == 0xF000) ||
+		    (vector == 0xF3 && bios_stub_target(c) >= 0)) {
+			uint16_t outer = (uint16_t)(c->r[SP] + 10);
+			saved = rd16(c, c->sreg[2], outer);
+			wr16(c, c->sreg[2], outer,
+			     (uint16_t)((saved & ~status) | (c->flags & status)));
+		}
 	}
 	return stop;
 }

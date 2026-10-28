@@ -108,6 +108,10 @@ int main(int argc, char **argv)
 	}
 	for (int i = 0; i < envs; i++) dos_set_env(envnames[i], envvalues[i]);
 	dos_set_program(dos, 0x1000, 0x1010);
+	if (dos_set_executable(dos, prog) < 0) {
+		fprintf(stderr, "dosrun: executable path cannot be represented on a mounted DOS drive\n");
+		dos_free(dos); cpu_free(&cpu); return 1;
+	}
 	dos_build_psp(dos);
 	dos_set_tail(dos, tail);
 
@@ -160,6 +164,12 @@ int main(int argc, char **argv)
 			fprintf(stderr, "dosrun: %s: can't run %s (at %04X:%04X)\n",
 			        argv[1], cpu_fault_name(cpu.fault_opcode),
 			        cpu.sreg[1], cpu.ip);
+			if (cpu.fault_opcode == 0x66) {
+				fprintf(stderr, "dosrun: prefixed instruction bytes:");
+				for (int j = 0; j < 15; j++)
+					fprintf(stderr, " %02X", rd8(&cpu, cpu.sreg[1], (uint16_t)(cpu.ip + j)));
+				fprintf(stderr, "\n");
+			}
 			if ((cpu.fault_opcode >= 0xE4 && cpu.fault_opcode <= 0xE7) ||
 			    (cpu.fault_opcode >= 0xEC && cpu.fault_opcode <= 0xEF)) {
 				uint16_t port = cpu.fault_opcode < 0xEC ?

@@ -54,6 +54,74 @@ ModR/M addressing modes, the segment overrides, and the control flow.
 An instruction it doesn't have stops with a message naming it, rather
 than doing the wrong thing.
 
+## Real-mode operand-size override (0.27.0 development)
+
+Real mode defaults to 16-bit operands and addresses. `66h` selects 32-bit
+operands for the supported forms below; it does not enter protected mode.
+Addressing still uses the existing 16-bit ModR/M decoder, DS/SS defaults,
+segment overrides and the 20-bit physical address wrap. Stack operands use
+SP in SS. Repeated `66h` prefixes select 32 bits once, rather than toggling.
+
+Supported 32-bit forms:
+
+- MOV register/immediate (`B8–BF`), register/memory (`89`, `8B`),
+  accumulator/moffs16 (`A1`, `A3`), and memory/register immediate (`C7 /0`).
+- ADD, OR, ADC, SBB, AND, SUB, XOR and CMP: word-sized opcode forms become
+  dword operations, including accumulator imm32 and groups `81`/`83`.
+  `83` sign-extends imm8. TEST (`85`, `A9`, `F7 /0`), NOT and NEG.
+- INC/DEC registers and `FF /0,/1`, preserving CF; XCHG (`87`, `90–97`).
+- PUSH/POP general registers, PUSH imm32/sign-extended imm8, PUSH `FF /6`,
+  POP `8F /0`; dword stack data with a 16-bit stack pointer.
+- LEA with zero-extended 16-bit effective address, CWDE, CDQ,
+  MOVZX/MOVSX from byte/word to dword, and BSWAP of the full register.
+- MOVSD/STOSD/LODSD, with optional REP/REPNE and segment overrides;
+  CX/SI/DI remain 16-bit, their upper halves are preserved, DF selects ±4,
+  and a zero repeat count makes no memory access. Completed REP iterations
+  remain committed on a later segment-boundary fault.
+- SHL/SAL, SHR, SAR, ROL, ROR, RCL and RCR (`C1`, `D1`, `D3`);
+  counts are masked to five bits and zero counts preserve flags. One-bit
+  overflow follows x86 semantics; undefined flags are not an API guarantee.
+- SHLD/SHRD with immediate or CL counts, and BT/BTS/BTR/BTC including
+  signed register indexes into memory bit strings and immediate bit indexes.
+- IMUL (`0F AF`, `69`, `6B`), one-operand MUL/IMUL and DIV/IDIV (`F7`).
+  Division by zero or an unrepresentable quotient delivers real-mode INT 0
+  at the faulting instruction, preserving the dividend and destination.
+- PUSHFD/POPFD: four-byte stack values, reserved-bit canonicalization and
+  stored AC/ID bits. VM/VIF/VIP/RF are not writable in this real-mode model.
+  AC/ID survive ordinary word flags/interrupt operations and nested EXEC;
+  a freshly loaded child starts with them clear.
+- CPUID reads EAX and defines full output registers, with or without `66h`;
+  the vendor leaf is complete and no x87/TSC features are advertised.
+
+Upper register halves are stored independently of the existing low-word
+service ABI. Byte and word writes preserve them; dword writes replace both
+halves. Program loading initializes upper halves, and EXEC restores them
+across nested child termination. Arithmetic defines CF/OF/AF/SF/ZF/PF;
+logical operations clear CF/OF, define SF/ZF/PF and clear undefined AF.
+Parity always uses the low result byte. Flags outside each instruction's
+specified effects are preserved.
+
+Other `66h` forms stop explicitly, including byte operations,
+CMPSD/SCASD, control transfers, interrupt frames, segment-register operations
+and system instructions.
+`67h`, FS/GS overrides, LOCK, x87 and protected mode remain unsupported.
+The fault message prints the instruction bytes and points to the first
+prefix; unsupported forms do not change operands or flags. Supported
+encodings are checked against the 15-byte instruction limit before execution.
+Dword data/stack accesses crossing the real-mode 64 KiB segment limit are
+refused; this interpreter reports CPU_FAULT rather than synthesizing #GP.
+There is no DPMI host or 32-bit instruction pointer.
+
+The focused `tests/dosrun_operand32_test.py` uses a native x86 host as an
+independent ALU/flags oracle (32,768 cases), plus ModR/M, mixed widths,
+segments, stack, instruction-length and fault-state regressions. This oracle
+requires an x86-64 host with GCC. `tests/dosrun_exec_test.py` verifies upper
+register lifetime across nested EXEC. `tests/gui_frame_test.py` reproduces a
+partial first paint frame and verifies that a permanently bad palette fails.
+All are included in `make test`.
+
+Reference: [Intel instruction format and operand-size prefixes](https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-2a-manual.pdf).
+
 ## The services
 
 Each mounted drive starts at its root and keeps an independent DOS current
@@ -350,3 +418,41 @@ JZIP, Frotz 2.55/2.53 and DZIP were also tried. The detailed records are in
   formatting are poor.
 - **Build note.** The kernel for this batch was linked with a host
   `gcc -m32` fallback because the i686-elf cross toolchain was unavailable.
+
+### October 27 correctness audit
+
+Byte/word shifts and double shifts share the corrected count/flag rules with
+32-bit forms. Word BTR and signed memory bit-string indexing are supported.
+CMPXCHG byte/word forms now use the correct width and subtraction flags.
+Unmodeled FS/GS PUSH/POP, CLTS and WRMSR explicitly fault. RDTSC returns the
+synthetic instruction counter in full EDX:EAX, preserving EBX/ECX; the counter
+still wraps at 32 bits and CPUID does not advertise a hardware TSC.
+
+DOS close invalidates standard handles as well as allocated handles, and open
+and duplicate choose the lowest available slot. Borrowed host console file
+descriptors remain owned by the runner. IOCTL 4400h validates the handle,
+clears CF on success, replaces DX and recognizes a duplicated terminal or a
+file opened in a formerly standard slot. File drive identity survives duplicate
+and EXEC operations. Fast console output (INT 29h) writes through the same virtual console as DOS
+AH=40h and is callable through its installed IVT stub. Registers and flags
+are preserved. Other IOCTL functions remain explicitly unsupported;
+this is not a complete DOS device-driver or raw-console-mode implementation.
+
+The PSP environment's executable trailer names the actual mapped executable,
+allowing runtimes to reopen their own file. Initial MZ allocation now honors
+the header maximum (including the zero-minimum/maximum high-load convention),
+and PSP/MCB boundaries agree. A bounded parent leaves a free MCB for child
+EXEC without first shrinking itself. Reverse mapping chooses the longest
+mount root with a component boundary; it rejects unrepresentable names.
+DOS AH=2Ch derives elapsed time from the BIOS tick counter. It no longer returns
+a constant noon, but is not a synchronized civil clock. INT 12h reads the BIOS
+memory word initialized to 640 KiB. Unsupported INT 15h services return
+CF=1/AH=86h; separately allocated XMS/EMS pools are not a linear physical
+extended-memory map. BIOS RTC/date and several equipment/peripheral services
+remain incomplete.
+
+See the [October 27 engineering audit](compatibility/2026-10-27-bugfix-audit.md)
+for application evidence, regression results and unresolved limits. Instruction
+semantics were checked against the [Intel instruction reference](https://cdrdv2-public.intel.com/774492/325383-sdm-vol-2abcd.pdf);
+IOCTL against [Microsoft's DOS implementation](https://github.com/microsoft/MS-DOS/blob/main/v4.0/src/DOS/IOCTL.ASM);
+and BIOS contracts against the [IBM BIOS interface reference](https://bitsavers.org/pdf/ibm/pc/ps2/PS2_and_PC_BIOS_Interface_Technical_Reference_Apr87.pdf).

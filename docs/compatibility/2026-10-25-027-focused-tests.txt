@@ -1,0 +1,19 @@
+=== operand32 ===
+PASS: 32768 native-oracle ALU cases; widths, ModR/M, segments, stack, extensions, length and explicit faults
+
+=== exec ===
+PASS: EXEC COM/MZ, nested return, PSP/environment, DTA, allocation cleanup and errors
+
+=== aam ===
+PASS: AAM quotient/remainder, imm8 base, SF/ZF/PF, preserved flags and INT 0 frame
+
+=== into ===
+PASS: INTO continues with OF clear; OF set enters INT 4 with exact frame and post-opcode return IP
+
+=== gui-frame ===
+PASS: partial paint frame waits; complete frame passes; wrong palette fails
+
+=== gui-final-focused ===
+PASS: ManiDE starts
+PASS: paint: strokes, colours, the eraser, the brush, Clear
+gui test: all passed

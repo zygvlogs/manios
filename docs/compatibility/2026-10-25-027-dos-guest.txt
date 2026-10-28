@@ -1,0 +1,34 @@
+PASS: dosrun HELLO.COM: a .COM prints its string
+PASS: DOS INT 21h vector supports chained far calls
+PASS: real-mode 66h arithmetic, memory, stack and DOS register preservation
+PASS: BIOS INT 10h IVT vector supports Pascal-style far calls
+PASS: dosrun with an absolute ManiOS path
+PASS: an explicit A: mount reads the selected media directory
+PASS: an invalid mount directory is rejected
+PASS: dosrun DIGITS.COM: a loop, INC and LOOP
+PASS: dosrun HELLO.EXE: an .EXE loads and runs
+PASS: dosrun EXIT7.COM: it runs and returns to the prompt
+PASS: dosrun BAD386.COM: an instruction it can't run is named
+PASS: dosrun MOVZX.COM: a 386 instruction runs
+PASS: dosrun FLAGS.COM: DOS and BIOS results survive IRET
+PASS: a guest IRET restores its frame exactly once
+PASS: direct BIOS clock polling advances during a busy loop
+PASS: video status polling crosses both bit edges with interrupts disabled
+PASS: PIT channel 2 programming and speaker OUT2 polling
+PASS: unsupported PIT command faults with port and AL diagnostics
+PASS: DOS mkdir/chdir/rmdir operate on a real FAT directory tree
+PASS: DOS timestamps persist across close/reopen and reject unsupported handles
+PASS: DOS create-new and rename work through INT 21h
+PASS: DOS legacy FCB rename works through INT 21h/AH=17h
+PASS: PS/2 Page Down reaches DOS BIOS INT 16h with scan 51h
+PASS: PS/2 Page Down reaches DOS 8042 status/data ports
+PASS: a short direct-VGA text program renders before exit
+PASS: a DOS extender is refused with its actual requirement
+PASS: a packed installation file is identified as an archive
+PASS: dosrun with no program: a usage message
+PASS: mtools confirms RENAMED.TXT contains DATA
+PASS: read-only FAT timestamps can be read but cannot be changed
+PASS: mtools independently lists all 40 files across directory clusters
+PASS: independent on-disk FAT timestamp and size after VM shutdown
+
+OK: 0 failure(s)

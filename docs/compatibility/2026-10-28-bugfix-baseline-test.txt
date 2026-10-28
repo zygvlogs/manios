@@ -1,0 +1,662 @@
+python3 tools/mkfont.py --check
+PASS: font_data.c matches font.txt
+tests/boot_smoke_test.sh build/manios-zkt.elf
+PASS: 8 MiB, cpu=486 (small old-hardware machine)
+PASS: 256 MiB, cpu=486 (typical memory size)
+PASS: 4096 MiB, cpu=qemu32 (RAM above 4 GiB must be ignored)
+python3 tests/install_test.py build
+PASS: the ISO: ISO 9660, El Torito, the hybrid MBR, reproducible
+PASS: booting from the CD: the loader, the kernel, /dev/bootarea
+PASS: the loader's prompt edits the command line (serial and keyboard)
+PASS: the installer: refusals, asking first, writing and checking a disk; dd
+PASS: the installed disk boots with its command line, and installs a clone
+PASS: the ISO written to a disk (a USB stick) boots
+PASS: a disk read with CHS calls, as on an old BIOS
+PASS: a 7 MiB machine boots the CD; a 6 MiB one is told why not
+PASS: a much bigger ManiOS (a 7 MiB kernel) boots, and the loader says what it needs
+PASS: the loader explains: too little memory, damage, a bad header, a bad load address, no partition
+install test: all passed
+python3 tests/console_test.py build/manios-zkt.elf
+PASS: [no disk] boot
+PASS: [no disk] serial: 'ls /bin'
+PASS: [no disk] serial: "echo 'a;b' c\\;d; echo e"
+PASS: [no disk] keyboard: 'cd /boot; pwd'
+PASS: [no disk] serial: 'ls'
+PASS: [no disk] serial: 'cat etc/motd'
+PASS: [no disk] serial: 'wc etc/motd'
+PASS: [no disk] serial: 'cat\rtwo words\r\x04'
+PASS: [no disk] serial: 'nosuch'
+PASS: [no disk] serial: 'test/fault null'
+PASS: [no disk] serial: 'newns; bind /boot /n; ls /n'
+PASS: [no disk] serial: "sh -c 'ls /n; exit 3'; echo done"
+PASS: [no disk] serial: 'uptime'
+PASS: [no disk] serial: 'cat /dev/sysstat'
+PASS: [no disk] serial: 'cat /dev/ps'
+PASS: [no disk] serial: 'head -n 1 /dev/ps'
+PASS: [no disk] serial: 'fetch -p'
+PASS: [no disk] serial: 'fetch'
+PASS: [no disk] serial: 'top -b'
+PASS: [no disk] serial: 'top -b -n 2 -d 1 | grep -c PPID'
+PASS: [no disk] serial: 'top -n 1'
+PASS: [no disk] serial: 'top -x'
+PASS: [no disk] serial: 'echo a b c | wc'
+PASS: [no disk] serial: 'yes | cat | head -n 2'
+PASS: [no disk] serial: 'yes | dd | head -n 2'
+PASS: [no disk] keyboard: 'cat < etc/motd | cat | wc'
+PASS: [no disk] serial: 'echo hidden > /dev/null; echo shown'
+PASS: [no disk] serial: 'echo x > /boot/nosuch'
+PASS: [no disk] serial: 'nosuch | wc'
+PASS: [no disk] serial: '| wc'
+PASS: [no disk] serial: 'cat <'
+PASS: [no disk] serial: 'cd / | wc'
+PASS: [no disk] serial: 'echo \'|\' "<"'
+PASS: [no disk] serial: '/boot/test/ctest'
+PASS: [no disk] serial: 'cat /dev/sysname /dev/zrp'
+PASS: [no disk] serial: 'cpud'
+PASS: [no disk] serial: 'cpu udp!10.0.0.2 ls'
+PASS: [no disk] serial: 'cpu'
+PASS: [no disk] exit to the monitor
+PASS: [no disk] serial: 'help'
+PASS: [no disk] serial: 'echo over serial'
+PASS: [no disk] serial: 'devices'
+PASS: [no disk] serial: 'pci'
+PASS: [no disk] keyboard: 'uptime'
+PASS: [no disk] keyboard: 'threads'
+PASS: [no disk] keyboard: 'echo Hello, World! (x_y)'
+PASS: [no disk] keyboard: 'uptimx\x08e'
+PASS: [no disk] serial: 'nosuchcommand'
+PASS: [no disk] serial: 'ls /boot'
+PASS: [no disk] serial: 'ls /bin'
+PASS: [no disk] serial: 'run /bin/hello one two'
+PASS: [no disk] keyboard: 'run /bin/hello'
+PASS: [no disk] serial: 'run /boot/test/fault null'
+PASS: [no disk] serial: 'run /boot/test/fault priv'
+PASS: [no disk] serial: 'run /boot/test/fault exit42'
+PASS: [no disk] serial: 'run /no/such'
+PASS: [no disk] serial: 'run /boot/etc/motd'
+PASS: [no disk] serial: 'run /boot/test/utest'
+PASS: [no disk] serial: 'threads'
+PASS: [no disk] serial: 'ls /n'
+PASS: [partitioned ATA disk] boot
+PASS: [partitioned ATA disk] exit to the monitor
+PASS: [partitioned ATA disk] serial: 'devices'
+PASS: [partitioned ATA disk] serial: 'read ata0 1'
+PASS: [partitioned ATA disk] serial: 'read ata0p1 5'
+PASS: [partitioned ATA disk] serial: 'read ata0p1 14336'
+PASS: [partitioned ATA disk] serial: 'read ata0 x'
+PASS: [FAT volumes] boot
+PASS: [FAT volumes] serial: 'cd /n/ata0p1; ls'
+PASS: [FAT volumes] serial: 'sum frag.bin'
+PASS: [FAT volumes] serial: 'cd docs; cat ../readme.txt'
+PASS: [FAT volumes] serial: 'wc nested.txt'
+PASS: [FAT volumes] serial: 'cd /'
+PASS: [FAT volumes] exit to the monitor
+PASS: [FAT volumes] serial: 'sum /n/ata0p1/frag.bin'
+PASS: [FAT volumes] serial: 'sum /n/ata0p1/big.bin'
+PASS: [FAT volumes] serial: 'sum /n/ata0p2/frag12.bin'
+PASS: [FAT volumes] serial: 'sum /dev/ata0 4096'
+PASS: [FAT volumes] serial: 'sum /dev/ata0p2 1024'
+PASS: [FAT volumes] serial: 'run /n/ata0p1/bad/good'
+PASS: [FAT volumes] serial: 'run /n/ata0p1/bad/trunc'
+PASS: [FAT volumes] serial: 'run /n/ata0p1/bad/machine'
+PASS: [FAT volumes] serial: 'run /n/ata0p1/bad/phoff'
+PASS: [FAT volumes] serial: 'run /n/ata0p1/bad/phnum'
+PASS: [FAT volumes] serial: 'run /n/ata0p1/bad/entry'
+PASS: [FAT volumes] serial: 'run /n/ata0p1/bad/kseg'
+PASS: [FAT volumes] serial: 'run /n/ata0p1/bad/stackseg'
+PASS: [FAT volumes] serial: 'run /n/ata0p1/bad/wrap'
+PASS: [FAT volumes] serial: 'run /n/ata0p1/bad/filesz'
+PASS: [FAT volumes] serial: 'run /n/ata0p1/bad/offset'
+PASS: [FAT volumes] serial: 'run /n/ata0p1/bad/noabi'
+PASS: [FAT volumes] serial: 'run /n/ata0p1/bad/abi99'
+PASS: [FAT volumes] serial: 'bind -a /n/ata0p1/bin /bin'
+PASS: [FAT volumes] serial: 'ls /bin'
+PASS: [FAT volumes] serial: 'run /bin/fault exit42'
+PASS: [FAT volumes] serial: 'ls /'
+PASS: [FAT volumes] serial: 'ls /n/ata0p1'
+PASS: [FAT volumes] serial: 'cat /n/ata0p1/readme.txt'
+PASS: [FAT volumes] serial: 'cat /n/ata0p1/DOCS/NESTED.TXT'
+PASS: [FAT volumes] serial: 'ls /n/ata0p1/docs'
+PASS: [FAT volumes] serial: 'cat /n/ata0p1/manios~1.txt'
+PASS: [FAT volumes] keyboard: 'cat /n/ata0p2/only12.txt'
+PASS: [FAT volumes] serial: 'cat /n/ata0p1/missing.txt'
+PASS: [FAT volumes] serial: 'cat /n/ata0p1/docs'
+PASS: [FAT volumes] serial: 'ls /n/ata0p1/readme.txt'
+PASS: [FAT volumes] serial: 'cat n/ata0p1/readme.txt'
+PASS: [FAT volumes] serial: 'bind /n/ata0p1/readme.txt /n/ata0p2'
+PASS: [FAT volumes] serial: 'bind -a /n/ata0p2 /n/ata0p1'
+PASS: [FAT volumes] serial: 'cat /n/ata0p1/same.txt'
+PASS: [FAT volumes] serial: 'cat /n/ata0p1/only12.txt'
+PASS: [FAT volumes] serial: 'ls /n/ata0p1'
+PASS: [FAT volumes] serial: 'ns'
+PASS: [FAT volumes] serial: 'bind -b /n/ata0p2 /n/ata0p1'
+PASS: [FAT volumes] serial: 'cat /n/ata0p1/same.txt'
+PASS: [FAT volumes] serial: 'ns'
+PASS: [FAT volumes] serial: 'unbind /n/ata0p1'
+PASS: [FAT volumes] serial: 'cat /n/ata0p1/same.txt'
+PASS: [FAT volumes] serial: 'bind /n/ata0p2 /n/ata0p1'
+PASS: [FAT volumes] serial: 'cat /n/ata0p1/only12.txt'
+PASS: [FAT volumes] serial: 'unbind /n/nothing'
+PASS: [partitionless FAT disk] boot
+PASS: [partitionless FAT disk] exit to the monitor
+PASS: [3 MiB] a failed self-test stops the quiet boot, on the screen
+PASS: [colours] fetch's ANSI colours on the text console
+python3 tests/openbsd_test.py build/manios-zkt.elf
+PASS: /boot/etc/notices has the license headers of all 79 imported files
+PASS: 'head -n 3 lines.txt'
+PASS: 'head -2 lines.txt'
+PASS: 'head -n 1 a.txt b.txt'
+PASS: 'cat lines.txt | head -n 2'
+PASS: 'rev words.txt'
+PASS: 'uniq dups.txt'
+PASS: 'uniq -c dups.txt'
+PASS: 'uniq -d dups.txt'
+PASS: 'uniq -u dups.txt'
+PASS: 'fold -w 10 long.txt'
+PASS: 'fold -s -w 10 long.txt'
+PASS: 'cut -d : -f 1,3 fields.txt'
+PASS: 'cut -d: -f2- fields.txt'
+PASS: 'cut -c 2-3 a.txt'
+PASS: 'cut -f 2 tabs.txt'
+PASS: 'comm a.txt b.txt'
+PASS: 'comm -12 a.txt b.txt'
+PASS: 'expand tabs.txt'
+PASS: 'expand -t 4 tabs.txt'
+PASS: 'paste a.txt b.txt'
+PASS: 'paste -s -d , a.txt'
+PASS: 'paste -d : a.txt - < b.txt'
+PASS: 'basename /a/b/c.txt .txt'
+PASS: 'basename /usr/bin/'
+PASS: 'dirname /a/b/c.txt'
+PASS: 'dirname c.txt'
+PASS: 'yes | head -n 3'
+PASS: 'yes ManiOS | head -n 2'
+PASS: 'head -n x lines.txt'
+PASS: 'head -z'
+PASS: 'head nosuch'
+PASS: 'cut -f 0 fields.txt'
+PASS: 'cut -d'
+PASS: 'basename'
+PASS: 'comm a.txt'
+PASS: 'grep an a.txt'
+PASS: 'grep -c e lines.txt'
+PASS: 'grep -v e lines.txt'
+PASS: "grep -n '^t' lines.txt"
+PASS: 'grep -i MANIOS words.txt'
+PASS: "grep -E 'one|two' lines.txt"
+PASS: 'grep -w an a.txt'
+PASS: 'grep -l banana a.txt b.txt'
+PASS: 'cat lines.txt | grep ve'
+PASS: 'grep -F . text.txt'
+PASS: 'grep -r cherry dir'
+PASS: 'yes | grep -m 2 y'
+PASS: "grep '[' lines.txt"
+PASS: 'grep x nosuch'
+PASS: 'sed s/a/A/g a.txt'
+PASS: 'sed -n 2p lines.txt'
+PASS: 'sed 3q lines.txt'
+PASS: 'sed /e/d lines.txt'
+PASS: "sed -E 's/(an)+/X/' a.txt"
+PASS: "sed 's/\\(.*\\)/<\\1>/' a.txt"
+PASS: 'sed y/abc/ABC/ a.txt'
+PASS: "echo hello | sed 's/l*o/0/'"
+PASS: 'sed = a.txt'
+PASS: 'tee tmp.txt < a.txt'
+PASS: 'sed -i s/a/b/ tmp.txt'
+PASS: 'cat tmp.txt'
+PASS: 'nl a.txt'
+PASS: 'nl -b a text.txt'
+PASS: 'expr 1 + 2'
+PASS: 'expr 7 % 3'
+PASS: 'expr -9 / 2'
+PASS: 'expr 4294967296 / 3'
+PASS: 'expr 9223372036854775807 + 1'
+PASS: "expr abc : 'a\\(.\\)'"
+PASS: "expr 5 '>' 3"
+PASS: 'expr 1 / 0'
+PASS: 'echo hello | tr a-z A-Z'
+PASS: 'tr -d aeiou < a.txt'
+PASS: 'echo aaabbb | tr -s ab'
+PASS: "echo hello | tr '[:lower:]' '[:upper:]'"
+PASS: 'colrm 4 10 < long.txt'
+PASS: 'fmt -w 20 text.txt'
+PASS: 'join j1.txt j2.txt'
+PASS: 'join -a 1 j1.txt j2.txt'
+PASS: 'lam a.txt -s : b.txt'
+PASS: 'unexpand spaces.txt'
+PASS: 'echo hi | tee /dev/null'
+PASS: 'tee /n/ata0p1/new.txt < a.txt'
+PASS: 'tail -n 3 lines.txt'
+PASS: 'tail -3 lines.txt'
+PASS: 'cat lines.txt | tail -n 2'
+PASS: 'tail -r a.txt'
+PASS: 'cat a.txt | tail -r'
+PASS: 'tail -c 7 lines.txt'
+PASS: 'tail -n +11 lines.txt'
+PASS: 'tail -f a.txt'
+PASS: 'cmp a.txt a.txt'
+PASS: 'cmp a.txt b.txt'
+PASS: 'column -t -s : fields.txt'
+PASS: 'tsort deps.txt'
+PASS: 'vis ctrl.txt'
+PASS: 'vis ctrl.txt | unvis | vis'
+PASS: 'col < a.txt'
+PASS: 'sum /boot/etc/notices'
+PASS: 'head -n 1 /boot/etc/notices'
+PASS: 'run /bin/head -n 1 /n/ata0p1/a.txt'
+PASS: 'run /bin/head -n x /n/ata0p1/a.txt'
+PASS: 'run /bin/cut'
+PASS: 'run /bin/head /n/ata0p1/nosuch'
+PASS: 'run /bin/test -f /n/ata0p1/a.txt'
+PASS: 'run /bin/test -d /n/ata0p1/a.txt'
+PASS: 'run /bin/test -d /n/ata0p1/dir'
+PASS: 'run /bin/test -e /n/ata0p1/nosuch'
+PASS: 'run /bin/test abc = abc'
+PASS: 'run /bin/test 3 -lt 2'
+PASS: 'run /bin/test /n/ata0p1/a.txt -ef /n/ata0p1/dir/../a.txt'
+PASS: 'run /bin/test /n/ata0p1/a.txt -ef /n/ata0p1/b.txt'
+PASS: 'run /bin/cmp -s /n/ata0p1/a.txt /n/ata0p1/b.txt'
+PASS: 'run /bin/grep -q an /n/ata0p1/a.txt'
+PASS: 'run /bin/grep -q zzz /n/ata0p1/a.txt'
+openbsd_test: all passed
+python3 tests/net_test.py build/manios-zkt.elf
+PASS: [single, ne0] boot, the card found
+PASS: [single, ne0] link
+      (flood: 57 of 400 answered)
+PASS: [single, ne0] malformed
+PASS: [guest server] protocol checks
+PASS: [single, ne0] guest server
+PASS: [guest client] 'mount udp!10.0.0.1 /n'
+PASS: [guest client] 'ls /n'
+PASS: [guest client] 'cat /n/hello.txt'
+PASS: [guest client] 'sum /n/big.bin'
+PASS: [guest client] 'ls /n/many'
+PASS: [guest client] 'cd /n/dir/sub; cat deep.txt ../a; cd /'
+PASS: [guest client] 'cat /n/missing'
+PASS: [guest client] 'cat /n/bad/count'
+PASS: [guest client] 'cat /n/bad/type'
+PASS: [guest client] 'ls /n/bad'
+PASS: [guest client] 'mount udp!10.0.0.9 /n'
+PASS: [guest client] 'mount udp!10.0.0.1!9 /n'
+PASS: [guest client] 'mount nonsense /n'
+PASS: [guest client] 'ls /n/dir'
+      (host server: 106 requests; 15 requests and 8 replies dropped, all recovered by retransmission; 17 replies duplicated)
+PASS: [single, ne0] guest client
+PASS: [single, ne0] monitor net counters and ping
+PASS: [single, ne0] a waiting request: Rpending, and others answered meanwhile
+PASS: [single, pcn0] boot, the card found
+PASS: [single, pcn0] link
+      (flood: 49 of 400 answered)
+PASS: [single, pcn0] malformed
+PASS: [guest server] protocol checks
+PASS: [single, pcn0] guest server
+PASS: [guest client] 'mount udp!10.0.0.1 /n'
+PASS: [guest client] 'ls /n'
+PASS: [guest client] 'cat /n/hello.txt'
+PASS: [guest client] 'sum /n/big.bin'
+PASS: [guest client] 'ls /n/many'
+PASS: [guest client] 'cd /n/dir/sub; cat deep.txt ../a; cd /'
+PASS: [guest client] 'cat /n/missing'
+PASS: [guest client] 'cat /n/bad/count'
+PASS: [guest client] 'cat /n/bad/type'
+PASS: [guest client] 'ls /n/bad'
+PASS: [guest client] 'mount udp!10.0.0.9 /n'
+PASS: [guest client] 'mount udp!10.0.0.1!9 /n'
+PASS: [guest client] 'mount nonsense /n'
+PASS: [guest client] 'ls /n/dir'
+      (host server: 106 requests; 15 requests and 8 replies dropped, all recovered by retransmission; 17 replies duplicated)
+PASS: [single, pcn0] guest client
+PASS: [single, pcn0] monitor net counters and ping
+PASS: [single, pcn0] a waiting request: Rpending, and others answered meanwhile
+PASS: [single, em0] boot, the card found
+PASS: [single, em0] link
+      (flood: 110 of 400 answered)
+PASS: [single, em0] malformed
+PASS: [guest server] protocol checks
+PASS: [single, em0] guest server
+PASS: [guest client] 'mount udp!10.0.0.1 /n'
+PASS: [guest client] 'ls /n'
+PASS: [guest client] 'cat /n/hello.txt'
+PASS: [guest client] 'sum /n/big.bin'
+PASS: [guest client] 'ls /n/many'
+PASS: [guest client] 'cd /n/dir/sub; cat deep.txt ../a; cd /'
+PASS: [guest client] 'cat /n/missing'
+PASS: [guest client] 'cat /n/bad/count'
+PASS: [guest client] 'cat /n/bad/type'
+PASS: [guest client] 'ls /n/bad'
+PASS: [guest client] 'mount udp!10.0.0.9 /n'
+PASS: [guest client] 'mount udp!10.0.0.1!9 /n'
+PASS: [guest client] 'mount nonsense /n'
+PASS: [guest client] 'ls /n/dir'
+      (host server: 106 requests; 15 requests and 8 replies dropped, all recovered by retransmission; 17 replies duplicated)
+PASS: [single, em0] guest client
+PASS: [single, em0] monitor net counters and ping
+PASS: [single, em0] a waiting request: Rpending, and others answered meanwhile
+PASS: [single, rl0] boot, the card found
+PASS: [single, rl0] link
+      (flood: 400 of 400 answered)
+PASS: [single, rl0] malformed
+PASS: [guest server] protocol checks
+PASS: [single, rl0] guest server
+PASS: [guest client] 'mount udp!10.0.0.1 /n'
+PASS: [guest client] 'ls /n'
+PASS: [guest client] 'cat /n/hello.txt'
+PASS: [guest client] 'sum /n/big.bin'
+PASS: [guest client] 'ls /n/many'
+PASS: [guest client] 'cd /n/dir/sub; cat deep.txt ../a; cd /'
+PASS: [guest client] 'cat /n/missing'
+PASS: [guest client] 'cat /n/bad/count'
+PASS: [guest client] 'cat /n/bad/type'
+PASS: [guest client] 'ls /n/bad'
+PASS: [guest client] 'mount udp!10.0.0.9 /n'
+PASS: [guest client] 'mount udp!10.0.0.1!9 /n'
+PASS: [guest client] 'mount nonsense /n'
+PASS: [guest client] 'ls /n/dir'
+      (host server: 106 requests; 15 requests and 8 replies dropped, all recovered by retransmission; 17 replies duplicated)
+PASS: [single, rl0] guest client
+PASS: [single, rl0] monitor net counters and ping
+PASS: [single, rl0] a waiting request: Rpending, and others answered meanwhile
+PASS: [single, vio0] boot, the card found
+PASS: [single, vio0] link
+      (flood: 400 of 400 answered)
+PASS: [single, vio0] malformed
+PASS: [guest server] protocol checks
+PASS: [single, vio0] guest server
+PASS: [guest client] 'mount udp!10.0.0.1 /n'
+PASS: [guest client] 'ls /n'
+PASS: [guest client] 'cat /n/hello.txt'
+PASS: [guest client] 'sum /n/big.bin'
+PASS: [guest client] 'ls /n/many'
+PASS: [guest client] 'cd /n/dir/sub; cat deep.txt ../a; cd /'
+PASS: [guest client] 'cat /n/missing'
+PASS: [guest client] 'cat /n/bad/count'
+PASS: [guest client] 'cat /n/bad/type'
+PASS: [guest client] 'ls /n/bad'
+PASS: [guest client] 'mount udp!10.0.0.9 /n'
+PASS: [guest client] 'mount udp!10.0.0.1!9 /n'
+PASS: [guest client] 'mount nonsense /n'
+PASS: [guest client] 'ls /n/dir'
+      (host server: 106 requests; 15 requests and 8 replies dropped, all recovered by retransmission; 17 replies duplicated)
+PASS: [single, vio0] guest client
+PASS: [single, vio0] monitor net counters and ping
+PASS: [single, vio0] a waiting request: Rpending, and others answered meanwhile
+PASS: [single, dc0] boot, the card found
+PASS: [single, dc0] link
+      (flood: 21 of 400 answered)
+PASS: [single, dc0] malformed
+PASS: [guest server] protocol checks
+PASS: [single, dc0] guest server
+PASS: [guest client] 'mount udp!10.0.0.1 /n'
+PASS: [guest client] 'ls /n'
+PASS: [guest client] 'cat /n/hello.txt'
+PASS: [guest client] 'sum /n/big.bin'
+PASS: [guest client] 'ls /n/many'
+PASS: [guest client] 'cd /n/dir/sub; cat deep.txt ../a; cd /'
+PASS: [guest client] 'cat /n/missing'
+PASS: [guest client] 'cat /n/bad/count'
+PASS: [guest client] 'cat /n/bad/type'
+PASS: [guest client] 'ls /n/bad'
+PASS: [guest client] 'mount udp!10.0.0.9 /n'
+PASS: [guest client] 'mount udp!10.0.0.1!9 /n'
+PASS: [guest client] 'mount nonsense /n'
+PASS: [guest client] 'ls /n/dir'
+      (host server: 106 requests; 15 requests and 8 replies dropped, all recovered by retransmission; 17 replies duplicated)
+PASS: [single, dc0] guest client
+PASS: [single, dc0] monitor net counters and ping
+PASS: [single, dc0] a waiting request: Rpending, and others answered meanwhile
+PASS: [two machines] 'mount udp!10.0.0.1 /n'
+PASS: [two machines] 'ls /n'
+PASS: [two machines] 'sum /n/frag.bin'
+PASS: [two machines] 'cat /n/docs/nested.txt'
+PASS: [two machines] '/n/bin/fault null'
+PASS: [two machines] the monitor shares the shell's mount; ping
+PASS: [dhcp] the host's server: a lost DISCOVER, stray and malformed OFFERs, a NAK, then a lease that works
+PASS: [dhcp, pcn0] QEMU's server: a lease, and its gateway answers
+PASS: [dhcp, em0] QEMU's server: a lease, and its gateway answers
+PASS: [dhcp, rl0] QEMU's server: a lease, and its gateway answers
+PASS: [dhcp, vio0] QEMU's server: a lease, and its gateway answers
+PASS: [dhcp, dc0] QEMU's server: a lease, and its gateway answers
+python3 tests/gfx_test.py build/manios-zkt.elf
+PASS: boot finds the Bochs VBE adapter on PCI
+PASS: fbctl reads 'text' in text mode
+PASS: the framebuffer can't be read in text mode
+PASS: Bochs VBE 640x480: swatches; text restored, with what was printed meanwhile
+PASS: Bochs VBE 800x600: swatches, then text restored
+PASS: VGA mode 13h: swatches, then text restored
+PASS: unsupported modes are refused
+PASS: the fb device: offsets, bounds, reading back, fbctl errors
+PASS: a mode change back and forth leaves text intact
+PASS: SVGA II (VirtualBox's VMSVGA): found, with its video memory BAR
+PASS: SVGA II 800x600: swatches, then text restored
+PASS: SVGA II: the fb device
+python3 tests/vbe_test.py build/manios-zkt.elf
+PASS: no gfx=: unchanged -- no probe, the usual boot
+PASS: gfx=1024x768: an explicit resolution is probed, set, and drawn to
+PASS: gfx=auto with Bochs VBE too: probed, but the registers still win
+PASS: gfx=auto, no usable mode (Cirrus): says so, boots as usual
+PASS: gfx=auto, a real linear framebuffer (QXL): drawn to, read back, exact colours
+PASS: gfx=auto, QXL: the screen is drawn to, not black (page-table collision)
+vbe_test: all passed
+python3 tests/desktop_test.py build/manios-zkt.elf
+PASS: a screen below 640x480 is refused
+PASS: ManiDE starts its session: the status bar, four panes
+PASS: fetch, welcome, top and a terminal tile a 2x2 grid
+PASS: keys reach the terminal; /dev/wsys from its shell
+PASS: Alt+Space: tall and mono layouts, and back to the grid
+PASS: Alt+j/k and the mouse move the focus
+PASS: workspaces: Alt+2, Alt+Enter, Alt+Shift+1, the bar, Alt+q
+PASS: Alt+d: the run prompt completes and starts the clock
+PASS: F1 opens the menu; Escape closes it
+PASS: a pane's close mark closes it; the others fill the room
+PASS: wintest: the window system's files, from inside ManiDE
+PASS: the terminal scrolls back with PgUp and PgDn
+PASS: the terminal follows its pane's size
+PASS: ManiDE inside ManiDE is refused
+PASS: Alt+Shift+Q exits, restoring the text console
+PASS: the keyboard is the console's again
+PASS: ManiDE's namespace was its own: no /dev/wsys here
+PASS: `desktop -n 640 480` starts ManiDE without a session; the menu exits
+PASS: without a linear framebuffer ManiDE explains and exits
+PASS: ... and the console still works
+desktop test: all passed
+python3 tests/gui_frame_test.py
+PASS: partial paint frame waits; complete frame passes; wrong palette fails
+python3 tests/gui_test.py build/manios-zkt.elf
+PASS: libui's conformance test, calc's arithmetic, and no desktop: no window
+PASS: ManiDE starts
+PASS: the F1 menu starts the calculator; keys and buttons calculate; its buttons follow its pane
+PASS: greet, the guide's first example: a label and a button
+PASS: the widget gallery: buttons, check box, entry, list, text, messages
+PASS: the file browser lists, opens folders and files; the viewer shows a file
+PASS: paint: strokes, colours, the eraser, the brush, Clear
+PASS: Alt+Shift+Q exits, restoring the text console
+gui test: all passed
+python3 tests/dos_test.py build/manios-zkt.elf
+PASS: dos /C: one command from ManiOS's shell
+PASS: dos /C DRIVES: the drives and where they are
+PASS: dos: the banner, AUTOEXEC.BAT quietly, and the C:\> prompt
+PASS: DIR: the label and serial number from the boot sector, bytes free as mtools says
+PASS: DIR with a pattern, /B, and a pattern matching nothing
+PASS: CD, the prompt following it, CD.. and CD\, and a bad directory
+PASS: TYPE, and TYPE of what isn't a file
+PASS: COPY to CON; what the write commands say before they write
+PASS: drive letters: D:, a drive that isn't there
+PASS: VOL: C:'s label, D:'s serial number
+PASS: CHKDSK C:: a sound disk, its figures as the FAT and mtools have them
+PASS: CHKDSK D:: the faults put there -- cross-link, sizes, a lost chain, FAT copies
+PASS: CHKDSK of the boot disk, which isn't FAT
+PASS: TREE /F
+PASS: FIND, its switches, and its errorlevel
+PASS: SORT from a file, and pipelines
+PASS: MORE: a screen, then Enter for the rest
+PASS: redirection: to NUL, CON, a device, and a file
+PASS: COPY, MD, REN, RD and DEL write to the drive
+PASS: ManiOS programs: DOS paths in their arguments, and their errorlevel
+PASS: what isn't a command, and a DOS program
+PASS: SET, %VARIABLES%, PROMPT and PATH
+PASS: a batch file: parameters, IF, GOTO, SHIFT, FOR, CALL, ERRORLEVEL
+PASS: FOR at the prompt, and ECHO OFF hiding the prompt
+PASS: A:, the boot disk: AUTOEXEC.BAT; Z:, all of ManiOS
+PASS: VER, MEM, DATE, TIME, HELP, TRUENAME
+PASS: EXIT: back to ManiOS
+PASS: what ManiDOS wrote is on C:, as mtools and the FAT see it
+PASS: shell=dos: ManiOS boots into ManiDOS (no FAT disk: A:)
+dos test: all passed
+python3 tests/dosrun_host_test.py
+PASS: a .COM prints its string and exits 0
+PASS: a .COM's exit code comes back
+PASS: sub-r16-rm16: result goes to the encoded destination
+PASS: sub-rm16-r16: result goes to the encoded destination
+PASS: sub-r8-rm8: result goes to the encoded destination
+PASS: sub-rm8-r8: result goes to the encoded destination
+PASS: sub-r16-mem: result goes to the encoded destination
+PASS: sub-mem-r16: result goes to the encoded destination
+PASS: sub-r8-mem: result goes to the encoded destination
+PASS: sub-mem-r8: result goes to the encoded destination
+PASS: a loop, INC and LOOP count 0 to 9
+PASS: an .EXE's relocation adds the load segment
+PASS: a multi-segment EXE loads code beyond 64 KiB
+PASS: an older MZ header may encode a complete final page as 512
+PASS: a protected-mode LE EXE is identified before its stub runs
+PASS: a truncated MZ image is rejected instead of silently shortened
+PASS: an LHA installation archive is identified as requiring extraction
+PASS: an instruction it doesn't have is named, not run
+PASS: MOVZX zero-extends a byte
+PASS: SETcc sets a byte from a condition
+PASS: CPUID reports a 486
+PASS: an unsupported DOS service returns carry set after IRET
+PASS: a successful DOS write clears carry after IRET
+PASS: BIOS keyboard polling returns zero set when no key is ready
+PASS: a DOS interrupt preserves the caller's interrupt-enable flag
+PASS: the PSP reports an ending segment with usable conventional memory
+PASS: an empty PSP tail excludes its terminating CR
+PASS: a PSP tail includes the leading space but excludes CR
+PASS: a PSP tail has CR immediately after its counted bytes
+PASS: XMS: allocate, move to it and back
+PASS: EMS: allocate a page and map it
+PASS: an FCB may be closed more than once
+
+OK: 0 failure(s)
+python3 tests/dosrun_operand32_test.py
+PASS: 32768 native-oracle ALU cases; widths, ModR/M, segments, stack, extensions, length and explicit faults
+python3 tests/dosrun_aam_test.py
+PASS: AAM quotient/remainder, imm8 base, SF/ZF/PF, preserved flags and INT 0 frame
+python3 tests/dosrun_into_test.py
+PASS: INTO continues with OF clear; OF set enters INT 4 with exact frame and post-opcode return IP
+python3 tests/dosrun_string_test.py
+PASS: byte/word strings, REP/REPE/REPNE, zero counts, direction, segment prefixes, TEST, shifts, XLAT, AAD and DAS
+python3 tests/dosrun_exec_test.py
+PASS: EXEC COM/MZ, nested return, PSP/environment, DTA, allocation cleanup and errors
+python3 tests/dosrun_runtime_test.py
+[1;1H[37;40m                                                                                [2;1H[37;40m                                                                                [3;1H[37;40m                                                                                [4;1H[37;40m                                                                                [5;1H[37;40m                                                                                [6;1H[37;40m                                                                                [7;1H[37;40m                                                                                [8;1H[37;40m                                                                                [9;1H[37;40m                                                                                [10;1H[37;40m                                                                                [11;1H[37;40m                                                                                [12;1H[37;40m                                                                                [13;1H[37;40m                                                                                [14;1H[37;40m                                                                                [15;1H[37;40m                                                                                [16;1H[37;40m                                                                                [17;1H[37;40m                                                                                [18;1H[37;40m                                                                                [19;1H[37;40m                                                                                [20;1H[37;40m                                                                                [21;1H[37;40m                                                                                [22;1H[37;40m                                                                                [23;1H[37;40m                                                                                [24;1H[37;40m                                                                                [25;1H[37;40m                                                                                [0m[1;1H[?25h[2 q[1;1H[30;44mAAAAAA[2;1H[34;44mBB[2;3H[32;44mCCC[2;6H[34;44mB[3;1H[32;44mCC[3;3H[36;44mDDD[3;6H[32;44mC[4;1H[36;44mDD[4;3H[93;44m   [4;6H[36;44mD[5;1H[31;44mEEEEEE[0m[1;1H[2;3H[92;42m   [3;3H[32;44mCCC[4;3H[36;44mDDD[0m[1;1H[2;3H[97;41m   [3;3H[97;41m   [4;3H[97;41m   [0m[1;1H[?25l[?25l[?25l[0m[2J[H[?25h[2 q[1;1HPASS: DAA packed-decimal addition for all 10,000 pairs from 00 to 99
+PASS: addressing segments, POPA, LAHF/SAHF, far CALL, IRET, ROL and INC/DEC flags
+PASS: file timestamps persist across close/reopen; invalid handles/subfunctions fail
+PASS: DOS file attributes read, set, clear, persist and reject invalid requests
+PASS: BIOS ticks, fractional updates, word carry and midnight rollover
+PASS: PSP/environment, memory shrink, allocate, exhaustion, growth, coalescing and invalid free
+PASS: DOS list-of-lists MCB pointer and chain termination after allocation/free cycles
+PASS: DTA segments, independent searches, file sizes, shared duplicate offsets and LFN fallback
+PASS: DOS directory changes, relative paths, per-drive state, root clamping and failed changes
+PASS: MKDIR/RMDIR, relative/rooted names, existing/nonempty/current/root directories and path errors
+PASS: FCB open, sequential/random/block reads, partial-record padding, EOF and DTA bounds
+PASS: FCB create, block write, save/reopen, random overwrite and explicit truncation failure
+PASS: exhausted FCB slots preserve an existing file on failed create
+PASS: BIOS scan codes, ANSI arrows, raw PS/2 keys and DOS extended-key pairs
+PASS: BIOS text attributes, repeated output, cursor position, readback and mode queries
+PASS: BIOS window scrolling, rectangle clear, cursor shape, page switch and text-mode reset
+PASS: full-screen BIOS clear updates both the text buffer and visible terminal
+[0m[2J[H[?25h[2 q[1;1HPASS: direct VGA text writes render once; unchanged cells are not redrawn
+PASS: BIOS mode 2 initializes its 80x25 BDA and renders direct VGA text writes
+python3 tests/dosrun_port_test.py
+PASS: CGA mode/color writes are accepted by the text-backed video layer
+PASS: active display, horizontal blank and recurring vertical retrace; IN preserves AH/flags/registers
+PASS: both-polarity bit 0/3 polling loops terminate with interrupts disabled, including counter wrap
+PASS: unknown/read-only ports, word I/O and truncated immediate port aliases remain unsupported
+python3 tests/dosrun_pit_test.py
+PASS: PIT channel 0 BIOS default, mode 3/mode 2 periodic counts, mode 0 completion and latching
+PASS: Windows B6/33/05 and 33/06 tone sequence, partial divisor, gate and speaker enable
+PASS: mode-3 odd/even counts, OUT2 status, frozen/rising gate, latching, zero=65536 and wrap
+PASS: byte IN/OUT instruction semantics, unsupported ports/modes/widths and device cleanup
+python3 tests/dosrun_test.py build/manios-zkt.elf
+PASS: dosrun HELLO.COM: a .COM prints its string
+PASS: DOS INT 21h vector supports chained far calls
+PASS: real-mode 66h arithmetic, memory, stack and DOS register preservation
+PASS: BIOS INT 10h IVT vector supports Pascal-style far calls
+PASS: dosrun with an absolute ManiOS path
+PASS: an explicit A: mount reads the selected media directory
+PASS: an invalid mount directory is rejected
+PASS: dosrun DIGITS.COM: a loop, INC and LOOP
+PASS: dosrun HELLO.EXE: an .EXE loads and runs
+PASS: dosrun EXIT7.COM: it runs and returns to the prompt
+PASS: dosrun BAD386.COM: an instruction it can't run is named
+PASS: dosrun MOVZX.COM: a 386 instruction runs
+PASS: dosrun FLAGS.COM: DOS and BIOS results survive IRET
+PASS: a guest IRET restores its frame exactly once
+PASS: direct BIOS clock polling advances during a busy loop
+PASS: video status polling crosses both bit edges with interrupts disabled
+PASS: PIT channel 2 programming and speaker OUT2 polling
+PASS: unsupported PIT command faults with port and AL diagnostics
+PASS: DOS mkdir/chdir/rmdir operate on a real FAT directory tree
+PASS: DOS timestamps persist across close/reopen and reject unsupported handles
+PASS: DOS create-new and rename work through INT 21h
+PASS: DOS legacy FCB rename works through INT 21h/AH=17h
+PASS: PS/2 Page Down reaches DOS BIOS INT 16h with scan 51h
+PASS: PS/2 Page Down reaches DOS 8042 status/data ports
+PASS: a short direct-VGA text program renders before exit
+PASS: a DOS extender is refused with its actual requirement
+PASS: a packed installation file is identified as an archive
+PASS: dosrun with no program: a usage message
+PASS: mtools confirms RENAMED.TXT contains DATA
+PASS: read-only FAT timestamps can be read but cannot be changed
+PASS: mtools independently lists all 40 files across directory clusters
+PASS: independent on-disk FAT timestamp and size after VM shutdown
+
+OK: 0 failure(s)
+python3 tests/driver_test.py build/manios-zkt.elf
+PASS: floppy: the drive, the disk's format, FAT12 mounted
+PASS: floppy: reads (by DMA, through the cylinder cache)
+PASS: floppy: writes reach the disk, and later reads see them
+PASS: CD (IDE): Rock Ridge names, a deep directory, a 1 MB file
+PASS: CD: the disc taken out, then Joliet and plain ISO discs put in
+PASS: AHCI: the disk, its partition, reads
+PASS: AHCI: writes
+PASS: virtio-blk: the disk, reads, writes
+PASS: ManiDOS: B: the floppy, C: the SATA disk, D: the virtio disk, E: the CD
+PASS: floppy: a 720 KB disk found by its data rate and sectors
+PASS: floppy: the second drive, write-protected: reads, and writes refused
+PASS: virtio-blk: a read-only disk refuses writes
+PASS: ISO 9660 on a hard disk: the ManiOS ISO as ata0
+PASS: CD (SATA, q35): the drive on an AHCI port, the disc read
+PASS: CD (SATA): a disc changed
+PASS: reboot on q35: the ACPI reset register
+PASS: install on a SATA disk (sata0), and boot it
+PASS: install on a virtio disk (vd0), and boot it
+PASS: sound: the cards found
+PASS: PC speaker: 440 Hz for 600 ms
+PASS: Sound Blaster 16: 1000 Hz 500 ms, a rest, 660 Hz 300 ms
+PASS: AdLib (OPL2 FM): 523 Hz 400 ms, a rest, 262 Hz 400 ms
+PASS: AC'97: found, at 44,100 Hz
+PASS: AC'97: a 440 Hz tone of 400 ms
+PASS: play: WAV files of other rates, sizes and channels, converted
+PASS: no sound card: play says so
+PASS: serial ports: COM2 and COM3 found
+PASS: COM2: written and read, its speed set
+PASS: COM3: written (sharing IRQ 4 with the console's COM1)
+PASS: LPT1: bytes to the printer, in order
+PASS: NVRAM: the BIOS's bytes, and ours kept
+PASS: ACPI: poweroff turns the machine off
+PASS: reboot on the PC machine: the keyboard controller
+driver_test: all passed
+python3 tests/cluster_test.py build/manios-zkt.elf
+PASS: four machines boot with their roles
+PASS: the terminal mounts the file server (authenticated)
+PASS: a machine with the wrong key is refused by both servers
+PASS: the host's ZRP2 client: right key, none, no Tauth, replayed and wrong proofs
+PASS: the terminal's client: a host server with the key; ones that can't prove it
+PASS: cpu runs a command on the CPU server, on the terminal's console
+PASS: a remote shell: the terminal's namespace, the file server through it, a long wait
+PASS: exit statuses come back: failure, a fault, a missing program
+PASS: a job that can't start: why comes back to the terminal
+PASS: a program on the CPU server opens a window on the terminal's ManiDE
+PASS: the CPU server dies under a job: the terminal notices and carries on
+cluster test: all passed

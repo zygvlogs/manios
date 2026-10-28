@@ -30,6 +30,9 @@ static void exec(const char *path,int ax){
 }
 int main(void){
  cpu_init(&c); d=dos_new(&c);CHECK(d);dos_mount('C',".");
+ /* This host harness calls the DOS dispatcher directly; the actual guest
+  * IVT far-call path is exercised by dosrun_test.py. */
+ wr16(&c,0,0x84,0);wr16(&c,0,0x86,0);
  c.sreg[0]=c.sreg[1]=c.sreg[2]=c.sreg[3]=0x1000;c.r[SP]=0xFF00;c.ip=0x100;c.flags=0x202;
  dos_set_program(d,0x1000,0x1010);dos_build_psp(d);
  /* Full parent allocation: EXEC fails without damaging the caller. */
@@ -44,7 +47,11 @@ int main(void){
  for(int i=0;i<20;i++){
   c.r[DX]=0x900;call(0x1A00); /* parent DTA */
   wr16(&c,0x1000,0x800,0xCAFE);
+  for(int j=0;j<8;j++) c.r_hi[j]=0xA100+j;
+  c.flags_hi=0x24;
   exec("C:\\CHILD.COM",0x4B00);CHECK(!(c.flags&1)&&c.sreg[3]!=0x1000);
+  for(int j=0;j<8;j++) { CHECK(c.r_hi[j]==0); c.r_hi[j]=0xB200+j; }
+  CHECK(c.flags_hi==0);c.flags_hi=4;
   uint16_t child=c.sreg[3];CHECK(rd16(&c,child,0x16)==0x1000);
   CHECK(rd8(&c,child,0x80)==5&&rd8(&c,child,0x86)=='\r');
   uint16_t env=rd16(&c,child,0x2C);CHECK(env!=0xF00&&rd8(&c,env,0)=='P');
@@ -52,9 +59,15 @@ int main(void){
   /* Nested process after shrinking child; both parents resume. */
   c.sreg[0]=child;c.r[BX]=0x1000;call(0x4A00);CHECK(!(c.flags&1));
   exec("C:\\CHILD.COM",0x4B00);CHECK(!(c.flags&1)&&c.sreg[3]!=child);
+  for(int j=0;j<8;j++) { CHECK(c.r_hi[j]==0); c.r_hi[j]=0xC300+j; }
+  CHECK(c.flags_hi==0);c.flags_hi=0x20;
   CHECK(call(0x4C2A)==CPU_OK&&c.sreg[3]==child);
+  for(int j=0;j<8;j++) CHECK(c.r_hi[j]==0xB200+j);
+  CHECK(c.flags_hi==4);
   call(0x4D00);CHECK(c.r[AX]==42);call(0x4D00);CHECK(c.r[AX]==0);
   CHECK(call(0x4C07)==CPU_OK&&c.sreg[3]==0x1000&&c.r[SP]==0xFF00);
+  for(int j=0;j<8;j++) CHECK(c.r_hi[j]==0xA100+j);
+  CHECK(c.flags_hi==0x24);
   CHECK(rd16(&c,0x1000,0x800)==0xCAFE);
   call(0x2F00);CHECK(c.sreg[0]==0x1000&&c.r[BX]==0x900);
   call(0x4D00);CHECK(c.r[AX]==7);

@@ -14,7 +14,7 @@ modified. The PC-SIG floppy contents were used as shareware evaluation copies.
 | TED 3.0 (1991) | `dosrun C:/TED3.COM C:/INPUT.TXT`; displayed both fixture lines and the function-key bar. Edit/save/reopen not tested. Screenshot: `2026-10-25-ted.png`. |
 | Turbo Pascal 3.0 (1985) | Not run: no original program media was available in the workspace. |
 | FreeDOS EDLIN 2.24 | `dosrun C:/EDLIN.EXE C:/INPUT.TXT`; reported `2 lines read` and displayed its `*` command prompt. No edit/save/reopen command was issued. Screenshot: `2026-10-25-edlin.png`. This is FreeDOS EDLIN, not the original Microsoft EDLIN build. |
-| Galaxy Lite 1.5 (PC-SIG disk 2318) | `dosrun C:/GLITE.EXE C:/INPUT.TXT` stopped at `can't run INTO (at 0000:0001)`. |
+| Galaxy Lite 1.5 (PC-SIG disk 2318) | Initial run stopped at `INTO` (`0000:0001`). Follow-up passed that point but stopped at unsupported `BOUND` (`0000:0038`) before the editor opened. [Retest](2026-10-25-into-retests.md#galaxy-lite). |
 | DOS Navigator 1.51 (RIT Labs freeware package) | `dosrun C:/DN.COM` remained active during the observation, but produced only the ManiOS banner and a blank text screen; no file manager controls rendered. Screenshot: `2026-10-25-dos-navigator.png`. |
 | PC-Talk III (copyright notice 1983–1985) | `dosrun C:/PC-TALK.EXE` reached the license/notice screen. No terminal session or modem/serial connection was attempted. Screenshot: `2026-10-25-pc-talk.png`. |
 

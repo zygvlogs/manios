@@ -1,0 +1,24 @@
+ M Makefile
+ M docs/compatibility/2026-10-25-batch-130-140.md
+ M docs/compatibility/2026-10-25-batch-141-150.md
+ M docs/compatibility/2026-10-25-calculator-menu-tests.md
+ M docs/compatibility/2026-10-25-priority-apps.md
+ M docs/compatibility/2026-10-25-vintage-app-tests.md
+ M docs/compatibility/database.json
+ M docs/compatibility/details.md
+ M docs/dos-compatibility.md
+ M tests/dosrun_exec_test.py
+ M tests/dosrun_test.py
+ M tools/render_dos_compatibility.py
+ M userland/dosrun/cpu.c
+ M userland/dosrun/dosapi.c
+?? docs/compatibility/2026-10-25-aam-fix-retests.md
+?? docs/compatibility/2026-10-25-batch-151-160.md
+?? docs/compatibility/2026-10-25-batch-161-170.md
+?? docs/compatibility/2026-10-25-batch-171-180.md
+?? docs/compatibility/2026-10-25-batch-181-190.md
+?? docs/compatibility/2026-10-25-batch-191-200.md
+?? docs/compatibility/2026-10-25-exemenu-investigation.md
+?? docs/compatibility/2026-10-25-into-retests.md
+?? tests/dosrun_aam_test.py
+?? tests/dosrun_into_test.py

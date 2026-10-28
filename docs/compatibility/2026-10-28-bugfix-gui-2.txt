@@ -1,0 +1,8 @@
+PASS: libui's conformance test, calc's arithmetic, and no desktop: no window
+PASS: ManiDE starts
+PASS: the F1 menu starts the calculator; keys and buttons calculate; its buttons follow its pane
+PASS: greet, the guide's first example: a label and a button
+PASS: the widget gallery: buttons, check box, entry, list, text, messages
+PASS: the file browser lists, opens folders and files; the viewer shows a file
+FAIL: paint: strokes, colours, the eraser, the brush, Clear: screendump produced nothing
+gui test: 1 failed

@@ -1,0 +1,175 @@
+{
+  "note": "Compared with frozen incoming tree, not Git HEAD. Evidence exports excluded.",
+  "files": [
+    {
+      "file": "Makefile",
+      "baseline_sha256": "dc642e26bbc42c80f16f72cc87307047f27c31655e75b1e726d0888b01df244a",
+      "current_sha256": "5ab089dab82ddb6d2f9d65e76490f3a3760c81ea6840c979db462b09d58f7ccb"
+    },
+    {
+      "file": "docs/compatibility/0.27.0-future-architecture.md",
+      "baseline_sha256": "8a6547a3c8c04e8703e0e15677ad504d8fc02ccf01daa7812556689193f38521",
+      "current_sha256": "4ad53a6a231683d1baa6cef05a9e10fa1d682272c3086bbc01a08aec19526049"
+    },
+    {
+      "file": "docs/compatibility/2026-10-27-bugfix-audit.md",
+      "baseline_sha256": null,
+      "current_sha256": "ad9c9c253ea37dd6aa3ff95354db377e0ad74b1e8974cba3a5a3cfc6dd6fc11b"
+    },
+    {
+      "file": "docs/compatibility/database.json",
+      "baseline_sha256": "72c08cc139cc0306789f24abd765bd765fcea7f5d9d6112d425e277d0cd3f7ee",
+      "current_sha256": "1136e9baab7bc418f695212730dbd9612293a26b9a08829cf60152e499a80ed3"
+    },
+    {
+      "file": "docs/compatibility/details.md",
+      "baseline_sha256": "db2b77f3a49ee9c6b55c4582c5d8221de44bd38c6a9559bbbb7badd39952601b",
+      "current_sha256": "dcb654829b5b41245cd44dfb44e13d598954724bb48c90b1a81b5f02a0f72578"
+    },
+    {
+      "file": "docs/dos-compatibility.md",
+      "baseline_sha256": "bc769aad737edb9baa20e46181ff09dba1dfe623aaeb10f35d941f3b0c70143f",
+      "current_sha256": "85d6cc5fc2484f9b3306ca07ba943fa7bba8c91e4af8a9e023140e6d758fb42f"
+    },
+    {
+      "file": "docs/dosrun.md",
+      "baseline_sha256": "b5659173197897ca8878f0d3a71155e28b24d05910a89a6732d53df9667818ed",
+      "current_sha256": "df64fe3a2a6d3ac9a825acced71ab42997ee99628594f4da3a127f424d9f8e79"
+    },
+    {
+      "file": "docs/releases/0.27.0-10252026.md",
+      "baseline_sha256": "53a2b3fae0d411053454df505122213382a92d725dd4a93b19b6bbed649264f1",
+      "current_sha256": "8a12d7c337e8e30c7af894b232f7d078441c082d7b069f0aac94156d0b396719"
+    },
+    {
+      "file": "tests/README.md",
+      "baseline_sha256": "68d8319841da307140a901a66786e4b83bb68c1368cfe1ab9d4a1ab098804f06",
+      "current_sha256": "454e22e4ca941516717d92e843134a8c966e869afdadcc1246c7fe1bec3d365e"
+    },
+    {
+      "file": "tests/dosrun_bios_memory_test.py",
+      "baseline_sha256": null,
+      "current_sha256": "68c30ea23dbfec95c83d7cab7d4c0c19896b44ff1a456927fa0bfd74b8cb5980"
+    },
+    {
+      "file": "tests/dosrun_bit_test.py",
+      "baseline_sha256": null,
+      "current_sha256": "5c3472b74b361fe500b8d70029bdeb98dd5fe5b222f5e17aa4352b0652a7c457"
+    },
+    {
+      "file": "tests/dosrun_cpu_audit_test.py",
+      "baseline_sha256": null,
+      "current_sha256": "25132eb9036b3a0662c63f44d3463b6de7e723dbb36cca86733bee83f46b60d5"
+    },
+    {
+      "file": "tests/dosrun_divide_test.py",
+      "baseline_sha256": null,
+      "current_sha256": "ac5adb9881e6e63e29ff911df11ac7b513bc979d535a6a9412ea2d564217cdff"
+    },
+    {
+      "file": "tests/dosrun_double_shift_test.py",
+      "baseline_sha256": null,
+      "current_sha256": "c112a50974f4e5777a55e745bb71a9393d5d5d83870faf7c21b0d9f43a2b4e3b"
+    },
+    {
+      "file": "tests/dosrun_environment_test.py",
+      "baseline_sha256": null,
+      "current_sha256": "be5494fd0b436ba496456f8ddc7740d473726502e8e9487ac7de92d215666743"
+    },
+    {
+      "file": "tests/dosrun_exec_test.py",
+      "baseline_sha256": "3ade3f526553f48267b61bfe12cc03cb37fab4206ef48d92fc48a698661d94cf",
+      "current_sha256": "f55283b481dc4cee07d697c55c5f865a57ad340f7fbc2295d9d70d4500527913"
+    },
+    {
+      "file": "tests/dosrun_fast_console_test.py",
+      "baseline_sha256": null,
+      "current_sha256": "3ce9827d7c5df4340b10c6da39965e63b43f493fe72491e43b2191edc0ad1c51"
+    },
+    {
+      "file": "tests/dosrun_flags32_test.py",
+      "baseline_sha256": null,
+      "current_sha256": "09a852be221e60904e650f8271db22a66aa53247d05282f67ebce776dd4e470e"
+    },
+    {
+      "file": "tests/dosrun_handle_test.py",
+      "baseline_sha256": null,
+      "current_sha256": "9471fbbccd5e64332e17a28c1aaf6500c9be8db70994e4014b4e378d124ec9a4"
+    },
+    {
+      "file": "tests/dosrun_imul32_test.py",
+      "baseline_sha256": null,
+      "current_sha256": "e3105c1dd8597936dcbbb95db16456c087038c64f08d11d461166ec9b74f64ca"
+    },
+    {
+      "file": "tests/dosrun_initial_memory_test.py",
+      "baseline_sha256": null,
+      "current_sha256": "bd6ec85523ab755e9ee0c3059d26c8d49727e89f02c742d47bd63159c72dca0f"
+    },
+    {
+      "file": "tests/dosrun_operand32_test.py",
+      "baseline_sha256": "9c9ac8b1cf894777d1c6f47bf8458f5067b8b8f0cdefddcf4bcdf8e161e766b7",
+      "current_sha256": "95606bfcc711ee804d786be5c7cce3d01616821c93cfe951b2c54edafb7470bb"
+    },
+    {
+      "file": "tests/dosrun_shift_test.py",
+      "baseline_sha256": null,
+      "current_sha256": "445c6488b1b0d2f4d8f10dc0baf451b94da253f4c10f8713d2736d9c202f2160"
+    },
+    {
+      "file": "tests/dosrun_test.py",
+      "baseline_sha256": "5b4d3d94962bf9ff4b34c61c44ec2ba73653d17dbc4d15e0fa8bd81f50a39f59",
+      "current_sha256": "c33c03f2a2156820416a87035c9af5d72f61828e1228ea0f945fc84d47542e7d"
+    },
+    {
+      "file": "tests/dosrun_time_test.py",
+      "baseline_sha256": null,
+      "current_sha256": "0b1e1491905b80386ae067c2f6053f299f1b4c8fda601ff14b1b4978e3cf2fb8"
+    },
+    {
+      "file": "tools/retest_operand32_apps.py",
+      "baseline_sha256": "b54b1c11b4c053735641ebb56b3465808d9f7df6f395a373a94dbb21e99e79ca",
+      "current_sha256": "4b2f6d5edaaf79187f6c62d9002718473a54962908abcbf4f5e9673f93f59b2b"
+    },
+    {
+      "file": "userland/dosrun/cpu.c",
+      "baseline_sha256": "445ffa72bf70e6970b8055a7ccd26f1d3bdb775a87c6a21724e07b8e44610702",
+      "current_sha256": "e780e7efb48ae3f8106934786172bc28e4a2c0bcd155d51ac1db6cd0ef71f0e4"
+    },
+    {
+      "file": "userland/dosrun/cpu.h",
+      "baseline_sha256": "66a2fa767ca914d386d430e7e610469d01fc961fc659abffc754af7afef4083b",
+      "current_sha256": "79ec3943223adfc9149d831da8b519d19697d445f50febc898a5a9343c1c36a4"
+    },
+    {
+      "file": "userland/dosrun/dosapi.c",
+      "baseline_sha256": "194eaec643c65438292f17b1218ba1706a3b58ecc45a4875e15b9521a370615e",
+      "current_sha256": "4fd7bcd8c24b73e23938072b063dba02cd3902f7b227b897c0aef3d26dc57e19"
+    },
+    {
+      "file": "userland/dosrun/dosapi.h",
+      "baseline_sha256": "23e91d4eef4d56605fd9912c8124a715afb083c8ba1c0737a660561ef63e9c6d",
+      "current_sha256": "aff12cae1905c3fbb6e3d9f6e73c34d346f36fd435f5fa4fb85fd1c03d39708f"
+    },
+    {
+      "file": "userland/dosrun/drives.c",
+      "baseline_sha256": "6db168b7f33610be67062cc87bb5816a2d75ce14ae34e030595469960617390f",
+      "current_sha256": "c6f3feea22921788ef66a428a97fe698fee20b3bcaef2a454b41bc3f5905dcf0"
+    },
+    {
+      "file": "userland/dosrun/drives.h",
+      "baseline_sha256": "5f8a9c602d05e9293281bcec485fca8ae638cc18b3fb64c926236305ff66ed61",
+      "current_sha256": "5e27018e99212b0876c5352131d01c4569c6d622eab97e0f39492890eef28991"
+    },
+    {
+      "file": "userland/dosrun/loader.c",
+      "baseline_sha256": "2a4b1401a773da8413b1c43f3a8ecdaf598094c723519044315693b849a78d12",
+      "current_sha256": "1c470f14d4103a295565f5036b694a4dcfec8992fdc751c70ab85979fa95ecda"
+    },
+    {
+      "file": "userland/dosrun/main.c",
+      "baseline_sha256": "b15aeebbf4c19fa444c061ebbb74742af12fa7304af4cdc584438bd358a332e2",
+      "current_sha256": "75b77beaccb96571d9ec1ccae872f394555b9f6d01d2f254200ae242ed7e1d0d"
+    }
+  ]
+}

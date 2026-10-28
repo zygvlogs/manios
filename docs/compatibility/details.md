@@ -5,7 +5,7 @@ The red/yellow/green overview is in
 [dos-compatibility.md](../dos-compatibility.md); the machine-readable index is
 [database.json](database.json).
 
-Last updated: **2026-10-25**. ManiOS version: **0.26.1-10252026**.
+Last updated: **2026-10-28**. ManiOS version: **0.27.0-10252026**.
 
 The sections below record tests of real DOS applications through `dosrun`.
 Results apply only to the identified program version, ManiOS revision and test
@@ -20,6 +20,35 @@ for commands, timings, hashes and exact failure addresses. The 2026-10-23
 [dosprograms.info.tt catalog](https://dosprograms.info.tt/apps.htm) batch is
 followed by the compat4 Info-ZIP, DOSStart, Spectra and PasswordBox batch and
 the FreeDOS-repo Games batch, followed by the text-adventure batch at the end.
+
+## October 26–28 correctness audit — latest results
+
+Earlier sections below remain historical. [Engineering report](2026-10-27-bugfix-audit.md), [full transcripts](2026-10-28-bugfix-results.json), and [all-200 catalogue review](2026-10-28-bugfix-catalogue.json).
+
+| Application | Current status | Verified scope |
+|---|---|---|
+| PEDIT | Partial | Both variants enter the editor. Standard PEDIT inserts CHECK, saves exact bytes, exits and reopens the file; Light save cycle and advanced features remain untested. |
+| Directory Maven | Unsupported | Advances past SHL32, then stops on VGA CRTC OUT 03D4h at 15F3:05A5 (cursor-high index 0Eh). |
+| Mahjong! | Unsupported | Still reports DPMI initialization failure; gameplay is unavailable. |
+| Mine Mayhem | Unsupported | Advances past PUSHFD, then stops on group-7 system opcode 0F 01 at 1426:2D69. |
+| ShuffleV | Partial | Directional moves change the board and move counter; Alt+X returns to the shell. Complete game and win state untested. |
+| FreeDOS MEM | Working | Default report correctly shows conventional 640K total/64K used/576K free, reserved 384K and XMS 8192K. Other options untested. |
+| EXEMENU | Working | Selection launches ACTION.COM, returns to the menu and exits; exact EXEMENU CHILD OK marker persists on disk. BAT/BAS dispatch untested. |
+| CPUID | Unsupported | Advances beyond old operand-size stop, then reaches x87 DB at 1000:028C. |
+| SPACE | Broken | Prints identical fictitious 8-MiB free disks for C: through Z:, including absent drives; DOS AH=36h needs real geometry and drive validation. |
+| STATUS | Partial | Conventional total is now 640K, but free memory incorrectly remains 1024K and device claims are not trustworthy. |
+| FoxType | Unsupported | Advances past PUSHFD, then reaches SMSW AX (0F 01 E0); primary application workflow remains unavailable. |
+| GNU bc | Working | Relative and drive-qualified input files produce 4, 156 and 3.1428 for the tested calculations. |
+| GNU grep | Working | Complete serial transcript contains the expected beta target match. |
+| HEAD | Working | Complete serial transcript contains all three fixture lines, including on the earlier build. No HEAD regression was reproduced. |
+| LHa | Unsupported | Advances past PUSHFD, then reaches SMSW AX (0F 01 E0); primary application workflow remains unavailable. |
+| lzop | Unsupported | Advances past PUSHFD, then reaches SMSW AX (0F 01 E0); primary application workflow remains unavailable. |
+| MD5SUM | Broken | Produces no digest on frozen baseline or current build. Startup needs DOS AH=37h; scratch-only implementation then reaches missing AH=60h. |
+| UnRAR | Unsupported | Advances past PUSHFD, then reaches SMSW AX (0F 01 E0); primary application workflow remains unavailable. |
+| XGREP | Working | Relative and drive-qualified searches and anchored regex return the expected matching line; absent pattern returns no match. |
+| ZDir | Partial | Actual VGA screen shows readable CP437 borders and correct fixture names. Listing returns; navigation and output metadata/options are not verified. |
+| DOS/32A | Unsupported | Advances past PUSHFD, then stops on x87 DB at 1016:030C. |
+| sleep | Working | Zero, one and two-second waits return with appropriate elapsed time; repeated one-second wait also passes. |
 
 ## Warcraft: Orcs & Humans
 
@@ -420,6 +449,8 @@ project. Binaries stay outside the repository and APK.
 
 ## PEDIT 4.00
 
+**0.27.0 development retest (status unchanged):** Both PEDIT variants pass REP MOVSD, then stop on unsupported 32-bit SHL (`66 C1 E0`); no editable document verified. See [fresh-image evidence](2026-10-25-operand32-retests.md). Earlier observations below retain their original build context.
+
 The catalogue's [PEDIT download](https://dosprograms.info.tt/download/pedit.zip)
 contains Program Editor 4.00, its Light version, documentation and companions.
 The unchanged package was copied to `C:/PEDIT`. Tests used ManiOS source commit
@@ -460,6 +491,8 @@ Evidence for both applications: [transcripts](2026-10-23-catalog.txt),
 [uHex screenshot](2026-10-23-catalog-uhex.png).
 
 ## Directory Maven 1.3
+
+**0.27.0 development retest (status unchanged):** Scan stops on 32-bit SHL (`66 C1 E0 10`) at 1656:0C90; directory management remains unavailable. See [fresh-image evidence](2026-10-25-operand32-retests.md). Earlier observations below retain their original build context.
 
 Discovered through the File Maven author's site linked from the catalogue;
 [Directory Maven](https://www.briggsoft.com/dmaven.htm) package `dmav13.zip`
@@ -1341,6 +1374,8 @@ See the [RUN fault screenshot](2026-10-23-compat4-games-life2.png).
 
 ### Mahjong!
 
+**0.27.0 development retest (status unchanged):** Passes the previous 66h startup stop, then reports DPMI error (0001), insufficient memory for initialization; no game screen. See [fresh-image evidence](2026-10-25-operand32-retests.md). Earlier observations below retain their original build context.
+
 `dosrun C:/MAHJONG.EXE` stops on the operand-size prefix:
 
 ```text
@@ -1353,6 +1388,8 @@ environment. Input `MAHJONG.EXE` SHA-256:
 `ca03bb09254cbea8eed1ce858245fc96d9d04a4c35e56840f7927c5d7851753d`.
 
 ### Mine Mayhem
+
+**0.27.0 development retest (status unchanged):** Passes MOVZX ESI,AL, then stops at PUSHFD (`66 9C`) at 1426:2DC6; gameplay unavailable. See [fresh-image evidence](2026-10-25-operand32-retests.md). Earlier observations below retain their original build context.
 
 `dosrun C:/MINE.EXE` stops on the operand-size prefix:
 
@@ -1376,6 +1413,8 @@ position or move was verified. Input `NERO5.EXE` SHA-256:
 See the [return screenshot](2026-10-23-compat4-games-nero5.png).
 
 ### ShuffleV
+
+**0.27.0 development retest (status unchanged):** Board renders, but 32-bit SHL (`66 C1 E0 10`) at 1C36:07FC stops execution before a move is verified. See [fresh-image evidence](2026-10-25-operand32-retests.md). Earlier observations below retain their original build context.
 
 `dosrun C:/SHUFFLEV.EXE` draws the Turbo Vision 4x4 puzzle board, then
 stops:
@@ -1696,6 +1735,8 @@ is v1.02g.
 
 ### FreeDOS MEM
 
+**0.27.0 development retest (status unchanged):** Stops on 32-bit SHL EBX,16 (`66 C1 E3 10`) at 1010:03D4; no memory summary. See [fresh-image evidence](2026-10-25-operand32-retests.md). Earlier observations below retain their original build context.
+
 **Broken.** ManiOS's initial MCB existed, but INT 21h/AH=52h did not expose a
 DOS list-of-lists pointer. The service now points to the MCB at segment 0x0FFF,
 and regression checks validate the MCB header and chain termination after
@@ -1770,7 +1811,7 @@ workflows; EDLIN input and terminal hardware workflows remain unverified. The pe
 
 ### Galaxy Lite
 
-**Unsupported.** Tested version/media: 1.5 (PC-SIG disk 2318). Stops at unsupported opcode INTO (0000:0001) before opening the editor. [Full test record](2026-10-25-vintage-app-tests.md).
+**Unsupported.** Tested version/media: 1.5 (PC-SIG disk 2318). It passes the former BOUND stop, then faults on opcode `00` at `0000:E003` before opening the editor. [Retest record](2026-10-25-into-retests.md#galaxy-lite); [initial test](2026-10-25-vintage-app-tests.md).
 
 ### DOS Navigator
 
@@ -1799,10 +1840,10 @@ workflows; EDLIN input and terminal hardware workflows remain unverified. The pe
 
 ## Vern Buerg LIST 7.1a
 
-- **Build and environment:** ManiOS 0.26.1-10252026, QEMU i386/486, 64 MiB RAM, serial console, disposable FAT16 disk.
-- **Command:** `dosrun C:/LIST.COM C:/INPUT.TXT`.
-- **Result:** `dosrun` stops at unsupported instruction AAM at `1000:35F7`; the viewer does not open.
-- **Evidence and hash:** [acquisition and run record](2026-10-25-priority-apps.md).
+- **Build and environment:** ManiOS 0.26.1-10252026 with AAM support, QEMU i386/486, 32 MiB RAM, serial console, fresh disposable FAT16 disk.
+- **Command:** `dosrun C:/LIST.COM C:/LISTTEST.TXT`.
+- **Result:** LIST opened the file, rendered `LIST_EXIT_FIXTURE` and the following line, and returned to the shell on F10.
+- **Evidence and hash:** [AAM retest](2026-10-25-aam-fix-retests.md#vern-buerg-list); original executable acquisition and hash in [priority app record](2026-10-25-priority-apps.md).
 
 ## MicroEMACS 3.9
 
@@ -1928,7 +1969,9 @@ Twelve user-listed COAST archives were tested on fresh disposable FAT16 images. 
 
 ### EXEMENU
 
-**Unsupported.** Startup stops at unsupported `INTO` instruction at `0000:0001`; no file menu opens. [Full test record](2026-10-25-calculator-menu-tests.md).
+**0.27.0 development retest (status unchanged):** Menu, selection and ESC remain usable; a directly verified ACTION.COM marker file was absent after Enter launch. Child execution remains unverified. See [fresh-image evidence](2026-10-25-operand32-retests.md). Earlier observations below retain their original build context.
+
+**Partial.** EXEMENU 2.2 opens its directory menu on FAT16, displays file entries, accepts arrow-key navigation and exits with ESC. An Enter attempt returned to the menu without the child test program's output, so launching a selected item is not confirmed. The original `0000:0000` far transfer was the BIOS INT 10h vector read by Turbo Pascal's far-call `Intr` helper; the IVT entry was zero because ManiDOS had not installed the already-implemented BIOS video service. BIOS IVT stubs now bridge far calls into that service with IRET-compatible frames. The apparent `F0` was IVT data, not an executable LOCK instruction. [Investigation and test record](2026-10-25-exemenu-investigation.md).
 
 ### MenuMate
 
@@ -2236,8 +2279,8 @@ Six user-listed COAST archives were tested. Full commands, archive hashes and li
 ### MemMap
 
 - **Tested:** dosrun C:/MEMMAP.EXE.
-- **Observed:** The Version 2 title and table headers appeared; the executor then stopped on unsupported INTO at 0000:0001.
-- **Status:** **Partial**. Full archive hash and test record: [batch report](2026-10-25-batch-141-150.md#memmap-2).
+- **Observed:** The Version 2 title, table headings and memory-block row (segment `1000`, 589,824 bytes, type `Program`) rendered; the program returned to the shell. [Retest](2026-10-25-into-retests.md#memmap-2).
+- **Status:** **Working** for the verified memory-map report. Full archive hash and test record: [batch report](2026-10-25-batch-141-150.md#memmap-2).
 
 ### SHOW
 
@@ -2274,3 +2317,463 @@ Six user-listed COAST archives were tested. Full commands, archive hashes and li
 - **Tested:** dosrun C:/DELETEM.EXE DELETE.TMP; attempted drive selection and confirmation.
 - **Observed:** Displayed the delete attempt, but host-side FAT inspection still found DELETE.TMP. The deletion interaction did not complete.
 - **Status:** **Partial**. Full archive hash and test record: [batch report](2026-10-25-batch-141-150.md#deletem-10).
+
+
+### 7-Zip
+
+- **Source and version:** [FreeDOS 1.4 package `7zip` 24.09+5](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/archiver/7zip/20250523.3/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/archiver/7zip.zip)).
+- **Listed license:** Public Domain. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/7ZA.EXE a C:/TEST.7Z C:/INPUT.TXT` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** The DOS 7za binary refused before archive creation: it requires a 32-bit protected-mode LE/LX DOS extender; dosrun reports real mode only.
+- **Status:** **Unsupported**. Evidence: [batch 151–160](2026-10-25-batch-151-160.md#7-zip). Archive SHA-256: `8bc1e340b8dbcc2f4c0efbba91896808f968cc9fb91c60ed4b41422cb9079ef8`.
+
+
+### AMB Packager
+
+- **Source and version:** [FreeDOS 1.4 package `ambpack` 20250826](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/ambpack/20260413.3/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/ambpack.zip)).
+- **Listed license:** MIT. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/ambpack.exe` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** The executable printed “Load error: no DPMI - Get csdpmi*b.zip”; AMB archive creation could not start.
+- **Status:** **Unsupported**. Evidence: [batch 151–160](2026-10-25-batch-151-160.md#amb-packager). Archive SHA-256: `e234c3e2bc0ef8560ffa58d73d2bf667f3bd98e8331b7a22febaf255c577383c`.
+
+
+### AMB Reader
+
+- **Source and version:** [FreeDOS 1.4 package `ambread` 20250827](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/tools/ambread/20260413.3/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/tools/ambread.zip)).
+- **Listed license:** MIT. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/amb.com` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Launched without an AMB book fixture; no readable book content or navigation result was observed.
+- **Status:** **Untested**. Evidence: [batch 151–160](2026-10-25-batch-151-160.md#amb-reader). Archive SHA-256: `6bf759f63182634e6bc9ea228950cb49ef23b7e452546cd3fd74d141b62b88f7`.
+
+
+### ARJ
+
+- **Source and version:** [FreeDOS 1.4 package `arj` 2.78a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/archiver/arj/20250409.8/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/archiver/arj.zip)).
+- **Listed license:** GNU General Public License, version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/ARJ.EXE a C:/TEST.ARJ C:/INPUT.TXT; l; e C:/TEST.ARJ C:/OUT/` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Created and listed TEST.ARJ, extracted INPUT.TXT, and compared the extracted FAT16 bytes to the fixture after QEMU shutdown; exact match.
+- **Status:** **Working**. Evidence: [batch 151–160](2026-10-25-batch-151-160.md#arj). Archive SHA-256: `70c6eb04162bab3928137fcfed0672af41291f2f6826cf61db5cae0aa9aa3e1e`.
+
+
+### BZIP2
+
+- **Source and version:** [FreeDOS 1.4 package `bz2` 1.0.8a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/archiver/bz2/20250409.8/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/archiver/bz2.zip)).
+- **Listed license:** Open Source, see license file. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/BZIP2.EXE C:/INPUT.TXT` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** The executable printed “Load error: no DPMI - Get csdpmi*b.zip”; no compressed output was created.
+- **Status:** **Unsupported**. Evidence: [batch 151–160](2026-10-25-batch-151-160.md#bzip2). Archive SHA-256: `e191902f36bf529cef97eabd83004d050a874faa7c92a76a795dc92d592a1cbd`.
+
+
+### CAL
+
+- **Source and version:** [FreeDOS 1.4 package `cal` 1.07a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/unix/cal/20250409.8/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/unix/cal.zip)).
+- **Listed license:** Freeware with source. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/CAL.COM 3/2000` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Printed the March 2000 calendar, with March 1 on Wednesday and day 31 present.
+- **Status:** **Working**. Evidence: [batch 151–160](2026-10-25-batch-151-160.md#cal). Archive SHA-256: `ee05b828b322908217ff422bc007dfb761931ae63d58d7c5eedff528e02b337e`.
+
+
+### cabextract
+
+- **Source and version:** [FreeDOS 1.4 package `cabext` 1.11+1](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/archiver/cabext/20250316.0/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/archiver/cabext.zip)).
+- **Listed license:** GNU General Public License, Version 3. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/CABEXT.EXE -h` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** The DOS binary refused before displaying help: requires a 32-bit protected-mode LE/LX DOS extender; dosrun supports real mode only.
+- **Status:** **Unsupported**. Evidence: [batch 151–160](2026-10-25-batch-151-160.md#cabextract). Archive SHA-256: `744d3ebd3ef88af900880615d3e201324825b2ce92854bcdf6993d7577cc5089`.
+
+
+### COMPUTE
+
+- **Source and version:** [FreeDOS 1.4 package `compute` 1.2](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/compute/20260313.7/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/compute.zip)).
+- **Listed license:** GNU GPL. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/COMPUTE.EXE 2+2` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Stopped at unsupported OUT port 00F0 at 12B5:07CB; no calculation result.
+- **Status:** **Unsupported**. Evidence: [batch 151–160](2026-10-25-batch-151-160.md#compute). Archive SHA-256: `2aad743fcd1e07f3ed8fd4affe7916449fc5cad500d9c6892840993a3e3b56bc`.
+
+
+### cpied
+
+- **Source and version:** [FreeDOS 1.4 package `cpied` 1.3d](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/cpied/20250409.8/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/cpied.zip)).
+- **Listed license:** GNU General Public License, Version 3. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/CPIED.EXE /?` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Returned “No valid file at this path”; no CPI font fixture was available, so font editing and saving were not verified.
+- **Status:** **Untested**. Evidence: [batch 151–160](2026-10-25-batch-151-160.md#cpied). Archive SHA-256: `154748da222aacaf26ee7a0d5ecc6e3d52b0bd421145613cd138e95adbc82a53`.
+
+
+### DU
+
+- **Source and version:** [FreeDOS 1.4 package `du` 1.0a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/unix/du/20250409.8/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/unix/du.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/DU.EXE C:/` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Reported 16,098 bytes for the FAT16 root; this matched the 16,074-byte DU executable plus the 24-byte fixture.
+- **Status:** **Working**. Evidence: [batch 151–160](2026-10-25-batch-151-160.md#du). Archive SHA-256: `cfaf8960e9493e99480d33008ba485f1f871cfd281bd6835b88e8e1e6636b714`.
+
+
+### DOSUTIL
+
+- **Source and version:** [FreeDOS 1.4 package `dosutil` 2012a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/dosutil/20260313.7/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/dosutil.zip)).
+- **Listed license:** European Union Public License v1.1. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/PRINTF.COM HELLO` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** The DOSUTIL printf command printed HELLO.
+- **Status:** **Working**. Evidence: [batch 161–170](2026-10-25-batch-161-170.md#dosutil). Archive SHA-256: `33d57d1d3c4573f68c72dcd9a519fb38e9d946c78ea7060748fd927e779daa9c`.
+
+
+### FoxCalc
+
+- **Source and version:** [FreeDOS 1.4 package `foxcalc` 0.92a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/foxcalc/20250409.9/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/foxcalc.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/FOXCALC.EXE` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Printed “Load error: no DPMI - Get csdpmi*b.zip”; calculator UI did not start.
+- **Status:** **Unsupported**. Evidence: [batch 161–170](2026-10-25-batch-161-170.md#foxcalc). Archive SHA-256: `f06af765c4928ee6af81e4c712846bf71425f1ccb1f1c811e348bb4dccccd321`.
+
+
+### FoxType
+
+**0.27.0 development retest (status unchanged):** Passes MOVZX ESI,AL, then stops at PUSHFD (`66 9C`) at 1010:30FB; file viewing unavailable. See [fresh-image evidence](2026-10-25-operand32-retests.md). Earlier observations below retain their original build context.
+
+- **Source and version:** [FreeDOS 1.4 package `foxtype` 0.16a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/foxtype/20250409.9/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/foxtype.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/FOXTYPE.EXE C:/FIXTURE.TXT` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Stopped on unsupported opcode 66 at 1010:30F8 before the file viewer rendered.
+- **Status:** **Unsupported**. Evidence: [batch 161–170](2026-10-25-batch-161-170.md#foxtype). Archive SHA-256: `16c7940a8e700eb3f0d0e20306ff37ac9f57eca2432814ed38d5bd9ddf82c45b`.
+
+
+### GNU bc
+
+- **Source and version:** [FreeDOS 1.4 package `gnubc` 1.02a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/unix/gnubc/20250410.0/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/unix/gnubc.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/BC.EXE C:/CALC.BC (file contains 2+2)` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** The guest printed “SYS2090: The system is unable to load the program.” No calculation ran; the reason for the loader rejection was not established.
+- **Status:** **Broken**. Evidence: [batch 161–170](2026-10-25-batch-161-170.md#gnu-bc). Archive SHA-256: `93b5b319cc7261992ea74ee01af739cc1c47539d52910ea57314f5939eba9db9`.
+
+
+### GNU grep
+
+- **Source and version:** [FreeDOS 1.4 package `grep` 2.0a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/unix/grep/20251129.2/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/unix/grep.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/GREP.EXE target C:\FIXTURE.TXT` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Matched the expected line “beta target” in the FAT16 fixture.
+- **Status:** **Working**. Evidence: [batch 161–170](2026-10-25-batch-161-170.md#gnu-grep). Archive SHA-256: `32cf9391bd24e366337e731a6027421217d2255fa71f735984597debde78f5b0`.
+
+
+### GZIP
+
+- **Source and version:** [FreeDOS 1.4 package `gzip` 1.2.4a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/archiver/gzip/20250409.9/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/archiver/gzip.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/GZIP.EXE C:/INPUT.TXT; dosrun C:/GZIP.EXE -d C:/INPUT.TXz` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Compressed and decompressed the file; mcopy plus host comparison confirmed exact bytes. The DOS 8.3 names were INPUT.TXz and INPUT.TX.
+- **Status:** **Working**. Evidence: [batch 161–170](2026-10-25-batch-161-170.md#gzip). Archive SHA-256: `d086eafc5bf021d6c7a96af7d9c33b34680fa24c293c3052791751329321e94f`.
+
+
+### HEAD
+
+- **Source and version:** [FreeDOS 1.4 package `head` 1.0a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/unix/head/20250409.9/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/unix/head.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/HEAD.COM C:\FIXTURE.TXT` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Displayed the fixture’s lines: alpha, beta target, gamma.
+- **Status:** **Working**. Evidence: [batch 161–170](2026-10-25-batch-161-170.md#head). Archive SHA-256: `06ab5fcbeee6df169d633cb13e1437cbb0dabd5b420d7ec004ba2646ccd75e09`.
+
+
+### less
+
+- **Source and version:** [FreeDOS 1.4 package `less` 291a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/unix/less/20250409.9/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/unix/less.zip)).
+- **Listed license:** Simplified (2-Clause) BSD License. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/LESS.EXE C:/FILE.TXT; send q and Esc` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** The process remained interactive and no readable file contents or successful quit were captured; core viewing was not verified.
+- **Status:** **Untested**. Evidence: [batch 161–170](2026-10-25-batch-161-170.md#less). Archive SHA-256: `5a8e230decfc7ee9fa23e279355ee0f0c48a9cffb815a7635e6827f78aa6c03e`.
+
+
+### LHa
+
+**0.27.0 development retest (status unchanged):** Archive-create attempt passes MOVZX ESI,AL, then stops at PUSHFD (`66 9C`) at 1010:30FB; no archive created. See [fresh-image evidence](2026-10-25-operand32-retests.md). Earlier observations below retain their original build context.
+
+- **Source and version:** [FreeDOS 1.4 package `lha` 2006-10-09a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/archiver/lha/20250410.0/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/archiver/lha.zip)).
+- **Listed license:** Open Source, see license.txt. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/LHA.EXE a/l/x ...` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Archive create/list/extract attempts stopped on unsupported opcode 66 at 1010:30F8.
+- **Status:** **Unsupported**. Evidence: [batch 161–170](2026-10-25-batch-161-170.md#lha). Archive SHA-256: `c59f9401a33420c776c2ffaad99b7fd05eca650d0c3e07e939cc55b43bdaa457`.
+
+
+### Lzip
+
+- **Source and version:** [FreeDOS 1.4 package `lzip` 1.20](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/archiver/lzip/20260111.7/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/archiver/lzip.zip)).
+- **Listed license:** GNU General Public License, Version 3. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/LZIP.EXE C:/INPUT.DAT; dosrun C:/LZIP.EXE -d C:/INPUT.LZ` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Both launches printed “Load error: no DPMI - Get csdpmi*b.zip”; no output archive was produced.
+- **Status:** **Unsupported**. Evidence: [batch 161–170](2026-10-25-batch-161-170.md#lzip). Archive SHA-256: `3863d70912fbac7d1b98e14e6a249b9dcae78c7c9912c6c214255db34938e445`.
+
+
+### LZMA Utils
+
+- **Source and version:** [FreeDOS 1.4 package `lzma` 4.32.7a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/archiver/lzma/20250410.0/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/archiver/lzma.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/LZMA.EXE C:/INPUT.DAT` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Printed “Load error: no DPMI - Get csdpmi*b.zip”; compression could not start.
+- **Status:** **Unsupported**. Evidence: [batch 171–180](2026-10-25-batch-171-180.md#lzma-utils). Archive SHA-256: `d5f7013d99cf6a8d6996a6d95d049ba542426e04c7727041efd5a7ae61da4485`.
+
+
+### lzop
+
+**0.27.0 development retest (status unchanged):** Passes MOVZX ESI,AL, then stops at PUSHFD (`66 9C`) at 1010:30FB; compression unavailable. See [fresh-image evidence](2026-10-25-operand32-retests.md). Earlier observations below retain their original build context.
+
+- **Source and version:** [FreeDOS 1.4 package `lzop` 1.04](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/archiver/lzop/20250410.0/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/archiver/lzop.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/LZOP.EXE C:/INPUT.DAT` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Stopped on unsupported opcode 66 at 1010:30F8.
+- **Status:** **Unsupported**. Evidence: [batch 171–180](2026-10-25-batch-171-180.md#lzop). Archive SHA-256: `226cfae21ccbd5692891fd4a508f17c4dc98bb13c607bd9efb7ec6d08fd5472d`.
+
+
+### MD5SUM
+
+- **Source and version:** [FreeDOS 1.4 package `md5sum` 3.0a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/unix/md5sum/20260313.7/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/unix/md5sum.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/MD5SUM.EXE C:\FIXTURE.TXT` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Printed MD5 42fe2bf78f3e3197ac86de83a3195aab, matching the independently computed fixture hash.
+- **Status:** **Working**. Evidence: [batch 171–180](2026-10-25-batch-171-180.md#md5sum). Archive SHA-256: `73cf96fae180477c825fcf3dfe6f1a3586ecbda8cc167eb14ccbe2c8e897079d`.
+
+
+### NRO
+
+- **Source and version:** [FreeDOS 1.4 package `nro` 1.2a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/unix/nro/20250410.0/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/unix/nro.zip)).
+- **Listed license:** Public Domain. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/NRO.COM C:/SAMPLE.RO; dosrun C:/NRO.COM -v` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** No readable formatted output or version result was captured; output-file comparison was not completed.
+- **Status:** **Untested**. Evidence: [batch 171–180](2026-10-25-batch-171-180.md#nro). Archive SHA-256: `941a2e787b78d00180028645141bd9baeb1e615ef527240b91d1db405103d010`.
+
+
+### rcal
+
+- **Source and version:** [FreeDOS 1.4 package `rcal` 1.0.1](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/rcal/20250410.0/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/rcal.zip)).
+- **Listed license:** MIT License. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/RCAL.COM; keyboard 2+2 Enter; Esc` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Displayed the calculator interface, returned 4 for 2+2, and Esc returned to the ManiOS shell.
+- **Status:** **Working**. Evidence: [batch 171–180](2026-10-25-batch-171-180.md#rcal). Archive SHA-256: `48079e2c5ece14ace8c9d8802fb5347a83437ede692567a0f35134988a424ec5`.
+
+
+### stamp
+
+- **Source and version:** [FreeDOS 1.4 package `stamp` 2.0a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/stamp/20260313.7/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/stamp.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/STAMP.COM C:/FIXTURE.TXT` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** The command returned without a readable result; FAT timestamp modification was not verified.
+- **Status:** **Untested**. Evidence: [batch 171–180](2026-10-25-batch-171-180.md#stamp). Archive SHA-256: `db10f9567787df38b3d7831875bc4bd524bd7a02282173ba94bc25470cefc1b6`.
+
+
+### switchar
+
+- **Source and version:** [FreeDOS 1.4 package `switchar` 1.0a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/switchar/20250410.1/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/switchar.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/SWITCHAR.COM` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** No readable switch-character result was captured; changing and observing the switch character was not verified.
+- **Status:** **Untested**. Evidence: [batch 171–180](2026-10-25-batch-171-180.md#switchar). Archive SHA-256: `74c8a8f09558b8cced7fa50bf112d5c14e99c1e82346d0e99bd7573d37ea53b4`.
+
+
+### TAR
+
+- **Source and version:** [FreeDOS 1.4 package `tar` 1.12](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/archiver/tar/20250604.6/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/archiver/tar.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/TAR.EXE -cf C:/TEST.TAR C:/INPUT.DAT` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Both archive attempts printed “Load error: no DPMI - Get csdpmi*b.zip”.
+- **Status:** **Unsupported**. Evidence: [batch 171–180](2026-10-25-batch-171-180.md#tar). Archive SHA-256: `d339581a6dc852ea7d6e64475ccd20338cd88233f402bdc9d2faf97510195df7`.
+
+
+### tail
+
+- **Source and version:** [FreeDOS 1.4 package `tail` 7.02a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/unix/tail/20250410.0/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/unix/tail.zip)).
+- **Listed license:** Open Source. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/TAIL.EXE C:/FIXTURE.TXT` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Stopped at unsupported OUT port 00F0 at 1758:3C4E; no tail output.
+- **Status:** **Unsupported**. Evidence: [batch 171–180](2026-10-25-batch-171-180.md#tail). Archive SHA-256: `58b6ee676532c6355bccbad2a4436de5e127d1cb00a6d7f28cf446684fa4a4a9`.
+
+
+### TEE
+
+- **Source and version:** [FreeDOS 1.4 package `tee` 2.0.3a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/unix/tee/20260218.6/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/unix/tee.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `echo HELLO | dosrun --env LANG=en --env NLSPATH=C:/NLS C:/TEE.EXE C:/OUTPUT.TXT` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** With the package’s _TEE.EXE and NLS/tee.en files installed, printed HELLO and created OUTPUT.TXT; mcopy read back the exact bytes HELLO plus CR.
+- **Status:** **Working**. Evidence: [batch 171–180](2026-10-25-batch-171-180.md#tee). Archive SHA-256: `c1e392e1212f5431e359506a5d8b44fbc1087d17b1bfdc2a75ae8ae728da4de7`.
+
+
+### topspin
+
+- **Source and version:** [FreeDOS 1.4 package `topspin` 3a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/topspin/20250410.1/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/topspin.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/TS.EXE` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Returned without an observable menu; a TOPSPIN menu configuration was not present.
+- **Status:** **Untested**. Evidence: [batch 181–190](2026-10-25-batch-181-190.md#topspin). Archive SHA-256: `c5ef712b9c5b427ca42405306a75d2b6fb24adc0686c72e491fd583606edebca`.
+
+
+### TOUCH
+
+- **Source and version:** [FreeDOS 1.4 package `touch` 1.4.4a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/unix/touch/20250410.1/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/unix/touch.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/TOUCH.COM C:/TOUCHED.TXT` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Created a zero-byte TOUCHED.TXT; mdir independently confirmed the FAT16 directory entry.
+- **Status:** **Working**. Evidence: [batch 181–190](2026-10-25-batch-181-190.md#touch). Archive SHA-256: `3826f5faa516feb70d92ec2d304829c789c1408c740ac37afa6ade2df88e6524`.
+
+
+### UnRAR
+
+**0.27.0 development retest (status unchanged):** Passes MOVZX ESI,AL, then stops at PUSHFD (`66 9C`) at 1010:3130; extraction unavailable. See [fresh-image evidence](2026-10-25-operand32-retests.md). Earlier observations below retain their original build context.
+
+- **Source and version:** [FreeDOS 1.4 package `unrar` 3.80a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/archiver/unrar/20250410.0/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/archiver/unrar.zip)).
+- **Listed license:** Freeware, see license.txt. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/UNRAR.EXE` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Stopped on unsupported opcode 66 at 1010:312D.
+- **Status:** **Unsupported**. Evidence: [batch 181–190](2026-10-25-batch-181-190.md#unrar). Archive SHA-256: `d7622cb0496b7758513058953a80bfc2b17983ab72ffb86e53dfedf39ddbdabf`.
+
+
+### UnRTF
+
+- **Source and version:** [FreeDOS 1.4 package `unrtf` 0.21.5a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/unrtf/20250410.1/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/unrtf.zip)).
+- **Listed license:** GNU General Public License, Version 3. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/UNRTF.EXE --text C:/SAMPLE.RTF` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Printed “Load error: no DPMI - Get csdpmi*b.zip”; conversion did not run.
+- **Status:** **Unsupported**. Evidence: [batch 181–190](2026-10-25-batch-181-190.md#unrtf). Archive SHA-256: `10664a256b18aca0b045b192e5dd9badb73258ca07d245233e398bdd648565c0`.
+
+
+### Uptime
+
+- **Source and version:** [FreeDOS 1.4 package `uptimec` 2.60a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/unix/uptimec/20250410.1/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/unix/uptimec.zip)).
+- **Listed license:** GNU Lesser General Public License, Version 3. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/UPTIME.COM` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Stopped at unsupported OUT port 0070 at 1000:0240; bytes at 1000:0237 were B0 FF C3 50 53 52 32 C0 E6 70 E4 71 E8 A6 00 A2.
+- **Status:** **Unsupported**. Evidence: [batch 181–190](2026-10-25-batch-181-190.md#uptime). Archive SHA-256: `42b4d378f08f7417e6be335d6f9f1c535735d1ae50e33e15496aeeaf0705e1fe`.
+
+
+### wcd
+
+- **Source and version:** [FreeDOS 1.4 package `wcd` 6.0.5](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/wcd/20250410.1/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/wcd.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/WCD.EXE -h` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Stopped on unsupported FWAIT at 25B0:515B.
+- **Status:** **Unsupported**. Evidence: [batch 181–190](2026-10-25-batch-181-190.md#wcd). Archive SHA-256: `e198dad32385e9e25b12f1931223773b836edc9c3b9fbc9f24e053ffc1f01b0d`.
+
+
+### which
+
+- **Source and version:** [FreeDOS 1.4 package `which` 2.1a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/unix/which/20250410.1/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/unix/which.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/WHICH.EXE C:\CAL.COM` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** No readable result was captured; executable lookup was not verified.
+- **Status:** **Untested**. Evidence: [batch 181–190](2026-10-25-batch-181-190.md#which). Archive SHA-256: `194f40650043f5583a378e103740c7b27dac1e5f2d3309da0af4e3ff1db44511`.
+
+
+### xDel
+
+- **Source and version:** [FreeDOS 1.4 package `xdel` 2.08](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/xdel/20260411.4/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/xdel.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/XDEL.COM C:/DELETE.TXT; keyboard y` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** The program asked for confirmation; after y, independent mcopy lookup confirmed DELETE.TXT was absent.
+- **Status:** **Working**. Evidence: [batch 181–190](2026-10-25-batch-181-190.md#xdel). Archive SHA-256: `0feb5d642cb60f0a8dd8b2e23668e8f400acdbd294a1c32cb118f56f76d728cb`.
+
+
+### XGREP
+
+- **Source and version:** [FreeDOS 1.4 package `xgrep` 1.03a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/unix/xgrep/20251129.2/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/unix/xgrep.zip)).
+- **Listed license:** Zero Clause BSD License. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/XGREP.COM target C:\FIXTURE.TXT` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** The no-argument usage screen appeared, but a valid file search did not return within 15 seconds and produced no result; the core search workflow hung.
+- **Status:** **Broken**. Evidence: [batch 181–190](2026-10-25-batch-181-190.md#xgrep). Archive SHA-256: `66263984c1fc73148eb81799cc0bc4ff1c6085044e0de2df9a57ad300c71a5ef`.
+
+
+### ZDir
+
+- **Source and version:** [FreeDOS 1.4 package `zdir` 2.1b](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/zdir/20250410.1/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/zdir.zip)).
+- **Listed license:** GNU General Public License, v3. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/ZDIR.COM C:/` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Displayed the FAT16 directory and file names; special glyphs were garbled and keyboard navigation was not verified.
+- **Status:** **Partial**. Evidence: [batch 181–190](2026-10-25-batch-181-190.md#zdir). Archive SHA-256: `368665d4159e8bcee126809147d86f6f809a83063701f3f2a5cdeb5db49d332e`.
+
+
+### zoo
+
+- **Source and version:** [FreeDOS 1.4 package `zoo` 2.1b](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/archiver/zoo/20250410.1/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/archiver/zoo.zip)).
+- **Listed license:** Public Domain. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/ZOO.EXE a C:/TEST.ZOO INPUT.DAT; l; x` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Created and listed TEST.ZOO; after removing the original fixture, extracted INPUT.DAT and compared bytes after shutdown; exact match.
+- **Status:** **Working**. Evidence: [batch 191–200](2026-10-25-batch-191-200.md#zoo). Archive SHA-256: `f343733dbff0b20b4760eddc9de1c4d20c8e3cdba40afb36703b860bf22cddc4`.
+
+
+### Localize
+
+- **Source and version:** [FreeDOS 1.4 package `localize` 1.00a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/localize/20260219.2/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/localize.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/LOCALIZE.COM /?` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** No readable output or translated text was captured; translation behavior was not verified.
+- **Status:** **Untested**. Evidence: [batch 191–200](2026-10-25-batch-191-200.md#localize). Archive SHA-256: `83158fc81737fca9d3d1fe2a39a6e90398bfa7c5e226777db4020d2c6ba7fb94`.
+
+
+### ListVESA
+
+- **Source and version:** [FreeDOS 1.4 package `listvesa` 1.11](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/listvesa/20250409.9/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/listvesa.zip)).
+- **Listed license:** GPLv2, with source code, no warranty. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/LISTVESA.EXE` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** No readable mode report was captured; VESA enumeration was not verified.
+- **Status:** **Untested**. Evidence: [batch 191–200](2026-10-25-batch-191-200.md#listvesa). Archive SHA-256: `dcccda0c8e916e8793973176c85103b4b14996eed4a6e1b714068097ab093de2`.
+
+
+### ListPCI
+
+- **Source and version:** [FreeDOS 1.4 package `listpci` 1.03](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/listpci/20260408.2/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/listpci.zip)).
+- **Listed license:** GPLv2, with source code, no warranty. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/LISTPCI.EXE` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** No readable PCI report was captured; device enumeration was not verified.
+- **Status:** **Untested**. Evidence: [batch 191–200](2026-10-25-batch-191-200.md#listpci). Archive SHA-256: `b1dca57e196fd09633930a5209ac68f6d59ad0db47856be12a5c22d43412296a`.
+
+
+### DOS/32A
+
+**0.27.0 development retest (status unchanged):** Prints DOS/32A 9.1.2, then stops at PUSHFD (`66 9C`) at 1016:02A1; no protected-mode payload ran. See [fresh-image evidence](2026-10-25-operand32-retests.md). Earlier observations below retain their original build context.
+
+- **Source and version:** [FreeDOS 1.4 package `dos32a` 9.1.2a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/dos32a/20250409.8/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/dos32a.zip)).
+- **Listed license:** Open source, similar to BSD License. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/DOS32A.EXE /?` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Printed DOS/32A version 9.1.2, then stopped on unsupported opcode 66 at 1016:02A2.
+- **Status:** **Unsupported**. Evidence: [batch 191–200](2026-10-25-batch-191-200.md#dos32a). Archive SHA-256: `1cb89287703b3dad7ae279c18ae53ce4699fd33d685ddb7e7f46879d2fd953c1`.
+
+
+### MEMTESTE
+
+- **Source and version:** [FreeDOS 1.4 package `memteste` 2003a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/memteste/20250410.0/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/memteste.zip)).
+- **Listed license:** Freeware. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/MEMTESTE.EXE /?` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Returned without a readable memory-test result; no pass/fail result was verified.
+- **Status:** **Untested**. Evidence: [batch 191–200](2026-10-25-batch-191-200.md#memteste). Archive SHA-256: `c196be85a8fa6623834066927bdc06a8fa074dcd46f554aacca4007fe31de7a4`.
+
+
+### pdTree
+
+- **Source and version:** [FreeDOS 1.4 package `pdtree` 1.02-1a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/pdtree/20250410.0/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/pdtree.zip)).
+- **Listed license:** Public Domain (optional use of LGPL catgets by Jim Hall). The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/PDTREE.EXE C:\` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** No readable directory tree was captured; tree output was not verified.
+- **Status:** **Untested**. Evidence: [batch 191–200](2026-10-25-batch-191-200.md#pdtree). Archive SHA-256: `38c2814ef07e55d43bb3a73c5643d007d0b7b1c54c9e224ada6846b26cf0603f`.
+
+
+### SetLock
+
+- **Source and version:** [FreeDOS 1.4 package `setlock` 1.0a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/util/setlock/20250410.1/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/util/setlock.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/SETLOCK.COM CL=ON; type lowercase x at shell` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Help/usage was visible. After CL=ON, the ManiOS shell still echoed lowercase x; lock-state change was not verified.
+- **Status:** **Untested**. Evidence: [batch 191–200](2026-10-25-batch-191-200.md#setlock). Archive SHA-256: `ef22ce2ea16fdfc894df1484a4dbb00a089fe7810194b76a6e39f207ccccb9eb`.
+
+
+### Minibox
+
+- **Source and version:** [FreeDOS 1.4 package `minibox` 0.7a](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/unix/minibox/20250410.0/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/unix/minibox.zip)).
+- **Listed license:** GNU General Public License, Version 2 and 3. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/MINIBOX.EXE --help` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** Printed “Load error: no DPMI - Get csdpmi*b.zip”.
+- **Status:** **Unsupported**. Evidence: [batch 191–200](2026-10-25-batch-191-200.md#minibox). Archive SHA-256: `4e8163758ea63a711f513e250a282dba7e4ea2bc647335b3b044f4426f1f33e9`.
+
+
+### sleep
+
+- **Source and version:** [FreeDOS 1.4 package `sleep` 1.2](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/html/en/unix/sleep/20250410.1/index.html) ([archive](https://ftp.icm.edu.pl/pub/msdos/freedos/repositories/1.4/unix/sleep.zip)).
+- **Listed license:** GNU General Public License, Version 2. The package APPINFO identifies this as a DOS program.
+- **Test:** `dosrun C:/SLEEP.EXE 1` on a fresh disposable FAT16 image under QEMU i386, 486 CPU, 64 MiB RAM, launched through ManiDOS `dosrun`.
+- **Observed:** The documented one-second delay did not return to the shell within 15 seconds; no elapsed-delay result was verified.
+- **Status:** **Broken**. Evidence: [batch 191–200](2026-10-25-batch-191-200.md#sleep). Archive SHA-256: `779b6ccc08520ece4e19cb8a3c1c41d6fbd1e99df8f8196cbc4f5661e9c239cd`.

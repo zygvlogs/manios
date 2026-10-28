@@ -204,3 +204,34 @@ they are not run on every push.
   high-load MZ images, nested termination/status, inherited handles, PSP and
   environment copying, parent DTA/stack restoration, repeated allocation
   cleanup, and EXEC failure cases. Uses generated test binaries only.
+
+## October 27 dosrun regressions
+
+The default `make test` gate now includes the following focused tests:
+
+| Test | Independent behavior checked |
+|---|---|
+| `dosrun_shift_test.py` | 344,742 native x86 shift/rotate, encoding and fault checks |
+| `dosrun_double_shift_test.py` | 50,176 native defined SHLD/SHRD cases; undefined word counts under UBSan |
+| `dosrun_flags32_test.py` | PUSHFD/POPFD reserved bits, AC/ID, word/interrupt lifetime and stack limits |
+| `dosrun_bit_test.py` | 4,192 register/memory bit cases, signed indexes and invalid groups |
+| `dosrun_imul32_test.py` | 640 native multiply results and overflow flags |
+| `dosrun_divide_test.py` | 8,192 signed/unsigned division results and nine INT 0 fault frames |
+| `dosrun_cpu_audit_test.py` | 400 native CMPXCHG width/flag cases, unsupported system state, RDTSC registers |
+| `dosrun_handle_test.py` | close/reopen standard slots, duplicate lifetime, IOCTL flags, drive aliases and real PTY descriptors |
+| `dosrun_fast_console_test.py` | direct/chained INT29, shared VGA contents and register/flag preservation |
+| `dosrun_initial_memory_test.py` | bounded/full/high-loaded MZ allocation, COM default and child EXEC without parent shrink |
+| `dosrun_environment_test.py` | actual executable environment name, longest mount, boundary and truncation rules |
+| `dosrun_time_test.py` | BIOS-tick conversion and midnight boundaries without consuming rollover |
+| `dosrun_bios_memory_test.py` | conventional-memory BDA consistency and explicit unsupported system probes |
+
+CPU oracle tests require x86-64 GCC. Focused harnesses use ASan/UBSan.
+Existing seek, BIOS timer, keyboard queue and VGA wrap tests are also now
+part of the default gate. EXEC tests cover upper EFLAGS lifetime. Guest tests
+include CPUAUDIT.COM, FASTCON.COM and ENVNAME.COM; the latter reopens itself by the name
+in its environment rather than a hard-coded test pathname.
+
+Real applications run only inside the interpreter/QEMU and use disposable
+FAT16 images. Binaries and working disks stay outside Git. A timed launch is
+not proof of an editing, archive, calculation or game workflow; application
+reports identify exactly what was observed.

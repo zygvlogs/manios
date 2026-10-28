@@ -1,0 +1,3 @@
+PASS: libui's conformance test, calc's arithmetic, and no desktop: no window
+FAIL: ManiDE starts: screendump produced nothing
+gui test: 1 failed

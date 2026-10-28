@@ -57,6 +57,127 @@ def hello_com():
     return com(code + msg)
 
 
+def operand32_com():
+    """Mixed widths, dword flags/memory/stack and INT 21h upper halves."""
+    code = bytearray()
+    branches = []
+    def emit(text):
+        code.extend(bytes.fromhex(text))
+    def fail_if(op):
+        code.extend([op, 0]); branches.append(len(code) - 1)
+    emit('66 b8 ff ff ff ff 66 05 01 00 00 00')
+    fail_if(0x73)  # JNC: addition must carry
+    fail_if(0x75)  # JNZ: result must be zero
+    emit('66 b8 78 56 34 12 b8 ef be 66 50 66 5b 66 81 fb ef be 34 12')
+    fail_if(0x75)
+    emit('66 c7 06 00 08 ef be ad de 66 8b 0e 00 08 66 81 f9 ef be ad de')
+    fail_if(0x75)
+    emit('66 b8 00 30 34 12 cd 21 66 3d 04 00 34 12')
+    fail_if(0x75)
+    message_patch = len(code) + 3
+    emit('b4 09 ba 00 00 cd 21 b8 00 4c cd 21')
+    failure = len(code)
+    emit('b8 01 4c cd 21')
+    message = len(code)
+    code.extend(b'OPERAND32 OK\r\n$')
+    code[message_patch:message_patch + 2] = (0x100 + message).to_bytes(2, 'little')
+    for at in branches:
+        assert 0 <= failure - at - 1 <= 127
+        code[at] = failure - at - 1
+    return bytes(code)
+
+
+def cpu_audit_com():
+    """Execute the repaired CPU paths through the actual freestanding runner."""
+    code, branches = bytearray(), []
+    def emit(text): code.extend(bytes.fromhex(text))
+    def check():
+        emit('0f 85 00 00'); branches.append(len(code) - 2)
+    emit('66 b8 01 00 00 80 66 d1 c0 66 3d 03 00 00 00'); check()
+    emit('66 b8 78 56 34 12 66 ba ef cd ab 89 66 0f ac d0 10 66 3d 34 12 ef cd'); check()
+    emit('66 b8 02 02 24 00 66 50 66 9d 66 9c 66 58 66 3d 02 02 24 00'); check()
+    emit('66 b8 15 00 00 00 66 bb fe ff ff ff 66 0f af c3 66 99 66 bb 05 00 00 00 66 f7 fb 66 3d f8 ff ff ff'); check()
+    emit('66 81 fa fe ff ff ff'); check()
+    emit('66 b8 00 00 00 00 66 0f ba f8 1f 66 3d 00 00 00 80'); check()
+    emit('b8 01 12 bb 01 34 ba 78 56 0f b1 d3 3d 01 34'); check()
+    message_patch = len(code) + 3
+    emit('b4 09 ba 00 00 cd 21 b8 00 4c cd 21')
+    failure = len(code); emit('b8 01 4c cd 21')
+    message = len(code); code.extend(b'CPU AUDIT OK\r\n$')
+    code[message_patch:message_patch+2] = (0x100 + message).to_bytes(2, 'little')
+    for at in branches: code[at:at+2] = (failure-at-2).to_bytes(2, 'little')
+    return bytes(code)
+
+
+def fast_console_com():
+    code = bytearray()
+    for ch in b"FAST CONSOLE OK\r\n":
+        code.extend(bytes((0xB0, ch, 0xCD, 0x29)))
+    code.extend(b"\xB8\x00\x4C\xCD\x21")
+    return bytes(code)
+
+
+def environment_com():
+    """Reopen the running COM via the executable name in its environment."""
+    code = bytearray(bytes.fromhex('a1 2c 00 8e d8 31 f6 ac 84 c0 75 fb 80 3c 00 75 f6 83 c6 03 89 f2 b8 00 3d cd 21'))
+    code.extend(bytes.fromhex('72 00')); failure_patch = len(code) - 1
+    code.extend(bytes.fromhex('89 c3 b4 3e cd 21 0e 1f b4 09 ba 00 00 cd 21 b8 00 4c cd 21'))
+    message_patch = len(code) - 9
+    failure = len(code); code.extend(bytes.fromhex('b8 01 4c cd 21'))
+    message = len(code); code.extend(b'ENVIRONMENT NAME OK\r\n$')
+    code[failure_patch] = failure - failure_patch - 1
+    code[message_patch:message_patch+2] = (0x100 + message).to_bytes(2, 'little')
+    return bytes(code)
+
+
+def int21_vector_com():
+    """Call the DOS version service through the INT 21h IVT far-call ABI."""
+    code = bytearray([
+        0x1E,                         # push ds
+        0x31, 0xC0, 0x8E, 0xD8,      # xor ax,ax; mov ds,ax
+        0xB8, 0x00, 0x30,            # mov ax,3000h
+        0x9C,                         # pushf (DOS chain-call convention)
+        0xFF, 0x1E, 0x84, 0x00,      # call far [0000:0084] (INT 21h vector)
+        0x1F,                         # pop ds
+        0x3D, 0x04, 0x00,            # cmp ax,4
+        0x75, 0x00,                  # jne fail (patched below)
+        0xB4, 0x09, 0xBA, 0x00, 0x00, 0xCD, 0x21,
+        0xB8, 0x00, 0x4C, 0xCD, 0x21,
+    ])
+    jne_disp = 18
+    fail = len(code)
+    code.extend([0xB8, 0x01, 0x4C, 0xCD, 0x21])
+    message = len(code)
+    code[22:24] = (0x100 + message).to_bytes(2, "little")
+    code[jne_disp] = fail - (jne_disp + 1)
+    code.extend(b"INT21 VECTOR OK\r\n$")
+    return bytes(code)
+
+
+def bios10_vector_com():
+    """Exercise BIOS INT 10h through its IVT far-call entry, like TP Intr."""
+    code = bytearray([
+        0x1E,                         # push ds
+        0x31, 0xC0, 0x8E, 0xD8,      # xor ax,ax; mov ds,ax
+        0xB8, 0x00, 0x0F,            # mov ax,0F00h (get video mode)
+        0x9C,                         # pushf (Intr's IRET-compatible frame)
+        0xFF, 0x1E, 0x40, 0x00,      # call far [0000:0040] (INT 10h vector)
+        0x1F,                         # pop ds
+        0x3D, 0x03, 0x50,            # cmp ax,5003h (80 columns, mode 3)
+        0x75, 0x00,                  # jne fail (patched below)
+        0xB4, 0x09, 0xBA, 0x00, 0x00, 0xCD, 0x21,
+        0xB8, 0x00, 0x4C, 0xCD, 0x21,
+    ])
+    jne_disp = 18
+    fail = len(code)
+    code.extend([0xB8, 0x01, 0x4C, 0xCD, 0x21])
+    message = len(code)
+    code[22:24] = (0x100 + message).to_bytes(2, "little")
+    code[jne_disp] = fail - (jne_disp + 1)
+    code.extend(b"BIOS10 VECTOR OK\r\n$")
+    return bytes(code)
+
+
 def digits_com():
     # mov cx,10; mov dl,'0'; loop: mov ah,2; int 21h; inc dl; loop loop;
     # mov ax,4C00; int 21h
@@ -411,6 +532,12 @@ def build_disk(path):
        "-H", str(PART_START), "-c", "1", "-v", "DOSRUN", "::")
     srcdir = tempfile.mkdtemp(prefix="zkt-dosrun-src-")
     put(path, "HELLO.COM", hello_com(), srcdir)
+    put(path, "OP32.COM", operand32_com(), srcdir)
+    put(path, "CPUAUDIT.COM", cpu_audit_com(), srcdir)
+    put(path, "ENVNAME.COM", environment_com(), srcdir)
+    put(path, "FASTCON.COM", fast_console_com(), srcdir)
+    put(path, "INT21VEC.COM", int21_vector_com(), srcdir)
+    put(path, "BIOS10VEC.COM", bios10_vector_com(), srcdir)
     put(path, "DIGITS.COM", digits_com(), srcdir)
     put(path, "EXIT7.COM", exit7_com(), srcdir)
     put(path, "HELLO.EXE", hello_exe(), srcdir)
@@ -457,6 +584,24 @@ def main():
         step("dosrun HELLO.COM: a .COM prints its string",
              lambda: run_command(m, "serial", "dosrun C:/HELLO.COM",
                                  ["Hello from DOS!"], SHELL_PROMPT))
+        step("DOS INT 21h vector supports chained far calls",
+             lambda: run_command(m, "serial", "dosrun C:/INT21VEC.COM",
+                                 ["INT21 VECTOR OK"], SHELL_PROMPT))
+        step("real-mode 66h arithmetic, memory, stack and DOS register preservation",
+             lambda: run_command(m, "serial", "dosrun C:/OP32.COM",
+                                 ["OPERAND32 OK", "!can't run"], SHELL_PROMPT))
+        step("DOS fast console output reaches the shared text screen",
+             lambda: run_command(m, "serial", "dosrun C:/FASTCON.COM",
+                                 ["FAST CONSOLE OK", "!can't run"], SHELL_PROMPT))
+        step("program reopens itself through the DOS environment trailer",
+             lambda: run_command(m, "serial", "dosrun C:/ENVNAME.COM",
+                                 ["ENVIRONMENT NAME OK", "!can't run"], SHELL_PROMPT))
+        step("CPU audit shifts, flags, multiply/divide, bit operations and CMPXCHG",
+             lambda: run_command(m, "serial", "dosrun C:/CPUAUDIT.COM",
+                                 ["CPU AUDIT OK", "!can't run"], SHELL_PROMPT))
+        step("BIOS INT 10h IVT vector supports Pascal-style far calls",
+             lambda: run_command(m, "serial", "dosrun C:/BIOS10VEC.COM",
+                                 ["BIOS10 VECTOR OK"], SHELL_PROMPT))
         step("dosrun with an absolute ManiOS path",
              lambda: run_command(m, "serial", "dosrun /n/ata0p1/HELLO.COM",
                                  ["Hello from DOS!"], SHELL_PROMPT))

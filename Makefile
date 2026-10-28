@@ -365,9 +365,30 @@ test: $(KERNEL) test-images
 	python3 tests/gfx_test.py $(KERNEL)
 	python3 tests/vbe_test.py $(KERNEL)
 	python3 tests/desktop_test.py $(KERNEL)
+	python3 tests/gui_frame_test.py
 	python3 tests/gui_test.py $(KERNEL)
 	python3 tests/dos_test.py $(KERNEL)
 	python3 tests/dosrun_host_test.py
+	python3 tests/dosrun_shift_test.py
+	python3 tests/dosrun_double_shift_test.py
+	python3 tests/dosrun_flags32_test.py
+	python3 tests/dosrun_bit_test.py
+	python3 tests/dosrun_imul32_test.py
+	python3 tests/dosrun_divide_test.py
+	python3 tests/dosrun_cpu_audit_test.py
+	python3 tests/dosrun_environment_test.py
+	python3 tests/dosrun_initial_memory_test.py
+	python3 tests/dosrun_handle_test.py
+	python3 tests/dosrun_fast_console_test.py
+	python3 tests/dosrun_time_test.py
+	python3 tests/dosrun_bios_memory_test.py
+	python3 tests/dosrun_seek_test.py
+	python3 tests/dosrun_timer_test.py
+	python3 tests/dosrun_keyboard_queue_test.py
+	python3 tests/vga_wrap_test.py
+	python3 tests/dosrun_operand32_test.py
+	python3 tests/dosrun_aam_test.py
+	python3 tests/dosrun_into_test.py
 	python3 tests/dosrun_string_test.py
 	python3 tests/dosrun_exec_test.py
 	python3 tests/dosrun_runtime_test.py
